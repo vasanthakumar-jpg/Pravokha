@@ -1,73 +1,106 @@
-# Welcome to your Lovable project
+# Pravokha - Premium Fashion E-Commerce Platform
 
-## Project info
+## Project Overview
 
-**URL**: https://lovable.dev/projects/21d5f39e-7696-4806-ace3-741ffc557112
+Pravokha is a modern e-commerce platform specializing in premium quality clothing including t-shirts, track pants, and shorts for men, women, and kids.
 
-## How can I edit this code?
-
-There are several ways of editing your application.
-
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/21d5f39e-7696-4806-ace3-741ffc557112) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
-
-**Edit a file directly in GitHub**
-
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
+## Technologies Used
 
 This project is built with:
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+- **Vite** - Fast build tool and dev server
+- **TypeScript** - Type-safe JavaScript
+- **React** - UI framework
+- **Tailwind CSS** - Utility-first CSS framework
+- **shadcn-ui** - High-quality UI components
+- **Supabase** - Backend and database
+- **React Router** - Client-side routing
+- **Framer Motion** - Animation library
 
-## How can I deploy this project?
+## Getting Started
 
-Simply open [Lovable](https://lovable.dev/projects/21d5f39e-7696-4806-ace3-741ffc557112) and click on Share -> Publish.
+### Prerequisites
 
-## Can I connect a custom domain to my Lovable project?
+- Node.js (v18 or higher)
+- npm or yarn
 
-Yes, you can!
+### Installation
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+```sh
+# Clone the repository
+git clone https://github.com/vasanthakumar-jpg/Pravokha.git
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+# Navigate to the project directory
+cd Pravokha
+
+# Install dependencies
+npm install
+
+# Start the development server
+npm run dev
+```
+
+The application will be available at `http://localhost:8081`
+
+## Project Structure
+
+```
+src/
+├── components/       # Shared UI components
+│   ├── ui/          # Base UI components (buttons, cards, etc.)
+│   ├── common/      # Common reusable components
+│   ├── layout/      # Layout components (navbar, footer)
+│   └── ...
+├── features/        # Feature-specific modules
+│   ├── admin/       # Admin dashboard and management
+│   ├── auth/        # Authentication
+│   ├── products/    # Product listings and details
+│   ├── checkout/    # Shopping cart and checkout
+│   └── ...
+├── contexts/        # React context providers
+├── hooks/           # Custom React hooks
+├── styles/          # Global styles and CSS modules
+└── integrations/    # Third-party integrations (Supabase)
+```
+
+## Features
+
+- **Multi-role System**: Admin, Seller, and Customer roles
+- **Product Management**: Full CRUD operations for products
+- **Shopping Cart**: Persistent cart with local storage
+- **Order Management**: Complete order tracking and management
+- **Payment Integration**: UPI and card payment support
+- **Responsive Design**: Mobile-first, fully responsive UI
+- **Admin Dashboard**: Comprehensive analytics and management tools
+- **Seller Portal**: Vendor management and product listing tools
+- **Real-time Updates**: Live notifications and updates
+- **SEO Optimized**: Structured data and meta tags
+
+## Available Scripts
+
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm run preview` - Preview production build
+- `npm run lint` - Run ESLint
+
+## Environment Variables
+
+Create a `.env` file in the root directory with the following variables:
+
+```env
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## License
+
+This project is licensed under the MIT License.
+
+## Contact
+
+- Email: vasanthakumar141099@gmail.com
+- Phone: +917339232817
