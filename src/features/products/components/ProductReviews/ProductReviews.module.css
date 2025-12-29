@@ -1,0 +1,264 @@
+.formCard {
+    padding: 1.5rem;
+}
+
+.formTitle {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+}
+
+.ratingContainer {
+    margin-bottom: 1rem;
+}
+
+.label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+}
+
+.starsRow {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.starButton {
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+.starButton:hover {
+    transform: scale(1.1);
+}
+
+.starIcon {
+    height: 2rem;
+    width: 2rem;
+}
+
+.fieldGroup {
+    margin-bottom: 1rem;
+}
+
+.error {
+    color: var(--destructive);
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+}
+
+.success {
+    color: #10b981;
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.textAreaContainer {
+    position: relative;
+}
+
+.charCount {
+    display: flex;
+    justify-content: flex-end;
+    font-size: 0.875rem;
+    color: var(--muted-foreground);
+    margin-top: 0.25rem;
+}
+
+.imageUploadSection {
+    margin-bottom: 1.5rem;
+}
+
+.imageGrid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.imagePreview {
+    position: relative;
+    width: 6rem;
+    height: 6rem;
+}
+
+.previewImg {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 0.5rem;
+}
+
+.removeImgButton {
+    position: absolute;
+    top: -0.5rem;
+    right: -0.5rem;
+    background-color: var(--destructive);
+    color: var(--destructive-foreground);
+    border-radius: 9999px;
+    padding: 0.25rem;
+    border: none;
+    cursor: pointer;
+}
+
+.uploadLabel {
+    width: 6rem;
+    height: 6rem;
+    border: 2px dashed var(--muted-foreground);
+    border-radius: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: border-color 0.2s ease;
+}
+
+.uploadLabel:hover {
+    border-color: var(--primary);
+}
+
+.uploadIcon {
+    height: 1.5rem;
+    width: 1.5rem;
+    color: var(--muted-foreground);
+}
+
+.uploadText {
+    font-size: 0.75rem;
+    color: var(--muted-foreground);
+    margin-top: 0.25rem;
+}
+
+.submitActions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.reviewsListSection {
+    margin-top: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.reviewsTitle {
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.reviewCard {
+    padding: 1.5rem;
+}
+
+.reviewHeader {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 0.75rem;
+}
+
+.reviewStars {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.reviewStarIcon {
+    height: 1.25rem;
+    width: 1.25rem;
+}
+
+.reviewTitle {
+    font-weight: 600;
+    font-size: 1.125rem;
+    margin-bottom: 0.5rem;
+}
+
+.reviewComment {
+    color: var(--muted-foreground);
+    margin-bottom: 0.75rem;
+}
+
+.reviewImages {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.reviewImgThumb {
+    width: 5rem;
+    height: 5rem;
+    object-fit: cover;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: opacity 0.2s ease;
+}
+
+.reviewImgThumb:hover {
+    opacity: 0.8;
+}
+
+.reviewDate {
+    font-size: 0.875rem;
+    color: var(--muted-foreground);
+}
+
+.statsSection {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.statsHeader {
+    text-align: center;
+}
+
+.avgRating {
+    font-size: 3rem;
+    font-weight: 700;
+}
+
+.starsDistribution {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.distRow {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.distLabel {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    width: 4rem;
+}
+
+.distText {
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.distStar {
+    height: 0.75rem;
+    width: 0.75rem;
+    fill: var(--accent);
+    color: var(--accent);
+}
+
+.distPercent {
+    font-size: 0.875rem;
+    color: var(--muted-foreground);
+    width: 3rem;
+    text-align: right;
+}

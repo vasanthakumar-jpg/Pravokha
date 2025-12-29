@@ -1,0 +1,92 @@
+/* Carousel Component Styles */
+
+.root {
+    position: relative;
+    width: 100%;
+}
+
+.viewport {
+    overflow: hidden;
+    width: 100%;
+}
+
+.container {
+    display: flex;
+}
+
+.verticalContainer {
+    flex-direction: column;
+}
+
+.horizontalContainer {
+    margin-left: -1rem;
+}
+
+.verticalContainerMargin {
+    margin-top: -1rem;
+}
+
+.item {
+    min-width: 0;
+    flex-shrink: 0;
+    flex-grow: 0;
+    flex-basis: 100%;
+}
+
+.horizontalItem {
+    padding-left: 1rem;
+}
+
+.verticalItem {
+    padding-top: 1rem;
+}
+
+.button {
+    position: absolute;
+    height: 2rem;
+    width: 2rem;
+    border-radius: 9999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: hsl(var(--background));
+    border: 1px solid hsl(var(--border));
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    transition: all 0.2s;
+    z-index: 10;
+}
+
+.button:hover {
+    background-color: hsl(var(--accent));
+    color: hsl(var(--accent-foreground));
+    scale: 1.1;
+}
+
+.button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.previousHorizontal {
+    left: -1rem;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.nextHorizontal {
+    right: -1rem;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.previousVertical {
+    top: -1rem;
+    left: 50%;
+    transform: translateX(-50%) rotate(90deg);
+}
+
+.nextVertical {
+    bottom: -1rem;
+    left: 50%;
+    transform: translateX(-50%) rotate(90deg);
+}

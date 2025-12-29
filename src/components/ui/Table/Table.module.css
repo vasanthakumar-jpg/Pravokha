@@ -1,0 +1,25 @@
+/* Table Component Styles */
+
+.table {
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.tableRow {
+    transition: background-color 0.15s ease;
+}
+
+.tableRow:hover {
+    background-color: hsl(var(--muted) / 0.5);
+}
+
+.tableHead {
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: 0.75rem;
+}
+
+.tableCell {
+    border-bottom: 1px solid hsl(var(--border));
+}

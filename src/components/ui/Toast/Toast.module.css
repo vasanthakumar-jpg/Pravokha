@@ -1,0 +1,30 @@
+/* Toast Component Styles */
+
+.toast {
+    animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.toastClose {
+    transition: all 0.2s ease;
+}
+
+.toastClose:hover {
+    background-color: hsl(var(--secondary));
+    transform: rotate(90deg);
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.toastDestructive {
+    border-left: 4px solid hsl(var(--destructive));
+}

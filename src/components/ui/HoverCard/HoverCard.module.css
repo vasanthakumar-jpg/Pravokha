@@ -1,0 +1,45 @@
+/* HoverCard Component Styles */
+
+.content {
+    z-index: 50;
+    width: 16rem;
+    border-radius: 0.375rem;
+    border: 1px solid hsl(var(--border));
+    background-color: hsl(var(--popover));
+    padding: 1rem;
+    color: hsl(var(--popover-foreground));
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    outline: none;
+}
+
+.content[data-state="open"] {
+    animation: fadeIn 0.1s ease-in;
+}
+
+.content[data-state="closed"] {
+    animation: fadeOut 0.1s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes fadeOut {
+    from {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    to {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+}

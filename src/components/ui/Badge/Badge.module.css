@@ -1,0 +1,9 @@
+/* Badge Component Styles */
+
+.badge {
+    transition: all 0.2s ease;
+}
+
+.badge:hover {
+    transform: scale(1.05);
+}

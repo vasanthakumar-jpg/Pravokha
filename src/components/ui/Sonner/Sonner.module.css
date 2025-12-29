@@ -1,0 +1,8 @@
+/* Sonner Component Styles */
+
+
+
+
+
+/* We rely on Sonner's built-in styles but override with CSS variables through props in the component */
+/* The main customization happens via the toastOptions prop in the component file */

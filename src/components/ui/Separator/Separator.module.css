@@ -1,0 +1,16 @@
+/* Separator Component Styles */
+
+.separator {
+    background: linear-gradient(90deg, transparent, hsl(var(--border)), transparent);
+    flex-shrink: 0;
+}
+
+.separatorHorizontal {
+    height: 1px;
+    width: 100%;
+}
+
+.separatorVertical {
+    height: 100%;
+    width: 1px;
+}

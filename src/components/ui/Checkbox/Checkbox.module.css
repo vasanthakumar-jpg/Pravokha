@@ -1,0 +1,27 @@
+/* Checkbox Component Styles */
+
+.checkbox {
+    transition: all 0.2s ease;
+}
+
+.checkbox:hover {
+    border-color: hsl(var(--primary));
+}
+
+.checkbox[data-state="checked"] {
+    animation: checkboxCheck 0.2s ease;
+}
+
+@keyframes checkboxCheck {
+    0% {
+        transform: scale(0.8);
+    }
+
+    50% {
+        transform: scale(1.1);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}

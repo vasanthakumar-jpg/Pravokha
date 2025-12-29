@@ -1,0 +1,18 @@
+/* Toggle Component Styles */
+
+.toggle {
+    transition: all 0.2s ease;
+}
+
+.toggle:hover {
+    background-color: hsl(var(--muted));
+}
+
+.toggle[data-state="on"] {
+    background-color: hsl(var(--accent));
+    color: hsl(var(--accent-foreground));
+}
+
+.toggle[data-state="on"]:hover {
+    background-color: hsl(var(--accent) / 0.9);
+}

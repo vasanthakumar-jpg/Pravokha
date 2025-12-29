@@ -1,0 +1,18 @@
+/* Input Component Styles */
+
+.input {
+    transition: all 0.2s ease;
+}
+
+.input:focus {
+    border-color: hsl(var(--ring));
+    box-shadow: 0 0 0 3px hsl(var(--ring) / 0.1);
+}
+
+.inputError {
+    border-color: hsl(var(--destructive));
+}
+
+.inputError:focus {
+    box-shadow: 0 0 0 3px hsl(var(--destructive) / 0.1);
+}

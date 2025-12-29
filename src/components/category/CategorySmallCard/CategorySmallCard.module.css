@@ -1,0 +1,168 @@
+/* CategorySmallCard - Perfect Layout Fix */
+
+.linkWrapper {
+    display: block;
+    width: 100%;
+    /* Enforce aspect ratio here so the link block itself is sized correctly */
+    aspect-ratio: 3/4;
+    text-decoration: none;
+    position: relative;
+}
+
+.wrapper {
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+.card {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    border-radius: 1rem;
+    overflow: hidden;
+    background: #000;
+    /* Use a simple border to define edges if bg matches */
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.4s ease;
+}
+
+@media (min-width: 768px) {
+    .card {
+        border-radius: 1.25rem;
+    }
+}
+
+/* Image Container fills the card completely */
+.imageContainer {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+}
+
+.image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.8s cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+.card:hover .image {
+    transform: scale(1.12);
+}
+
+/* Overlay sits on top of image */
+.overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    background: linear-gradient(to bottom,
+            rgba(0, 0, 0, 0) 0%,
+            rgba(0, 0, 0, 0.1) 40%,
+            rgba(0, 0, 0, 0.6) 80%,
+            rgba(0, 0, 0, 0.95) 100%);
+    opacity: 0.9;
+    transition: opacity 0.4s ease;
+}
+
+/* Content sits on top of overlay */
+.content {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: 1.25rem;
+}
+
+@media (min-width: 768px) {
+    .content {
+        padding: 1.5rem;
+    }
+}
+
+@media (min-width: 1024px) {
+    .content {
+        padding: 2rem;
+    }
+}
+
+.title {
+    color: #ffffff;
+    font-weight: 700;
+    line-height: 1.1;
+    margin: 0 0 0.5rem 0;
+    letter-spacing: -0.01em;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    transform: translateY(0);
+    transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+/* Font Sizing */
+.title {
+    font-size: 1.25rem;
+}
+
+/* Mobile */
+@media (min-width: 640px) {
+    .title {
+        font-size: 1.5rem;
+    }
+}
+
+/* Tablet */
+@media (min-width: 1024px) {
+    .title {
+        font-size: 1.875rem;
+        margin-bottom: 0.25rem;
+    }
+}
+
+/* Desktop */
+
+.description {
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 0.875rem;
+    line-height: 1.4;
+    margin: 0;
+    font-weight: 500;
+    transition: all 0.4s ease;
+
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+@media (min-width: 1024px) {
+    .description {
+        font-size: 1rem;
+        opacity: 0;
+        transform: translateY(10px);
+        max-height: 0;
+    }
+
+    .card:hover .description {
+        opacity: 1;
+        transform: translateY(0);
+        max-height: 100px;
+        margin-top: 0.5rem;
+    }
+
+    .card:hover .title {
+        transform: translateY(-5px);
+    }
+}
+
+.disabled {
+    opacity: 0.6;
+    filter: grayscale(100%);
+    cursor: not-allowed;
+}

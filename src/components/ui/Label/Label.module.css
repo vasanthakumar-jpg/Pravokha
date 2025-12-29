@@ -1,0 +1,14 @@
+/* Label Component Styles */
+
+.label {
+    transition: color 0.2s ease;
+}
+
+.label:hover {
+    color: hsl(var(--foreground));
+}
+
+.labelRequired::after {
+    content: ' *';
+    color: hsl(var(--destructive));
+}

@@ -1,0 +1,28 @@
+.description {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.paymentTitle {
+    font-weight: 500;
+    font-size: 1rem;
+}
+
+.timelineText {
+    font-size: 0.875rem;
+    color: var(--muted-foreground);
+}
+
+.bold {
+    font-weight: 700;
+}
+
+.confirmButton {
+    background-color: var(--destructive);
+    color: var(--destructive-foreground);
+}
+
+.confirmButton:hover {
+    background-color: rgba(var(--destructive-rgb), 0.9);
+}

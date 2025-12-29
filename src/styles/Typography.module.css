@@ -1,0 +1,37 @@
+/* Typography System - Modular */
+
+.responsiveH2 {
+    font-size: 1.875rem;
+    /* 30px */
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+    color: hsl(var(--foreground));
+}
+
+@media (min-width: 640px) {
+    .responsiveH2 {
+        font-size: 2.25rem;
+        /* 36px */
+    }
+}
+
+@media (min-width: 1024px) {
+    .responsiveH2 {
+        font-size: 3rem;
+        /* 48px */
+    }
+}
+
+.responsiveBody {
+    font-size: 1rem;
+    line-height: 1.6;
+    color: hsl(var(--muted-foreground));
+}
+
+@media (min-width: 640px) {
+    .responsiveBody {
+        font-size: 1.125rem;
+        /* 18px */
+    }
+}

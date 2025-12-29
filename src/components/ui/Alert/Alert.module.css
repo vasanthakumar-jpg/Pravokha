@@ -1,0 +1,24 @@
+/* Alert Component Styles */
+
+.alert {
+    transition: all 0.3s ease;
+    border-left: 4px solid hsl(var(--border));
+}
+
+.alertDefault {
+    background: hsl(var(--background) / 0.5);
+}
+
+.alertDestructive {
+    border-left-color: hsl(var(--destructive));
+    background: hsl(var(--destructive) / 0.1);
+}
+
+.alertTitle {
+    font-weight: 600;
+    letter-spacing: -0.025em;
+}
+
+.alertDescription {
+    opacity: 0.9;
+}

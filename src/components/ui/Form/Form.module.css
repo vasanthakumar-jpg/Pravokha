@@ -1,0 +1,44 @@
+/* Form Component Styles */
+
+.item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.label {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.labelError {
+    color: hsl(var(--destructive));
+}
+
+.description {
+    font-size: 0.8rem;
+    color: hsl(var(--muted-foreground));
+}
+
+.message {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: hsl(var(--destructive));
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

@@ -1,0 +1,131 @@
+/* Category Carousel Styles */
+
+.carouselContainer {
+    position: relative;
+    width: 100%;
+    padding: 0 3rem;
+    /* Space for arrows */
+}
+
+@media (max-width: 640px) {
+    .carouselContainer {
+        padding: 0 2.5rem;
+    }
+}
+
+.carouselWrapper {
+    overflow: hidden;
+    width: 100%;
+}
+
+.cardsTrack {
+    display: grid;
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    gap: 1.5rem;
+}
+
+@media (max-width: 768px) {
+    .cardsTrack {
+        gap: 1rem;
+    }
+}
+
+.cardSlot {
+    width: 100%;
+    min-width: 0;
+    /* Prevent overflow */
+}
+
+/* Arrow Buttons */
+.arrowButton {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 10;
+
+    width: 3rem;
+    height: 3rem;
+    border-radius: 50%;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    background: hsl(var(--background));
+    border: 2px solid hsl(var(--border));
+    color: hsl(var(--foreground));
+
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.arrowButton:hover:not(:disabled) {
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    border-color: hsl(var(--primary));
+    transform: translateY(-50%) scale(1.1);
+}
+
+.arrowButton:active:not(:disabled) {
+    transform: translateY(-50%) scale(0.95);
+}
+
+.arrowLeft {
+    left: 0;
+}
+
+.arrowRight {
+    right: 0;
+}
+
+.arrowDisabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+@media (max-width: 640px) {
+    .arrowButton {
+        width: 2.5rem;
+        height: 2.5rem;
+    }
+}
+
+/* Dots Indicator */
+.dotsContainer {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 2rem;
+}
+
+.dot {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background: hsl(var(--muted-foreground) / 0.3);
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    padding: 0;
+}
+
+.dot:hover {
+    background: hsl(var(--muted-foreground) / 0.5);
+    transform: scale(1.2);
+}
+
+.dotActive {
+    background: hsl(var(--primary));
+    width: 1.5rem;
+    border-radius: 0.25rem;
+}
+
+@media (max-width: 640px) {
+    .dotsContainer {
+        margin-top: 1.5rem;
+    }
+}

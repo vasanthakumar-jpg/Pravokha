@@ -1,0 +1,101 @@
+.container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 400px;
+    padding: 1rem;
+}
+
+.card {
+    width: 100%;
+    max-width: 28rem;
+    border-color: rgba(var(--destructive-rgb), 0.5);
+}
+
+.content {
+    padding-top: 1.5rem;
+    padding-bottom: 2rem;
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+}
+
+.iconWrapper {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 1rem;
+}
+
+.iconRelative {
+    position: relative;
+}
+
+.iconGlow {
+    position: absolute;
+    inset: 0;
+    background-color: rgba(var(--destructive-rgb), 0.2);
+    filter: blur(20px);
+    border-radius: 9999px;
+}
+
+.iconContainer {
+    position: relative;
+    background-color: rgba(var(--destructive-rgb), 0.1);
+    padding: 1rem;
+    border-radius: 9999px;
+}
+
+.icon {
+    height: 3rem;
+    width: 3rem;
+    color: var(--destructive);
+}
+
+.title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    text-align: center;
+    margin-bottom: 0.5rem;
+}
+
+.message {
+    text-align: center;
+    color: var(--muted-foreground);
+    margin-bottom: 1.5rem;
+}
+
+.userInfo {
+    background-color: var(--muted);
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.userText {
+    font-size: 0.875rem;
+    text-align: center;
+}
+
+.userLabel {
+    color: var(--muted-foreground);
+}
+
+.userName {
+    font-weight: 500;
+}
+
+.buttonGrid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.button {
+    width: 100%;
+}
+
+.footer {
+    font-size: 0.75rem;
+    text-align: center;
+    color: var(--muted-foreground);
+    margin-top: 1.5rem;
+}

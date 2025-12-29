@@ -1,0 +1,126 @@
+/* UserAccountDropdown Styles */
+
+.userInfoContainer {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.avatar {
+    height: 3rem;
+    width: 3rem;
+}
+
+.avatarFallback {
+    background: linear-gradient(to bottom right, hsl(var(--primary)), hsla(var(--primary) / 0.7));
+    color: hsl(var(--primary-foreground));
+}
+
+.userDetails {
+    flex: 1;
+    min-width: 0;
+}
+
+.userName {
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: normal;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.userEmail {
+    font-size: 0.75rem;
+    color: hsl(var(--muted-foreground));
+    line-height: normal;
+    margin-top: 0.25rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.menuItem {
+    cursor: pointer;
+    padding-top: 0.625rem;
+    padding-bottom: 0.625rem;
+}
+
+.menuIcon {
+    margin-right: 0.75rem;
+    height: 1rem;
+    width: 1rem;
+}
+
+.menuLabel {
+    font-size: 0.875rem;
+}
+
+.triggerContainer {
+    position: relative;
+}
+
+.triggerAvatar {
+    height: 2.25rem;
+    width: 2.25rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 2px solid transparent;
+    /* Placeholder for ring */
+}
+
+.triggerAvatar:hover {
+    /* Hover effect handled by ring utility in component for now as complex rings are hard in CSS modules without utility compostion */
+}
+
+.roleBadge {
+    position: absolute;
+    bottom: -0.25rem;
+    right: -0.25rem;
+    font-size: 8px;
+    padding: 0.125rem 0.375rem;
+    border-radius: 9999px;
+    font-weight: 700;
+}
+
+.roleBadgeAdmin {
+    background-color: #ef4444;
+    /* red-500 */
+    color: white;
+}
+
+.roleBadgeSeller {
+    background-color: #3b82f6;
+    /* blue-500 */
+    color: white;
+}
+
+.roleBadgeUser {
+    background-color: #22c55e;
+    /* green-500 */
+    color: white;
+}
+
+.roleTag {
+    margin-top: 0.375rem;
+    font-size: 10px;
+    height: 1.25rem;
+}
+
+.logoutItem {
+    color: #dc2626;
+    /* red-600 */
+}
+
+.logoutItem:focus {
+    color: #dc2626;
+    background-color: #fef2f2;
+    /* red-50 */
+}
+
+@media (prefers-color-scheme: dark) {
+    .logoutItem:focus {
+        background-color: #450a0a;
+        /* red-950 */
+    }
+}

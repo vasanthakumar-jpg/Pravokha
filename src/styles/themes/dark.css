@@ -1,0 +1,10 @@
+/* Dark Theme Variables */
+.dark {
+    --background: 215 25% 10%;
+    --foreground: 0 0% 98%;
+    --card: 215 25% 15%;
+    --border: 215 25% 25%;
+    --primary: 180 45% 55%;
+    --secondary: 15 70% 65%;
+    --muted: 215 25% 20%;
+}

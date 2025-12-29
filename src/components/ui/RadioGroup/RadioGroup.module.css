@@ -1,0 +1,39 @@
+/* RadioGroup Component Styles */
+
+.root {
+    display: grid;
+    gap: 0.5rem;
+}
+
+.item {
+    transition: all 0.2s ease;
+}
+
+.item:hover {
+    border-color: hsl(var(--primary));
+    box-shadow: 0 0 0 3px hsl(var(--primary) / 0.1);
+}
+
+.item[data-state="checked"] {
+    animation: radioCheck 0.2s ease;
+}
+
+@keyframes radioCheck {
+    0% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.1);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
+
+.indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}

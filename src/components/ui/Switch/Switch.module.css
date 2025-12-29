@@ -1,0 +1,18 @@
+/* Switch Component Styles */
+
+.switch {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.switch:hover {
+    opacity: 0.9;
+}
+
+.switch[data-state="checked"] {
+    background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary) / 0.8) 100%);
+}
+
+.thumb {
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}

@@ -1,0 +1,27 @@
+/* Accordion Component Styles */
+
+.item {
+    border-bottom: 1px solid hsl(var(--border));
+}
+
+.trigger {
+    transition: all 0.2s ease;
+}
+
+.trigger:hover {
+    text-decoration: underline;
+    color: hsl(var(--primary));
+}
+
+.chevron {
+    transition: transform 0.2s ease;
+}
+
+.trigger[data-state="open"] .chevron {
+    transform: rotate(180deg);
+}
+
+.content {
+    overflow: hidden;
+    transition: all 0.2s ease-out;
+}

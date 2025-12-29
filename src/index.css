@@ -1,0 +1,299 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================================
+   PRAVOKHA E-COMMERCE DESIGN SYSTEM
+   Elegant, Approachable, Customer-Friendly
+   ============================================================================ */
+
+@layer base {
+  :root {
+    /* ========================================
+       COLOR PALETTE - Warm, Welcoming, Trustworthy
+       ======================================== */
+
+    /* Base Colors */
+    --background: 0 0% 100%;
+    /* Pure white - clean, professional */
+    --foreground: 215 25% 20%;
+    /* Soft dark blue-grey - readable, friendly */
+
+    /* Surface & Cards */
+    --surface: 30 25% 96%;
+    /* Very light warm grey - subtle depth */
+    --card: 0 0% 100%;
+    /* White cards - clean on clean */
+    --card-foreground: 215 25% 20%;
+
+    /* Popovers & Overlays */
+    --popover: 0 0% 100%;
+    --popover-foreground: 215 25% 20%;
+
+    /* Primary - Soft Teal (Trust, Calm, Professional) */
+    --primary: 180 45% 45%;
+    /* #4AA3A0 - Medium teal */
+    --primary-foreground: 0 0% 100%;
+    /* White text on teal */
+    --primary-hover: 180 50% 38%;
+    /* Darker teal on hover */
+    --primary-light: 180 45% 92%;
+    /* Very light teal for backgrounds */
+
+    /* Secondary - Warm Coral (Friendly, Energetic) */
+    --secondary: 15 70% 60%;
+    /* #E17B5A - Warm coral */
+    --secondary-foreground: 0 0% 100%;
+    --secondary-hover: 15 75% 52%;
+    /* Deeper coral on hover */
+    --secondary-light: 15 70% 94%;
+
+    /* Accent - Golden Amber (Highlights, Success) */
+    --accent: 35 85% 55%;
+    /* #E8A644 - Golden amber */
+    --accent-foreground: 215 25% 20%;
+    --accent-hover: 35 85% 48%;
+    --accent-light: 35 85% 92%;
+
+    /* Neutrals */
+    --muted: 215 15% 92%;
+    /* Light grey */
+    --muted-foreground: 215 15% 45%;
+    /* Medium grey for secondary text */
+
+    /* Semantic Colors */
+    --destructive: 0 70% 55%;
+    /* Red for errors */
+    --destructive-foreground: 0 0% 100%;
+    --destructive-light: 0 70% 95%;
+
+    --success: 145 50% 42%;
+    /* Green for success */
+    --success-foreground: 0 0% 100%;
+    --success-light: 145 50% 95%;
+
+    --warning: 35 90% 55%;
+    /* Amber for warnings */
+    --warning-foreground: 215 25% 20%;
+    --warning-light: 35 90% 95%;
+
+    --info: 210 100% 50%;
+    /* Blue for info */
+    --info-foreground: 0 0% 100%;
+    --info-light: 210 100% 95%;
+
+    /* Borders & Inputs */
+    --border: 215 15% 85%;
+    /* Soft grey border */
+    --input: 0 0% 100%;
+    /* White inputs */
+    --input-border: 215 15% 80%;
+    /* Input border */
+    --ring: 180 45% 45%;
+    /* Focus ring - matches primary */
+
+    /* Border Radius */
+    --radius-sm: 0.375rem;
+    /* 6px - small elements */
+    --radius: 0.5rem;
+    /* 8px - standard */
+    --radius-md: 0.75rem;
+    /* 12px - cards */
+    --radius-lg: 1rem;
+    /* 16px - large cards */
+    --radius-xl: 1.5rem;
+    /* 24px - hero elements */
+    --radius-full: 9999px;
+    /* Pills/badges */
+
+    /* Spacing Scale */
+    --space-xs: 0.25rem;
+    /* 4px */
+    --space-sm: 0.5rem;
+    /* 8px */
+    --space-md: 1rem;
+    /* 16px */
+    --space-lg: 1.5rem;
+    /* 24px */
+    --space-xl: 2rem;
+    /* 32px */
+    --space-2xl: 3rem;
+    /* 48px */
+    --space-3xl: 4rem;
+    /* 64px */
+
+    /* Shadows - Soft and Natural */
+    --shadow-sm: 0 1px 3px hsla(215, 25%, 20%, 0.08);
+    --shadow: 0 2px 8px hsla(215, 25%, 20%, 0.1);
+    --shadow-md: 0 4px 12px hsla(215, 25%, 20%, 0.12);
+    --shadow-lg: 0 8px 24px hsla(215, 25%, 20%, 0.15);
+    --shadow-xl: 0 12px 32px hsla(215, 25%, 20%, 0.2);
+
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(180 45% 45%) 0%, hsl(180 50% 38%) 100%);
+    --gradient-secondary: linear-gradient(135deg, hsl(15 70% 60%) 0%, hsl(15 75% 52%) 100%);
+    --gradient-hero: linear-gradient(135deg, hsl(180 45% 92%) 0%, hsl(180 45% 95%) 100%);
+
+    /* ========================================
+       TYPOGRAPHY SYSTEM
+       ======================================== */
+
+    /* Font Families */
+    --font-heading: 'Poppins', system-ui, -apple-system, sans-serif;
+    --font-body: 'Inter', system-ui, -apple-system, sans-serif;
+
+    /* Font Sizes - Mobile First */
+    --fs-xs: 0.75rem;
+    /* 12px */
+    --fs-sm: 0.875rem;
+    /* 14px */
+    --fs-base: 1rem;
+    /* 16px */
+    --fs-lg: 1.125rem;
+    /* 18px */
+    --fs-xl: 1.25rem;
+    /* 20px */
+    --fs-2xl: 1.5rem;
+    /* 24px */
+    --fs-3xl: 1.875rem;
+    /* 30px */
+    --fs-4xl: 2.25rem;
+    /* 36px */
+    --fs-5xl: 3rem;
+    /* 48px */
+
+    /* Line Heights */
+    --lh-tight: 1.2;
+    --lh-normal: 1.5;
+    --lh-relaxed: 1.75;
+
+    /* Font Weights */
+    --fw-normal: 400;
+    --fw-medium: 500;
+    --fw-semibold: 600;
+    --fw-bold: 700;
+  }
+
+  /* Tablet Breakpoint */
+  @media (min-width: 768px) {
+    :root {
+      --fs-3xl: 2rem;
+      /* 32px */
+      --fs-4xl: 2.5rem;
+      /* 40px */
+      --fs-5xl: 3.5rem;
+      /* 56px */
+    }
+  }
+
+  /* Desktop Breakpoint */
+  @media (min-width: 1024px) {
+    :root {
+      --fs-3xl: 2.25rem;
+      /* 36px */
+      --fs-4xl: 3rem;
+      /* 48px */
+      --fs-5xl: 4rem;
+      /* 64px */
+    }
+  }
+
+  /* Dark Mode Support */
+  .dark {
+    --background: 215 25% 10%;
+    --foreground: 0 0% 98%;
+    --card: 215 25% 15%;
+    --card-foreground: 0 0% 98%;
+    --primary: 180 45% 55%;
+    --secondary: 15 70% 65%;
+    --muted: 215 25% 20%;
+    --border: 215 25% 25%;
+  }
+
+  /* ========================================
+     GLOBAL TYPOGRAPHY STYLES
+     ======================================== */
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-body);
+    font-size: var(--fs-base);
+    line-height: var(--lh-normal);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-heading);
+    font-weight: var(--fw-semibold);
+    line-height: var(--lh-tight);
+    color: hsl(var(--foreground));
+  }
+
+  h1 {
+    font-size: var(--fs-4xl);
+  }
+
+  h2 {
+    font-size: var(--fs-3xl);
+  }
+
+  h3 {
+    font-size: var(--fs-2xl);
+  }
+
+  h4 {
+    font-size: var(--fs-xl);
+  }
+
+  h5 {
+    font-size: var(--fs-lg);
+  }
+
+  h6 {
+    font-size: var(--fs-base);
+    font-weight: var(--fw-semibold);
+  }
+
+  p {
+    margin-bottom: 1rem;
+  }
+
+  a {
+    color: hsl(var(--primary));
+    text-decoration: none;
+    transition: color 0.2s ease;
+  }
+
+  a:hover {
+    color: hsl(var(--primary-hover));
+    text-decoration: underline;
+  }
+
+  /* Focus Styles - Accessibility */
+  *:focus-visible {
+    outline: 3px solid hsl(var(--ring));
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
+
+  /* Selection Color */
+  ::selection {
+    background-color: hsl(var(--primary-light));
+    color: hsl(var(--foreground));
+  }
+}
+
+/* ============================================================================
+   COMPONENT LAYER - Reusable Components
+   Moved to individual module.css files as per standard
+   ============================================================================ */

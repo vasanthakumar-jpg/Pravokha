@@ -1,0 +1,121 @@
+/* ============================================================================
+   PRAVOKHA - GLOBAL STYLES
+   Minimal global styles - Only CSS variables and resets
+   All component-specific styles should be in component CSS modules
+   ============================================================================ */
+
+/* CSS Custom Properties */
+:root {
+    /* Colors - HSL Format */
+    --background: 0 0% 100%;
+    --foreground: 215 25% 20%;
+
+    --primary: 180 45% 45%;
+    --primary-foreground: 0 0% 100%;
+    --primary-hover: 180 50% 38%;
+    --primary-light: 180 45% 92%;
+
+    --secondary: 15 70% 60%;
+    --secondary-foreground: 0 0% 100%;
+    --secondary-hover: 15 75% 52%;
+    --secondary-light: 15 70% 94%;
+
+    --accent: 35 85% 55%;
+    --accent-foreground: 215 25% 20%;
+
+    --muted: 215 15% 92%;
+    --muted-foreground: 215 15% 45%;
+
+    --border: 215 15% 85%;
+    --input-border: 215 15% 80%;
+    --ring: 180 45% 45%;
+
+    --destructive: 0 70% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 145 50% 42%;
+    --success-foreground: 0 0% 100%;
+
+    /* Typography */
+    --font-heading: 'Poppins', system-ui, -apple-system, sans-serif;
+    --font-body: 'Inter', system-ui, -apple-system, sans-serif;
+
+    /* Spacing */
+    --space-xs: 0.25rem;
+    --space-sm: 0.5rem;
+    --space-md: 1rem;
+    --space-lg: 1.5rem;
+    --space-xl: 2rem;
+    --space-2xl: 3rem;
+    --space-3xl: 4rem;
+
+    /* Border Radius */
+    --radius-sm: 0.375rem;
+    --radius: 0.5rem;
+    --radius-md: 0.75rem;
+    --radius-lg: 1rem;
+    --radius-xl: 1.5rem;
+    --radius-full: 9999px;
+
+    /* Shadows */
+    --shadow-sm: 0 1px 3px hsla(215, 25%, 20%, 0.08);
+    --shadow: 0 2px 8px hsla(215, 25%, 20%, 0.1);
+    --shadow-md: 0 4px 12px hsla(215, 25%, 20%, 0.12);
+    --shadow-lg: 0 8px 24px hsla(215, 25%, 20%, 0.15);
+    --shadow-xl: 0 12px 32px hsla(215, 25%, 20%, 0.2);
+}
+
+/* CSS Reset */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+/* Base Styles */
+html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+}
+
+body {
+    font-family: var(--font-body);
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    line-height: 1.5;
+    min-height: 100vh;
+}
+
+/* Focus Styles - Accessibility */
+*:focus-visible {
+    outline: 3px solid hsl(var(--ring));
+    outline-offset: 2px;
+}
+
+/* Selection Color */
+::selection {
+    background-color: hsl(var(--primary-light));
+    color: hsl(var(--foreground));
+}
+
+/* Remove default button styles */
+button {
+    font-family: inherit;
+    cursor: pointer;
+}
+
+/* Remove default link underline */
+a {
+    text-decoration: none;
+    color: inherit;
+}
+
+/* Image defaults */
+img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+}

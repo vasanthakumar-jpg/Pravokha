@@ -1,0 +1,39 @@
+.container {
+    height: 100vh;
+    width: 100vw;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--background);
+}
+
+.spinner {
+    height: 3rem;
+    width: 3rem;
+    color: var(--primary);
+}
+
+.text {
+    margin-top: 1rem;
+    color: var(--muted-foreground);
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.5;
+    }
+}
+
+.slowMessage {
+    margin-top: 0.5rem;
+    font-size: 0.75rem;
+    color: rgba(var(--muted-foreground-rgb), 0.7);
+}

@@ -1,0 +1,18 @@
+/* Avatar Component Styles */
+
+.avatar {
+    transition: transform 0.2s ease;
+}
+
+.avatar:hover {
+    transform: scale(1.05);
+}
+
+.avatarImage {
+    object-fit: cover;
+}
+
+.avatarFallback {
+    font-weight: 600;
+    text-transform: uppercase;
+}

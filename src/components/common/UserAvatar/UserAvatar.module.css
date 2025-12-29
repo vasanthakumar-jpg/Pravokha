@@ -1,0 +1,111 @@
+.relative {
+    position: relative;
+}
+
+.avatarButton {
+    height: 2.25rem;
+    width: 2.25rem;
+    border-radius: 9999px;
+    padding: 0;
+}
+
+.avatar {
+    height: 2.25rem;
+    width: 2.25rem;
+}
+
+.avatarFallback {
+    font-size: 0.75rem;
+    background-color: var(--primary);
+    color: var(--primary-foreground);
+}
+
+.dropdown {
+    position: absolute;
+    right: 0;
+    top: 100%;
+    margin-top: 0.5rem;
+    width: 14rem;
+    background-color: var(--background);
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+    z-index: 50;
+}
+
+.header {
+    padding: 0.75rem;
+    border-bottom: 1px solid var(--border);
+    background-color: rgba(var(--muted-rgb), 0.5);
+}
+
+.userName {
+    font-weight: 500;
+    font-size: 0.875rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.userEmail {
+    font-size: 0.75rem;
+    color: var(--muted-foreground);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.roleLabel {
+    font-size: 0.75rem;
+    color: var(--primary);
+    font-weight: 600;
+    margin-top: 0.25rem;
+}
+
+.menuList {
+    padding-top: 0.25rem;
+    padding-bottom: 0.25rem;
+}
+
+.menuItem {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    transition: background-color 0.2s ease;
+    cursor: pointer;
+    width: 100%;
+    text-align: left;
+    border: none;
+    background: none;
+    color: inherit;
+}
+
+.menuItem:hover {
+    background-color: var(--muted);
+}
+
+.divider {
+    height: 1px;
+    background-color: var(--border);
+    margin: 0.25rem 0;
+}
+
+.logoutItem {
+    color: var(--destructive);
+}
+
+.tooltipContent {
+    text-align: center;
+}
+
+.tooltipName {
+    font-weight: 600;
+}
+
+.tooltipEmail {
+    font-size: 0.75rem;
+    color: var(--muted-foreground);
+}

@@ -1,0 +1,58 @@
+.section {
+    padding-top: 3rem;
+    padding-bottom: 3rem;
+    background-color: rgba(var(--muted-rgb), 0.3);
+}
+
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+}
+
+.title {
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+@media (min-width: 768px) {
+    .title {
+        font-size: 1.875rem;
+    }
+}
+
+.controls {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.controlButton {
+    height: 2.25rem;
+    width: 2.25rem;
+}
+
+.scrollContainer {
+    display: flex;
+    gap: 1rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    scroll-snap-type: x mandatory;
+}
+
+.scrollContainer::-webkit-scrollbar {
+    display: none;
+}
+
+.productWrapper {
+    flex: none;
+    width: 160px;
+    scroll-snap-align: start;
+}
+
+@media (min-width: 768px) {
+    .productWrapper {
+        width: 220px;
+    }
+}

@@ -1,0 +1,89 @@
+/* ReviewStatistics.module.css */
+
+.container {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.header {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.ratingValue {
+    font-size: 3rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.starRow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+}
+
+.starIcon {
+    height: 1.25rem;
+    width: 1.25rem;
+}
+
+.starActive {
+    fill: hsl(var(--accent));
+    color: hsl(var(--accent));
+}
+
+.starInactive {
+    fill: hsl(var(--muted));
+    color: hsl(var(--muted));
+}
+
+.ratingCount {
+    font-size: 0.875rem;
+    color: hsl(var(--muted-foreground));
+}
+
+.distribution {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.distributionRow {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.starLabel {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    width: 4rem;
+}
+
+.starLabelText {
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.starLabelIcon {
+    height: 0.75rem;
+    width: 0.75rem;
+    fill: hsl(var(--accent));
+    color: hsl(var(--accent));
+}
+
+.progressBar {
+    flex: 1;
+}
+
+.percentage {
+    font-size: 0.875rem;
+    color: hsl(var(--muted-foreground));
+    width: 3rem;
+    text-align: right;
+}
