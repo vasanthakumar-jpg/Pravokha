@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { HeroCarousel } from "../../components/HeroCarousel";
+import { ProductGrid } from "@/features/products/components/ProductGrid";
 import { ProductCard } from "@/features/products/components/ProductCard";
 import { CategoryCard } from "@/components/category/CategoryCard";
 import { CategorySmallCard } from "@/components/category/CategorySmallCard";
@@ -168,51 +169,45 @@ export function HomePage() {
             <HeroCarousel />
 
             {/* Shop by Category - Small Cards */}
-            <section className={`${layout.containerResponsive} py-2 sm:py-12`}>
+            <section className={`${layout.containerResponsive} ${layout.sectionSpacing}`}>
                 <h2 className={`${typography.responsiveH2} text-center mb-3 sm:mb-4`}>Shop by Category</h2>
                 <p className={`${typography.responsiveBody} text-center mb-6 sm:mb-8 max-w-2xl mx-auto`}>
                     Discover comfortable and stylish wear for every day. From premium tees to active track pants and versatile shorts - find your perfect fit.
                 </p>
 
-                <div className="max-w-7xl mx-auto px-4">
-                    {/* Category Carousel with Arrows */}
-                    <CategoryCarousel
-                        categories={smallCardCategories}
-                        getFallbackImage={getFallbackImage}
-                        isCategoryActive={isCategoryActive}
-                    />
+                {/* Category Carousel with Arrows */}
+                <CategoryCarousel
+                    categories={smallCardCategories}
+                    getFallbackImage={getFallbackImage}
+                    isCategoryActive={isCategoryActive}
+                />
 
-                    {/* Dynamic Large Cards */}
-                    {largeCardCategories.length > 0 && (
-                        <div className={styles.categoryGrid}>
-                            {largeCardCategories.map((category) => (
-                                <CategoryCard
-                                    key={category.id}
-                                    title={category.name}
-                                    description={category.description || "Premium collection"}
-                                    image={category.image_url || getFallbackImage(category.slug)}
-                                    link={`/products?category=${category.slug}`}
-                                    comingSoon={category.status === 'coming_soon'}
-                                />
-                            ))}
-                        </div>
-                    )}
-                </div>
+                {/* Dynamic Large Cards */}
+                {largeCardCategories.length > 0 && (
+                    <div className={styles.categoryGrid}>
+                        {largeCardCategories.map((category) => (
+                            <CategoryCard
+                                key={category.id}
+                                title={category.name}
+                                description={category.description || "Premium collection"}
+                                image={category.image_url || getFallbackImage(category.slug)}
+                                link={`/products?category=${category.slug}`}
+                                comingSoon={category.status === 'coming_soon'}
+                            />
+                        ))}
+                    </div>
+                )}
             </section>
 
             {/* Featured Products */}
-            <section className={`${layout.containerResponsive} py-4 sm:py-12`}>
+            <section className={`${layout.containerResponsive} ${layout.sectionSpacing}`}>
                 <div className="text-center mb-8 sm:mb-12">
                     <h2 className={`${typography.responsiveH2} mb-3 sm:mb-4`}>Featured Collection</h2>
                     <p className={`${typography.responsiveBody} text-muted-foreground max-w-2xl mx-auto`}>
                         Discover our handpicked selection of premium t-shirts, track pants, and shorts
                     </p>
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-                    {featuredProducts.map((product) => (
-                        <ProductCard key={product.id} product={product} />
-                    ))}
-                </div>
+                <ProductGrid products={featuredProducts} />
                 <div className="flex justify-center mt-8">
                     <Link to="/products">
                         <Button size="lg" variant="outline" className="group">
@@ -224,25 +219,21 @@ export function HomePage() {
             </section>
 
             {/* New Arrivals */}
-            <section className={`${layout.containerResponsive} py-8 sm:py-12`}>
+            <section className={`${layout.containerResponsive} ${layout.sectionSpacing}`}>
                 <div className="text-center mb-8 sm:mb-12">
                     <h2 className={`${typography.responsiveH2} mb-3 sm:mb-4`}>New Arrivals</h2>
                     <p className={`${typography.responsiveBody} text-muted-foreground max-w-2xl mx-auto`}>
                         Check out our latest additions to the collection
                     </p>
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-                    {newArrivals.map((product) => (
-                        <ProductCard key={product.id} product={product} />
-                    ))}
-                </div>
+                <ProductGrid products={newArrivals} />
             </section>
 
             {/* Recently Viewed */}
             <RecentlyViewed />
 
             {/* Features */}
-            <section className={`${layout.containerResponsive} py-8 sm:py-12 bg-muted/30`}>
+            <section className={`${layout.containerResponsive} ${layout.sectionSpacing} bg-muted/30`}>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 max-w-6xl mx-auto">
                     <Card className="p-4 sm:p-6 text-center hover:shadow-xl transition-all duration-300 group h-full flex flex-col justify-center items-center">
                         <TrendingUp className="h-8 w-8 sm:h-10 sm:w-10 md:h-12 md:w-12 mx-auto mb-3 sm:mb-4 text-primary transition-transform duration-300 group-hover:scale-110 group-hover:rotate-12" />

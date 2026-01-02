@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { ProductCard } from "@/features/products/components/ProductCard";
+import { ProductGrid } from "@/features/products/components/ProductGrid";
 import { useProducts } from "@/hooks/useProducts";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/Button";
@@ -212,9 +213,9 @@ export function ProductsPage() {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+                            <div className="flex flex-wrap justify-center gap-4 md:gap-6">
                                 {[...Array(8)].map((_, i) => (
-                                    <div key={i} className="aspect-[3/4] rounded-xl border border-border/40 overflow-hidden space-y-3">
+                                    <div key={i} className="flex-1 min-w-[160px] max-w-[calc(50%-0.5rem)] sm:max-w-[calc(50%-0.75rem)] md:max-w-[calc(33.333%-1rem)] lg:max-w-[calc(25%-1.125rem)] aspect-[3/4] rounded-xl border border-border/40 overflow-hidden space-y-3">
                                         <div className="h-[70%] bg-muted" />
                                         <div className="p-3 space-y-3">
                                             <div className="h-4 w-3/4 bg-muted rounded" />
@@ -339,11 +340,7 @@ export function ProductsPage() {
                                         </Button>
                                     </div>
                                 ) : (
-                                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
-                                        {filteredProducts.map((product) => (
-                                            <ProductCard key={product.id} product={product} />
-                                        ))}
-                                    </div>
+                                    <ProductGrid products={filteredProducts} />
                                 )}
                             </div>
                         </div>

@@ -33,12 +33,16 @@ export function CategoryCarousel({ categories, getFallbackImage, isCategoryActiv
     };
 
     const [cardsPerView, setCardsPerView] = useState(getCardsPerView());
+    const [gapSize, setGapSize] = useState(window.innerWidth >= 640 ? '1.5rem' : '1rem');
 
-    // Update cards per view on resize
+    // Update cards per view and gap on resize
     useEffect(() => {
         if (typeof window === 'undefined') return;
 
-        const handleResize = () => setCardsPerView(getCardsPerView());
+        const handleResize = () => {
+            setCardsPerView(getCardsPerView());
+            setGapSize(window.innerWidth >= 640 ? '1.5rem' : '1rem');
+        };
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);
     }, []); // Empty dependency array - only run on mount
@@ -89,12 +93,17 @@ export function CategoryCarousel({ categories, getFallbackImage, isCategoryActiv
                 <div
                     className={styles.cardsTrack}
                     style={{
-                        transform: `translateX(-${currentIndex * (100 / cardsPerView)}%)`,
-                        gridTemplateColumns: `repeat(${categories.length}, ${100 / cardsPerView}%)`
+                        transform: `translateX(calc(-${currentIndex} * (100% / ${cardsPerView} + ${gapSize} / ${cardsPerView})))`,
                     }}
                 >
                     {categories.map((category) => (
-                        <div key={category.id} className={styles.cardSlot}>
+                        <div
+                            key={category.id}
+                            className={styles.cardSlot}
+                            style={{
+                                flex: `0 0 calc((100% - (${cardsPerView} - 1) * ${gapSize}) / ${cardsPerView})`
+                            }}
+                        >
                             <CategorySmallCard
                                 title={category.name}
                                 description={category.description || "Discover our collection"}

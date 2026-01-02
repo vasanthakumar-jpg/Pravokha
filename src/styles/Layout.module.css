@@ -41,6 +41,37 @@
 
 @media (min-width: 1536px) {
     .containerResponsive {
-        max-width: 1400px;
+        max-width: 1440px;
     }
+}
+
+/* Vertical Spacing Utilities - 10/10 Rhythm */
+.sectionSpacing {
+    padding-top: 3rem;
+    padding-bottom: 3rem;
+}
+
+@media (min-width: 640px) {
+    .sectionSpacing {
+        padding-top: 5rem;
+        padding-bottom: 5rem;
+    }
+}
+
+.itemSpacing {
+    margin-bottom: 1.5rem;
+}
+
+/* Typography Perfection */
+.prose {
+    line-height: 1.6;
+    letter-spacing: -0.01em;
+}
+
+.tapTarget {
+    min-height: 44px;
+    min-width: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }

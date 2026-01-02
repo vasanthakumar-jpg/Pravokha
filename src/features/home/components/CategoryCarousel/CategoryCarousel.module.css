@@ -3,14 +3,6 @@
 .carouselContainer {
     position: relative;
     width: 100%;
-    padding: 0 3rem;
-    /* Space for arrows */
-}
-
-@media (max-width: 640px) {
-    .carouselContainer {
-        padding: 0 2.5rem;
-    }
 }
 
 .carouselWrapper {
@@ -19,14 +11,14 @@
 }
 
 .cardsTrack {
-    display: grid;
+    display: flex;
     transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    gap: 1.5rem;
+    gap: 1rem;
 }
 
-@media (max-width: 768px) {
+@media (min-width: 640px) {
     .cardsTrack {
-        gap: 1rem;
+        gap: 1.5rem;
     }
 }
 
@@ -73,17 +65,18 @@
 }
 
 .arrowLeft {
-    left: 0;
+    left: 0.5rem;
 }
 
 .arrowRight {
-    right: 0;
+    right: 0.5rem;
 }
 
 .arrowDisabled {
-    opacity: 0.3;
+    opacity: 0;
     cursor: not-allowed;
     pointer-events: none;
+    visibility: hidden;
 }
 
 @media (max-width: 640px) {
