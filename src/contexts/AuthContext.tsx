@@ -24,6 +24,8 @@ interface AuthContextType {
   suspensionReason: string | null;
   verificationStatus: 'pending' | 'verified' | 'rejected' | 'unverified';
   verificationComments: string | null;
+  authError: string | null;
+  profile: any | null;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -39,132 +41,128 @@ const AuthContext = createContext<AuthContextType>({
   suspensionReason: null,
   verificationStatus: 'unverified',
   verificationComments: null,
+  authError: null,
+  profile: null,
 });
 
 export const useAuth = () => useContext(AuthContext);
 
+async function fetchWithTimeout<T>(promise: Promise<T>, timeoutMs: number, errorLabel: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`${errorLabel} timed out after ${timeoutMs}ms`)), timeoutMs)
+    ),
+  ]);
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
-  const [role, setRole] = useState<UserRole>(null);
+  const [role, setRole] = useState<UserRole>(() => {
+    try {
+      return localStorage.getItem('pravokha_user_role') as UserRole || null;
+    } catch {
+      return null;
+    }
+  });
   const [loading, setLoading] = useState(true);
   const [suspensionError, setSuspensionError] = useState<SuspensionError | null>(null);
   const [isSuspended, setIsSuspended] = useState(false);
   const [suspensionReason, setSuspensionReason] = useState<string | null>(null);
   const [verificationStatus, setVerificationStatus] = useState<'pending' | 'verified' | 'rejected' | 'unverified'>('unverified');
   const [verificationComments, setVerificationComments] = useState<string | null>(null);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [profile, setProfile] = useState<any | null>(null);
 
   // Prevent duplicate concurrent fetches
   const fetchingRef = useRef(false);
+  const lastProcessedUserIdRef = useRef<string | null>(null);
 
   const clearSuspensionError = () => {
     setSuspensionError(null);
   };
 
   const fetchUserRole = async (userId: string): Promise<UserRole> => {
-    const timeoutMs = 5000; // 5 second timeout
+    const timeoutMs = 15000;
     const startTime = Date.now();
 
     try {
-      console.log("[AuthContext] Fetching role for user:", userId);
+      console.log(`[AuthContext] Fetching role for user ${userId}...`);
 
-      // Create AbortController for timeout
-      const abortController = new AbortController();
-      const timeoutId = setTimeout(() => {
-        console.warn(`[AuthContext] Role fetch timeout after ${timeoutMs}ms`);
-        abortController.abort();
-      }, timeoutMs);
-
-      try {
-        const { data, error } = await supabase
+      const { data, error } = await fetchWithTimeout(
+        Promise.resolve(supabase
           .from("user_roles")
           .select("role")
           .eq("user_id", userId)
           .limit(1)
-          .maybeSingle();
+          .maybeSingle()),
+        timeoutMs,
+        "Role fetch"
+      ) as any;
 
-        clearTimeout(timeoutId);
-
-        const elapsed = Date.now() - startTime;
-        console.log(`[AuthContext] Role query completed in ${elapsed}ms:`, { data, error });
-
-        if (error) {
-          console.warn("[AuthContext] Error fetching user role:", error.message);
-          return "user";
-        }
-
-        const role = (data?.role as UserRole) || "user";
-        console.log("[AuthContext] Role fetched:", role);
-        return role;
-      } catch (err: any) {
-        clearTimeout(timeoutId);
-        if (err.name === 'AbortError') {
-          console.error("[AuthContext] Role fetch aborted due to timeout");
-          return "user"; // Default to user role on timeout
-        }
-        throw err;
-      }
-    } catch (error) {
       const elapsed = Date.now() - startTime;
-      console.error(`[AuthContext] Exception fetching user role after ${elapsed}ms:`, error);
-      return "user";
+      console.log(`[AuthContext] Role query completed in ${elapsed}ms:`, { role: data?.role, error });
+
+      if (error) {
+        console.error("[AuthContext] Error fetching user role:", error.message);
+        throw error;
+      }
+
+      return (data?.role as UserRole) || "user";
+    } catch (error: any) {
+      const elapsed = Date.now() - startTime;
+      console.warn(`[AuthContext] Role fetch failed/timed out after ${elapsed}ms:`, error.message);
+      throw error;
     }
   };
 
   const fetchUserProfile = async (userId: string) => {
-    const timeoutMs = 5000;
+    const timeoutMs = 15000;
     const startTime = Date.now();
 
     try {
-      console.log("[AuthContext] Fetching profile for user:", userId);
+      console.log(`[AuthContext] Fetching profile for user ${userId}...`);
 
-      const abortController = new AbortController();
-      const timeoutId = setTimeout(() => {
-        console.warn(`[AuthContext] Profile fetch timeout after ${timeoutMs}ms`);
-        abortController.abort();
-      }, timeoutMs);
-
-      try {
-        const { data: profileData, error: profileError } = await supabase
+      const { data: profileData, error: profileError } = await fetchWithTimeout(
+        Promise.resolve(supabase
           .from('profiles')
-          .select('status, verification_status, verification_comments')
+          .select('status, verification_status, verification_comments, full_name, avatar_url, phone, bio, date_of_birth')
           .eq('id', userId)
-          .single();
+          .single()),
+        timeoutMs,
+        "Profile fetch"
+      ) as any;
 
-        clearTimeout(timeoutId);
-
-        const elapsed = Date.now() - startTime;
-        console.log(`[AuthContext] Profile query completed in ${elapsed}ms:`, { profileData, profileError });
-
-        if (!profileError && profileData) {
-          const status = (profileData as any).status;
-
-          if (status === 'inactive') {
-            console.warn("[AuthContext] User has inactive status, signing out");
-            await supabase.auth.signOut();
-            return { shouldSignOut: true };
-          }
-
-          setIsSuspended(status === 'suspended');
-          setVerificationStatus((profileData.verification_status as any) || 'unverified');
-          setVerificationComments(profileData.verification_comments || null);
-        } else if (profileError) {
-          console.warn("[AuthContext] Profile error:", profileError);
-        }
-
-        return { shouldSignOut: false };
-      } catch (err: any) {
-        clearTimeout(timeoutId);
-        if (err.name === 'AbortError') {
-          console.error("[AuthContext] Profile fetch aborted due to timeout");
-          return { shouldSignOut: false };
-        }
-        throw err;
-      }
-    } catch (error) {
       const elapsed = Date.now() - startTime;
-      console.error(`[AuthContext] Exception fetching profile after ${elapsed}ms:`, error);
-      return { shouldSignOut: false };
+      console.log(`[AuthContext] Profile query completed in ${elapsed}ms:`, { status: profileData?.status, error: profileError });
+
+      if (profileError) {
+        console.warn("[AuthContext] Profile fetch error:", profileError.message);
+        throw profileError;
+      }
+
+      if (profileData) {
+        const status = profileData.status;
+
+        if (status === 'inactive') {
+          console.warn("[AuthContext] User has inactive status, signing out");
+          await supabase.auth.signOut();
+          return { shouldSignOut: true, profile: null };
+        }
+
+        setIsSuspended(status === 'suspended');
+        setVerificationStatus((profileData.verification_status as any) || 'unverified');
+        setVerificationComments(profileData.verification_comments || null);
+        setProfile(profileData); // Sync profile state here
+
+        return { shouldSignOut: false, profile: profileData };
+      }
+      return { shouldSignOut: false, profile: null };
+    } catch (error: any) {
+      const elapsed = Date.now() - startTime;
+      console.warn(`[AuthContext] Profile fetch failed/timed out after ${elapsed}ms:`, error.message);
+      throw error;
     }
   };
 
@@ -184,17 +182,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    // Optimization: Skip if we already processed this user and have a role
+    if (currentUser?.id === lastProcessedUserIdRef.current && role !== null) {
+      console.log("[AuthContext] User unchanged and already loaded, skipping redundant fetch");
+      // Even if skipping, ensure loading is false if it was true
+      if (loading) setLoading(false);
+      return;
+    }
+
     try {
       fetchingRef.current = true;
 
+      // Only show full loading screen if we don't have a role yet (initial load or user change)
+      // or if the user ID has changed.
+      const isNewUser = currentUser?.id !== lastProcessedUserIdRef.current;
+      if (role === null || isNewUser) {
+        console.log("[AuthContext] Setting loading(true) for fresh initialization");
+        setLoading(true);
+      } else {
+        console.log("[AuthContext] Keeping current role while checking status in background");
+      }
+
+      setAuthError(null);
+
       if (!currentUser) {
         console.log("[AuthContext] No user, clearing state");
+        lastProcessedUserIdRef.current = null;
+        localStorage.removeItem('pravokha_user_role');
         setSession(null);
         setUser(null);
         setRole(null);
         setIsSuspended(false);
         setVerificationStatus('unverified');
         setVerificationComments(null);
+        setAuthError(null);
+        setProfile(null); // Clear profile on sign out
         setLoading(false);
         return;
       }
@@ -210,32 +232,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (profileResult.shouldSignOut) {
         console.log("[AuthContext] User is inactive, signing out");
+        setProfile(null); // Clear profile if signing out
         return;
       }
 
       console.log("[AuthContext] Setting role and completing initialization");
+      lastProcessedUserIdRef.current = currentUser.id;
+      if (userRole) {
+        localStorage.setItem('pravokha_user_role', userRole);
+      }
       setRole(userRole);
+      setProfile(profileResult.profile); // Set profile from fetch result
+      setAuthError(null);
       setLoading(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error("[AuthContext] Error in handleAuthStateChange:", error);
-      // Even on error, set loading to false to prevent hanging
+
+      // If we already have a role (background check failed), don't show the fatal error screen
+      if (role !== null) {
+        console.warn("[AuthContext] Background status check failed, maintaining current session.");
+      } else {
+        setAuthError(error.message || "Authentication failed to connect to database");
+      }
+
       setLoading(false);
     } finally {
       fetchingRef.current = false;
     }
   };
 
+  // Safety timer to ensure loading state resolves even if something hangs
+  useEffect(() => {
+    if (!loading) return;
+
+    const timer = setTimeout(() => {
+      console.warn("[AuthContext] Safety timer triggered after 20s. Forcing resolution.");
+      setAuthError("The security service took too long to respond. Please check your connection and retry.");
+      setLoading(false);
+    }, 20000); // 20 seconds safety cap
+
+    return () => clearTimeout(timer);
+  }, [loading]);
+
   useEffect(() => {
     let mounted = true;
     console.log("[AuthContext] Component mounting");
-
-    // Safety timer - force loading to false after 8 seconds  
-    const safetyTimer = setTimeout(() => {
-      if (mounted && loading) {
-        console.warn("[AuthContext] Safety timer triggered - forcing loading to false");
-        setLoading(false);
-      }
-    }, 8000);
 
     // Initialize session
     const initializeAuth = async () => {
@@ -290,7 +331,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       console.log("[AuthContext] Component unmounting");
       mounted = false;
-      clearTimeout(safetyTimer);
       subscription.unsubscribe();
     };
   }, []);
@@ -312,8 +352,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           filter: `id=eq.${user.id}`
         },
         (payload) => {
-          console.log("[AuthContext] Profile updated:", payload);
           const newProfile = payload.new as any;
+          console.log("[AuthContext] Profile real-time update:", newProfile);
+
+          setProfile(prev => ({ ...prev, ...newProfile }));
 
           if (newProfile.verification_status) {
             setVerificationStatus(newProfile.verification_status);
@@ -359,9 +401,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return (
     <AuthContext.Provider value={{
       user, session, role, loading, suspensionError, signOut, refreshRole, clearSuspensionError,
-      isSuspended, suspensionReason, verificationStatus, verificationComments
+      isSuspended, suspensionReason, verificationStatus,
+      verificationComments,
+      authError,
+      profile
     }}>
       {children}
     </AuthContext.Provider>
   );
-}
+};

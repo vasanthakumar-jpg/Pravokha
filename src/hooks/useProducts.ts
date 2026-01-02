@@ -17,9 +17,9 @@ export function useProducts() {
     if (retryCount === 0) setLoading(true);
 
     try {
-      // Create a promise that rejects after 30 seconds
+      // Create a promise that rejects after 15 seconds (reduced for faster retry)
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Request timed out')), 30000)
+        setTimeout(() => reject(new Error('Request timed out')), 15000)
       );
 
       // Optimized query: select only necessary fields and limit to 50 products
@@ -27,6 +27,7 @@ export function useProducts() {
         .from("products")
         .select(`
           id,
+          seller_id,
           title,
           slug,
           description,
@@ -35,7 +36,6 @@ export function useProducts() {
           category,
           rating,
           reviews,
-          sku,
           sku,
           is_featured,
           is_new,
@@ -75,6 +75,7 @@ export function useProducts() {
         rating: parseFloat(p.rating),
         reviews: p.reviews,
         sku: p.sku,
+        sellerId: p.seller_id,
         featured: p.is_featured || false,
         newArrival: p.is_new || false,
         variants: (p.product_variants || []).map((v: any) => ({

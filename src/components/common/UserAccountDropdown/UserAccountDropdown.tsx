@@ -113,9 +113,9 @@ export function UserAccountDropdown() {
                             {getInitials(profile?.full_name)}
                         </AvatarFallback>
                     </Avatar>
-                    {role && role !== "user" && (
+                    {role === "admin" && (
                         <div className={cn(styles.roleBadge, getRoleBadgeClass(role))}>
-                            {role === "admin" ? "A" : "S"}
+                            A
                         </div>
                     )}
                 </div>
@@ -132,19 +132,11 @@ export function UserAccountDropdown() {
                         </Avatar>
                         <div className={styles.userDetails}>
                             <p className={styles.userName}>
-                                {profile?.full_name || "User"}
+                                {profile?.full_name || user?.email?.split('@')[0] || "User"}
                             </p>
                             <p className={styles.userEmail}>
                                 {user?.email}
                             </p>
-                            {role && (
-                                <Badge
-                                    variant="secondary"
-                                    className={cn(styles.roleTag, getRoleBadgeClass(role))}
-                                >
-                                    {role.toUpperCase()}
-                                </Badge>
-                            )}
                         </div>
                     </div>
                 </DropdownMenuLabel>

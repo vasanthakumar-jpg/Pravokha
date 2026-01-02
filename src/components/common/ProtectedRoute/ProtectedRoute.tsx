@@ -12,29 +12,8 @@ interface ProtectedRouteProps {
 export function ProtectedRoute({ children, allowedRoles, redirectTo = "/auth" }: ProtectedRouteProps) {
     const { user, role, loading, isSuspended } = useAuth();
     const location = useLocation();
-    const [showLoading, setShowLoading] = useState(true);
-
-    useEffect(() => {
-        if (loading) {
-            setShowLoading(true);
-            const timer = setTimeout(() => {
-                setShowLoading(false);
-            }, 5000);
-            return () => clearTimeout(timer);
-        } else {
-            setShowLoading(false);
-        }
-    }, [loading]);
-
-    if (showLoading) {
-        return (
-            <div className={styles.loadingContainer}>
-                <div className={styles.loadingContent}>
-                    <div className={styles.spinner}></div>
-                    <p className={styles.loadingText}>Loading...</p>
-                </div>
-            </div>
-        );
+    if (loading) {
+        return null;
     }
 
     if (!user) {

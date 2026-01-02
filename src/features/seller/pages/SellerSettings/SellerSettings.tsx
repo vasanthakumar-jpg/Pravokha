@@ -294,43 +294,46 @@ export default function SellerSettings() {
   ];
 
   return (
-    <div className="container py-8 max-w-6xl">
+    <div className="w-full mx-auto py-4 sm:py-6 lg:py-8 px-2 sm:px-4 lg:px-6 xl:px-8 animate-in fade-in duration-500 overflow-x-hidden">
       {/* Header */}
-      <div className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-card/40 backdrop-blur-xl p-5 sm:p-7 rounded-2xl border border-border/60 shadow-sm transition-all animate-in slide-in-from-top duration-500">
-        <div className="space-y-1">
+      <div className="mb-4 sm:mb-8 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 sm:gap-6 bg-card/40 backdrop-blur-xl p-4 sm:p-7 rounded-2xl border border-border/60 shadow-sm transition-all animate-in slide-in-from-top duration-500">
+        <div className="space-y-1 w-full lg:w-auto">
           <h1 className="responsive-h1">Store settings</h1>
-          <p className="responsive-body text-muted-foreground italic max-w-md">Manage your storefront, business profile and preferences with precision.</p>
+          <p className="responsive-body text-muted-foreground italic max-w-xl">Manage your storefront, business profile and preferences with precision.</p>
         </div>
 
-        <Button
-          onClick={form.handleSubmit(onAllSaves, handleValidationErrors)}
-          disabled={saving || uploading || updatingProfile}
-          size="lg"
-          className="w-full md:w-auto min-w-[180px] shadow-lg hover:shadow-xl transition-all rounded-xl h-12 font-bold group"
-        >
-          {(saving || uploading || updatingProfile) ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Saving...
-            </>
-          ) : (
-            <>
-              <Save className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" />
-              Save changes
-            </>
-          )}
-        </Button>
+        <div className="w-full lg:w-auto flex items-center gap-3">
+          <Button
+            onClick={form.handleSubmit(onAllSaves, handleValidationErrors)}
+            disabled={saving || uploading || updatingProfile}
+            size="lg"
+            className="flex-1 lg:flex-none min-w-[140px] sm:min-w-[180px] shadow-lg hover:shadow-xl transition-all rounded-xl h-11 sm:h-12 font-bold group"
+          >
+            {(saving || uploading || updatingProfile) ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                <span className="hidden sm:inline">Saving Changes...</span>
+                <span className="sm:hidden">Saving...</span>
+              </>
+            ) : (
+              <>
+                <Save className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" />
+                Save changes
+              </>
+            )}
+          </Button>
+        </div>
       </div>
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onAllSaves, handleValidationErrors)} className="space-y-8">
 
-          <div className="flex flex-col md:flex-row gap-8">
+          <div className="flex flex-col lg:flex-row gap-4 sm:gap-8">
 
-            {/* Sidebar Navigation (Desktop) */}
-            <aside className="w-full md:w-64 shrink-0 space-y-2">
-              {/* Mobile Switcher */}
-              <div className="md:hidden mb-6">
+            {/* Sidebar Navigation */}
+            <aside className="w-full lg:w-64 xl:w-72 shrink-0 space-y-4">
+              {/* Mobile Switcher - Visible on < LG */}
+              <div className="lg:hidden">
                 <Select value={activeTab} onValueChange={setActiveTab}>
                   <SelectTrigger className="w-full h-12 rounded-xl border-primary/20 bg-muted/30 responsive-button focus:ring-primary/20">
                     <div className="flex items-center gap-2">
@@ -351,22 +354,24 @@ export default function SellerSettings() {
                 </Select>
               </div>
 
-              {/* Desktop Nav */}
-              <div className="hidden md:block sticky top-20 bg-background/50 backdrop-blur rounded-lg border p-2 shadow-sm">
+              {/* Desktop Nav - Visible on >= LG */}
+              <div className="hidden lg:block sticky top-24 bg-card/40 backdrop-blur-xl rounded-2xl border border-border/40 p-2 shadow-sm space-y-1">
                 {tabs.map((tab) => (
                   <button
                     key={tab.id}
                     type="button"
                     onClick={() => setActiveTab(tab.id)}
-                    className={`w-full flex items-center gap-3 p-3 rounded-md text-left transition-all ${activeTab === tab.id
-                      ? "bg-primary text-primary-foreground shadow-md font-semibold"
-                      : "hover:bg-muted text-muted-foreground hover:text-foreground"
+                    className={`w-full flex items-center gap-3 p-3.5 rounded-xl text-left transition-all duration-300 ${activeTab === tab.id
+                      ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20 font-semibold translate-x-1"
+                      : "hover:bg-primary/5 text-muted-foreground hover:text-foreground"
                       }`}
                   >
-                    <tab.icon className="w-5 h-5 shrink-0" />
-                    <div>
-                      <p className="responsive-body font-semibold">{tab.label}</p>
-                      <p className="responsive-small opacity-80 truncate hidden lg:block">{tab.description}</p>
+                    <tab.icon className={`w-5 h-5 shrink-0 ${activeTab === tab.id ? "text-primary-foreground" : "text-muted-foreground"}`} />
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold leading-tight">{tab.label}</p>
+                      <p className={`text-[10px] leading-tight mt-0.5 truncate ${activeTab === tab.id ? "text-primary-foreground/70" : "text-muted-foreground/60"}`}>
+                        {tab.description}
+                      </p>
                     </div>
                   </button>
                 ))}
@@ -384,27 +389,33 @@ export default function SellerSettings() {
                       <CardTitle className="responsive-h4">Branding</CardTitle>
                       <CardDescription className="responsive-body">Your store's visual identity</CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-6">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <CardContent className="space-y-6 pt-0 sm:pt-6">
+                      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6">
                         {/* Logo Upload */}
                         <div>
                           <Label className="mb-3 block responsive-label">Store logo</Label>
                           <input type="file" ref={logoInputRef} className="hidden" accept="image/*" onChange={(e) => handleStoreImageChange(e, 'logo')} />
                           <div
                             onClick={() => logoInputRef.current?.click()}
-                            className="group relative h-40 border-2 border-dashed rounded-xl flex flex-col items-center justify-center cursor-pointer hover:border-primary/50 hover:bg-muted/50 transition-all overflow-hidden"
+                            className="group relative h-40 border-2 border-dashed rounded-xl flex flex-col items-center justify-center cursor-pointer hover:border-primary/50 hover:bg-muted/50 transition-all overflow-hidden bg-muted/10 shadow-inner"
                           >
                             {form.watch('storeLogoUrl') ? (
-                              <img src={form.watch('storeLogoUrl')!} alt="Logo" className="w-full h-full object-contain p-2" />
+                              <div className="w-full h-full flex items-center justify-center p-3">
+                                <img
+                                  src={form.watch('storeLogoUrl')!}
+                                  alt="Logo"
+                                  className="max-w-full max-h-full object-contain drop-shadow-sm transition-transform duration-300 group-hover:scale-105"
+                                />
+                              </div>
                             ) : (
                               <>
-                                <div className="p-3 bg-muted rounded-full mb-2 group-hover:scale-110 transition-transform">
+                                <div className="p-3 bg-muted rounded-full mb-2 group-hover:scale-110 transition-transform shadow-sm">
                                   <Store className="w-6 h-6 text-muted-foreground" />
                                 </div>
-                                <span className="responsive-label text-muted-foreground">Upload logo</span>
+                                <span className="responsive-label text-muted-foreground font-medium">Upload logo</span>
                               </>
                             )}
-                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white responsive-body font-semibold">
+                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white responsive-body font-bold backdrop-blur-[2px]">
                               Change image
                             </div>
                           </div>
@@ -416,19 +427,19 @@ export default function SellerSettings() {
                           <input type="file" ref={bannerInputRef} className="hidden" accept="image/*" onChange={(e) => handleStoreImageChange(e, 'banner')} />
                           <div
                             onClick={() => bannerInputRef.current?.click()}
-                            className="group relative h-40 border-2 border-dashed rounded-xl flex flex-col items-center justify-center cursor-pointer hover:border-primary/50 hover:bg-muted/50 transition-all overflow-hidden"
+                            className="group relative h-40 border-2 border-dashed rounded-xl flex flex-col items-center justify-center cursor-pointer hover:border-primary/50 hover:bg-muted/50 transition-all overflow-hidden bg-muted/10 shadow-inner"
                           >
                             {form.watch('storeBannerUrl') ? (
-                              <img src={form.watch('storeBannerUrl')!} alt="Banner" className="w-full h-full object-cover" />
+                              <img src={form.watch('storeBannerUrl')!} alt="Banner" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
                             ) : (
                               <>
-                                <div className="p-3 bg-muted rounded-full mb-2 group-hover:scale-110 transition-transform">
+                                <div className="p-3 bg-muted rounded-full mb-2 group-hover:scale-110 transition-transform shadow-sm">
                                   <ImageIcon className="w-6 h-6 text-muted-foreground" />
                                 </div>
-                                <span className="responsive-label text-muted-foreground">Upload banner</span>
+                                <span className="responsive-label text-muted-foreground font-medium">Upload banner</span>
                               </>
                             )}
-                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white font-medium">
+                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white font-bold backdrop-blur-[2px]">
                               Change Image
                             </div>
                           </div>
@@ -573,11 +584,11 @@ export default function SellerSettings() {
                       <CardDescription className="responsive-body">Your personal account details, visible to admins and reflected in the dashboard header.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
-                      <div className="flex flex-col sm:flex-row items-center gap-6">
+                      <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
                         {/* Avatar Upload */}
-                        <div className="relative group">
-                          <Avatar className="w-24 h-24 sm:w-32 sm:h-32 border-2 border-border">
-                            <AvatarImage src={profile?.avatar_url || ""} />
+                        <div className="relative group shrink-0">
+                          <Avatar className="w-24 h-24 sm:w-32 sm:h-32 border-2 border-border/60 shadow-inner">
+                            <AvatarImage src={profile?.avatar_url || ""} className="object-cover" />
                             <AvatarFallback className="text-2xl">{profileName?.[0]?.toUpperCase() || "U"}</AvatarFallback>
                           </Avatar>
                           <div
@@ -763,7 +774,7 @@ export default function SellerSettings() {
                       </div>
                     </CardHeader>
                     <CardContent className="space-y-6 pt-6">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         <FormField
                           control={form.control}
                           name="beneficiaryName"
@@ -821,38 +832,43 @@ export default function SellerSettings() {
                         control={form.control}
                         name="autoConfirm"
                         render={({ field }) => (
-                          <FormItem className="flex flex-row items-center justify-between rounded-xl border p-4 hover:bg-muted/50 transition-colors">
+                          <FormItem className="flex flex-col sm:flex-row items-start sm:items-center justify-between rounded-xl border p-4 sm:p-5 hover:bg-muted/50 transition-all gap-4">
                             <div className="space-y-1">
-                              <FormLabel className="responsive-body font-semibold">Auto-confirm orders</FormLabel>
-                              <FormDescription className="responsive-small">
+                              <FormLabel className="responsive-body font-bold text-foreground">Auto-confirm orders</FormLabel>
+                              <FormDescription className="responsive-small leading-relaxed">
                                 Automatically move new orders to "Confirmed" status without manual approval.
                               </FormDescription>
                             </div>
-                            <FormControl>
+                            <FormControl className="shrink-0 self-end sm:self-center">
                               <Switch
                                 checked={field.value}
                                 onCheckedChange={field.onChange}
+                                className="data-[state=checked]:bg-primary"
                               />
                             </FormControl>
                           </FormItem>
                         )}
                       />
-                      <Separator />
+                      <Separator className="opacity-50" />
                       <FormField
                         control={form.control}
                         name="vacationMode"
                         render={({ field }) => (
-                          <FormItem className="flex flex-row items-center justify-between rounded-xl border p-4 hover:bg-muted/50 transition-colors">
+                          <FormItem className="flex flex-col sm:flex-row items-start sm:items-center justify-between rounded-xl border p-4 sm:p-5 hover:bg-muted/50 transition-all gap-4">
                             <div className="space-y-1">
-                              <FormLabel className="responsive-body font-semibold text-blue-600">Vacation mode</FormLabel>
-                              <FormDescription className="responsive-small">
+                              <FormLabel className="responsive-body font-bold text-blue-600 flex items-center gap-2">
+                                Vacation mode
+                                {field.value && <Badge variant="outline" className="bg-blue-50 text-blue-600 border-blue-200 text-[10px] px-1.5 h-4">Active</Badge>}
+                              </FormLabel>
+                              <FormDescription className="responsive-small leading-relaxed">
                                 Temporarily pause your store. Your products will be hidden from search.
                               </FormDescription>
                             </div>
-                            <FormControl>
+                            <FormControl className="shrink-0 self-end sm:self-center">
                               <Switch
                                 checked={field.value}
                                 onCheckedChange={field.onChange}
+                                className="data-[state=checked]:bg-blue-600"
                               />
                             </FormControl>
                           </FormItem>
@@ -893,6 +909,6 @@ export default function SellerSettings() {
           </div>
         </form>
       </Form>
-    </div >
+    </div>
   );
 }

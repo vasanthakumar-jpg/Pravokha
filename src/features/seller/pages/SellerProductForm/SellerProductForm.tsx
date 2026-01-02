@@ -84,7 +84,7 @@ export default function SellerProductForm() {
     const navigate = useNavigate();
     const { id } = useParams();
     const { toast } = useToast();
-    const { user, role, verificationStatus } = useAuth();
+    const { user, role, verificationStatus, loading: authLoading } = useAuth();
     const isAdmin = role === 'admin';
 
     const [currentStep, setCurrentStep] = useState(1);
@@ -92,24 +92,28 @@ export default function SellerProductForm() {
     const [formData, setFormData] = useState<ProductFormData>(INITIAL_FORM_DATA);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [previewImage, setPreviewImage] = useState<string | null>(null);
-    const [isLoading, setIsLoading] = useState(!!id);
+    const [isLoading, setIsLoading] = useState(true); // Always start loading
     const [isSaving, setIsSaving] = useState(false);
 
     // -- Fetch Data (Simplified for brevity, assumes identical structure to Admin) --
     useEffect(() => {
         const fetchProduct = async () => {
-            if (!id) return;
+            if (!id) {
+                setIsLoading(false);
+                return;
+            }
             try {
-                // ... (Implementation identical to AdminForm for fetching logic, 
-                // just re-using the logic to populate state)
-                setIsLoading(true);
+                console.log(`[SellerProductForm] Fetching product: ${id}`);
                 const { data: product, error } = await supabase
                     .from("products")
                     .select("*, product_variants(*, product_sizes(*))")
                     .eq("id", id)
                     .single();
 
-                if (error) throw error;
+                if (error) {
+                    console.error("[SellerProductForm] Error fetching product:", error);
+                    throw error;
+                }
 
                 const colors: ColorOption[] = [];
                 const sizes: string[] = [];
@@ -153,13 +157,22 @@ export default function SellerProductForm() {
                     sku: product.sku || generateSKU(),
                 });
             } catch (error) {
-                console.error(error);
+                console.error("[SellerProductForm] Fetch failed:", error);
+                toast({ title: "Error", description: "Failed to load product", variant: "destructive" });
             } finally {
                 setIsLoading(false);
             }
         };
-        fetchProduct();
-    }, [id]);
+
+        if (!authLoading) {
+            if (role === 'seller' || role === 'admin') {
+                fetchProduct();
+            } else {
+                console.warn("[SellerProductForm] Unauthorized access attempt.");
+                navigate("/auth");
+            }
+        }
+    }, [id, authLoading, role, navigate]);
 
     const handleSave = async (isPublished: boolean = true) => {
         if (verificationStatus !== 'verified') {
@@ -200,9 +213,9 @@ export default function SellerProductForm() {
             for (const file of formData.images) {
                 const fileExt = file.name.split('.').pop();
                 const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-                const { error: uploadError } = await supabase.storage.from('product-images').upload(`products/${fileName}`, file);
+                const { error: uploadError } = await supabase.storage.from('products').upload(`products/${fileName}`, file);
                 if (uploadError) throw uploadError;
-                const { data: { publicUrl } } = supabase.storage.from('product-images').getPublicUrl(`products/${fileName}`);
+                const { data: { publicUrl } } = supabase.storage.from('products').getPublicUrl(`products/${fileName}`);
                 newImageUrls.push(publicUrl);
             }
             const allImages = [...formData.existingImages, ...newImageUrls];

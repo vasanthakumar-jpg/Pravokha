@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAdmin } from "@/contexts/AdminContext";
 
 interface AdminStats {
     totalProducts: number;
@@ -15,6 +16,7 @@ interface AdminStats {
 }
 
 export function useAdminStats() {
+    const { isAdmin, loading: adminLoading } = useAdmin();
     const [stats, setStats] = useState<AdminStats>({
         totalProducts: 0,
         totalUsers: 0,
@@ -30,71 +32,66 @@ export function useAdminStats() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        fetchStats();
-    }, []);
+        if (isAdmin) {
+            fetchStats();
+        } else if (!adminLoading) {
+            setLoading(false);
+        }
+    }, [isAdmin, adminLoading]);
 
     const fetchStats = async () => {
-        // console.log("[useAdminStats] Starting to fetch admin statistics...");
+        if (!isAdmin) return;
         try {
             setLoading(true);
 
-            // Fetch products count
-            // console.log("[useAdminStats] Fetching products count...");
-            const { count: productsCount, error: productsError } = await supabase
-                .from("products")
-                .select("*", { count: "exact", head: true });
+            const timeoutMs = 25000;
+            const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Request timed out')), timeoutMs)
+            );
 
-            // if (productsError) console.error("[useAdminStats] Products error:", productsError);
-            // console.log("[useAdminStats] Products count:", productsCount);
+            // Fetch all stats in parallel for efficiency
+            const fetchPromise = Promise.all([
+                // 1. Products count
+                supabase.from("products").select("*", { count: "exact", head: true }),
+                // 2. Users count
+                supabase.from("profiles").select("*", { count: "exact", head: true }),
+                // 3. Sellers count
+                supabase.from("user_roles").select("*", { count: "exact", head: true }).eq("role", "seller"),
+                // 4. Orders
+                supabase.from("orders").select("*")
+            ]);
 
-            // Fetch users count
-            // console.log("[useAdminStats] Fetching users count...");
-            const { count: usersCount, error: usersError } = await supabase
-                .from("profiles")
-                .select("*", { count: "exact", head: true });
+            const results: any[] = await Promise.race([
+                fetchPromise,
+                timeoutPromise
+            ]) as any;
 
-            // if (usersError) console.error("[useAdminStats] Users error:", usersError);
-            // console.log("[useAdminStats] Users count:", usersCount);
+            const [productsRes, usersRes, sellersRes, ordersRes] = results;
 
-            // Fetch sellers count
-            // console.log("[useAdminStats] Fetching sellers count...");
-            const { count: sellersCount, error: sellersError } = await supabase
-                .from("user_roles")
-                .select("*", { count: "exact", head: true })
-                .eq("role", "seller");
+            if (productsRes.error) console.error("[useAdminStats] Products count error:", productsRes.error);
+            if (usersRes.error) console.error("[useAdminStats] Users count error:", usersRes.error);
+            if (sellersRes.error) console.error("[useAdminStats] Sellers count error:", sellersRes.error);
+            if (ordersRes.error) console.error("[useAdminStats] Orders fetch error:", ordersRes.error);
 
-            // if (sellersError) console.error("[useAdminStats] Sellers error:", sellersError);
-            // console.log("[useAdminStats] Sellers count:", sellersCount);
+            const productsCount = productsRes.count || 0;
+            const usersCount = usersRes.count || 0;
+            const sellersCount = sellersRes.count || 0;
+            const orders = ordersRes.data || [];
 
-            // Fetch orders
-            // console.log("[useAdminStats] Fetching orders...");
-            const { data: orders, error: ordersError } = await supabase
-                .from("orders")
-                .select("*");
+            const totalOrders = orders.length;
+            const pendingOrders = orders.filter((o: any) => o.order_status === "pending").length;
+            const totalRevenue = orders.reduce((sum: number, order: any) => sum + (order.total || 0), 0);
 
-            // if (ordersError) console.error("[useAdminStats] Orders error:", ordersError);
-            // console.log("[useAdminStats] Orders count:", orders?.length || 0);
+            // Generate derived data
+            const salesTrend = generateSalesTrend(orders);
+            const topProducts = calculateTopProducts(orders);
+            const categoryDistribution = calculateCategoryDistribution(orders);
+            const revenueGrowth = generateRevenueGrowth(orders);
 
-            const totalOrders = orders?.length || 0;
-            const pendingOrders = orders?.filter(o => o.order_status === "pending").length || 0;
-            const totalRevenue = orders?.reduce((sum, order) => sum + (order.total || 0), 0) || 0;
-
-            // Generate sales trend data (last 7 days)
-            const salesTrend = generateSalesTrend(orders || []);
-
-            // Calculate top products from orders
-            const topProducts = calculateTopProducts(orders || []);
-
-            // Calculate category distribution from orders
-            const categoryDistribution = calculateCategoryDistribution(orders || []);
-
-            // Revenue growth (last 6 months)
-            const revenueGrowth = generateRevenueGrowth(orders || []);
-
-            const finalStats = {
-                totalProducts: productsCount || 0,
-                totalUsers: usersCount || 0,
-                totalSellers: sellersCount || 0,
+            setStats({
+                totalProducts: productsCount,
+                totalUsers: usersCount,
+                totalSellers: sellersCount,
                 totalSales: totalOrders,
                 pendingOrders,
                 revenue: totalRevenue,
@@ -102,15 +99,11 @@ export function useAdminStats() {
                 topProducts,
                 categoryDistribution,
                 revenueGrowth,
-            };
-
-            // console.log("[useAdmin Stats] Final stats:", finalStats);
-            setStats(finalStats);
-        } catch (error) {
-            // console.error("[useAdminStats] Error fetching admin stats:", error);
+            });
+        } catch (error: any) {
+            console.error("[useAdminStats] Error fetching admin stats:", error.message);
         } finally {
             setLoading(false);
-            // console.log("[useAdminStats] Fetch complete");
         }
     };
 

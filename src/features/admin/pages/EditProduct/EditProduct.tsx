@@ -56,7 +56,7 @@ export default function EditProduct() {
   const navigate = useNavigate();
   const { id } = useParams();
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [formData, setFormData] = useState<ProductFormData>(INITIAL_FORM_DATA);
   const [customSize, setCustomSize] = useState("");
   const [customColor, setCustomColor] = useState({ name: "", hex: "#000000" });
@@ -70,8 +70,7 @@ export default function EditProduct() {
       if (!id) return;
 
       try {
-        setIsLoading(true);
-
+        console.log(`[EditProduct] Fetching product: ${id}`);
         const { data: productData, error: productError } = await supabase
           .from("products")
           .select(`
@@ -179,8 +178,10 @@ export default function EditProduct() {
       }
     };
 
-    fetchProduct();
-  }, [id]);
+    if (!authLoading) {
+      fetchProduct();
+    }
+  }, [id, authLoading]);
 
   // Price calculation handlers
   const handlePriceChange = (value: string) => {
@@ -431,19 +432,19 @@ export default function EditProduct() {
       const filePath = `products/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
-        .from('product-images')
+        .from('products')
         .upload(filePath, file);
 
       if (uploadError) {
         console.error('Error uploading image:', uploadError);
         if (uploadError.message?.includes('Bucket not found') || uploadError.message?.includes('bucket')) {
-          throw new Error('Storage bucket "product-images" not found. Please create it in Supabase Dashboard');
+          throw new Error('Storage bucket "products" not found. Please create it in Supabase Dashboard');
         }
         throw new Error(`Failed to upload image "${file.name}": ${uploadError.message}`);
       }
 
       const { data: { publicUrl } } = supabase.storage
-        .from('product-images')
+        .from('products')
         .getPublicUrl(filePath);
 
       uploadedUrls.push(publicUrl);

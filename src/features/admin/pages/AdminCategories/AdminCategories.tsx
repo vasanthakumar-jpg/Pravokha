@@ -118,13 +118,13 @@ export default function AdminCategories() {
         const fileExt = imageFile.name.split('.').pop();
         const fileName = `categories/${Math.random().toString(36).substring(7)}.${fileExt}`;
         const { error: uploadError } = await supabase.storage
-          .from('product-images') // Reusing product images bucket, standardizing
+          .from('products') // Reusing products bucket, standardizing
           .upload(fileName, imageFile);
 
         if (uploadError) throw uploadError;
 
         const { data: { publicUrl } } = supabase.storage
-          .from('product-images')
+          .from('products')
           .getPublicUrl(fileName);
 
         imageUrl = publicUrl;

@@ -84,7 +84,7 @@ interface Product {
 }
 
 export default function SellerProducts() {
-  const { user, verificationStatus } = useAuth();
+  const { user, verificationStatus, role, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [products, setProducts] = useState<Product[]>([]);
@@ -96,28 +96,66 @@ export default function SellerProducts() {
   const [viewMode, setViewMode] = useState<"list" | "grid">("grid");
 
   useEffect(() => {
-    fetchProducts();
-  }, [user]);
+    // Only fetch products after auth is complete and user has seller role
+    if (!authLoading && user && role === 'seller') {
+      fetchProducts();
+    } else if (!authLoading && !user) {
+      // No user, stop loading
+      setLoading(false);
+    }
+  }, [authLoading, user, role]);
 
   useEffect(() => {
     filterProducts();
   }, [products, searchQuery, categoryFilter, statusFilter]);
 
-  const fetchProducts = async () => {
+  const fetchProducts = async (retryCount = 0) => {
     if (!user) return;
 
     try {
-      let productsData: any[] = [];
+      console.log(`[SellerProducts] Fetching products for seller: ${user.id} (Attempt ${retryCount + 1})`);
+      if (retryCount === 0) setLoading(true);
 
-      const productsResult: any = await (supabase as any)
+      const timeoutMs = 20000;
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Request timed out')), timeoutMs)
+      );
+
+      // Optimized query: ONLY select what we need
+      const fetchPromise = (supabase as any)
         .from("products")
-        .select("*, product_variants(product_sizes(stock))")
+        .select(`
+          id,
+          title,
+          slug,
+          description,
+          price,
+          category,
+          published,
+          created_at,
+          is_featured,
+          is_new,
+          product_variants (
+            product_sizes (
+              stock
+            )
+          )
+        `)
         .eq("seller_id", user.id)
         .order("created_at", { ascending: false });
 
-      productsData = productsResult.data || [];
+      const productsResult: any = await Promise.race([
+        fetchPromise,
+        timeoutPromise
+      ]);
 
-      if (productsResult.error) throw productsResult.error;
+      const productsData = productsResult.data || [];
+
+      if (productsResult.error) {
+        throw productsResult.error;
+      }
+
+      console.log("[SellerProducts] Fetched products:", productsData.length);
 
       const transformedProducts: Product[] = productsData.map((product: any) => {
         // Calculate total stock from variants -> sizes
@@ -141,21 +179,27 @@ export default function SellerProducts() {
           stock_quantity: totalStock,
           colors,
           sizes,
-          is_featured: product.is_featured, // Assuming these fields exist in your DB
-          is_new: product.is_new, // Assuming these fields exist in your DB
+          is_featured: product.is_featured,
+          is_new: product.is_new,
         };
       });
 
       setProducts(transformedProducts);
-    } catch (error) {
-      console.error("Error fetching products:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load products",
-        variant: "destructive",
-      });
-    } finally {
       setLoading(false);
+    } catch (error: any) {
+      console.error(`[SellerProducts] Error fetching products (Attempt ${retryCount + 1}):`, error);
+
+      if (retryCount < 2) {
+        console.log("[SellerProducts] Retrying in 2 seconds...");
+        setTimeout(() => fetchProducts(retryCount + 1), 2000);
+      } else {
+        toast({
+          title: "Connection Slow",
+          description: "We're having trouble reaching the database. Please check your connection and refresh.",
+          variant: "destructive",
+        });
+        setLoading(false);
+      }
     }
   };
 

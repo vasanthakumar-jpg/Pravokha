@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
-import { 
-  User, Mail, Phone, MapPin, CreditCard, Bell, Shield, 
-  History, Upload 
+import {
+  User, Mail, Phone, MapPin, CreditCard, Bell, Shield,
+  History, Upload
 } from "lucide-react";
 
 import { useToast } from "@/hooks/use-toast";
@@ -25,7 +25,7 @@ import { HistorySection } from "@/components/settings/HistorySection";
 
 export default function UserSettings() {
   const { user } = useAuth();
-  const { 
+  const {
     loading, profile, addresses, payments, preferences,
     updateProfile, addAddress, updateAddress, deleteAddress, updatePreferences,
     addPaymentMethod, deletePaymentMethod, history, orders, paymentHistory
@@ -40,44 +40,44 @@ export default function UserSettings() {
     if (!file) return;
 
     if (file.size > 2 * 1024 * 1024) {
-        toast({
-            title: "Error",
-            description: "Image size must be less than 2MB",
-            variant: "destructive",
-        });
-        return;
+      toast({
+        title: "Error",
+        description: "Image size must be less than 2MB",
+        variant: "destructive",
+      });
+      return;
     }
 
     try {
-        const fileExt = file.name.split('.').pop();
-        const filePath = `${user?.id}/${Math.random()}.${fileExt}`;
+      const fileExt = file.name.split('.').pop();
+      const filePath = `${user?.id}/${Math.random()}.${fileExt}`;
 
-        const { error: uploadError } = await supabase.storage
-            .from('avatars')
-            .upload(filePath, file);
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file);
 
-        if (uploadError) {
-             // If bucket doesn't exist or RLS issue
-            throw uploadError;
-        }
+      if (uploadError) {
+        // If bucket doesn't exist or RLS issue
+        throw uploadError;
+      }
 
-        const { data: { publicUrl } } = supabase.storage
-            .from('avatars')
-            .getPublicUrl(filePath);
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
 
-        await updateProfile({ ...profile, avatar_url: publicUrl });
-        
-        toast({
-            title: "Success",
-            description: "Profile photo updated successfully",
-        });
+      await updateProfile({ ...profile, avatar_url: publicUrl });
+
+      toast({
+        title: "Success",
+        description: "Profile photo updated successfully",
+      });
     } catch (error: any) {
-        console.error("Error uploading avatar:", error);
-        toast({
-            title: "Error",
-            description: "Failed to upload profile photo",
-            variant: "destructive",
-        });
+      console.error("Error uploading avatar:", error);
+      toast({
+        title: "Error",
+        description: "Failed to upload profile photo",
+        variant: "destructive",
+      });
     }
   };
 
@@ -93,7 +93,7 @@ export default function UserSettings() {
       hasBio: !!profile.bio,
       hasDob: !!profile.date_of_birth
     };
-    
+
     if (checks.emailVerified) score += 20;
     if (checks.phoneVerified) score += 20;
     if (checks.hasPayment) score += 20;
@@ -101,7 +101,7 @@ export default function UserSettings() {
     if (checks.hasAvatar) score += 10;
     if (checks.hasBio) score += 10;
     if (checks.hasDob) score += 10;
-    
+
     return { score: Math.min(score, 100), checks };
   };
 
@@ -121,34 +121,34 @@ export default function UserSettings() {
                   {profile.full_name?.charAt(0) || "U"}
                 </AvatarFallback>
               </Avatar>
-              <Button 
-                size="icon" 
-                variant="secondary" 
+              <Button
+                size="icon"
+                variant="secondary"
                 className="absolute bottom-0 right-0 rounded-full shadow-lg h-9 w-9 md:h-10 md:w-10 border-2 border-background"
                 onClick={() => fileInputRef.current?.click()}
               >
                 <Upload className="h-4 w-4" />
               </Button>
-              <input 
-                ref={fileInputRef} 
-                type="file" 
-                className="hidden" 
-                accept="image/*" 
+              <input
+                ref={fileInputRef}
+                type="file"
+                className="hidden"
+                accept="image/*"
                 onChange={handleFileUpload}
               />
             </div>
-            
+
             <div className="text-center md:text-left space-y-2 w-full min-w-0">
               <h1 className="text-2xl md:text-4xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/60 truncate px-2 md:px-0">
                 {profile.full_name || "Welcome Back"}
               </h1>
               <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 md:gap-3 text-muted-foreground">
                 <span className="flex items-center gap-1.5 text-xs md:text-sm bg-background/50 px-2.5 py-1 rounded-full border shadow-sm">
-                  <Mail className="h-3 w-3 md:h-3.5 md:w-3.5" /> 
+                  <Mail className="h-3 w-3 md:h-3.5 md:w-3.5" />
                   <span className="truncate max-w-[150px] md:max-w-none">{profile.email}</span>
                 </span>
                 <span className="flex items-center gap-1.5 text-xs md:text-sm bg-background/50 px-2.5 py-1 rounded-full border shadow-sm">
-                  <Phone className="h-3 w-3 md:h-3.5 md:w-3.5" /> 
+                  <Phone className="h-3 w-3 md:h-3.5 md:w-3.5" />
                   {profile.phone || "No phone"}
                 </span>
               </div>
@@ -176,19 +176,19 @@ export default function UserSettings() {
           {/* Content Area with Animation */}
           <div className="max-w-5xl mx-auto anime-fade-in relative z-0">
             <TabsContent value="profile" className="space-y-6 mt-0">
-              <ProfileForm 
-                 profile={profile} 
-                 updateProfile={updateProfile} 
-                 loading={loading} 
-                 strength={strength}
+              <ProfileForm
+                profile={profile}
+                updateProfile={updateProfile}
+                loading={loading}
+                strength={strength}
               />
             </TabsContent>
 
             <TabsContent value="addresses" className="space-y-6 mt-0">
-              <AddressesManager 
-                addresses={addresses} 
-                addAddress={addAddress} 
-                updateAddress={updateAddress} 
+              <AddressesManager
+                addresses={addresses}
+                addAddress={addAddress}
+                updateAddress={updateAddress}
                 deleteAddress={deleteAddress}
                 loading={loading}
               />
@@ -201,7 +201,7 @@ export default function UserSettings() {
             <TabsContent value="notifications" className="space-y-6 mt-0">
               <NotificationSettings preferences={preferences} updatePreferences={updatePreferences} />
             </TabsContent>
-            
+
             <TabsContent value="security" className="space-y-6 mt-0">
               <SecuritySettings email={profile.email} preferences={preferences} updatePreferences={updatePreferences} />
             </TabsContent>
@@ -217,7 +217,7 @@ export default function UserSettings() {
 }
 
 const TabItem = ({ value, icon, label }: { value: string, icon: React.ReactNode, label: string }) => (
-  <TabsTrigger 
+  <TabsTrigger
     value={value}
     className="flex-1 min-w-[90px] md:min-w-[100px] gap-2 data-[state=active]:bg-primary/10 data-[state=active]:text-primary rounded-lg py-2 md:py-2.5 text-xs md:text-sm transition-all duration-300 select-none"
   >

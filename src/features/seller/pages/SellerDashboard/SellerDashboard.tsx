@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 export default function SellerDashboard() {
-  const { user } = useAuth();
+  const { user, loading: authLoading, role } = useAuth();
   const navigate = useNavigate();
   const [stats, setStats] = useState({
     totalProducts: 0,
@@ -34,9 +34,19 @@ export default function SellerDashboard() {
   const [topProducts, setTopProducts] = useState<any[]>([]);
   const [fullProfile, setFullProfile] = useState<any>(null);
 
+  // Authorization Guard
   useEffect(() => {
-    fetchSellerData();
-  }, [user]);
+    if (!authLoading && role !== 'seller' && role !== 'admin') {
+      console.warn("[SellerDashboard] Unauthorized role access attempt:", role);
+      navigate("/auth");
+    }
+  }, [role, authLoading, navigate]);
+
+  useEffect(() => {
+    if (!authLoading && (role === 'seller' || role === 'admin')) {
+      fetchSellerData();
+    }
+  }, [user, authLoading, role]);
 
   const fetchSellerData = async () => {
     if (!user) return;

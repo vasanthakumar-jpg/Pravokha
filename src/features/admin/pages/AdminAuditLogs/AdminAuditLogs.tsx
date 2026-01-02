@@ -126,20 +126,22 @@ export default function AdminAuditLogs() {
     }, [isAdmin, adminLoading, navigate]);
 
     useEffect(() => {
-        fetchLogs();
+        if (!adminLoading && isAdmin) {
+            fetchLogs();
 
-        // Real-time subscription
-        const channel = supabase
-            .channel('audit_logs_changes')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'audit_logs' }, () => {
-                fetchLogs();
-            })
-            .subscribe();
+            // Real-time subscription
+            const channel = supabase
+                .channel('audit_logs_changes')
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'audit_logs' }, () => {
+                    fetchLogs();
+                })
+                .subscribe();
 
-        return () => {
-            supabase.removeChannel(channel);
-        };
-    }, []);
+            return () => {
+                supabase.removeChannel(channel);
+            };
+        }
+    }, [adminLoading, isAdmin]);
 
     const fetchLogs = async () => {
         try {

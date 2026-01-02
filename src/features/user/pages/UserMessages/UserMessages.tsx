@@ -31,17 +31,17 @@ export default function UserMessages() {
   };
 
   const filteredNotifications = notifications.filter(notification => {
-    const matchesSearch = 
+    const matchesSearch =
       notification.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       notification.message.toLowerCase().includes(searchQuery.toLowerCase());
-    
+
     if (!matchesSearch) return false;
 
     if (activeTab === "all") return true;
     if (activeTab === "unread") return !notification.is_read;
     if (activeTab === "orders") return notification.type === 'order' || notification.type === 'order_cancelled';
     if (activeTab === "system") return notification.type === 'system' || notification.type === 'alert';
-    
+
     return true;
   });
 
@@ -55,15 +55,15 @@ export default function UserMessages() {
 
     // Navigate based on type/metadata
     if (notification.metadata?.order_id) {
-        navigate(`/orders/${notification.metadata.order_id}`);
+      navigate(`/orders/${notification.metadata.order_id}`);
     } else if (notification.type === 'order' || notification.type === 'order_cancelled') {
-        // Fallback if metadata is missing (though it shouldn't be for new ones)
-        // Check if message contains order number or similar if needed, 
-        // but for now assume metadata is the source of truth.
-        // If we have a link property, use that.
-        if (notification.link) {
-            navigate(notification.link);
-        }
+      // Fallback if metadata is missing (though it shouldn't be for new ones)
+      // Check if message contains order number or similar if needed, 
+      // but for now assume metadata is the source of truth.
+      // If we have a link property, use that.
+      if (notification.link) {
+        navigate(notification.link);
+      }
     }
   };
 
@@ -123,7 +123,7 @@ export default function UserMessages() {
                 </div>
                 <h3 className="text-lg font-medium">No notifications found</h3>
                 <p className="text-sm max-w-sm mt-1">
-                  {searchQuery 
+                  {searchQuery
                     ? "Try adjusting your search or filters to find what you're looking for."
                     : "You're all caught up! New notifications will appear here."}
                 </p>
@@ -134,8 +134,8 @@ export default function UserMessages() {
                   key={notification.id}
                   className={cn(
                     "group flex items-start gap-4 p-4 rounded-lg transition-all border cursor-pointer",
-                    !notification.is_read 
-                      ? "bg-primary/5 border-primary/20 hover:bg-primary/10" 
+                    !notification.is_read
+                      ? "bg-primary/5 border-primary/20 hover:bg-primary/10"
                       : "border-transparent hover:bg-muted/50 hover:border-muted/50"
                   )}
                   onClick={() => handleNotificationClick(notification)}
@@ -155,20 +155,20 @@ export default function UserMessages() {
                     <p className="text-sm text-muted-foreground leading-relaxed">
                       {notification.message}
                     </p>
-                    
+
                     <div className="flex items-center gap-4 mt-2">
-                       {(notification.metadata?.order_id || notification.link) && (
-                        <Button 
-                            variant="link" 
-                            className="h-auto p-0 text-xs font-semibold text-primary group-hover:underline"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                handleNotificationClick(notification);
-                            }}
+                      {(notification.metadata?.order_id || notification.link) && (
+                        <Button
+                          variant="link"
+                          className="h-auto p-0 text-xs font-semibold text-primary group-hover:underline"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleNotificationClick(notification);
+                          }}
                         >
                           View Details <ArrowRight className="h-3 w-3 ml-1" />
                         </Button>
-                       )}
+                      )}
                     </div>
                   </div>
                   <div className="flex flex-col gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
@@ -178,8 +178,8 @@ export default function UserMessages() {
                         size="icon"
                         className="h-8 w-8 text-muted-foreground hover:text-primary z-10"
                         onClick={(e) => {
-                            e.stopPropagation();
-                            markAsRead(notification.id);
+                          e.stopPropagation();
+                          markAsRead(notification.id);
                         }}
                         title="Mark as read"
                       >
@@ -191,8 +191,8 @@ export default function UserMessages() {
                       size="icon"
                       className="h-8 w-8 text-muted-foreground hover:text-destructive z-10"
                       onClick={(e) => {
-                          e.stopPropagation();
-                          deleteNotification(notification.id);
+                        e.stopPropagation();
+                        deleteNotification(notification.id);
                       }}
                       title="Delete"
                     >

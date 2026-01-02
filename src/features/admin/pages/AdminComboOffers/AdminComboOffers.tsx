@@ -18,6 +18,7 @@ import { Textarea } from "@/components/ui/Textarea";
 import { AdminHeaderSkeleton, AdminListSkeleton } from "@/features/admin/components/AdminSkeleton";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface ComboOffer {
   id: string;
@@ -37,6 +38,7 @@ interface ComboOffer {
 export default function AdminComboOffers() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user, role, loading: authLoading } = useAuth();
   const [offers, setOffers] = useState<ComboOffer[]>([]);
   const [loading, setLoading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -57,26 +59,40 @@ export default function AdminComboOffers() {
   const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
-    fetchOffers();
-  }, []);
+    // Only fetch offers after auth is complete and user is an admin
+    if (!authLoading && user && role === 'admin') {
+      fetchOffers();
+    }
+  }, [authLoading, user, role]);
 
   const fetchOffers = async () => {
     try {
       setLoading(true);
+      console.log("[AdminComboOffers] Fetching combo offers...");
+
       const { data, error } = await supabase
         .from("combo_offers")
         .select("*")
         .order("created_at", { ascending: false });
 
       if (error) {
+        console.error("[AdminComboOffers] Error fetching combo offers:", error);
         toast({
           title: "Error",
-          description: "Failed to fetch combo offers",
+          description: error.message || "Failed to fetch combo offers",
           variant: "destructive",
         });
       } else {
+        console.log("[AdminComboOffers] Fetched offers:", data?.length || 0);
         setOffers(data || []);
       }
+    } catch (err: any) {
+      console.error("[AdminComboOffers] Exception fetching offers:", err);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -86,26 +102,73 @@ export default function AdminComboOffers() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Invalid File",
+        description: "Please upload an image file.",
+        variant: "destructive"
+      });
+      e.target.value = ''; // Reset input
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "File Too Large",
+        description: "Please upload an image smaller than 5MB.",
+        variant: "destructive"
+      });
+      e.target.value = ''; // Reset input
+      return;
+    }
+
     try {
       setUploading(true);
       const fileExt = file.name.split('.').pop();
-      const fileName = `${Math.random()}.${fileExt}`;
+      const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
       const filePath = `combo-thumbnails/${fileName}`;
 
-      const { error: uploadError } = await supabase.storage
-        .from('products') // Using products bucket as per previous patterns
-        .upload(filePath, file);
+      console.log('Starting upload:', filePath);
 
-      if (uploadError) throw uploadError;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('products')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        throw new Error(uploadError.message || 'Failed to upload image');
+      }
+
+      console.log('Upload successful:', uploadData);
 
       const { data: { publicUrl } } = supabase.storage
         .from('products')
         .getPublicUrl(filePath);
 
+      console.log('Public URL:', publicUrl);
+
       setFormData(prev => ({ ...prev, image_url: publicUrl }));
-      toast({ title: "Asset Uploaded", description: "Thumbnail synthesized and stored." });
+      toast({
+        title: "✓ Asset Uploaded",
+        description: "Thumbnail successfully uploaded and ready."
+      });
+
+      // Reset the input
+      e.target.value = '';
     } catch (error: any) {
-      toast({ title: "Upload Failed", description: error.message, variant: "destructive" });
+      console.error('Image upload error:', error);
+      toast({
+        title: "Upload Failed",
+        description: error.message || "Failed to upload image. Please try again.",
+        variant: "destructive"
+      });
+      // Reset the input on error
+      e.target.value = '';
     } finally {
       setUploading(false);
     }
@@ -255,8 +318,8 @@ export default function AdminComboOffers() {
       original_price: offer.original_price.toString(),
       combo_price: offer.combo_price.toString(),
       discount_percentage: offer.discount_percentage.toString(),
-      start_date: offer.start_date || "",
-      end_date: offer.end_date || "",
+      start_date: offer.start_date ? offer.start_date.split('T')[0] : "",
+      end_date: offer.end_date ? offer.end_date.split('T')[0] : "",
       image_url: offer.image_url || "",
     });
     setDialogOpen(true);
@@ -277,6 +340,16 @@ export default function AdminComboOffers() {
     });
     setErrors({});
   };
+
+  // Show loading skeleton while auth is initializing
+  if (authLoading) {
+    return (
+      <div className="w-full mx-auto py-3 sm:py-6 lg:py-8 px-2 sm:px-4 lg:px-6 xl:px-8 flex flex-col gap-4 sm:gap-6 lg:gap-8 animate-in fade-in duration-500 pb-20">
+        <AdminHeaderSkeleton />
+        <AdminListSkeleton count={3} />
+      </div>
+    );
+  }
 
   return (
     <div className="w-full mx-auto py-3 sm:py-6 lg:py-8 px-2 sm:px-4 lg:px-6 xl:px-8 flex flex-col gap-4 sm:gap-6 lg:gap-8 animate-in fade-in duration-500 pb-20">

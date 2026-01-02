@@ -15,7 +15,6 @@ import { ScrollArea } from "@/components/ui/ScrollArea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/Tooltip";
 import { ThemeToggle } from "@/components/common/ThemeToggle";
 import { useAuth } from "@/contexts/AuthContext";
-import { useProfile } from "@/hooks/useProfile";
 import { useTheme } from "next-themes";
 import logoLight from "@/assets/logo-light.png";
 import logoDark from "@/assets/logo-dark.png";
@@ -108,8 +107,7 @@ export default function SellerLayout() {
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [allProductsDropdownOpen, setAllProductsDropdownOpen] = useState(false);
   const location = useLocation();
-  const { user, signOut, isSuspended } = useAuth();
-  const { profile, loading } = useProfile(user?.id);
+  const { user, signOut, isSuspended, profile, loading } = useAuth();
   const { resolvedTheme } = useTheme();
   const profileMenuRef = useRef<HTMLDivElement>(null);
 
@@ -416,7 +414,8 @@ export default function SellerLayout() {
               {profileMenuOpen && (
                 <div className="absolute right-0 top-full mt-2 w-48 sm:w-52 md:w-56 lg:w-60 bg-background border rounded-lg shadow-lg overflow-hidden animate-scale-in z-50">
                   <div className="p-2 sm:p-3 border-b bg-muted/50">
-                    <p className="font-semibold text-xs sm:text-sm truncate">{user?.email}</p>
+                    <p className="font-semibold text-xs sm:text-sm truncate">{profile?.full_name || user?.email?.split('@')[0] || "Seller"}</p>
+                    <p className="text-[10px] text-muted-foreground truncate">{user?.email}</p>
                     {isSuspended && <p className="text-[10px] text-destructive font-semibold mt-1">Suspended</p>}
                   </div>
                   <div className="py-1">

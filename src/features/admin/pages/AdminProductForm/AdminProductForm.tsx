@@ -24,6 +24,7 @@ import { SIZES, COLORS } from "@/data/products";
 import { MARKETPLACE_FEE_PERCENTAGE, MAX_DISCOUNT_PERCENTAGE } from "@/lib/constants";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useAdmin } from "@/contexts/AdminContext";
 import { Badge } from "@/components/ui/Badge";
 import { cn } from "@/lib/utils";
 import { CategoryInput } from "@/features/products/components/CategoryInput";
@@ -98,10 +99,11 @@ export default function AdminProductForm() {
     const navigate = useNavigate();
     const { id } = useParams();
     const { toast } = useToast();
-    const { user } = useAuth();
+    const { user, loading: authLoading } = useAuth();
+    const { isAdmin, loading: adminLoading } = useAdmin();
 
     const [formData, setFormData] = useState<ProductFormData>(INITIAL_FORM_DATA);
-    const [isLoading, setIsLoading] = useState(!!id);
+    const [isLoading, setIsLoading] = useState(true); // Always start with true while auth is loading
     const [isSaving, setIsSaving] = useState(false);
     const [activeTab, setActiveTab] = useState("general");
     const [errors, setErrors] = useState<Record<string, string>>({});
@@ -109,16 +111,23 @@ export default function AdminProductForm() {
     // -- Fetch Data --
     useEffect(() => {
         const fetchProduct = async () => {
-            if (!id) return;
+            if (!id) {
+                setIsLoading(false);
+                return;
+            }
+
             try {
-                setIsLoading(true);
+                console.log(`[AdminProductForm] Fetching product: ${id}`);
                 const { data: product, error } = await supabase
                     .from("products")
                     .select("*, product_variants(*, product_sizes(*))")
                     .eq("id", id)
                     .single();
 
-                if (error) throw error;
+                if (error) {
+                    console.error("[AdminProductForm] Error fetching product:", error);
+                    throw error;
+                }
 
                 const colors: ColorOption[] = [];
                 const sizes: string[] = [];
@@ -173,8 +182,17 @@ export default function AdminProductForm() {
                 setIsLoading(false);
             }
         };
-        fetchProduct();
-    }, [id]);
+
+        // Only fetch when auth and admin state are ready
+        if (!authLoading && !adminLoading) {
+            if (isAdmin) {
+                fetchProduct();
+            } else {
+                console.warn("[AdminProductForm] Unauthorized access attempt.");
+                navigate("/auth");
+            }
+        }
+    }, [id, authLoading, adminLoading, isAdmin, navigate]);
 
     const handleChange = (field: keyof ProductFormData, value: any) => {
         setFormData(prev => ({ ...prev, [field]: value }));
@@ -262,9 +280,9 @@ export default function AdminProductForm() {
             for (const file of formData.images) {
                 const fileExt = file.name.split('.').pop();
                 const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-                const { error: uploadError } = await supabase.storage.from('product-images').upload(`products/${fileName}`, file);
+                const { error: uploadError } = await supabase.storage.from('products').upload(`products/${fileName}`, file);
                 if (uploadError) throw uploadError;
-                const { data: { publicUrl } } = supabase.storage.from('product-images').getPublicUrl(`products/${fileName}`);
+                const { data: { publicUrl } } = supabase.storage.from('products').getPublicUrl(`products/${fileName}`);
                 newImageUrls.push(publicUrl);
             }
             const allImages = [...formData.existingImages, ...newImageUrls];

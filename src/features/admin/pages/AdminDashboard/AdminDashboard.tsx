@@ -46,39 +46,57 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     const fetchRecentLogs = async () => {
-      // Try fetching with profiles first
-      const { data, error } = await supabase
-        .from("audit_logs")
-        .select(`
-          *,
-          profiles!actor_id (
-            full_name,
-            email
-          )
-        `)
-        .order("created_at", { ascending: false })
-        .limit(8);
+      try {
+        const timeoutMs = 15000;
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Request timed out')), timeoutMs)
+        );
 
-      if (error) {
-        console.warn("[AdminDashboard] Join fetch failed, falling back to simple fetch:", error.message);
-        const { data: simpleData } = await supabase
+        // Try fetching with profiles first
+        const fetchPromise = supabase
           .from("audit_logs")
-          .select("*")
+          .select(`
+            *,
+            profiles!actor_id (
+              full_name,
+              email
+            )
+          `)
           .order("created_at", { ascending: false })
           .limit(8);
-        if (simpleData) setRecentLogs(simpleData);
-      } else if (data) {
-        setRecentLogs(data);
+
+        const { data, error } = await Promise.race([
+          fetchPromise,
+          timeoutPromise
+        ]) as any;
+
+        if (error) {
+          console.warn("[AdminDashboard] Join fetch failed, falling back to simple fetch:", error.message);
+          const { data: simpleData } = await supabase
+            .from("audit_logs")
+            .select("*")
+            .order("created_at", { ascending: false })
+            .limit(8);
+          if (simpleData) setRecentLogs(simpleData);
+        } else if (data) {
+          setRecentLogs(data);
+        }
+      } catch (err) {
+        console.error("[AdminDashboard] Error fetching recent logs:", err);
       }
     };
 
     const checkSystemHealth = async () => {
-      const start = Date.now();
       try {
-        const { error } = await supabase.from('profiles').select('id', { count: 'exact', head: true }).limit(1);
+        const { error } = await Promise.race([
+          supabase.from('profiles').select('id', { count: 'exact', head: true }).limit(1),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 10000))
+        ]) as any;
+
         if (error) throw error;
         setSystemHealth('optimal');
       } catch (e) {
+        console.warn("[AdminDashboard] System health check failed or timed out");
         setSystemHealth('degraded');
       }
     };
