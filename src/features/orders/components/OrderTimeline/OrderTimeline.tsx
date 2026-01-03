@@ -1,6 +1,7 @@
-import { CheckCircle2, Clock, Package, Truck, XCircle, Trash2 } from "lucide-react";
+import { CheckCircle2, Clock, Package, Truck, XCircle, Trash2, AlertCircle } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/Badge";
 import styles from "./OrderTimeline.module.css";
 import { cn } from "@/lib/utils";
 
@@ -35,13 +36,13 @@ export function OrderTimeline({ status, trackingUpdates = [], createdAt, onDelet
 
     return (
         <div className={styles.container}>
-            <div className={styles.header}>
-                <h3 className={styles.title}>Order Tracking</h3>
+            <div className={cn(styles.header, "flex flex-wrap items-center justify-between gap-2")}>
+                <h3 className={cn(styles.title, "text-sm sm:text-base md:text-lg")}>Order Tracking</h3>
                 {isCancelled && (
-                    <div className={styles.cancelledNotice}>
-                        <XCircle className="h-5 w-5" />
-                        <span className={styles.cancelledText}>Order Cancelled</span>
-                    </div>
+                    <Badge variant="destructive" className="flex items-center gap-1.5 px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-[9px] sm:text-[10px] font-black uppercase tracking-wider shadow-sm animate-pulse border-none">
+                        <AlertCircle className="h-3 w-3 sm:h-3.5 sm:3.5" />
+                        <span className="hidden sm:inline">Order</span> Cancelled
+                    </Badge>
                 )}
             </div>
 

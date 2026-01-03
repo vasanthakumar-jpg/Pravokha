@@ -37,6 +37,7 @@ export interface Product {
   price: number;
   discountPrice?: number;
   category: string;
+  subcategory_id?: string; // UUID reference to subcategories table
   rating: number;
   reviews: number;
   variants: ProductVariant[];

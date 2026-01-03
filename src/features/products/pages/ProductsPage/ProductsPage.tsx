@@ -18,12 +18,15 @@ export function ProductsPage() {
     const [sortBy, setSortBy] = useState("featured");
     const [priceRange, setPriceRange] = useState([0, 5000]);
     const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+    const [selectedSubcategories, setSelectedSubcategories] = useState<string[]>([]);
     const [tempPriceRange, setTempPriceRange] = useState([0, 5000]);
     const [tempCategories, setTempCategories] = useState<string[]>([]);
+    const [tempSubcategories, setTempSubcategories] = useState<string[]>([]);
     const [isFilterOpen, setIsFilterOpen] = useState(false);
     const [dbCategories, setDbCategories] = useState<{ id: string; name: string }[]>([]);
+    const [dbSubcategories, setDbSubcategories] = useState<{ id: string; name: string; category_id: string }[]>([]);
 
-    // Fetch categories
+    // Fetch categories and subcategories
     useEffect(() => {
         const fetchCategories = async () => {
             const { data } = await supabase
@@ -38,6 +41,37 @@ export function ProductsPage() {
         };
         fetchCategories();
     }, []);
+
+    // Fetch subcategories based on selected category
+    useEffect(() => {
+        const fetchSubcategories = async () => {
+            if (selectedCategories.length === 0) {
+                setDbSubcategories([]);
+                return;
+            }
+
+            const { data: categoryData } = await supabase
+                .from("categories")
+                .select("id")
+                .in("slug", selectedCategories);
+
+            if (!categoryData) return;
+
+            const categoryIds = categoryData.map(c => c.id);
+
+            const { data } = await supabase
+                .from("subcategories")
+                .select("id, name, slug, category_id")
+                .in("category_id", categoryIds)
+                .eq("status", "active")
+                .order("display_order");
+
+            if (data) {
+                setDbSubcategories(data.map(s => ({ id: s.id, name: s.name, category_id: s.category_id })));
+            }
+        };
+        fetchSubcategories();
+    }, [selectedCategories]);
 
     // Fetch products from database
     const { products, loading, error } = useProducts();
@@ -66,10 +100,17 @@ export function ProductsPage() {
         );
     }
 
-    // Filter by category
-    if (selectedCategories.length > 0) {
+    // Filter by category (if no subcategory filter)
+    if (selectedCategories.length > 0 && selectedSubcategories.length === 0) {
         filteredProducts = filteredProducts.filter((p) =>
             selectedCategories.includes(p.category)
+        );
+    }
+
+    // Filter by subcategory (priority over category)
+    if (selectedSubcategories.length > 0) {
+        filteredProducts = filteredProducts.filter((p) =>
+            p.subcategory_id && selectedSubcategories.includes(p.subcategory_id)
         );
     }
 
@@ -95,15 +136,26 @@ export function ProductsPage() {
         );
     };
 
+    const toggleTempSubcategory = (subcategoryId: string) => {
+        setTempSubcategories((prev) =>
+            prev.includes(subcategoryId)
+                ? prev.filter((s) => s !== subcategoryId)
+                : [...prev, subcategoryId]
+        );
+    };
+
     const applyFilters = () => {
         setSelectedCategories(tempCategories);
+        setSelectedSubcategories(tempSubcategories);
         setPriceRange(tempPriceRange);
         setIsFilterOpen(false);
     };
 
     const clearFilters = () => {
         setSelectedCategories([]);
+        setSelectedSubcategories([]);
         setTempCategories([]);
+        setTempSubcategories([]);
         setPriceRange([0, 5000]);
         setTempPriceRange([0, 5000]);
     };
@@ -132,7 +184,7 @@ export function ProductsPage() {
                                     />
                                     <Label
                                         htmlFor={`${isDesktop ? 'desktop-' : 'mobile-'}${category.id}`}
-                                        className={`text-sm font-medium ${isDisabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+                                        className={`text-sm font-medium ${isDesktop ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
                                     >
                                         {category.name}
                                         {isDisabled && <span className="text-xs ml-2 text-muted-foreground">(Coming Soon)</span>}
@@ -142,6 +194,33 @@ export function ProductsPage() {
                         })}
                     </div>
                 </div>
+
+                {dbSubcategories.length > 0 && (
+                    <div>
+                        <h3 className="font-semibold mb-3 text-base">Subcategories</h3>
+                        <div className="space-y-3">
+                            {dbSubcategories.map((subcategory) => (
+                                <div key={subcategory.id} className="flex items-center space-x-2">
+                                    <Checkbox
+                                        id={`${isDesktop ? 'desktop-' : 'mobile-'}sub-${subcategory.id}`}
+                                        checked={isDesktop ? selectedSubcategories.includes(subcategory.id) : tempSubcategories.includes(subcategory.id)}
+                                        onCheckedChange={() => {
+                                            isDesktop ? setSelectedSubcategories(prev =>
+                                                prev.includes(subcategory.id) ? prev.filter(s => s !== subcategory.id) : [...prev, subcategory.id]
+                                            ) : toggleTempSubcategory(subcategory.id);
+                                        }}
+                                    />
+                                    <Label
+                                        htmlFor={`${isDesktop ? 'desktop-' : 'mobile-'}sub-${subcategory.id}`}
+                                        className="text-sm font-medium cursor-pointer"
+                                    >
+                                        {subcategory.name}
+                                    </Label>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
 
                 <div>
                     <h3 className="font-semibold mb-3 text-base">Price Range</h3>

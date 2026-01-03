@@ -34,6 +34,7 @@ export function useProducts() {
           price,
           discount_price,
           category,
+          subcategory_id,
           rating,
           reviews,
           sku,
@@ -51,6 +52,7 @@ export function useProducts() {
           )
         `)
         .eq("published", true)
+        .is("deleted_at", null)
         .order("created_at", { ascending: false })
         .limit(50); // Fetch only first 50 products
 
@@ -72,6 +74,7 @@ export function useProducts() {
         price: parseFloat(p.price),
         discountPrice: p.discount_price ? parseFloat(p.discount_price) : undefined,
         category: p.category,
+        subcategory_id: p.subcategory_id,
         rating: parseFloat(p.rating),
         reviews: p.reviews,
         sku: p.sku,

@@ -143,7 +143,7 @@ export default function SellerOrderDetail() {
   const { subtotal, tax, shipping, total } = calculatePricing();
 
   const handleStatusUpdate = async (newStatus: string) => {
-    if (verificationStatus !== 'verified') {
+    if (!isAdmin && verificationStatus !== 'verified') {
       toast({
         title: "Verification Required",
         description: "You must be a verified seller to update order status.",
@@ -153,13 +153,32 @@ export default function SellerOrderDetail() {
     }
 
     try {
-      const { error } = await supabase
+      const { data, error: updateError } = await supabase
         .from('orders')
         .update({ order_status: newStatus, updated_at: new Date().toISOString() })
-        .eq('id', orderId);
+        .eq('id', orderId)
+        .select();
 
-      if (error) throw error;
+      if (updateError) throw updateError;
+
+      if (!data || data.length === 0) {
+        throw new Error("Update failed: You might not have permission to update this order.");
+      }
+
       setOrder({ ...order, order_status: newStatus });
+
+      // Add to Order History
+      const { error: historyError } = await supabase.from('order_history' as any).insert({
+        order_id: orderId,
+        new_status: newStatus,
+        description: `Order status updated to ${newStatus} by ${isAdmin ? 'Admin' : 'Seller'}.`,
+        created_at: new Date().toISOString()
+      });
+
+      if (historyError) {
+        console.error("Order history error:", historyError);
+        // Note: We don't throw here as the main order update succeeded
+      }
 
       // Audit Logging
       await supabase.from('audit_logs').insert({
@@ -173,10 +192,14 @@ export default function SellerOrderDetail() {
       });
 
       toast({ title: "Status Updated", description: `Order marked as ${newStatus}` });
-      loadOrder();
-    } catch (error) {
+      await loadOrder();
+    } catch (error: any) {
       console.error(error);
-      toast({ title: "Error", description: "Failed to update status", variant: "destructive" });
+      toast({
+        title: "Update Failed",
+        description: error.message || "Failed to update status. Check permissions.",
+        variant: "destructive"
+      });
     }
   };
 
@@ -208,7 +231,7 @@ export default function SellerOrderDetail() {
   };
 
   const handleMarkShipped = async () => {
-    if (verificationStatus !== 'verified') {
+    if (!isAdmin && verificationStatus !== 'verified') {
       toast({
         title: "Verification Required",
         description: "You must be a verified seller to mark orders as shipped.",
@@ -218,16 +241,27 @@ export default function SellerOrderDetail() {
     }
     if (!trackingNumber || !carrierName) return toast({ title: "Required", description: "Enter carrier and tracking number", variant: "destructive" });
     try {
-      const { error } = await supabase.from('orders').update({
+      const { data, error } = await supabase.from('orders').update({
         order_status: 'shipped',
         tracking_number: trackingNumber,
         carrier_name: carrierName,
         updated_at: new Date().toISOString()
-      }).eq('id', orderId);
+      }).eq('id', orderId).select();
 
       if (error) throw error;
+      if (!data || data.length === 0) {
+        throw new Error("Shipment update failed: Check permissions.");
+      }
 
       setOrder({ ...order, order_status: 'shipped', tracking_number: trackingNumber, carrier_name: carrierName });
+
+      // Add to Order History
+      await supabase.from('order_history' as any).insert({
+        order_id: orderId,
+        new_status: 'shipped',
+        description: `Order shipped via ${carrierName}. Tracking: ${trackingNumber}`,
+        created_at: new Date().toISOString()
+      });
 
       // Audit Logging
       await supabase.from('audit_logs').insert({
@@ -293,29 +327,29 @@ export default function SellerOrderDetail() {
     <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8 flex flex-col gap-8 pb-10">
       <div className="flex flex-col gap-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full sm:w-auto">
+          <div className="flex flex-row items-start sm:items-center gap-3 sm:gap-4 w-full sm:w-auto">
             <Button
               variant="outline"
               size="sm"
-              className="h-9 rounded-xl border-border/40 bg-card/40 backdrop-blur-sm gap-2 font-bold text-xs w-full sm:w-auto justify-start"
+              className="h-9 w-9 sm:w-auto rounded-xl border-border/40 bg-card/40 backdrop-blur-sm p-0 sm:px-3 gap-2 font-bold text-xs shrink-0"
               onClick={() => navigate(backLink)}
             >
               <ArrowLeft className="h-4 w-4" />
-              Back
+              <span className="hidden sm:inline">Back</span>
             </Button>
-            <div className="min-w-0">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3">
-                <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground break-all">{order.order_number}</h1>
-                <Badge className={cn("px-2.5 py-0.5 text-xs font-semibold border-0 h-6 whitespace-nowrap shadow-sm", currentStatus?.color, "text-white")}>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-row items-center gap-2 sm:gap-3 flex-wrap">
+                <h1 className="text-lg sm:text-2xl font-bold tracking-tight text-foreground truncate">{order.order_number}</h1>
+                <Badge className={cn("px-2 py-0.5 text-[10px] sm:text-xs font-semibold border-0 h-5 sm:h-6 whitespace-nowrap shadow-sm shrink-0", currentStatus?.color, "text-white")}>
                   {currentStatus?.label || order.order_status}
                 </Badge>
               </div>
-              <p className="text-sm text-muted-foreground mt-1 flex items-center gap-2">
-                <Calendar className="w-3.5 h-3.5" /> {format(new Date(order.created_at), 'MMMM dd, yyyy • HH:mm')}
+              <p className="text-[10px] sm:text-sm text-muted-foreground mt-0.5 sm:mt-1 flex items-center gap-1.5 font-medium">
+                <Calendar className="w-3 h-3" /> {format(new Date(order.created_at), 'MMM dd, yyyy • HH:mm')}
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
+          <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto pb-2 sm:pb-0 scrollbar-none no-scrollbar">
             <Button
               variant="outline"
               size="sm"
@@ -355,24 +389,34 @@ export default function SellerOrderDetail() {
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-6 space-y-6">
-              {(Array.isArray(order.items) ? order.items : []).map((item: OrderItem, i: number) => (
-                <div key={i} className="flex gap-4 items-start">
-                  <div className="h-20 w-20 rounded-lg bg-muted border flex items-center justify-center overflow-hidden flex-shrink-0">
-                    {item.image ? <img src={item.image} className="h-full w-full object-cover" /> : <Package className="h-8 w-8 text-muted-foreground" />}
+              {(Array.isArray(order.items) ? order.items : []).map((item: any, i: number) => {
+                const productId = item.productId || item.product_id || item.id;
+                return (
+                  <div
+                    key={i}
+                    className="flex gap-3 sm:gap-4 items-start pb-4 sm:pb-4 border-b sm:border-b border-border/40 last:border-0 last:pb-0 cursor-pointer hover:bg-muted/50 p-2 rounded-xl transition-all active:scale-[0.98]"
+                    onClick={() => productId && navigate(`/product/${productId}`)}
+                  >
+                    <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-lg bg-muted border flex items-center justify-center overflow-hidden flex-shrink-0">
+                      {item.image ? <img src={item.image} className="h-full w-full object-cover" /> : <Package className="h-6 w-6 sm:h-8 sm:w-8 text-muted-foreground" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-1 sm:gap-4">
+                        <h4 className="font-semibold sm:font-medium text-sm sm:text-base text-foreground line-clamp-2">{item.title}</h4>
+                        <p className="font-bold text-sm sm:text-base text-foreground shrink-0 ml-auto">₹{(item.price * item.quantity).toLocaleString()}</p>
+                      </div>
+                      <p className="text-[11px] sm:text-sm text-muted-foreground mt-1 flex flex-wrap gap-x-3 gap-y-1">
+                        {item.colorName && <span className="flex items-center gap-1.5">Color: <span className="text-foreground font-medium">{item.colorName}</span></span>}
+                        {item.size && <span className="flex items-center gap-1.5">Size: <span className="text-foreground font-medium">{item.size}</span></span>}
+                      </p>
+                      <div className="flex items-center justify-between mt-2">
+                        <p className="text-[11px] sm:text-sm text-muted-foreground font-medium bg-muted/80 w-fit px-2 py-0.5 rounded-md">Qty: {item.quantity} × ₹{item.price.toLocaleString()}</p>
+                        <p className="text-[10px] text-primary font-bold opacity-0 group-hover:opacity-100 transition-opacity">View Product →</p>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <h4 className="font-medium text-foreground truncate">{item.title}</h4>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {item.colorName && <span className="mr-3">Color: {item.colorName}</span>}
-                      {item.size && <span>Size: {item.size}</span>}
-                    </p>
-                    <p className="text-sm text-muted-foreground mt-0.5">Qty: {item.quantity} × ₹{item.price.toLocaleString()}</p>
-                  </div>
-                  <div className="text-right font-medium text-foreground">
-                    ₹{(item.price * item.quantity).toLocaleString()}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
               <Separator />
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between text-muted-foreground">

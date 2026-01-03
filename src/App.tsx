@@ -51,6 +51,7 @@ const EditProduct = lazy(() => import("./features/admin/pages/EditProduct"));
 const AdminProductsManagement = lazy(() => import("./features/admin/pages/AdminProductsManagement"));
 const AdminOrderTracking = lazy(() => import("./features/admin/pages/AdminOrderTracking"));
 const AdminCategories = lazy(() => import("./features/admin/pages/AdminCategories"));
+const AdminSubcategories = lazy(() => import("./features/admin/pages/AdminSubcategories"));
 const AdminAuditLogs = lazy(() => import("./features/admin/pages/AdminAuditLogs"));
 const AdminSupport = lazy(() => import("./features/admin/pages/AdminSupport"));
 const SupportChat = lazy(() => import("./features/support/pages/SupportChatPage"));
@@ -100,6 +101,7 @@ const AccessDenied = lazy(() => import("./features/system/pages/AccessDeniedPage
 const SupportTickets = lazy(() => import("./features/support/pages/SupportTicketsPage"));
 const TicketDetail = lazy(() => import("./features/support/pages/TicketDetailPage"));
 const AdminTickets = lazy(() => import("./features/admin/pages/AdminTickets"));
+const AdminProductUpdates = lazy(() => import("./features/admin/pages/AdminProductUpdates"));
 const AdminSuspendedSellerTickets = lazy(() => import("./features/admin/pages/AdminSuspendedSellerTickets"));
 const TicketFormPage = lazy(() => import("@/components/common/TicketForm"));
 
@@ -137,10 +139,10 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <AuthProvider>
-          <AdminProvider>
-            <CartProvider>
-              <BrowserRouter future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
+        <BrowserRouter future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
+          <AuthProvider>
+            <AdminProvider>
+              <CartProvider>
                 <AuthLoadingGuard>
                   <div className="flex flex-col min-h-screen">
                     <ConditionalNavbar />
@@ -297,6 +299,11 @@ export default function App() {
                                 <AdminProductsManagement />
                               </Suspense>
                             } />
+                            <Route path="products/updates" element={
+                              <Suspense fallback={<LoadingFallback />}>
+                                <AdminProductUpdates />
+                              </Suspense>
+                            } />
                             <Route path="customers" element={
                               <Suspense fallback={<LoadingFallback />}>
                                 <AdminCustomers />
@@ -350,6 +357,11 @@ export default function App() {
                             <Route path="categories" element={
                               <Suspense fallback={<LoadingFallback />}>
                                 <AdminCategories />
+                              </Suspense>
+                            } />
+                            <Route path="subcategories" element={
+                              <Suspense fallback={<LoadingFallback />}>
+                                <AdminSubcategories />
                               </Suspense>
                             } />
                             <Route path="combo-offers" element={
@@ -484,11 +496,11 @@ export default function App() {
                     <CartDrawer />
                   </div>
                 </AuthLoadingGuard>
-              </BrowserRouter>
-              <Toaster />
-            </CartProvider>
-          </AdminProvider>
-        </AuthProvider>
+                <Toaster />
+              </CartProvider>
+            </AdminProvider>
+          </AuthProvider>
+        </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>
   );

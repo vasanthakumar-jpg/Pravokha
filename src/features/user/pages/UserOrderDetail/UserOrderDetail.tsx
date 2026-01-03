@@ -25,6 +25,7 @@ import { cn } from "@/lib/utils";
 
 interface OrderItem {
    id: string;
+   productId?: string;
    title: string;
    colorName?: string;
    size?: string;
@@ -113,17 +114,34 @@ export default function UserOrderDetail() {
 
    const handleConfirmCancellation = async (reason: string, comments: string) => {
       try {
-         // @ts-ignore
-         const { data, error } = await supabase.rpc('cancel_order', {
-            p_order_id: orderId,
-            p_reason: reason,
-            p_comments: comments
-         });
-
-         if (error) throw error;
-
          const fullReason = comments ? `${reason}: ${comments}` : reason;
 
+         // 1. Update Order Status
+         const { error: updateError } = await supabase
+            .from('orders')
+            .update({
+               order_status: 'cancelled',
+               notes: `Cancelled by customer. Reason: ${fullReason}`
+            })
+            .eq('id', orderId);
+
+         if (updateError) throw updateError;
+
+         // 2. Add to Order History
+         const { error: historyError } = await supabase
+            .from('order_history' as any)
+            .insert({
+               order_id: orderId,
+               new_status: 'cancelled',
+               description: `Order cancelled by customer. Reason: ${fullReason}`,
+               created_at: new Date().toISOString()
+            });
+
+         if (historyError) {
+            console.warn("Failed to update history, but order was cancelled", historyError);
+         }
+
+         // 3. Notify relevant parties
          // Email notification (optional if edge function handles it)
          supabase.functions.invoke('send-cancellation-notification', {
             body: {
@@ -181,7 +199,7 @@ export default function UserOrderDetail() {
 
          toast({
             title: "Order Cancelled",
-            description: (data as any)?.message || "Your order has been cancelled successfully.",
+            description: "Your order has been cancelled successfully.",
          });
          loadOrder(); // Refresh to see updated status and history
 
@@ -313,14 +331,14 @@ export default function UserOrderDetail() {
          {/* Premium Header */}
          {/* Header */}
          <div className="mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-            <div>
+            <div className="w-full">
                <Button variant="ghost" onClick={() => navigate('/seller/orders')} className="pl-0 text-muted-foreground hover:text-foreground -ml-2 mb-2">
                   <ArrowLeft className="h-4 w-4 mr-2" />
                   Back to Orders
                </Button>
-               <div className="flex items-center gap-3">
-                  <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Order #{order.order_number}</h1>
-                  <Badge className={cn("text-white h-6 sm:h-7 px-2.5 sm:px-3 text-xs sm:text-sm font-medium",
+               <div className="flex items-center justify-between gap-2 w-full">
+                  <h1 className="text-sm sm:text-2xl md:text-3xl font-bold tracking-tight break-all sm:break-normal">Order #{order.order_number}</h1>
+                  <Badge className={cn("text-white h-5 sm:h-7 px-2 sm:px-3 text-[10px] sm:text-sm font-medium whitespace-nowrap",
                      order.order_status === 'delivered' ? "bg-green-600" :
                         order.order_status === 'cancelled' ? "bg-red-600" :
                            "bg-primary"
@@ -408,32 +426,49 @@ export default function UserOrderDetail() {
                   <CardHeader>
                      <CardTitle className="text-lg">Items in your order</CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-6">
-                     {items.map((item: OrderItem, idx: number) => (
-                        <div key={idx} className="flex gap-4 p-4 rounded-xl border bg-card hover:shadow-sm transition-all">
-                           <div className="h-24 w-24 flex-shrink-0 overflow-hidden rounded-md border border-gray-200">
-                              {item.image ? (
-                                 <img src={item.image} alt={item.title} className="h-full w-full object-cover object-center" />
-                              ) : (
-                                 <div className="flex h-full w-full items-center justify-center bg-gray-100">
-                                    <ShoppingBag className="h-8 w-8 text-gray-400" />
-                                 </div>
-                              )}
-                           </div>
-                           <div className="flex flex-1 flex-col">
-                              <div>
-                                 <div className="flex justify-between text-base font-medium text-gray-900 dark:text-gray-100">
-                                    <h3 className="line-clamp-2">{item.title}</h3>
-                                    <p className="ml-4">₹{(item.price * item.quantity).toLocaleString()}</p>
-                                 </div>
-                                 <p className="mt-1 text-sm text-gray-500">{item.colorName} {item.size ? `• Size ${item.size}` : ''}</p>
+                  <CardContent className="space-y-4">
+                     {items.map((item: any, idx: number) => {
+                        // Robust ID extraction: check new productId, then product_id, then id
+                        const productId = item.productId || item.product_id || item.id;
+                        return (
+                           <div
+                              key={idx}
+                              className="flex gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl border bg-card hover:bg-muted/30 transition-all cursor-pointer group"
+                              onClick={() => navigate(`/product/${productId}`)}
+                           >
+                              <div className="h-20 w-20 sm:h-24 sm:w-24 flex-shrink-0 overflow-hidden rounded-md border border-gray-200">
+                                 {item.image ? (
+                                    <img src={item.image} alt={item.title} className="h-full w-full object-cover object-center group-hover:scale-105 transition-transform duration-300" />
+                                 ) : (
+                                    <div className="flex h-full w-full items-center justify-center bg-gray-100">
+                                       <ShoppingBag className="h-8 w-8 text-gray-400" />
+                                    </div>
+                                 )}
                               </div>
-                              <div className="flex flex-1 items-end justify-between text-sm">
-                                 <p className="text-gray-500">Qty {item.quantity}</p>
+                              <div className="flex flex-1 flex-col min-w-0">
+                                 <div className="flex flex-col sm:flex-row sm:justify-between items-start gap-1 sm:gap-4">
+                                    <h3 className="text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100 line-clamp-2 group-hover:text-primary transition-colors leading-tight">
+                                       {item.title}
+                                    </h3>
+                                    <p className="text-sm sm:text-base font-bold whitespace-nowrap">
+                                       ₹{(item.price * item.quantity).toLocaleString()}
+                                    </p>
+                                 </div>
+                                 <p className="mt-1 text-xs sm:text-sm text-muted-foreground truncate">
+                                    {item.colorName} {item.size ? `• Size ${item.size}` : ''}
+                                 </p>
+                                 <div className="flex flex-1 items-end justify-between text-xs sm:text-sm mt-2">
+                                    <p className="text-muted-foreground font-medium bg-muted/50 px-2 py-0.5 rounded">
+                                       Qty {item.quantity}
+                                    </p>
+                                    <span className="text-primary text-[10px] font-bold uppercase tracking-wider opacity-0 group-hover:opacity-100 transition-opacity">
+                                       View Product →
+                                    </span>
+                                 </div>
                               </div>
                            </div>
-                        </div>
-                     ))}
+                        );
+                     })}
                   </CardContent>
                </Card>
             </div>
@@ -521,16 +556,18 @@ export default function UserOrderDetail() {
             </div>
          </div>
 
-         {order && (
-            <OrderCancellationReasonDialog
-               open={isCancellationOpen}
-               onOpenChange={setIsCancellationOpen}
-               onConfirm={handleConfirmCancellation}
-               orderNumber={order.order_number}
-               orderAmount={total}
-               isPrepaid={order.payment_status === 'paid'}
-            />
-         )}
-      </div>
+         {
+            order && (
+               <OrderCancellationReasonDialog
+                  open={isCancellationOpen}
+                  onOpenChange={setIsCancellationOpen}
+                  onConfirm={handleConfirmCancellation}
+                  orderNumber={order.order_number}
+                  orderAmount={total}
+                  isPrepaid={order.payment_status === 'paid'}
+               />
+            )
+         }
+      </div >
    );
 }

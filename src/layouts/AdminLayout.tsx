@@ -89,6 +89,7 @@ const navSections: NavSection[] = [
     links: [
       { title: "Products", href: "/admin/products/manage", icon: <Package className="h-4 w-4" /> },
       { title: "Categories", href: "/admin/categories", icon: <LayoutDashboard className="h-4 w-4" /> },
+      { title: "Subcategories", href: "/admin/subcategories", icon: <ShoppingBag className="h-4 w-4" /> },
       { title: "Offers", href: "/admin/combo-offers", icon: <Plus className="h-4 w-4" /> },
     ]
   },
@@ -96,6 +97,7 @@ const navSections: NavSection[] = [
     title: "System",
     links: [
       { title: "Payments", href: "/admin/payments", icon: <CreditCard className="h-4 w-4" /> },
+      { title: "Tickets", href: "/admin/tickets", icon: <Shield className="h-4 w-4" /> },
       { title: "Users", href: "/admin/users", icon: <UserCog className="h-4 w-4" /> },
       { title: "Audit Logs", href: "/admin/audit-logs", icon: <Shield className="h-4 w-4" /> },
       { title: "Suspended Tickets", href: "/admin/tickets/suspended", icon: <ShieldAlert className="h-4 w-4" /> },

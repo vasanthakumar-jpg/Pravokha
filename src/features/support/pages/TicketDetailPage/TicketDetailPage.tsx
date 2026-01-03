@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { Loader2, Send, ArrowLeft, Clock, Shield, Paperclip, Lock, ShieldAlert, MessageSquare, Check } from "lucide-react";
+import { Loader2, Send, ArrowLeft, Clock, Shield, Paperclip, Lock, ShieldAlert, MessageSquare, Check, AlertCircle } from "lucide-react";
 
 interface Ticket {
     id: string;
@@ -53,6 +53,9 @@ export function TicketDetailPage() {
 
     const [isAdmin, setIsAdmin] = useState(false);
     const [ticketUser, setTicketUser] = useState<any>(null);
+    const hasSuspendedMessage = useMemo(() => {
+        return messages.some(m => m.message.includes("⚠️ [Message Suspended]") || (m as any).status === 'suspended');
+    }, [messages]);
 
     useEffect(() => {
         if (messages.length > 0 && user) {
@@ -333,6 +336,19 @@ export function TicketDetailPage() {
                 </Card>
             )}
 
+            {hasSuspendedMessage && !isAdmin && (
+                <div className="mb-6 bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3 shadow-sm animate-in fade-in slide-in-from-top-2 duration-500">
+                    <AlertCircle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+                    <div className="space-y-1">
+                        <p className="text-sm font-bold text-amber-900">Information Privacy Guard</p>
+                        <p className="text-xs text-amber-700 leading-relaxed font-medium">
+                            A message from our support team was flagged for sensitive content and is currently hidden.
+                            If this message is critical to your request, please contact platform operations.
+                        </p>
+                    </div>
+                </div>
+            )}
+
             {isAdmin && ticketUser && (
                 <div className="mb-6 bg-primary/[0.03] border border-primary/10 rounded-2xl p-3 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                     <div className="flex items-center gap-2 sm:gap-3">
@@ -345,12 +361,12 @@ export function TicketDetailPage() {
                             </AvatarFallback>
                         </Avatar>
                         <div>
-                            <p className="text-xs sm:text-sm font-bold flex flex-wrap items-center gap-1.5 sm:gap-2">
+                            <div className="text-xs sm:text-sm font-bold flex flex-wrap items-center gap-1.5 sm:gap-2">
                                 {ticketUser.full_name}
                                 {ticketUser.status === 'suspended' && (
                                     <Badge variant="destructive" className="h-4 sm:h-5 text-[8px] sm:text-[9px] font-bold capitalize px-1.5 sm:px-2 animate-pulse">Restricted</Badge>
                                 )}
-                            </p>
+                            </div>
                             <p className="text-[10px] sm:text-xs text-muted-foreground truncate max-w-[140px] sm:max-w-none">{ticketUser.email}</p>
                         </div>
                     </div>

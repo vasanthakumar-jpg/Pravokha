@@ -125,6 +125,17 @@ export function Navbar() {
         debouncedSearch(searchQuery);
     }, [searchQuery, debouncedSearch]);
 
+    useEffect(() => {
+        if (isSuspended) {
+            toast({
+                title: "Regulatory Restriction Active",
+                description: "Your account is currently under suspension. Access is limited to verification and appeals.",
+                variant: "destructive",
+                duration: 10000,
+            });
+        }
+    }, [isSuspended]);
+
     const handleSearchInput = (value: string) => {
         setSearchQuery(value);
         debouncedSearch(value);

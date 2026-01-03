@@ -113,26 +113,23 @@ export const ProfileForm = ({ profile, updateProfile, loading, strength }: Profi
               </div>
             </div>
             <ul className="space-y-3 text-sm text-muted-foreground">
-              <li className={`flex items-center gap-3 p-2 rounded-lg transition-colors ${checks.emailVerified ? 'text-primary bg-primary/10' : 'bg-background/50'}`}>
-                {checks.emailVerified ? <Check className="h-4 w-4 shrink-0" /> : <div className="h-4 w-4 border-2 border-muted rounded-full shrink-0" />}
-                Email Verified
-              </li>
-              <li className={`flex items-center gap-3 p-2 rounded-lg transition-colors ${checks.phoneVerified ? 'text-primary bg-primary/10' : 'bg-background/50'}`}>
-                {checks.phoneVerified ? <Check className="h-4 w-4 shrink-0" /> : <div className="h-4 w-4 border-2 border-muted rounded-full shrink-0" />}
-                Phone Added
-              </li>
-              <li className={`flex items-center gap-3 p-2 rounded-lg transition-colors ${checks.hasAddress ? 'text-primary bg-primary/10' : 'bg-background/50'}`}>
-                {checks.hasAddress ? <Check className="h-4 w-4 shrink-0" /> : <div className="h-4 w-4 border-2 border-muted rounded-full shrink-0" />}
-                Add Address
-              </li>
-              <li className={`flex items-center gap-3 p-2 rounded-lg transition-colors ${checks.hasPayment ? 'text-primary bg-primary/10' : 'bg-background/50'}`}>
-                {checks.hasPayment ? <Check className="h-4 w-4 shrink-0" /> : <div className="h-4 w-4 border-2 border-muted rounded-full shrink-0" />}
-                Add Payment Method
-              </li>
-              <li className={`flex items-center gap-3 p-2 rounded-lg transition-colors ${checks.hasBio ? 'text-primary bg-primary/10' : 'bg-background/50'}`}>
-                {checks.hasBio ? <Check className="h-4 w-4 shrink-0" /> : <div className="h-4 w-4 border-2 border-muted rounded-full shrink-0" />}
-                Fill Bio
-              </li>
+              {[
+                { checked: checks.emailVerified, done: "Email Verified", todo: "Verify Email" },
+                { checked: checks.phoneVerified, done: "Phone Added", todo: "Add Phone Number" },
+                { checked: checks.hasAddress, done: "Address Added", todo: "Add Address" },
+                { checked: checks.hasPayment, done: "Payment Method Added", todo: "Add Payment Method" },
+                { checked: checks.hasAvatar, done: "Profile Photo Added", todo: "Upload Profile Photo" },
+                { checked: checks.hasBio, done: "Bio Added", todo: "Fill Bio" },
+                { checked: checks.hasDob, done: "Date of Birth Added", todo: "Add Date of Birth" }
+              ].map((item, i) => (
+                <li key={i} className={`flex items-center gap-3 p-2 rounded-lg transition-colors ${item.checked ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/10' : 'text-amber-600 bg-amber-50 dark:bg-amber-900/10 font-medium'}`}>
+                  {item.checked ?
+                    <div className="bg-emerald-100 dark:bg-emerald-900/30 p-1 rounded-full"><Check className="h-3 w-3" /></div> :
+                    <div className="h-5 w-5 border-2 border-amber-300 dark:border-amber-700 rounded-full shrink-0 flex items-center justify-center text-[8px] text-amber-600">!</div>
+                  }
+                  {item.checked ? item.done : item.todo}
+                </li>
+              ))}
             </ul>
           </div>
         </CardContent>

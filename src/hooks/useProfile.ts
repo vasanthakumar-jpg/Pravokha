@@ -1,6 +1,7 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Profile {
   id: string;
@@ -18,6 +19,7 @@ interface Profile {
 
 export function useProfile(userId: string | undefined) {
   const queryClient = useQueryClient();
+  const { refreshProfile } = useAuth();
 
   const { data: profile, isLoading: loading, refetch } = useQuery({
     queryKey: ["profile", userId],
@@ -51,12 +53,14 @@ export function useProfile(userId: string | undefined) {
     try {
       const { error } = await supabase
         .from("profiles")
-        .upsert({ id: userId, ...updates, updated_at: new Date().toISOString() })
+        .update({ ...updates, updated_at: new Date().toISOString() })
+        .eq("id", userId);
 
       if (error) throw error;
 
       // Invalidate query to trigger re-fetch everywhere
       queryClient.invalidateQueries({ queryKey: ["profile", userId] });
+      await refreshProfile();
       return true;
     } catch (error) {
       console.error("Error updating profile:", error);

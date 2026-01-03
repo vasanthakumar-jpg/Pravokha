@@ -11,6 +11,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import styles from "./ProductCard.module.css";
 import { cn } from "@/lib/utils";
+import { useRecentlyViewed } from "@/hooks/useRecentlyViewed";
+import { Eye } from "lucide-react";
 
 interface ProductCardProps {
     product: Product;
@@ -23,6 +25,8 @@ export function ProductCard({ product }: ProductCardProps) {
     const [, setUser] = useState<any>(null);
     const [isTogglingWishlist, setIsTogglingWishlist] = useState(false);
     const [showBlinkAnimation, setShowBlinkAnimation] = useState(false);
+    const { recentlyViewed } = useRecentlyViewed();
+    const isRecentlyViewed = recentlyViewed.some(p => p.id === product.id);
 
     useEffect(() => {
         checkWishlistStatus();
@@ -193,6 +197,13 @@ export function ProductCard({ product }: ProductCardProps) {
                         )}
                     />
                 </button>
+
+                {isRecentlyViewed && (
+                    <div className={styles.recentlyViewed} title="You viewed this product recently">
+                        <Eye className={styles.recentlyViewedIcon} />
+                        <span>Viewed</span>
+                    </div>
+                )}
             </div>
 
             <CardContent className={styles.content}>

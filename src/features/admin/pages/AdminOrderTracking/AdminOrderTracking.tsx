@@ -167,6 +167,25 @@ export default function AdminOrderTracking() {
 
       if (error) throw error;
 
+      // Add to Order History
+      await supabase.from('order_history' as any).insert({
+        order_id: selectedOrder.id,
+        new_status: newStatus,
+        description: statusNote || `Lifecycle stage updated to ${newStatus} by Admin`,
+        created_at: new Date().toISOString()
+      });
+
+      // Audit Logging
+      await supabase.from('audit_logs').insert({
+        actor_id: (await supabase.auth.getUser()).data.user?.id,
+        target_id: selectedOrder.id,
+        target_type: 'order',
+        action_type: 'order_status_update',
+        severity: 'info',
+        description: `Order #${selectedOrder.order_number} status updated to "${newStatus}" by Admin.`,
+        metadata: { status: newStatus, order_number: selectedOrder.order_number, note: statusNote }
+      });
+
       toast({
         title: "Status Transmitted",
         description: `Order #${selectedOrder.order_number} shifted to ${newStatus}.`,
@@ -376,12 +395,12 @@ export default function AdminOrderTracking() {
                     </TableCell>
                     <TableCell className="text-right pr-6">
                       <Button
-                        variant="ghost"
+                        variant="outline"
                         size="sm"
-                        className="rounded-xl h-9 hover:bg-primary hover:text-white transition-all gap-2 font-bold text-xs px-4"
+                        className="rounded-xl h-8 hover:bg-primary hover:text-white transition-all gap-1.5 font-bold text-[10px] px-3 border-border/50"
                         onClick={() => { setSelectedOrder(order); setShowDetailSheet(true); }}
                       >
-                        <Settings2 className="h-4 w-4" /> Manage
+                        <Settings2 className="h-3.5 w-3.5" /> Manage
                       </Button>
                     </TableCell>
                   </TableRow>

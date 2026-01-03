@@ -277,6 +277,14 @@ export default function AdminProductsManagement() {
               Export CSV
             </Button>
             <Button
+              onClick={() => navigate("/admin/products/updates")}
+              variant="outline"
+              className="flex-1 sm:flex-none h-8 sm:h-10 rounded-xl border-amber-200 bg-amber-50/50 text-amber-700 hover:bg-amber-100 font-bold text-xs"
+            >
+              <ShieldCheck className="h-4 w-4 mr-2" />
+              Update Requests
+            </Button>
+            <Button
               onClick={() => navigate("/admin/products/add")}
               className="flex-1 sm:flex-none h-8 sm:h-10 rounded-xl font-bold text-xs bg-primary hover:bg-primary/90 shadow-md shadow-primary/20"
             >

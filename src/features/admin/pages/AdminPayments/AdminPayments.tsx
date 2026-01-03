@@ -17,6 +17,9 @@ import {
   Sheet,
   SheetContent,
   SheetClose,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
 } from "@/components/ui/Sheet";
 import {
   CreditCard,
@@ -41,6 +44,8 @@ import {
   Activity,
   ArrowLeft,
   RefreshCcw,
+  Loader2,
+  X
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -512,11 +517,17 @@ export default function AdminPayments() {
             </div>
             <div className="flex items-center gap-2 w-full sm:w-auto">
               <Button
-                variant="outline"
-                className="flex-1 sm:flex-none h-10 rounded-xl border-border/40 bg-card/20 backdrop-blur-sm font-bold text-xs"
-                onClick={() => fetchData()}
+                disabled={loading}
+                onClick={() => {
+                  fetchData();
+                  toast({
+                    title: "Ledger Refreshed",
+                    description: "Transactions and payout queues are up to date.",
+                    className: "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800"
+                  });
+                }}
               >
-                <RefreshCcw className="mr-2 h-4 w-4" /> Refresh Ledger
+                <RefreshCcw className={cn("mr-2 h-4 w-4", loading && "animate-spin")} /> Refresh Ledger
               </Button>
               <Button className="flex-1 sm:flex-none h-10 rounded-xl font-bold text-xs bg-primary hover:bg-primary/90 shadow-md shadow-primary/20">
                 <Download className="mr-2 h-4 w-4" /> Export Report
@@ -827,7 +838,14 @@ export default function AdminPayments() {
                     </TableHeader>
                     <TableBody>
                       {loading ? (
-                        <TableRow><TableCell colSpan={8}><div className="h-32 bg-muted/10 animate-pulse rounded-lg" /></TableCell></TableRow>
+                        <TableRow>
+                          <TableCell colSpan={8} className="h-64">
+                            <div className="flex flex-col items-center justify-center gap-3">
+                              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                              <p className="text-xs font-bold text-muted-foreground animate-pulse">Synchronizing Ledger...</p>
+                            </div>
+                          </TableCell>
+                        </TableRow>
                       ) : transactions.length === 0 ? (
                         <TableRow><TableCell colSpan={8} className="text-center py-10 text-muted-foreground italic">No transactions captured.</TableCell></TableRow>
                       ) : (
@@ -971,7 +989,14 @@ export default function AdminPayments() {
                     </TableHeader>
                     <TableBody>
                       {loading ? (
-                        <TableRow><TableCell colSpan={6}><div className="h-32 bg-muted/10 animate-pulse rounded-lg" /></TableCell></TableRow>
+                        <TableRow>
+                          <TableCell colSpan={6} className="h-64">
+                            <div className="flex flex-col items-center justify-center gap-3">
+                              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                              <p className="text-xs font-bold text-muted-foreground animate-pulse">Reconciling Payouts...</p>
+                            </div>
+                          </TableCell>
+                        </TableRow>
                       ) : payoutRequests.length === 0 ? (
                         <TableRow><TableCell colSpan={6} className="text-center py-10 text-muted-foreground italic">No payout requests in queue.</TableCell></TableRow>
                       ) : (
@@ -1048,6 +1073,11 @@ export default function AdminPayments() {
               <>
                 {/* Header with gradient */}
                 <div className="bg-gradient-to-br from-primary via-primary/90 to-primary/80 text-primary-foreground p-6 text-center">
+                  {/* Accessibility Fix: Hidden Title & Description for Screen Readers/DialogContent compliance */}
+                  <SheetHeader className="sr-only">
+                    <SheetTitle>Order Details</SheetTitle>
+                    <SheetDescription>Detailed view of order #{selectedTransaction.order_number}</SheetDescription>
+                  </SheetHeader>
                   <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center mx-auto mb-3">
                     <Package className="h-7 w-7 text-white" />
                   </div>

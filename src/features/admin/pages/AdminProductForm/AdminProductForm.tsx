@@ -45,6 +45,7 @@ import {
 
 // -- Types --
 interface ColorOption {
+    id: string; // Internal UUID for linkage
     name: string;
     hex: string;
 }
@@ -54,7 +55,9 @@ interface ProductFormData {
     slug: string;
     sku: string;
     description: string;
-    category: string;
+    category: string; // Keep for backward compat (slug)
+    selectedCategoryId: string; // UUID
+    selectedSubcategoryId: string; // UUID
     price: string;
     discountPrice: string;
     stockQuantity: string;
@@ -63,9 +66,13 @@ interface ProductFormData {
     selectedSizes: string[];
     sizeStock: Record<string, number>;
     unavailableVariants: string[];
-    images: File[];
-    imagePreviews: string[];
-    existingImages: string[];
+
+    // Per-Variant Image State
+    variantImages: Record<string, File[]>; // Key: ColorOption.id
+    variantPreviews: Record<string, string[]>; // Key: ColorOption.id
+    existingVariantImages: Record<string, string[]>; // Key: ColorOption.id
+    imagesToDelete: string[]; // Cleanup queue
+
     is_new?: boolean;
     is_featured?: boolean;
     is_verified?: boolean;
@@ -77,6 +84,8 @@ const INITIAL_FORM_DATA: ProductFormData = {
     sku: "",
     description: "",
     category: "",
+    selectedCategoryId: "",
+    selectedSubcategoryId: "",
     price: "",
     discountPrice: "",
     stockQuantity: "0",
@@ -85,9 +94,12 @@ const INITIAL_FORM_DATA: ProductFormData = {
     selectedSizes: [],
     sizeStock: {},
     unavailableVariants: [],
-    images: [],
-    imagePreviews: [],
-    existingImages: [],
+
+    variantImages: {},
+    variantPreviews: {},
+    existingVariantImages: {},
+    imagesToDelete: [],
+
     is_new: false,
     is_featured: false,
     is_verified: false,
@@ -107,8 +119,38 @@ export default function AdminProductForm() {
     const [isSaving, setIsSaving] = useState(false);
     const [activeTab, setActiveTab] = useState("general");
     const [errors, setErrors] = useState<Record<string, string>>({});
+    const [dbCategories, setDbCategories] = useState<{ id: string; name: string; slug: string }[]>([]);
+    const [dbSubcategories, setDbSubcategories] = useState<{ id: string; name: string; slug: string; category_id: string }[]>([]);
+    const [isLoadingSubcategories, setIsLoadingSubcategories] = useState(false);
+    const [subcategoryWarning, setSubcategoryWarning] = useState("");
 
-    // -- Fetch Data --
+    // Fetch categories and subcategories hierarchy
+    useEffect(() => {
+        const fetchHierarchy = async () => {
+            try {
+                const { data: cats } = await supabase
+                    .from("categories")
+                    .select("id, name, slug")
+                    .eq("status", "active")
+                    .order("display_order");
+
+                setDbCategories(cats || []);
+
+                const { data: subs } = await supabase
+                    .from("subcategories")
+                    .select("id, name, slug, category_id")
+                    .eq("status", "active")
+                    .order("display_order");
+
+                setDbSubcategories(subs || []);
+            } catch (err) {
+                console.error("[AdminProductForm] Error fetching hierarchy:", err);
+            }
+        };
+        fetchHierarchy();
+    }, []);
+
+    // -- Fetch Product Data --
     useEffect(() => {
         const fetchProduct = async () => {
             if (!id) {
@@ -122,6 +164,7 @@ export default function AdminProductForm() {
                     .from("products")
                     .select("*, product_variants(*, product_sizes(*))")
                     .eq("id", id)
+                    .is("deleted_at", null)
                     .single();
 
                 if (error) {
@@ -131,18 +174,26 @@ export default function AdminProductForm() {
 
                 const colors: ColorOption[] = [];
                 const sizes: string[] = [];
-                const existingImages: string[] = [];
+                const existingVariantImages: Record<string, string[]> = {};
                 const sizeStockMap: Record<string, number> = {};
                 let totalStock = 0;
 
                 if (product.product_variants) {
                     product.product_variants.forEach((v: any) => {
-                        if (!colors.some(c => c.name === v.color_name)) {
-                            colors.push({ name: v.color_name, hex: v.color_hex });
+                        // Stable ID logic
+                        let colorId = v.id;
+                        const existingColor = colors.find(c => c.name === v.color_name);
+
+                        if (!existingColor) {
+                            colors.push({ id: colorId, name: v.color_name, hex: v.color_hex });
+                            existingVariantImages[colorId] = v.images || [];
+                        } else {
+                            colorId = existingColor.id;
+                            v.images?.forEach((img: string) => {
+                                if (!existingVariantImages[colorId].includes(img)) existingVariantImages[colorId].push(img);
+                            });
                         }
-                        if (v.images) v.images.forEach((img: string) => {
-                            if (!existingImages.includes(img)) existingImages.push(img);
-                        });
+
                         if (v.product_sizes) {
                             v.product_sizes.forEach((s: any) => {
                                 if (!sizes.includes(s.size)) sizes.push(s.size);
@@ -160,6 +211,8 @@ export default function AdminProductForm() {
                     sku: product.sku || "",
                     description: product.description || "",
                     category: product.category || "",
+                    selectedCategoryId: "", // Will be set by separate effect
+                    selectedSubcategoryId: product.subcategory_id || "",
                     price: product.price?.toString() || "",
                     discountPrice: product.discount_price?.toString() || "",
                     stockQuantity: totalStock.toString(),
@@ -171,9 +224,11 @@ export default function AdminProductForm() {
                     selectedSizes: sizes,
                     sizeStock: sizeStockMap,
                     unavailableVariants: [],
-                    images: [],
-                    imagePreviews: [],
-                    existingImages: existingImages
+
+                    variantImages: {},
+                    variantPreviews: {},
+                    existingVariantImages: existingVariantImages,
+                    imagesToDelete: [],
                 });
 
             } catch (error: any) {
@@ -192,52 +247,108 @@ export default function AdminProductForm() {
                 navigate("/auth");
             }
         }
-    }, [id, authLoading, adminLoading, isAdmin, navigate]);
+    }, [id, authLoading, adminLoading, isAdmin, navigate, toast]);
+
+    // Pre-populate category ID after categories are loaded
+    useEffect(() => {
+        if (!formData.category || dbCategories.length === 0) return;
+
+        const cat = dbCategories.find(c => c.slug === formData.category);
+        if (cat && cat.id !== formData.selectedCategoryId) {
+            console.log(`[AdminProductForm] Pre-populating category: ${cat.name} (${cat.id})`);
+            setFormData(prev => ({ ...prev, selectedCategoryId: cat.id }));
+        }
+    }, [dbCategories, formData.category, formData.selectedCategoryId]);
 
     const handleChange = (field: keyof ProductFormData, value: any) => {
         setFormData(prev => ({ ...prev, [field]: value }));
     };
 
-    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Handle category change with subcategory reset
+    const handleCategoryChange = (categoryId: string) => {
+        const selectedCat = dbCategories.find(c => c.id === categoryId);
+        handleChange('selectedCategoryId', categoryId);
+        handleChange('category', selectedCat?.slug || '');
+        handleChange('selectedSubcategoryId', ''); // Reset subcategory
+        setSubcategoryWarning("");
+
+        // Check if category has subcategories
+        const hasSubcategories = dbSubcategories.some(s => s.category_id === categoryId);
+        if (hasSubcategories) {
+            setSubcategoryWarning("This category has subcategories. Please select one for better product organization.");
+        }
+    };
+
+    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, colorId: string) => {
         const files = e.target.files;
         if (files) {
             const newFiles = Array.from(files);
             const newPreviews = newFiles.map(file => URL.createObjectURL(file));
             setFormData(prev => ({
                 ...prev,
-                images: [...prev.images, ...newFiles],
-                imagePreviews: [...prev.imagePreviews, ...newPreviews],
+                variantImages: {
+                    ...prev.variantImages,
+                    [colorId]: [...(prev.variantImages[colorId] || []), ...newFiles]
+                },
+                variantPreviews: {
+                    ...prev.variantPreviews,
+                    [colorId]: [...(prev.variantPreviews[colorId] || []), ...newPreviews]
+                },
             }));
         }
     };
 
-    const removeImage = (index: number, type: 'new' | 'existing') => {
+    const removeImage = (index: number, type: 'new' | 'existing', colorId: string) => {
         if (type === 'new') {
             setFormData(prev => ({
                 ...prev,
-                images: prev.images.filter((_, i) => i !== index),
-                imagePreviews: prev.imagePreviews.filter((_, i) => i !== index),
+                variantImages: {
+                    ...prev.variantImages,
+                    [colorId]: prev.variantImages[colorId]?.filter((_, i) => i !== index) || []
+                },
+                variantPreviews: {
+                    ...prev.variantPreviews,
+                    [colorId]: prev.variantPreviews[colorId]?.filter((_, i) => i !== index) || []
+                }
             }));
         } else {
-            setFormData(prev => ({
-                ...prev,
-                existingImages: prev.existingImages.filter((_, i) => i !== index),
-            }));
+            setFormData(prev => {
+                const imageToDelete = prev.existingVariantImages[colorId]?.[index];
+                const newDeletedList = imageToDelete
+                    ? [...prev.imagesToDelete, imageToDelete]
+                    : prev.imagesToDelete;
+
+                return {
+                    ...prev,
+                    existingVariantImages: {
+                        ...prev.existingVariantImages,
+                        [colorId]: prev.existingVariantImages[colorId]?.filter((_, i) => i !== index) || []
+                    },
+                    imagesToDelete: newDeletedList
+                };
+            });
         }
     };
 
     const toggleSelection = (list: any[], item: any, field: 'selectedSizes' | 'selectedColors') => {
         setFormData(prev => {
             const currentList = prev[field] as any[];
-            const exists = field === 'selectedColors'
-                ? currentList.some((c: any) => c.name === item.name)
-                : currentList.includes(item);
+            let exists = false;
+
+            if (field === 'selectedColors') {
+                exists = currentList.some((c: any) => c.name === item.name || c.id === item.id);
+            } else {
+                exists = currentList.includes(item);
+            }
 
             let newList;
+            // For colors, if we are removing, we need to match by ID if present or name
             if (exists) {
-                newList = field === 'selectedColors'
-                    ? currentList.filter((c: any) => c.name !== item.name)
-                    : currentList.filter((i: any) => i !== item);
+                if (field === 'selectedColors') {
+                    newList = currentList.filter((c: any) => c.id !== item.id && c.name !== item.name);
+                } else {
+                    newList = currentList.filter((i: any) => i !== item);
+                }
             } else {
                 newList = [...currentList, item];
             }
@@ -255,11 +366,32 @@ export default function AdminProductForm() {
         if (Number(formData.price) <= 0) {
             newErrors.price = "Economic constraint violation: Price must be greater than 0.";
         }
+        if (!formData.selectedCategoryId) {
+            newErrors.category = "Category selection is required for proper product taxonomy.";
+        }
+        if (!formData.selectedSubcategoryId) {
+            newErrors.subcategory = "Subcategory is required for proper product organization.";
+        }
         if (formData.selectedColors.length === 0) {
             newErrors.colors = "Variant Matrix Incomplete: At least one color must be selected.";
         }
         if (formData.selectedSizes.length === 0) {
             newErrors.sizes = "Variant Matrix Incomplete: At least one size must be selected.";
+        }
+
+        // Validate Images per Variant
+        let missingImages = false;
+        formData.selectedColors.forEach(color => {
+            const existing = formData.existingVariantImages[color.id] || [];
+            const newImgs = formData.variantImages[color.id] || [];
+            if (existing.length + newImgs.length === 0) {
+                missingImages = true;
+            }
+        });
+
+        if (missingImages) {
+            newErrors.images = "Visual Assets Incomplete: Each color variant must have at least one image.";
+            toast({ title: "Missing Images", description: "Each color variant must have at least one image.", variant: "destructive" });
         }
 
         if (Object.keys(newErrors).length > 0) {
@@ -269,6 +401,7 @@ export default function AdminProductForm() {
             // Auto-switch to the tab with errors
             if (newErrors.title || newErrors.price) setActiveTab("general");
             else if (newErrors.colors || newErrors.sizes) setActiveTab("inventory");
+            else if (newErrors.images) setActiveTab("media");
 
             return;
         }
@@ -276,23 +409,13 @@ export default function AdminProductForm() {
         setErrors({});
         setIsSaving(true);
         try {
-            const newImageUrls: string[] = [];
-            for (const file of formData.images) {
-                const fileExt = file.name.split('.').pop();
-                const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-                const { error: uploadError } = await supabase.storage.from('products').upload(`products/${fileName}`, file);
-                if (uploadError) throw uploadError;
-                const { data: { publicUrl } } = supabase.storage.from('products').getPublicUrl(`products/${fileName}`);
-                newImageUrls.push(publicUrl);
-            }
-            const allImages = [...formData.existingImages, ...newImageUrls];
-
             const productPayload = {
                 title: formData.title,
                 slug: formData.slug || formData.title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
                 sku: formData.sku || `SKU-${Date.now()}`,
                 description: formData.description,
                 category: formData.category,
+                subcategory_id: formData.selectedSubcategoryId || null,
                 price: Number(formData.price),
                 discount_price: formData.discountPrice ? Number(formData.discountPrice) : null,
                 published: formData.published,
@@ -317,13 +440,32 @@ export default function AdminProductForm() {
                 productId = data.id;
             }
 
-            const colors = formData.selectedColors.length ? formData.selectedColors : [{ name: 'Default', hex: '#000000' }];
+            // Create Variants
+            const colors = formData.selectedColors.length ? formData.selectedColors : [];
+
             for (const color of colors) {
+                // Upload New Images for this Color
+                const colorFiles = formData.variantImages[color.id] || [];
+                const uploadedUrls: string[] = [];
+
+                for (const file of colorFiles) {
+                    const fileExt = file.name.split('.').pop();
+                    const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+                    const { error: uploadError } = await supabase.storage.from('products').upload(`products/${fileName}`, file);
+                    if (uploadError) throw uploadError;
+                    const { data: { publicUrl } } = supabase.storage.from('products').getPublicUrl(`products/${fileName}`);
+                    uploadedUrls.push(publicUrl);
+                }
+
+                // Combine with existing preserved images
+                const existingUrls = formData.existingVariantImages[color.id] || [];
+                const finalImages = [...existingUrls, ...uploadedUrls];
+
                 const { data: variant } = await supabase.from('product_variants').insert({
                     product_id: productId,
                     color_name: color.name,
                     color_hex: color.hex,
-                    images: allImages
+                    images: finalImages
                 }).select().single();
 
                 if (variant && formData.selectedSizes.length) {
@@ -340,9 +482,22 @@ export default function AdminProductForm() {
                 }
             }
 
+            // Cleanup Deleted Images (Storage)
+            if (formData.imagesToDelete.length > 0) {
+                const pathsToDelete = formData.imagesToDelete.map(url => {
+                    const parts = url.split('/products/');
+                    return parts.length > 1 ? `products/${parts[parts.length - 1]}` : null;
+                }).filter(p => p !== null) as string[];
+
+                if (pathsToDelete.length > 0) {
+                    await supabase.storage.from('products').remove(pathsToDelete);
+                }
+            }
+
             toast({ title: "Success", description: "Product saved successfully." });
             navigate("/admin/products/manage");
         } catch (error: any) {
+            console.error("Save Error:", error);
             toast({ title: "Save Failed", description: error.message, variant: "destructive" });
         } finally {
             setIsSaving(false);
@@ -549,13 +704,64 @@ export default function AdminProductForm() {
                                                 />
                                             </div>
                                             <div className="grid gap-2">
-                                                <Label className="text-xs font-bold text-muted-foreground">Taxonomy (Category)</Label>
-                                                <CategoryInput
-                                                    value={formData.category}
-                                                    onChange={v => handleChange('category', v)}
-                                                    placeholder="Search or select category..."
-                                                />
+                                                <Label className={cn("text-xs font-bold text-muted-foreground", errors.category && "text-rose-500")}>Product Category *</Label>
+                                                <Select
+                                                    value={formData.selectedCategoryId}
+                                                    onValueChange={handleCategoryChange}
+                                                >
+                                                    <SelectTrigger className={cn(
+                                                        "rounded-xl border-border/50 h-11",
+                                                        errors.category && "border-rose-500 bg-rose-500/5"
+                                                    )}>
+                                                        <SelectValue placeholder="Select a category" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {dbCategories.map(cat => (
+                                                            <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                                {errors.category && <p className="text-[10px] font-bold text-rose-500 animate-in fade-in">{errors.category}</p>}
                                             </div>
+
+                                            {formData.selectedCategoryId && (
+                                                <div className="grid gap-2">
+                                                    <Label className={cn("text-xs font-bold text-muted-foreground", errors.subcategory && "text-rose-500")}>
+                                                        Subcategory *
+                                                    </Label>
+                                                    <Select
+                                                        value={formData.selectedSubcategoryId}
+                                                        onValueChange={(v) => {
+                                                            handleChange('selectedSubcategoryId', v);
+                                                            setSubcategoryWarning("");
+                                                            if (errors.subcategory) setErrors(prev => ({ ...prev, subcategory: "" }));
+                                                        }}
+                                                        disabled={isLoadingSubcategories || !formData.selectedCategoryId}
+                                                    >
+                                                        <SelectTrigger className={cn(
+                                                            "rounded-xl border-border/50 h-11",
+                                                            errors.subcategory && "border-rose-500 bg-rose-500/5"
+                                                        )}>
+                                                            <SelectValue placeholder="Select a subcategory" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            {dbSubcategories
+                                                                .filter(sub => sub.category_id === formData.selectedCategoryId)
+                                                                .map(sub => (
+                                                                    <SelectItem key={sub.id} value={sub.id}>{sub.name}</SelectItem>
+                                                                ))
+                                                            }
+                                                        </SelectContent>
+                                                    </Select>
+                                                    {errors.subcategory && <p className="text-[10px] font-bold text-rose-500 animate-in fade-in">{errors.subcategory}</p>}
+                                                    {subcategoryWarning && !errors.subcategory && (
+                                                        <p className="text-[10px] font-medium text-amber-600 animate-in fade-in flex items-center gap-1">
+                                                            <Info className="h-3 w-3" />
+                                                            {subcategoryWarning}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            )}
                                         </CardContent>
                                     </Card>
                                 </TabsContent>
@@ -592,8 +798,18 @@ export default function AdminProductForm() {
                                                             onClick={() => {
                                                                 const nameInput = document.getElementById('new-color-name') as HTMLInputElement;
                                                                 const hexInput = document.getElementById('new-color-hex') as HTMLInputElement;
-                                                                if (nameInput.value) {
-                                                                    toggleSelection(formData.selectedColors, { name: nameInput.value, hex: hexInput.value }, 'selectedColors');
+                                                                const name = nameInput.value.trim();
+                                                                const hex = hexInput.value;
+
+                                                                if (name) {
+                                                                    const existing = formData.selectedColors.find(c => c.name.toLowerCase() === name.toLowerCase() || c.hex === hex);
+                                                                    if (existing) {
+                                                                        toast({ title: "Duplicate Color", description: "This color has already been added.", variant: "destructive" });
+                                                                        return;
+                                                                    }
+
+                                                                    const newColor = { id: crypto.randomUUID(), name, hex };
+                                                                    toggleSelection(formData.selectedColors, newColor, 'selectedColors');
                                                                     nameInput.value = "";
                                                                 }
                                                             }}
@@ -607,7 +823,7 @@ export default function AdminProductForm() {
                                                     <div className="flex flex-wrap gap-2">
                                                         {formData.selectedColors.map((color) => (
                                                             <Badge
-                                                                key={color.name}
+                                                                key={color.id}
                                                                 className="pl-1 pr-2 py-1 gap-2 bg-background border-border/50 text-foreground rounded-full hover:bg-muted group/color transition-all"
                                                             >
                                                                 <div className="w-5 h-5 rounded-full border shadow-sm" style={{ backgroundColor: color.hex }} />
@@ -629,7 +845,7 @@ export default function AdminProductForm() {
                                                             return (
                                                                 <button
                                                                     key={name}
-                                                                    onClick={() => toggleSelection(formData.selectedColors, { name: name.charAt(0).toUpperCase() + name.slice(1), hex }, 'selectedColors')}
+                                                                    onClick={() => toggleSelection(formData.selectedColors, { id: crypto.randomUUID(), name: name.charAt(0).toUpperCase() + name.slice(1), hex }, 'selectedColors')}
                                                                     className="flex items-center gap-1.5 px-2 py-1 rounded-lg border border-border/30 bg-muted/10 hover:bg-muted text-[10px] font-bold transition-all text-muted-foreground"
                                                                 >
                                                                     <div className="w-2 h-2 rounded-full" style={{ backgroundColor: hex }} />
@@ -681,7 +897,7 @@ export default function AdminProductForm() {
 
                                                     <div className="grid gap-6">
                                                         {formData.selectedColors.map(color => (
-                                                            <div key={color.name} className="p-5 rounded-3xl border border-border/50 bg-muted/10 space-y-4">
+                                                            <div key={color.id} className="p-5 rounded-3xl border border-border/50 bg-muted/10 space-y-4">
                                                                 <div className="flex items-center gap-3">
                                                                     <div className="w-5 h-5 rounded-full border shadow-sm ring-4 ring-background" style={{ backgroundColor: color.hex }} />
                                                                     <span className="font-black text-sm tracking-tight text-foreground/80">{color.name.toUpperCase()}</span>
@@ -755,37 +971,70 @@ export default function AdminProductForm() {
                                             <CardDescription>Upload high-resolution images for your product gallery.</CardDescription>
                                         </CardHeader>
                                         <CardContent>
-                                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                                                {formData.existingImages.map((src, i) => (
-                                                    <div key={`exist-${i}`} className="aspect-square rounded-2xl overflow-hidden border-2 border-border/50 relative group">
-                                                        <img src={src} className="w-full h-full object-cover transition-transform group-hover:scale-110 duration-500" />
-                                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                                                            <button onClick={() => removeImage(i, 'existing')} className="p-2 bg-rose-500 text-white rounded-full hover:bg-rose-600 transition-colors">
-                                                                <Trash2 className="h-4 w-4" />
-                                                            </button>
-                                                        </div>
-                                                        <div className="absolute top-2 left-2 bg-background/80 backdrop-blur-sm px-2 py-0.5 rounded-lg text-[8px] font-black uppercase">Stored</div>
-                                                    </div>
-                                                ))}
-                                                {formData.imagePreviews.map((src, i) => (
-                                                    <div key={`new-${i}`} className="aspect-square rounded-2xl overflow-hidden border-2 border-primary/30 relative group shadow-lg shadow-primary/5">
-                                                        <img src={src} className="w-full h-full object-cover" />
-                                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                                                            <button onClick={() => removeImage(i, 'new')} className="p-2 bg-rose-500 text-white rounded-full hover:bg-rose-600 transition-colors">
-                                                                <Trash2 className="h-4 w-4" />
-                                                            </button>
-                                                        </div>
-                                                        <div className="absolute top-2 left-2 bg-primary text-primary-foreground px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-wider">Staging</div>
-                                                    </div>
-                                                ))}
-                                                <label className="aspect-square rounded-2xl border-2 border-dashed border-border/60 hover:border-primary/50 hover:bg-primary/5 transition-all flex flex-col items-center justify-center gap-2 cursor-pointer group">
-                                                    <div className="p-3 rounded-full bg-muted group-hover:bg-primary/20 transition-colors">
-                                                        <Plus className="h-6 w-6 text-muted-foreground group-hover:text-primary transition-colors" />
-                                                    </div>
-                                                    <span className="text-xs font-black text-muted-foreground uppercase tracking-widest">Inject Media</span>
-                                                    <input type="file" multiple accept="image/*" className="hidden" onChange={handleImageUpload} />
-                                                </label>
-                                            </div>
+                                            {formData.selectedColors.length === 0 ? (
+                                                <div className="text-center py-12 text-muted-foreground">
+                                                    <Package className="h-10 w-10 mx-auto mb-3 opacity-20" />
+                                                    <p className="font-bold">No Variants Defined</p>
+                                                    <p className="text-xs mt-1">Please add colors in the "Variants & Matrix" tab first.</p>
+                                                    <Button variant="link" onClick={() => setActiveTab("inventory")} className="mt-2 text-primary">Go to Variants</Button>
+                                                </div>
+                                            ) : (
+                                                <div className="space-y-8">
+                                                    {formData.selectedColors.map(color => {
+                                                        const existing = formData.existingVariantImages[color.id] || [];
+                                                        const previews = formData.variantPreviews[color.id] || [];
+                                                        const hasImages = existing.length + previews.length > 0;
+
+                                                        return (
+                                                            <div key={color.id} className="space-y-4">
+                                                                <div className="flex items-center gap-3 pb-2 border-b border-border/30">
+                                                                    <div className="w-4 h-4 rounded-full border shadow-sm" style={{ backgroundColor: color.hex }} />
+                                                                    <h4 className="font-bold text-sm tracking-tight">{color.name}</h4>
+                                                                    {!hasImages && <Badge variant="destructive" className="text-[9px] h-4">Required</Badge>}
+                                                                </div>
+
+                                                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                                                                    {/* Upload Trigger */}
+                                                                    <label className="aspect-square rounded-2xl border-2 border-dashed border-border/60 hover:border-primary/50 hover:bg-primary/5 transition-all flex flex-col items-center justify-center gap-2 cursor-pointer group">
+                                                                        <div className="p-2 rounded-full bg-muted group-hover:bg-primary/20 transition-colors">
+                                                                            <Upload className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                                                                        </div>
+                                                                        <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Add Media</span>
+                                                                        <input type="file" multiple accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, color.id)} />
+                                                                    </label>
+
+                                                                    {/* Existing Images */}
+                                                                    {existing.map((src, i) => (
+                                                                        <div key={`exist-${color.id}-${i}`} className="aspect-square rounded-2xl overflow-hidden border border-border/50 relative group bg-background">
+                                                                            <img src={src} className="w-full h-full object-cover transition-transform group-hover:scale-105 duration-300" />
+                                                                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                                                                <button onClick={() => removeImage(i, 'existing', color.id)} className="p-1.5 bg-rose-500 text-white rounded-full hover:bg-rose-600 transition-colors shadow-lg">
+                                                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                                                </button>
+                                                                            </div>
+                                                                            <div className="absolute bottom-2 left-2 bg-background/90 backdrop-blur-sm px-1.5 py-0.5 rounded text-[8px] font-bold uppercase border border-border/20">Stored</div>
+                                                                        </div>
+                                                                    ))}
+
+                                                                    {/* New Previews */}
+                                                                    {previews.map((src, i) => (
+                                                                        <div key={`new-${color.id}-${i}`} className="aspect-square rounded-2xl overflow-hidden border border-primary/30 relative group bg-background shadow-lg shadow-primary/5">
+                                                                            <img src={src} className="w-full h-full object-cover" />
+                                                                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                                                                <button onClick={() => removeImage(i, 'new', color.id)} className="p-1.5 bg-rose-500 text-white rounded-full hover:bg-rose-600 transition-colors shadow-lg">
+                                                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                                                </button>
+                                                                            </div>
+                                                                            <div className="absolute top-2 left-2 bg-primary text-primary-foreground px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider shadow-sm">New</div>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+
                                             <div className="mt-8 p-4 rounded-2xl bg-muted/30 border border-dashed border-border/50 flex items-center gap-3 text-xs text-muted-foreground italic">
                                                 <Info className="h-4 w-4 text-primary shrink-0" />
                                                 Preferred formats: WebP or PNG. Recommended resolution: 1200x1200px. Max total payload: 25MB.
@@ -810,14 +1059,21 @@ export default function AdminProductForm() {
                         </CardHeader>
                         <CardContent className="space-y-6">
                             <div className="aspect-[4/5] rounded-2xl bg-muted overflow-hidden relative border shadow-inner">
-                                {formData.imagePreviews[0] || formData.existingImages[0] ? (
-                                    <img src={formData.imagePreviews[0] || formData.existingImages[0]} className="w-full h-full object-cover" />
-                                ) : (
-                                    <div className="w-full h-full flex flex-col items-center justify-center gap-4 text-muted-foreground grayscale opacity-30">
-                                        <ImageIcon className="h-12 w-12" />
-                                        <span className="text-[10px] font-bold tracking-widest uppercase">Asset Undefined</span>
-                                    </div>
-                                )}
+                                {(() => {
+                                    const firstColor = formData.selectedColors[0];
+                                    const previewImage = firstColor
+                                        ? (formData.variantPreviews[firstColor.id]?.[0] || formData.existingVariantImages[firstColor.id]?.[0])
+                                        : null;
+
+                                    return previewImage ? (
+                                        <img src={previewImage} className="w-full h-full object-cover" />
+                                    ) : (
+                                        <div className="w-full h-full flex flex-col items-center justify-center gap-4 text-muted-foreground grayscale opacity-30">
+                                            <ImageIcon className="h-12 w-12" />
+                                            <span className="text-[10px] font-bold tracking-widest uppercase">Asset Undefined</span>
+                                        </div>
+                                    );
+                                })()}
                                 {discountPercent > 0 && (
                                     <div className="absolute top-3 left-3 bg-rose-500 text-white px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider shadow-lg shadow-rose-500/30">
                                         -{discountPercent}%

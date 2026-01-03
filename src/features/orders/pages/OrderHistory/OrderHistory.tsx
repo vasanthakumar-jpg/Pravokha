@@ -345,17 +345,17 @@ export default function OrderHistory() {
             return (
               <Card key={order.id} className="overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 border-2">
                 <CardHeader className="bg-gradient-to-r from-muted/50 to-muted/30 border-b">
-                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <CardTitle className="responsive-h4">#{order.order_number}</CardTitle>
-                        <Badge className={cn(statusConfig.color, "responsive-label")}>
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2 sm:gap-3 mb-2 w-full">
+                        <CardTitle className="text-sm sm:text-base md:text-lg font-bold truncate break-all sm:break-normal">#{order.order_number}</CardTitle>
+                        <Badge className={cn(statusConfig.color, "text-[10px] sm:text-xs font-semibold px-2 py-0.5 whitespace-nowrap")}>
                           <StatusIcon className="h-3 w-3 mr-1" />
                           {statusConfig.label}
                         </Badge>
                       </div>
-                      <div className="flex items-center gap-2 responsive-small text-muted-foreground">
-                        <Calendar className="h-4 w-4" />
+                      <div className="flex items-center gap-2 text-[10px] sm:text-xs text-muted-foreground font-medium">
+                        <Calendar className="h-3.5 w-3.5" />
                         {format(new Date(order.created_at), "PPP")}
                       </div>
                     </div>

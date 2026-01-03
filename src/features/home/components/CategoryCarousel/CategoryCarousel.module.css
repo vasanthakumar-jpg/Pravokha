@@ -3,6 +3,21 @@
 .carouselContainer {
     position: relative;
     width: 100%;
+    /* Create space for arrows on desktop */
+    padding: 0 4rem;
+}
+
+@media (max-width: 1024px) {
+    .carouselContainer {
+        padding: 0 3rem;
+    }
+}
+
+@media (max-width: 640px) {
+    .carouselContainer {
+        padding: 0 0.5rem;
+        /* Reduced padding for mobile */
+    }
 }
 
 .carouselWrapper {
@@ -65,11 +80,11 @@
 }
 
 .arrowLeft {
-    left: 0.5rem;
+    left: 0;
 }
 
 .arrowRight {
-    right: 0.5rem;
+    right: 0;
 }
 
 .arrowDisabled {

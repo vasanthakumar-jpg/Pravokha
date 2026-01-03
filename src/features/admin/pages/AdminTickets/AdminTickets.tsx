@@ -121,6 +121,7 @@ export default function AdminTickets() {
 
   const fetchTickets = async () => {
     try {
+      setLoading(true);
       const { data, error } = await (supabase as any)
         .from('support_tickets')
         .select(`
@@ -361,9 +362,10 @@ export default function AdminTickets() {
               <Button
                 variant="outline"
                 className="flex-1 sm:flex-none h-10 rounded-xl border-border/40 bg-card/20 backdrop-blur-sm font-bold text-xs"
+                disabled={loading}
                 onClick={fetchTickets}
               >
-                <RefreshCw className="mr-2 h-4 w-4" /> Refresh
+                <RefreshCw className={cn("mr-2 h-4 w-4", loading && "animate-spin")} /> Refresh
               </Button>
               <Button className="flex-1 sm:flex-none h-10 rounded-xl font-bold text-xs bg-primary hover:bg-primary/90 shadow-md shadow-primary/20">
                 <Download className="mr-2 h-4 w-4" /> Export data

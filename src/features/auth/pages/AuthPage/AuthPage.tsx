@@ -10,8 +10,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { AccountSuspendedMessage } from "@/components/common/AccountSuspendedMessage";
-import { Eye, EyeOff, Mail, Lock, User, Phone } from "lucide-react";
 import { fetchUserRole } from "@/lib/roleUtils";
+import { Eye, EyeOff, Mail, Lock, User, Phone, Github, Facebook, Chrome, Apple as AppleIcon } from "lucide-react";
+import { Provider } from "@supabase/supabase-js";
 
 const emailSchema = z.string().email("Please enter a valid email address");
 const passwordSchema = z.string()
@@ -173,6 +174,26 @@ export function AuthPage() {
         }
     };
 
+    const handleSocialLogin = async (provider: Provider) => {
+        setIsLoading(true);
+        try {
+            const { error } = await supabase.auth.signInWithOAuth({
+                provider,
+                options: {
+                    redirectTo: `${window.location.origin}/auth`,
+                },
+            });
+            if (error) throw error;
+        } catch (error: any) {
+            toast({
+                title: "Login Error",
+                description: error.message || `Failed to sign in with ${provider}`,
+                variant: "destructive",
+            });
+            setIsLoading(false);
+        }
+    };
+
     if (loading) {
         return (
             <div className="flex items-center justify-center min-h-screen">
@@ -324,6 +345,39 @@ export function AuthPage() {
                             <Button type="submit" className="w-full" disabled={isLoading}>
                                 {isLoading ? "Processing..." : (isLogin ? "Sign In" : "Create Account")}
                             </Button>
+
+                            <div className="relative my-6">
+                                <div className="absolute inset-0 flex items-center">
+                                    <span className="w-full border-t border-slate-200 dark:border-slate-800" />
+                                </div>
+                                <div className="relative flex justify-center text-xs uppercase">
+                                    <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
+                                </div>
+                            </div>
+
+                            <div className="flex flex-col gap-3">
+                                <Button
+                                    variant="outline"
+                                    type="button"
+                                    disabled={isLoading}
+                                    onClick={() => handleSocialLogin('google')}
+                                    className="w-full h-12 border-slate-200 dark:border-slate-800 hover:bg-[#4285F4]/5 hover:text-[#4285F4] hover:border-[#4285F4]/30 transition-all duration-300 flex items-center justify-center gap-3 text-sm font-medium"
+                                >
+                                    <Chrome className="h-5 w-5" />
+                                    Sign in with Google
+                                </Button>
+
+                                <Button
+                                    variant="outline"
+                                    type="button"
+                                    disabled={isLoading}
+                                    onClick={() => handleSocialLogin('facebook')}
+                                    className="w-full h-12 border-slate-200 dark:border-slate-800 hover:bg-[#1877F2]/5 hover:text-[#1877F2] hover:border-[#1877F2]/30 transition-all duration-300 flex items-center justify-center gap-3 text-sm font-medium"
+                                >
+                                    <Facebook className="h-5 w-5 fill-current" />
+                                    Sign in with Facebook
+                                </Button>
+                            </div>
                         </form>
                     </Tabs>
                 </CardContent>

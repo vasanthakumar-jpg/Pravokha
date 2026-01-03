@@ -27,6 +27,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/Separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/Avatar";
+import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/Badge";
 
 // Validation Schema (Seller Store)
@@ -213,20 +214,50 @@ export default function SellerSettings() {
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      // Reuse uploadImage but we need to repurpose it or add logic?
-      // Actually uploadImage returns URL, we can use that URL to updateProfile.
-      const publicUrl = await uploadImage(file, 'logo'); // Using 'logo' type folder for now or I can allow 'avatar' if hook supports it.
-      // Hook defines type as 'logo' | 'banner'. Let's verify hook.
-      // It generates: `${user.id}/${type}_${Date.now()}.${fileExt}`
-      // We can just pass 'logo' (it's fine, it goes into a folder) OR I should update hook to allow 'avatar'.
-      // Let's assume 'logo' is fine for "Personal Logo" effectively.
 
-      if (publicUrl) {
+      // Basic validation
+      if (file.size > 2 * 1024 * 1024) {
+        toast({ title: "File too large", description: "Image must be under 2MB", variant: "destructive" });
+        return;
+      }
+
+      setUpdatingProfile(true);
+      try {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${user?.id}-${Date.now()}.${fileExt}`;
+        const filePath = `avatars/${fileName}`;
+
+        // 1. Upload to 'profiles' bucket (not seller-assets)
+        const { error: uploadError } = await supabase.storage
+          .from('profiles')
+          .upload(filePath, file);
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('profiles')
+          .getPublicUrl(filePath);
+
+        // 2. Update profile record
         await updateProfile({ avatar_url: publicUrl });
-        toast({ title: "Avatar Updated", description: "Your profile picture has been updated." });
+
+        toast({
+          title: "Avatar Updated",
+          description: "Your profile picture has been updated successfully.",
+          className: "bg-green-50 text-green-900 border-green-200"
+        });
+      } catch (error: any) {
+        console.error("Avatar upload error:", error);
+        toast({
+          title: "Upload Failed",
+          description: "Could not upload profile picture. Please try again.",
+          variant: "destructive"
+        });
+      } finally {
+        setUpdatingProfile(false);
       }
     }
-  }
+  };
 
 
   if (loading) {
@@ -400,13 +431,11 @@ export default function SellerSettings() {
                             className="group relative h-40 border-2 border-dashed rounded-xl flex flex-col items-center justify-center cursor-pointer hover:border-primary/50 hover:bg-muted/50 transition-all overflow-hidden bg-muted/10 shadow-inner"
                           >
                             {form.watch('storeLogoUrl') ? (
-                              <div className="w-full h-full flex items-center justify-center p-3">
-                                <img
-                                  src={form.watch('storeLogoUrl')!}
-                                  alt="Logo"
-                                  className="max-w-full max-h-full object-contain drop-shadow-sm transition-transform duration-300 group-hover:scale-105"
-                                />
-                              </div>
+                              <img
+                                src={form.watch('storeLogoUrl')!}
+                                alt="Logo"
+                                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                              />
                             ) : (
                               <>
                                 <div className="p-3 bg-muted rounded-full mb-2 group-hover:scale-110 transition-transform shadow-sm">

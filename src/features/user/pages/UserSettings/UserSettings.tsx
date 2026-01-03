@@ -50,10 +50,11 @@ export default function UserSettings() {
 
     try {
       const fileExt = file.name.split('.').pop();
-      const filePath = `${user?.id}/${Math.random()}.${fileExt}`;
+      const fileName = `${user?.id}-${Date.now()}.${fileExt}`;
+      const filePath = `avatars/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
-        .from('avatars')
+        .from('profiles')
         .upload(filePath, file);
 
       if (uploadError) {
@@ -62,7 +63,7 @@ export default function UserSettings() {
       }
 
       const { data: { publicUrl } } = supabase.storage
-        .from('avatars')
+        .from('profiles')
         .getPublicUrl(filePath);
 
       await updateProfile({ ...profile, avatar_url: publicUrl });

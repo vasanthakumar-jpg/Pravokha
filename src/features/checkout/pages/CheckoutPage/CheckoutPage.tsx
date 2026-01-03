@@ -366,18 +366,25 @@ export function CheckoutPage() {
                         <CardContent className="space-y-4">
                             <div className="space-y-3">
                                 {items.map((item) => (
-                                    <div key={`${item.productId}-${item.variantId}-${item.size}`} className="flex gap-3">
+                                    <div
+                                        key={`${item.productId}-${item.variantId}-${item.size}`}
+                                        className="flex gap-3 cursor-pointer group hover:bg-muted/30 p-1.5 rounded-lg transition-colors"
+                                        onClick={() => navigate(`/product/${item.productId}`)}
+                                    >
                                         <img
                                             src={item.image}
                                             alt={item.title}
-                                            className="w-16 h-16 object-cover rounded border"
+                                            className="w-16 h-16 object-cover rounded border group-hover:scale-105 transition-transform"
                                         />
                                         <div className="flex-1 min-w-0">
-                                            <p className="font-medium text-sm truncate">{item.title}</p>
+                                            <p className="font-medium text-sm truncate group-hover:text-primary transition-colors">{item.title}</p>
                                             <p className="text-xs text-muted-foreground">
                                                 {item.colorName} • {item.size} • Qty: {item.quantity}
                                             </p>
-                                            <p className="text-sm font-semibold mt-1">₹{item.price * item.quantity}</p>
+                                            <div className="flex justify-between items-center mt-1">
+                                                <p className="text-sm font-semibold">₹{item.price * item.quantity}</p>
+                                                <span className="text-[9px] font-bold text-primary opacity-0 group-hover:opacity-100 transition-opacity">VIEW</span>
+                                            </div>
                                         </div>
                                     </div>
                                 ))}

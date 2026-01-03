@@ -102,11 +102,14 @@ export default function UnifiedOrdersPage() {
   // State
   const [myOrders, setMyOrders] = useState<Order[]>([]);
   const [filteredMyOrders, setFilteredMyOrders] = useState<Order[]>([]);
+  const [platformOrders, setPlatformOrders] = useState<Order[]>([]);
+  const [filteredPlatformOrders, setFilteredPlatformOrders] = useState<Order[]>([]);
   const [customerOrders, setCustomerOrders] = useState<Order[]>([]);
   const [filteredCustomerOrders, setFilteredCustomerOrders] = useState<Order[]>([]);
 
   const [myOrdersCount, setMyOrdersCount] = useState(0);
-  const [customerOrdersCount, setCustomerOrdersCount] = useState(0);
+  const [businessOrdersCount, setBusinessOrdersCount] = useState(0);
+  const [platformOrdersCount, setPlatformOrdersCount] = useState(0);
 
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -139,7 +142,7 @@ export default function UnifiedOrdersPage() {
 
   useEffect(() => {
     filterOrders();
-  }, [myOrders, customerOrders, searchQuery, statusFilter, mainTab]);
+  }, [myOrders, customerOrders, platformOrders, searchQuery, statusFilter, mainTab]);
 
   const checkUserRole = async () => {
     if (!user) return;
@@ -163,27 +166,35 @@ export default function UnifiedOrdersPage() {
       const from = (currentPage - 1) * pageSize;
       const to = from + pageSize - 1;
 
-      // 1. Fetch Counts for both (Lite queries)
+      // 1. Fetch Counts (Lite queries)
       const buyerCountQuery = supabase
         .from('orders')
         .select('*', { count: 'exact', head: true })
         .eq('user_id', user.id);
 
-      const sellerCountQuery = userRole === 'seller'
-        ? supabase.from('orders').select('items')
-        : supabase.from('orders').select('*', { count: 'exact', head: true });
+      // Business Count (items where sellerId = user.id)
+      const businessCountQuery = supabase.from('orders').select('items');
 
-      const [buyerCountRes, sellerCountRes] = await Promise.all([buyerCountQuery, sellerCountQuery]);
+      // Platform Count (Admin only - total)
+      const platformCountQuery = userRole === 'admin'
+        ? supabase.from('orders').select('*', { count: 'exact', head: true })
+        : Promise.resolve({ count: 0 });
+
+      const [buyerCountRes, businessCountRes, platformCountRes] = await Promise.all([
+        buyerCountQuery,
+        businessCountQuery,
+        platformCountQuery
+      ]);
 
       setMyOrdersCount(buyerCountRes.count || 0);
 
-      if (userRole === 'seller') {
-        const sellerOrdersCount = (sellerCountRes.data || []).filter((order: any) =>
-          Array.isArray(order.items) && order.items.some((item: any) => item.sellerId === user.id)
-        ).length;
-        setCustomerOrdersCount(sellerOrdersCount);
-      } else {
-        setCustomerOrdersCount(sellerCountRes.count || 0);
+      const bOrders = (businessCountRes.data || []).filter((order: any) =>
+        Array.isArray(order.items) && order.items.some((item: any) => item.sellerId === user.id)
+      );
+      setBusinessOrdersCount(bOrders.length);
+
+      if (userRole === 'admin') {
+        setPlatformOrdersCount(platformCountRes.count || 0);
       }
 
       // 2. Fetch Data for Active Tab
@@ -198,23 +209,24 @@ export default function UnifiedOrdersPage() {
         if (error) throw error;
         setMyOrders(mapOrders(data));
         setTotalCount(buyerCountRes.count || 0);
+      } else if (mainTab === "customer-orders") {
+        const { data, error } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
+        if (error) throw error;
+        const businessData = (data || []).filter((order: any) =>
+          Array.isArray(order.items) && order.items.some((item: any) => item.sellerId === user.id)
+        );
+        setCustomerOrders(mapOrders(businessData.slice(from, to + 1)));
+        setTotalCount(businessData.length);
       } else {
-        let query = supabase.from('orders').select('*').order('created_at', { ascending: false });
-
-        if (userRole === 'seller') {
-          const { data, error } = await query;
-          if (error) throw error;
-          const sellerData = (data || []).filter((order: any) =>
-            Array.isArray(order.items) && order.items.some((item: any) => item.sellerId === user.id)
-          );
-          setCustomerOrders(mapOrders(sellerData.slice(from, to + 1)));
-          setTotalCount(sellerData.length);
-        } else {
-          const { data, error } = await query.range(from, to);
-          if (error) throw error;
-          setCustomerOrders(mapOrders(data || []));
-          setTotalCount(sellerCountRes.count || 0);
-        }
+        // Platform Orders (Admin Only)
+        const { data, error } = await supabase
+          .from('orders')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .range(from, to);
+        if (error) throw error;
+        setPlatformOrders(mapOrders(data || []));
+        setTotalCount(platformCountRes.count || 0);
       }
 
     } catch (error) {
@@ -234,7 +246,11 @@ export default function UnifiedOrdersPage() {
   };
 
   const filterOrders = () => {
-    const source = mainTab === "my-orders" ? myOrders : customerOrders;
+    let source: Order[] = [];
+    if (mainTab === "my-orders") source = myOrders;
+    else if (mainTab === "customer-orders") source = customerOrders;
+    else source = platformOrders;
+
     let filtered = [...source];
 
     if (statusFilter !== 'all') {
@@ -251,7 +267,8 @@ export default function UnifiedOrdersPage() {
     }
 
     if (mainTab === "my-orders") setFilteredMyOrders(filtered);
-    else setFilteredCustomerOrders(filtered);
+    else if (mainTab === "customer-orders") setFilteredCustomerOrders(filtered);
+    else setFilteredPlatformOrders(filtered);
   };
 
   const totalPages = Math.ceil(totalCount / pageSize);
@@ -317,6 +334,15 @@ export default function UnifiedOrdersPage() {
       const updater = (prev: Order[]) => prev.map(o => o.id === cancellingOrder.id ? { ...o, status: 'cancelled' as const, payment_status: o.payment_status === 'paid' ? 'refund_pending' : o.payment_status } : o);
       setMyOrders(updater);
       setCustomerOrders(updater);
+      setPlatformOrders(updater);
+
+      // Add to Order History
+      await supabase.from('order_history' as any).insert({
+        order_id: cancellingOrder.id,
+        new_status: 'cancelled',
+        description: `Order cancelled by ${userRole}. Reason: ${reason}`,
+        created_at: new Date().toISOString()
+      });
 
       // 3. Audit Logging
       await supabase.from('audit_logs').insert({
@@ -361,7 +387,7 @@ export default function UnifiedOrdersPage() {
   };
 
   const handleExport = () => {
-    const ordersToExport = mainTab === "my-orders" ? myOrders : customerOrders;
+    const ordersToExport = mainTab === "my-orders" ? myOrders : mainTab === "customer-orders" ? customerOrders : platformOrders;
     if (!ordersToExport.length) {
       toast({ title: "No orders", description: "There are no orders to export.", variant: "destructive" });
       return;
@@ -507,21 +533,30 @@ export default function UnifiedOrdersPage() {
       <Tabs value={mainTab} onValueChange={setMainTab} className="space-y-6">
         <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center bg-muted/50 p-1.5 sm:p-1 rounded-lg">
 
-          <TabsList className="grid w-full sm:w-auto sm:max-w-md grid-cols-2 h-8 sm:h-9 gap-0.5 bg-transparent p-0.5">
-            <TabsTrigger value="my-orders" className="gap-1.5 sm:gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm text-[11px] sm:text-sm px-1 sm:px-3" title="My Orders">
-              <ShoppingBag className="w-3 h-3 sm:w-4 sm:h-4" />
-              <span className="hidden data-[state=active]:inline sm:inline">My Orders</span>
-              <Badge variant="secondary" className="ml-1 bg-muted-foreground/10 text-muted-foreground h-4 px-1 min-w-[1rem] text-[9px] sm:text-xs">
+          <TabsList className="grid w-full sm:w-auto sm:max-w-xl grid-cols-2 sm:grid-cols-3 h-auto sm:h-9 bg-transparent p-0.5 gap-1">
+            <TabsTrigger value="my-orders" className="gap-1.5 sm:gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm text-[11px] sm:text-xs font-bold uppercase tracking-wider px-2 sm:px-4 h-8 sm:h-auto" title="My Purchases">
+              <ShoppingBag className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+              <span>Purchases</span>
+              <Badge variant="secondary" className="ml-1 bg-muted-foreground/10 text-muted-foreground h-4 px-1 min-w-[1rem] text-[9px]">
                 {myOrdersCount}
               </Badge>
             </TabsTrigger>
-            <TabsTrigger value="customer-orders" className="gap-1.5 sm:gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm text-[11px] sm:text-sm px-1 sm:px-3" title="Customer Orders">
-              <Users className="w-3 h-3 sm:w-4 sm:h-4" />
-              <span className="hidden data-[state=active]:inline sm:inline">Customer Orders</span>
-              <Badge variant="secondary" className="ml-1 bg-muted-foreground/10 text-muted-foreground h-4 px-1 min-w-[1rem] text-[9px] font-bold tracking-tight">
-                {customerOrdersCount}
+            <TabsTrigger value="customer-orders" className="gap-1.5 sm:gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm text-[11px] sm:text-xs font-bold uppercase tracking-wider px-2 sm:px-4 h-8 sm:h-auto" title="Business Sales">
+              <Users className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+              <span>Sales</span>
+              <Badge variant="secondary" className="ml-1 bg-muted-foreground/10 text-muted-foreground h-4 px-1 min-w-[1rem] text-[9px]">
+                {businessOrdersCount}
               </Badge>
             </TabsTrigger>
+            {isAdmin && (
+              <TabsTrigger value="platform-orders" className="gap-1.5 sm:gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm text-[11px] sm:text-xs font-bold uppercase tracking-wider px-2 sm:px-4 h-8 sm:h-auto" title="Marketplace Orders">
+                <Package className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                <span>Marketplace</span>
+                <Badge variant="secondary" className="ml-1 bg-muted-foreground/10 text-muted-foreground h-4 px-1 min-w-[1rem] text-[9px]">
+                  {platformOrdersCount}
+                </Badge>
+              </TabsTrigger>
+            )}
           </TabsList>
 
           {/* Filters (Shared) */}
@@ -567,7 +602,7 @@ export default function UnifiedOrdersPage() {
                   <CardHeader className="bg-muted/40 p-2.5 sm:p-4 pb-1.5 sm:pb-2">
                     <div className="flex justify-between items-start">
                       <div>
-                        <CardTitle className="font-semibold text-foreground" style={{ fontSize: '14px' }}>#{order.order_number}</CardTitle>
+                        <CardTitle className="font-semibold text-foreground break-all font-mono" style={{ fontSize: '13px' }}>#{order.order_number}</CardTitle>
                         <CardDescription className="text-[10px] sm:text-xs mt-0.5 sm:mt-1 text-muted-foreground">
                           {format(new Date(order.created_at), 'MMM dd, yyyy')}
                         </CardDescription>
@@ -633,7 +668,7 @@ export default function UnifiedOrdersPage() {
                       <TableRow key={order.id} className="group hover:bg-muted/50 transition-colors border-b last:border-0 border-border">
                         <TableCell>
                           <div className="flex flex-col">
-                            <span className="font-semibold text-sm tracking-tight">#{order.order_number || order.id.slice(0, 8)}</span>
+                            <span className="font-semibold text-sm tracking-tight break-all font-mono">#{order.order_number || order.id.slice(0, 8)}</span>
                             <span className="text-[10px] text-muted-foreground">{order.items?.[0]?.product_variants?.products?.title || 'Retail product'}</span>
                           </div>
                         </TableCell>
@@ -773,12 +808,13 @@ export default function UnifiedOrdersPage() {
               <Table>
                 <TableHeader className="bg-muted/40">
                   <TableRow className="bg-muted/30">
-                    <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Order reference</TableHead>
-                    <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Date</TableHead>
-                    <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Amount</TableHead>
+                    <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Order ID</TableHead>
+                    <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Customer</TableHead>
+                    <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Items</TableHead>
+                    <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Total Amount</TableHead>
                     <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Status</TableHead>
                     <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Payment</TableHead>
-                    <TableHead className="text-right text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 pr-6">Performance</TableHead>
+                    <TableHead className="text-right text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 pr-6">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -795,7 +831,7 @@ export default function UnifiedOrdersPage() {
                     filteredCustomerOrders.map((order) => (
                       <TableRow key={order.id} className="hover:bg-muted/50 transition-colors border-b last:border-0 border-border">
                         <TableCell className="font-medium text-foreground">
-                          {order.order_number}
+                          <span className="break-all font-mono">#{order.order_number}</span>
                         </TableCell>
                         <TableCell>
                           <div className="flex flex-col">
@@ -879,6 +915,92 @@ export default function UnifiedOrdersPage() {
             </div>
           )}
         </TabsContent>
+
+        {isAdmin && (
+          <TabsContent value="platform-orders" className="mt-0">
+            {/* Desktop Table View (Platform Orders) */}
+            <Card className="hidden sm:block border overflow-hidden bg-card">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader className="bg-muted/40">
+                    <TableRow className="bg-muted/30">
+                      <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Order ID</TableHead>
+                      <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Customer</TableHead>
+                      <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Items</TableHead>
+                      <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Total Amount</TableHead>
+                      <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Status</TableHead>
+                      <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Payment</TableHead>
+                      <TableHead className="text-right text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 pr-6">Action</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredPlatformOrders.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={7} className="h-48 text-center text-muted-foreground bg-card">
+                          <div className="flex flex-col items-center justify-center gap-2">
+                            <Package className="w-10 h-10 opacity-20" />
+                            <p>No marketplace orders yet</p>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredPlatformOrders.map((order) => (
+                        <TableRow key={order.id} className="hover:bg-muted/50 transition-colors border-b last:border-0 border-border">
+                          <TableCell className="font-medium text-foreground">
+                            <span className="break-all font-mono">#{order.order_number}</span>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-col">
+                              <span className="text-sm font-medium text-foreground">{order.customer_name}</span>
+                              <span className="text-xs text-muted-foreground">{order.customer_email}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="secondary" className="font-normal text-xs bg-muted text-muted-foreground">
+                              {order.items_count} Items
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="font-semibold text-foreground">
+                            ₹{order.total.toLocaleString()}
+                          </TableCell>
+                          <TableCell>
+                            <StatusBadge status={order.status} />
+                          </TableCell>
+                          <TableCell>
+                            <PaymentBadge status={order.payment_status} />
+                          </TableCell>
+                          <TableCell className="text-right pr-4">
+                            <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground hover:bg-muted" onClick={() => handleViewOrder(order.id, 'seller')}>
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </Card>
+
+            {/* Pagination (Platform Orders) */}
+            {totalPages > 1 && (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-8 border-t border-border/40">
+                <p className="text-sm text-muted-foreground font-medium">
+                  Showing <span className="text-foreground font-bold">{(currentPage - 1) * pageSize + 1}</span> to <span className="text-foreground font-bold">{Math.min(currentPage * pageSize, totalCount)}</span> of <span className="text-foreground font-bold">{totalCount}</span> orders
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1} className="rounded-xl h-10 px-4 font-bold text-xs font-bold active:scale-95 transition-all">Previous</Button>
+                  <div className="flex items-center gap-1 mx-2">
+                    {Array.from({ length: Math.min(totalPages, 5) }).map((_, i) => (
+                      <Button key={i + 1} variant={i + 1 === currentPage ? "default" : "ghost"} size="sm" onClick={() => handlePageChange(i + 1)} className={cn("h-10 w-10 rounded-xl font-bold transition-all text-xs", i + 1 === currentPage ? "bg-[#146B6B] text-white" : "text-muted-foreground")}>{i + 1}</Button>
+                    ))}
+                  </div>
+                  <Button variant="outline" size="sm" onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages} className="rounded-xl h-10 px-4 font-bold text-xs font-bold active:scale-95 transition-all">Next</Button>
+                </div>
+              </div>
+            )}
+          </TabsContent>
+        )}
       </Tabs>
 
       {/* Cancellation Dialog */}

@@ -1,8 +1,9 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { User, Session } from "@supabase/supabase-js";
 
-type UserRole = "admin" | "seller" | "user" | "moderator" | null;
+type UserRole = "admin" | "seller" | "user" | "moderator" | "support" | "manager" | "buyer" | null;
 
 export interface SuspensionError {
   status: 403;
@@ -19,6 +20,7 @@ interface AuthContextType {
   suspensionError: SuspensionError | null;
   signOut: () => Promise<void>;
   refreshRole: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
   clearSuspensionError: () => void;
   isSuspended: boolean;
   suspensionReason: string | null;
@@ -36,6 +38,7 @@ const AuthContext = createContext<AuthContextType>({
   suspensionError: null,
   signOut: async () => { },
   refreshRole: async () => { },
+  refreshProfile: async () => { },
   clearSuspensionError: () => { },
   isSuspended: false,
   suspensionReason: null,
@@ -57,11 +60,16 @@ async function fetchWithTimeout<T>(promise: Promise<T>, timeoutMs: number, error
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [role, setRole] = useState<UserRole>(() => {
     try {
-      return localStorage.getItem('pravokha_user_role') as UserRole || null;
+      const storedRole = localStorage.getItem('pravokha_user_role') as UserRole;
+      const storedId = localStorage.getItem('pravokha_user_id');
+      // We don't have the user ID yet to verify, so we'll trust it for the first render
+      // if it exists, but handleAuthStateChange will verify it.
+      return storedRole || null;
     } catch {
       return null;
     }
@@ -88,32 +96,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const startTime = Date.now();
 
     try {
-      console.log(`[AuthContext] Fetching role for user ${userId}...`);
+      console.log(`[AuthContext] Fetching roles for user ${userId}...`);
 
       const { data, error } = await fetchWithTimeout(
         Promise.resolve(supabase
           .from("user_roles")
           .select("role")
-          .eq("user_id", userId)
-          .limit(1)
-          .maybeSingle()),
+          .eq("user_id", userId)),
         timeoutMs,
-        "Role fetch"
+        "Roles fetch"
       ) as any;
 
       const elapsed = Date.now() - startTime;
-      console.log(`[AuthContext] Role query completed in ${elapsed}ms:`, { role: data?.role, error });
+      console.log(`[AuthContext] Roles query completed in ${elapsed}ms:`, { roles: data, error });
 
       if (error) {
-        console.error("[AuthContext] Error fetching user role:", error.message);
+        console.error("[AuthContext] Error fetching user roles:", error.message);
         throw error;
       }
 
-      return (data?.role as UserRole) || "user";
+      if (!data || data.length === 0) return "user";
+
+      // Role Prioritization Logic (Admin > Seller > Moderator > Support > Manager > User)
+      const roles: string[] = data.map((r: any) => r.role);
+
+      if (roles.includes("admin")) return "admin";
+      if (roles.includes("seller")) return "seller";
+      if (roles.includes("moderator")) return "moderator";
+      if (roles.includes("support")) return "support";
+      if (roles.includes("manager")) return "manager";
+      if (roles.includes("buyer")) return "buyer";
+
+      return "user";
     } catch (error: any) {
       const elapsed = Date.now() - startTime;
-      console.warn(`[AuthContext] Role fetch failed/timed out after ${elapsed}ms:`, error.message);
-      throw error;
+      console.warn(`[AuthContext] Role fetch failed/timed out after ${elapsed}ms. Returning null to force re-fetch or default.`, error.message);
+      return null;
     }
   };
 
@@ -127,9 +145,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { data: profileData, error: profileError } = await fetchWithTimeout(
         Promise.resolve(supabase
           .from('profiles')
-          .select('status, verification_status, verification_comments, full_name, avatar_url, phone, bio, date_of_birth')
+          .select('status, verification_status, verification_comments, full_name, avatar_url, phone, address, email, bio, date_of_birth')
           .eq('id', userId)
-          .single()),
+          .maybeSingle()), // Use maybeSingle to prevent 406 on missing
         timeoutMs,
         "Profile fetch"
       ) as any;
@@ -161,8 +179,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { shouldSignOut: false, profile: null };
     } catch (error: any) {
       const elapsed = Date.now() - startTime;
-      console.warn(`[AuthContext] Profile fetch failed/timed out after ${elapsed}ms:`, error.message);
-      throw error;
+      console.warn(`[AuthContext] Profile fetch failed/timed out after ${elapsed}ms. Defaulting to empty profile.`, error.message);
+      // Fail open: return a default profile result instead of throwing a fatal error
+      return { shouldSignOut: false, profile: null };
     }
   };
 
@@ -170,6 +189,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (user) {
       const newRole = await fetchUserRole(user.id);
       setRole(newRole);
+    }
+  };
+
+  const refreshProfile = async () => {
+    if (user) {
+      console.log("[AuthContext] Manually refreshing profile");
+      await fetchUserProfile(user.id);
     }
   };
 
@@ -195,12 +221,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // Only show full loading screen if we don't have a role yet (initial load or user change)
       // or if the user ID has changed.
-      const isNewUser = currentUser?.id !== lastProcessedUserIdRef.current;
+      const isNewUser = currentUser?.id !== localStorage.getItem('pravokha_user_id');
+
       if (role === null || isNewUser) {
-        console.log("[AuthContext] Setting loading(true) for fresh initialization");
+        console.log("[AuthContext] Setting loading(true) for fresh initialization or user change");
         setLoading(true);
+        // ONLY clear if it's truly a different account
+        if (isNewUser) {
+          console.log("[AuthContext] New user detected, clearing role cache");
+          localStorage.removeItem('pravokha_user_role');
+          localStorage.removeItem('pravokha_user_id');
+          setRole(null);
+        }
       } else {
-        console.log("[AuthContext] Keeping current role while checking status in background");
+        console.log("[AuthContext] Maintaining current role during background refresh");
       }
 
       setAuthError(null);
@@ -209,6 +243,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.log("[AuthContext] No user, clearing state");
         lastProcessedUserIdRef.current = null;
         localStorage.removeItem('pravokha_user_role');
+        localStorage.removeItem('pravokha_user_id');
         setSession(null);
         setUser(null);
         setRole(null);
@@ -231,17 +266,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       ]);
 
       if (profileResult.shouldSignOut) {
-        console.log("[AuthContext] User is inactive, signing out");
-        setProfile(null); // Clear profile if signing out
+        console.log("[AuthContext] User is inactive or suspended, signing out");
+        setProfile(null);
+        await signOut(); // Ensure global logout
         return;
       }
 
       console.log("[AuthContext] Setting role and completing initialization");
       lastProcessedUserIdRef.current = currentUser.id;
+
+      // ONLY update the role if the fetch was successful (not null)
       if (userRole) {
         localStorage.setItem('pravokha_user_role', userRole);
+        localStorage.setItem('pravokha_user_id', currentUser.id);
+        setRole(userRole);
+      } else {
+        console.warn("[AuthContext] Preserving existing role due to fetch timeout/error");
       }
-      setRole(userRole);
+
       setProfile(profileResult.profile); // Set profile from fetch result
       setAuthError(null);
       setLoading(false);
@@ -267,7 +309,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const timer = setTimeout(() => {
       console.warn("[AuthContext] Safety timer triggered after 20s. Forcing resolution.");
-      setAuthError("The security service took too long to respond. Please check your connection and retry.");
+      // Don't show a fatal error, just stop loading. The app might still work if defaults were used.
       setLoading(false);
     }, 20000); // 20 seconds safety cap
 
@@ -353,9 +395,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         },
         (payload) => {
           const newProfile = payload.new as any;
-          console.log("[AuthContext] Profile real-time update:", newProfile);
+          console.log("[AuthContext] Profile real-time update RECEIVED:", newProfile);
 
-          setProfile(prev => ({ ...prev, ...newProfile }));
+          setProfile((prev: any) => {
+            const updated = { ...prev, ...newProfile };
+            console.log("[AuthContext] Merging profile state. Old:", prev, "New:", updated);
+            return updated;
+          });
 
           if (newProfile.verification_status) {
             setVerificationStatus(newProfile.verification_status);
@@ -365,10 +411,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
           if (newProfile.status) {
             setIsSuspended(newProfile.status === 'suspended');
+
+            // 10/10 Polish: Immediate session invalidation if suspended or inactive
+            if (newProfile.status === 'suspended' || newProfile.status === 'inactive') {
+              console.warn("[AuthContext] Account status changed to restricted. Invalidating session.");
+              signOut();
+            }
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log(`[AuthContext] Subscription status for profile_changes_${user.id}:`, status);
+      });
 
     return () => {
       console.log("[AuthContext] Cleaning up profile subscription");
@@ -390,17 +444,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSuspensionReason(null);
       setVerificationStatus('unverified');
       setVerificationComments(null);
+      localStorage.removeItem('pravokha_user_role');
+      localStorage.removeItem('pravokha_user_id');
     } catch (error) {
       console.error("[AuthContext] Error signing out:", error);
     } finally {
       setLoading(false);
-      window.location.href = '/auth';
+      navigate('/auth');
     }
   };
 
   return (
     <AuthContext.Provider value={{
-      user, session, role, loading, suspensionError, signOut, refreshRole, clearSuspensionError,
+      user, session, role, loading, suspensionError, signOut, refreshRole, refreshProfile, clearSuspensionError,
       isSuspended, suspensionReason, verificationStatus,
       verificationComments,
       authError,

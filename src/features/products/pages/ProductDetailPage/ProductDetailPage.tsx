@@ -71,7 +71,9 @@ export function ProductDetailPage() {
             try {
                 setLoading(true);
 
-                const { data: productData, error: productError } = await supabase
+                const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(slug);
+
+                let query = supabase
                     .from("products")
                     .select(`
             *,
@@ -79,9 +81,15 @@ export function ProductDetailPage() {
               *,
               product_sizes (*)
             )
-          `)
-                    .eq('slug', slug)
-                    .maybeSingle();
+          `);
+
+                if (isUUID) {
+                    query = query.or(`id.eq.${slug},slug.eq.${slug}`);
+                } else {
+                    query = query.eq("slug", slug);
+                }
+
+                const { data: productData, error: productError } = await query.maybeSingle();
 
                 if (productError) throw productError;
 
@@ -92,7 +100,7 @@ export function ProductDetailPage() {
                         description: "The requested product could not be found.",
                         variant: "destructive",
                     });
-                    navigate("/products");
+                    navigate("/products", { replace: true });
                     return;
                 }
 
@@ -126,6 +134,7 @@ export function ProductDetailPage() {
                 setSelectedVariant(transformedProduct.variants[0]);
                 addToRecentlyViewed(transformedProduct);
 
+                // Fetch random recommendations from ALL products
                 const { data: relatedData } = await supabase
                     .from("products")
                     .select(`
@@ -135,13 +144,16 @@ export function ProductDetailPage() {
               product_sizes (*)
             )
           `)
-                    .eq("category", productData.category)
                     .neq("id", productData.id)
                     .eq("published", true)
-                    .limit(8);
+                    .limit(50); // Broad fetch for randomization
 
                 if (relatedData) {
-                    const transformedRelated: Product[] = relatedData.map((p: any) => ({
+                    // Randomize and take 8 products for a fuller grid
+                    const shuffled = [...relatedData].sort(() => 0.5 - Math.random());
+                    const selected = shuffled.slice(0, 8);
+
+                    const transformedRelated: Product[] = selected.map((p: any) => ({
                         id: p.id,
                         title: p.title,
                         slug: p.slug,

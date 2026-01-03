@@ -73,7 +73,8 @@ export default function SellerDashboard() {
       const { data: products, error: productsError } = await (supabase as any)
         .from('products')
         .select('*, product_variants(product_sizes(stock))')
-        .eq('seller_id', user.id);
+        .eq('seller_id', user.id)
+        .is('deleted_at', null);
 
       if (productsError) throw productsError;
 

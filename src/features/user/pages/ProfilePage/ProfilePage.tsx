@@ -147,28 +147,50 @@ export function ProfilePage() {
         if (!user) return;
 
         setSaving(true);
-        const { error } = await supabase
-            .from("profiles")
-            .upsert({
-                id: user.id,
-                full_name: profile.full_name,
-                phone: profile.phone,
-                address: profile.address,
-                updated_at: new Date().toISOString(),
-            });
+        try {
+            const { error } = await supabase
+                .from("profiles")
+                .update({
+                    full_name: profile.full_name,
+                    phone: profile.phone,
+                    address: profile.address,
+                    updated_at: new Date().toISOString(),
+                })
+                .eq("id", user.id);
 
-        setSaving(false);
+            if (error) throw error;
 
-        if (error) {
-            toast({
-                title: "Error",
-                description: "Failed to update profile",
-                variant: "destructive",
-            });
-        } else {
+            await refreshProfile();
+
             toast({
                 title: "Success",
                 description: "Profile updated successfully",
+                className: "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
+            });
+        } catch (error: any) {
+            console.error("Error updating profile:", error);
+            toast({
+                title: "Error",
+                description: "Failed to update profile: " + (error.message || "Unknown error"),
+                variant: "destructive",
+            });
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleCancel = () => {
+        if (userProfile) {
+            setProfile({
+                full_name: userProfile.full_name || "",
+                phone: userProfile.phone || "",
+                address: userProfile.address || "",
+                avatar_url: userProfile.avatar_url || "",
+            });
+            setAvatarPreview(userProfile.avatar_url || null);
+            toast({
+                title: "Changes discarded",
+                description: "Your profile has been reset to its previous state.",
             });
         }
     };
@@ -342,10 +364,15 @@ export function ProfilePage() {
                                 </div>
                             </div>
 
-                            <Button onClick={handleSave} disabled={saving} className="w-full responsive-button">
-                                <Save className="h-4 w-4 mr-2" />
-                                {saving ? "Saving..." : "Save changes"}
-                            </Button>
+                            <div className="flex flex-col sm:flex-row gap-3">
+                                <Button onClick={handleSave} disabled={saving} className="flex-1 responsive-button">
+                                    <Save className="h-4 w-4 mr-2" />
+                                    {saving ? "Saving..." : "Save changes"}
+                                </Button>
+                                <Button onClick={handleCancel} disabled={saving} variant="outline" className="flex-1 responsive-button border-border/50">
+                                    Cancel
+                                </Button>
+                            </div>
                         </div>
                     </Card>
 

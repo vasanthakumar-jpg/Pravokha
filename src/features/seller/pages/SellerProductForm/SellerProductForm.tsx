@@ -13,9 +13,20 @@ import {
 } from "@/components/ui/Select";
 import { Badge } from "@/components/ui/Badge";
 import { useToast } from "@/hooks/use-toast";
+import { WhatsAppButton } from "@/components/common/WhatsAppButton";
 import {
-    ArrowLeft, Upload, X, Plus, ChevronRight, Check, DollarSign, Image as ImageIcon, Package, Tag, Loader2
+    ArrowLeft, Upload, X, Plus, ChevronRight, Check, DollarSign, Image as ImageIcon, Package, Tag, Loader2, ShieldAlert, ShieldCheck, AlertCircle
 } from "lucide-react";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/AlertDialog";
 import { categories, SIZES, COLORS } from "@/data/products";
 import { MARKETPLACE_FEE_PERCENTAGE, MAX_DISCOUNT_PERCENTAGE } from "@/lib/constants";
 import { supabase } from "@/integrations/supabase/client";
@@ -26,13 +37,14 @@ import { CategoryInput } from "@/features/products/components/CategoryInput";
 // -- Step Configuration --
 const STEPS = [
     { id: 1, title: "The Basics", icon: Tag, description: "Title, Category & Details" },
-    { id: 2, title: "Visuals", icon: ImageIcon, description: "Photos & Media" },
-    { id: 3, title: "Stock & Variants", icon: Package, description: "Sizes, Colors & Inventory" },
+    { id: 2, title: "Global Variants", icon: Package, description: "Define Colors & Sizes" },
+    { id: 3, title: "Visuals", icon: ImageIcon, description: "Upload Photos per Color" },
     { id: 4, title: "Pricing", icon: DollarSign, description: "Price & Profit" },
     { id: 5, title: "Review", icon: Check, description: "Final Check" },
 ];
 
 interface ColorOption {
+    id: string; // Internal UUID for linkage
     name: string;
     hex: string;
 }
@@ -41,6 +53,8 @@ interface ProductFormData {
     title: string;
     description: string;
     category: string;
+    selectedCategoryId: string;
+    selectedSubcategoryId: string;
     price: string;
     discountPrice: string;
     stockQuantity: string;
@@ -48,9 +62,13 @@ interface ProductFormData {
     selectedSizes: string[];
     sizeStock: Record<string, number>;
     unavailableVariants: string[];
-    images: File[];
-    imagePreviews: string[];
-    existingImages: string[];
+
+    // Per-Variant Image State
+    variantImages: Record<string, File[]>; // Key: ColorOption.id
+    variantPreviews: Record<string, string[]>; // Key: ColorOption.id
+    existingVariantImages: Record<string, string[]>; // Key: ColorOption.id
+    imagesToDelete: string[]; // Cleanup queue
+
     isFeatured: boolean;
     isNew: boolean;
     sku: string;
@@ -62,6 +80,8 @@ const INITIAL_FORM_DATA: ProductFormData = {
     title: "",
     description: "",
     category: "",
+    selectedCategoryId: "",
+    selectedSubcategoryId: "",
     price: "",
     discountPrice: "",
     stockQuantity: "0",
@@ -69,9 +89,12 @@ const INITIAL_FORM_DATA: ProductFormData = {
     selectedSizes: [],
     sizeStock: {},
     unavailableVariants: [],
-    images: [],
-    imagePreviews: [],
-    existingImages: [],
+
+    variantImages: {},
+    variantPreviews: {},
+    existingVariantImages: {},
+    imagesToDelete: [],
+
     isFeatured: false,
     isNew: false,
     sku: generateSKU(),
@@ -94,8 +117,41 @@ export default function SellerProductForm() {
     const [previewImage, setPreviewImage] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true); // Always start loading
     const [isSaving, setIsSaving] = useState(false);
+    const [originalData, setOriginalData] = useState<any>(null);
+    const [isRequestDialogOpen, setIsRequestDialogOpen] = useState(false);
+    const [requestReason, setRequestReason] = useState("");
+    const [dbCategories, setDbCategories] = useState<{ id: string; name: string; slug: string }[]>([]);
+    const [dbSubcategories, setDbSubcategories] = useState<{ id: string; name: string; slug: string; category_id: string }[]>([]);
+    const [isLoadingSubcategories, setIsLoadingSubcategories] = useState(false);
+    const [subcategoryWarning, setSubcategoryWarning] = useState("");
 
-    // -- Fetch Data (Simplified for brevity, assumes identical structure to Admin) --
+    // Fetch categories and subcategories hierarchy
+    useEffect(() => {
+        const fetchHierarchy = async () => {
+            try {
+                const { data: cats } = await supabase
+                    .from("categories")
+                    .select("id, name, slug")
+                    .eq("status", "active")
+                    .order("display_order");
+
+                setDbCategories(cats || []);
+
+                const { data: subs } = await supabase
+                    .from("subcategories")
+                    .select("id, name, slug, category_id")
+                    .eq("status", "active")
+                    .order("display_order");
+
+                setDbSubcategories(subs || []);
+            } catch (err) {
+                console.error("[SellerProductForm] Error fetching hierarchy:", err);
+            }
+        };
+        fetchHierarchy();
+    }, []);
+
+    // -- Fetch Data --
     useEffect(() => {
         const fetchProduct = async () => {
             if (!id) {
@@ -117,17 +173,34 @@ export default function SellerProductForm() {
 
                 const colors: ColorOption[] = [];
                 const sizes: string[] = [];
-                const existingImages: string[] = [];
+                const existingVariantImages: Record<string, string[]> = {};
                 const sizeStockMap: Record<string, number> = {};
 
                 if (product.product_variants) {
+                    // Sort variants to ensure stable color order if possible
+                    product.product_variants.sort((a: any, b: any) => a.created_at.localeCompare(b.created_at));
+
                     product.product_variants.forEach((v: any) => {
-                        if (!colors.some(c => c.name === v.color_name)) {
-                            colors.push({ name: v.color_name, hex: v.color_hex });
+                        // Create a stable ID for the color (use existing variant ID)
+                        // Note: If multiple variants share a color name, we should group them, but current model is 1 variant = 1 color usually.
+                        // We will treat each existing variant as a unique color entry for editing stability.
+
+                        // Check if color already processed (case: multiple variants with same color name?? Should not happen in current logic but be safe)
+                        let colorId = v.id;
+                        const existingColor = colors.find(c => c.name === v.color_name);
+
+                        if (!existingColor) {
+                            colors.push({ id: colorId, name: v.color_name, hex: v.color_hex });
+                            existingVariantImages[colorId] = v.images || [];
+                        } else {
+                            // If duplicate color name, re-use the ID (this handles the case where maybe logic was different before)
+                            colorId = existingColor.id;
+                            // Merge images if any (rare edge case)
+                            v.images?.forEach((img: string) => {
+                                if (!existingVariantImages[colorId].includes(img)) existingVariantImages[colorId].push(img);
+                            });
                         }
-                        if (v.images) v.images.forEach((img: string) => {
-                            if (!existingImages.includes(img)) existingImages.push(img);
-                        });
+
                         if (v.product_sizes) {
                             v.product_sizes.forEach((s: any) => {
                                 if (!sizes.includes(s.size)) sizes.push(s.size);
@@ -142,6 +215,8 @@ export default function SellerProductForm() {
                     title: product.title || "",
                     description: product.description || "",
                     category: product.category || "",
+                    selectedCategoryId: "", // Will be set by separate effect
+                    selectedSubcategoryId: product.subcategory_id || "",
                     price: product.price?.toString() || "",
                     discountPrice: product.discount_price?.toString() || "",
                     stockQuantity: "0",
@@ -149,13 +224,18 @@ export default function SellerProductForm() {
                     selectedSizes: sizes,
                     sizeStock: sizeStockMap,
                     unavailableVariants: [],
-                    images: [],
-                    imagePreviews: [],
-                    existingImages: existingImages,
+
+                    variantImages: {},
+                    variantPreviews: {},
+                    existingVariantImages: existingVariantImages,
+                    imagesToDelete: [],
+
                     isFeatured: product.is_featured || false,
                     isNew: product.is_new || false,
                     sku: product.sku || generateSKU(),
                 });
+
+                setOriginalData(product);
             } catch (error) {
                 console.error("[SellerProductForm] Fetch failed:", error);
                 toast({ title: "Error", description: "Failed to load product", variant: "destructive" });
@@ -172,7 +252,36 @@ export default function SellerProductForm() {
                 navigate("/auth");
             }
         }
-    }, [id, authLoading, role, navigate]);
+    }, [id, authLoading, role, navigate, toast]);
+
+    // Pre-populate category ID after categories are loaded
+    useEffect(() => {
+        if (!formData.category || dbCategories.length === 0) return;
+
+        const cat = dbCategories.find(c => c.slug === formData.category);
+        if (cat && cat.id !== formData.selectedCategoryId) {
+            console.log(`[SellerProductForm] Pre-populating category: ${cat.name} (${cat.id})`);
+            setFormData(prev => ({ ...prev, selectedCategoryId: cat.id }));
+        }
+    }, [dbCategories, formData.category, formData.selectedCategoryId]);
+
+    // Handle category change with subcategory reset
+    const handleCategoryChange = (categoryId: string) => {
+        const selectedCat = dbCategories.find(c => c.id === categoryId);
+        setFormData(prev => ({
+            ...prev,
+            selectedCategoryId: categoryId,
+            category: selectedCat?.slug || '',
+            selectedSubcategoryId: '' // Reset subcategory
+        }));
+        setSubcategoryWarning("");
+
+        // Check if category has subcategories
+        const hasSubcategories = dbSubcategories.some(s => s.category_id === categoryId);
+        if (hasSubcategories) {
+            setSubcategoryWarning("This category has subcategories. Please select one for better product organization.");
+        }
+    };
 
     const handleSave = async (isPublished: boolean = true) => {
         if (verificationStatus !== 'verified') {
@@ -184,47 +293,20 @@ export default function SellerProductForm() {
             return;
         }
 
-        if (!formData.title || !formData.price || !formData.category) {
-            toast({ title: "Validation Error", description: "Title, Category, and Price are required.", variant: "destructive" });
-            return;
-        }
-
-        if (Number(formData.discountPrice) >= Number(formData.price)) {
-            toast({ title: "Validation Error", description: "Discount Price must be less than Base Price.", variant: "destructive" });
-            return;
-        }
-
-        if (Number(formData.discountPrice) > 0) {
-            const discountPercent = (Number(formData.price) - Number(formData.discountPrice)) / Number(formData.price);
-            if (discountPercent > MAX_DISCOUNT_PERCENTAGE) {
-                toast({
-                    title: "Discount Too High",
-                    description: `Maximum allowed discount is ${(MAX_DISCOUNT_PERCENTAGE * 100)}%. Please adjust your price.`,
-                    variant: "destructive"
-                });
-                return;
-            }
-        }
+        // Final Validation Check
+        if (!validateStep(1) || !validateStep(4)) return;
+        // Also check images again just in case
+        if (!validateStep(3)) return;
 
         setIsSaving(true);
         try {
-            // 1. Upload Images
-            const newImageUrls: string[] = [];
-            for (const file of formData.images) {
-                const fileExt = file.name.split('.').pop();
-                const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-                const { error: uploadError } = await supabase.storage.from('products').upload(`products/${fileName}`, file);
-                if (uploadError) throw uploadError;
-                const { data: { publicUrl } } = supabase.storage.from('products').getPublicUrl(`products/${fileName}`);
-                newImageUrls.push(publicUrl);
-            }
-            const allImages = [...formData.existingImages, ...newImageUrls];
-
+            // 1. Prepare Product Data
             const productPayload = {
                 title: formData.title,
                 slug: formData.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + (id ? '' : `-${Date.now()}`),
                 description: formData.description,
                 category: formData.category,
+                subcategory_id: formData.selectedSubcategoryId || null,
                 price: Number(formData.price),
                 discount_price: formData.discountPrice ? Number(formData.discountPrice) : null,
                 published: isPublished,
@@ -234,10 +316,31 @@ export default function SellerProductForm() {
                 seller_id: user?.id
             };
 
+            // Governance: Check if any restricted fields changed on update
+            if (id && !isAdmin) {
+                const restrictedChanged =
+                    productPayload.title !== originalData.title ||
+                    productPayload.category !== originalData.category ||
+                    productPayload.subcategory_id !== originalData.subcategory_id ||
+                    productPayload.description !== originalData.description;
+
+                if (restrictedChanged) {
+                    setIsRequestDialogOpen(true);
+                    setIsSaving(false);
+                    return; // Stop and show request dialog
+                }
+            }
+
             let productId = id;
+
+            // Insert or Update Product
             if (id) {
                 await supabase.from('products').update(productPayload).eq('id', id);
-                // Clean up old variants (simplest approach)
+
+                // Clean up variants logic
+                // For robustness, we will delete existing variants and recreate them. 
+                // This handles renamed colors, removed sizes, etc. simply.
+                // However, we must preserve IDs if we want to be clever, but wiping is safer given the rigorous re-entry.
                 const { data: existingVariants } = await supabase.from('product_variants').select('id').eq('product_id', id);
                 if (existingVariants?.length) {
                     const vIds = existingVariants.map(v => v.id);
@@ -246,19 +349,43 @@ export default function SellerProductForm() {
                 }
             } else {
                 const { data } = await supabase.from('products').insert(productPayload).select().single();
+                if (!data) throw new Error("Failed to create product");
                 productId = data.id;
             }
 
-            // Create Variants
-            const colors = formData.selectedColors.length > 0 ? formData.selectedColors : [{ name: 'Default', hex: '#000000' }];
+            // 2. Process Variants & Images
+            // We iterate selected colors to create variants
+            const colors = formData.selectedColors.length > 0 ? formData.selectedColors : []; // Should be validated
+
             for (const color of colors) {
+                // Upload New Images for this Color
+                const colorFiles = formData.variantImages[color.id] || [];
+                const uploadedUrls: string[] = [];
+
+                for (const file of colorFiles) {
+                    const fileExt = file.name.split('.').pop();
+                    const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+                    const { error: uploadError } = await supabase.storage.from('products').upload(`products/${fileName}`, file);
+                    if (uploadError) throw uploadError;
+                    const { data: { publicUrl } } = supabase.storage.from('products').getPublicUrl(`products/${fileName}`);
+                    uploadedUrls.push(publicUrl);
+                }
+
+                // Combine with existing preserved images
+                const existingUrls = formData.existingVariantImages[color.id] || [];
+                const finalImages = [...existingUrls, ...uploadedUrls];
+
+                // Create Variant
                 const { data: variant } = await supabase.from('product_variants').insert({
                     product_id: productId,
                     color_name: color.name,
                     color_hex: color.hex,
-                    images: allImages,
+                    images: finalImages,
                 }).select().single();
 
+                if (!variant) throw new Error("Failed to create variant");
+
+                // Create Sizes
                 if (formData.selectedSizes.length > 0) {
                     const sizeEntries = formData.selectedSizes
                         .filter(size => !formData.unavailableVariants?.includes(getStockKey(color.name, size)))
@@ -274,6 +401,22 @@ export default function SellerProductForm() {
                 }
             }
 
+            // 3. Cleanup Deleted Images (Storage)
+            if (formData.imagesToDelete.length > 0) {
+                // Extract paths from URLs
+                const pathsToDelete = formData.imagesToDelete.map(url => {
+                    // Url format: .../storage/v1/object/public/products/products/filename.jpg
+                    // We need 'products/filename.jpg' relative to bucket 'products'
+                    const parts = url.split('/products/');
+                    return parts.length > 1 ? `products/${parts[parts.length - 1]}` : null;
+                }).filter(p => p !== null) as string[];
+
+                if (pathsToDelete.length > 0) {
+                    console.log("[SellerProductForm] Cleaning up storage images:", pathsToDelete);
+                    await supabase.storage.from('products').remove(pathsToDelete);
+                }
+            }
+
             toast({
                 title: isPublished ? "Product Published! 🎉" : "Draft Saved",
                 description: isPublished ? "Your product is now live on the store." : "You can continue editing this later."
@@ -281,31 +424,55 @@ export default function SellerProductForm() {
             navigate("/seller/products");
 
         } catch (error: any) {
-            toast({ title: "Publish Failed", description: error.message, variant: "destructive" });
+            console.error("Save Error:", error);
+
+            let errorMsg = error.message || "An unexpected error occurred while saving.";
+
+            // Handle common Postgres errors for 409-like conflicts
+            if (error.code === '23505') {
+                if (error.details?.includes('sku')) {
+                    errorMsg = "This SKU is already in use by another product. Please choose a unique SKU.";
+                } else if (error.details?.includes('slug')) {
+                    errorMsg = "A product with a very similar title already exists. Please modify the title slightly.";
+                } else {
+                    errorMsg = "A unique constraint was violated. This usually means a duplicate SKU or Slug.";
+                }
+            }
+
+            toast({
+                title: "Save Failed",
+                description: errorMsg,
+                variant: "destructive"
+            });
         } finally {
             setIsSaving(false);
         }
     };
 
     const checkSkuAvailability = async (skuToCheck: string): Promise<boolean> => {
-        if (!skuToCheck || skuToCheck === formData.sku) return true; // No change or empty
-
-        // If editing, and SKU hasn't changed from original, it's valid
-        // (We need to store original SKU to be perfect, but checking DB excluding self is safer)
+        if (!skuToCheck) return true;
 
         try {
-            let query = supabase.from('products').select('id').eq('sku', skuToCheck);
+            // If editing, and we are checking the same SKU that's currently on this product in the form,
+            // we need to verify if it's the SAME as what's in the DB for this product ID.
+            // However, a simpler way is to always check the DB and exclude the current ID if it exists.
+
+            let query = supabase.from('products').select('id, sku').eq('sku', skuToCheck);
             if (id) {
                 query = query.neq('id', id);
             }
 
             const { data, error } = await query.maybeSingle();
 
-            if (error) throw error;
-            return !data; // True if available (no data found)
+            if (error) {
+                console.error("SKU check query error:", error);
+                return true; // Fail open to avoid blocking valid saves
+            }
+
+            return !data; // True if available (no other product has this SKU)
         } catch (err) {
             console.error("SKU check failed", err);
-            return true; // Fail open to avoid blocking valid saves on connection blip, but risky
+            return true;
         }
     };
 
@@ -317,12 +484,38 @@ export default function SellerProductForm() {
             if (!formData.title.trim()) newErrors.title = "Product title is required.";
             else if (formData.title.length < 3) newErrors.title = "Title must be at least 3 characters.";
 
-            if (!formData.category) newErrors.category = "Please select or create a category.";
+            if (!formData.selectedCategoryId) newErrors.category = "Please select a category.";
+            if (!formData.selectedSubcategoryId) newErrors.subcategory = "Please select a subcategory.";
 
             if (!formData.description.trim()) newErrors.description = "Product description is required.";
             else if (formData.description.length < 10) newErrors.description = "Description should be at least 10 characters.";
+        }
 
-            // BETTER: Let's do a blocking check in handleNext if step is 1)
+        // Validate Visuals (Step 3) - REQUIRE images for EACH variant
+        if (step === 3) {
+            if (formData.selectedColors.length === 0) {
+                // Technically this is caught in step 2 (Variants) usually, but good to check
+                toast({ title: "No Colors", description: "Please go back and add at least one color.", variant: "destructive" });
+                isValid = false;
+            } else {
+                let missingImages = false;
+                formData.selectedColors.forEach(color => {
+                    const existing = formData.existingVariantImages[color.id] || [];
+                    const newImgs = formData.variantImages[color.id] || [];
+                    if (existing.length + newImgs.length === 0) {
+                        missingImages = true;
+                    }
+                });
+
+                if (missingImages) {
+                    toast({
+                        title: "Missing Images",
+                        description: "Every color variant must have at least one image.",
+                        variant: "destructive"
+                    });
+                    isValid = false;
+                }
+            }
         }
 
         if (step === 4) {
@@ -344,7 +537,6 @@ export default function SellerProductForm() {
         if (Object.keys(newErrors).length > 0) {
             setErrors(newErrors);
             isValid = false;
-            // Shake effect or just toast
             toast({
                 title: "Please check your inputs",
                 description: "There are validation errors in the form.",
@@ -397,31 +589,57 @@ export default function SellerProductForm() {
         setFormData(prev => ({ ...prev, [field]: value }));
     };
 
-    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, colorId: string) => {
         const files = e.target.files;
         if (files) {
             const newFiles = Array.from(files);
             const newPreviews = newFiles.map(file => URL.createObjectURL(file));
+
             setFormData(prev => ({
                 ...prev,
-                images: [...prev.images, ...newFiles],
-                imagePreviews: [...prev.imagePreviews, ...newPreviews],
+                variantImages: {
+                    ...prev.variantImages,
+                    [colorId]: [...(prev.variantImages[colorId] || []), ...newFiles]
+                },
+                variantPreviews: {
+                    ...prev.variantPreviews,
+                    [colorId]: [...(prev.variantPreviews[colorId] || []), ...newPreviews]
+                },
+                // If this variant had images marked for deletion, we don't automatically restore them, 
+                // but we could. For now, we just add new ones.
             }));
         }
     };
 
-    const removeImage = (index: number, type: 'new' | 'existing') => {
+    const removeImage = (index: number, type: 'new' | 'existing', colorId: string) => {
         if (type === 'new') {
             setFormData(prev => ({
                 ...prev,
-                images: prev.images.filter((_, i) => i !== index),
-                imagePreviews: prev.imagePreviews.filter((_, i) => i !== index),
+                variantImages: {
+                    ...prev.variantImages,
+                    [colorId]: prev.variantImages[colorId]?.filter((_, i) => i !== index) || []
+                },
+                variantPreviews: {
+                    ...prev.variantPreviews,
+                    [colorId]: prev.variantPreviews[colorId]?.filter((_, i) => i !== index) || []
+                }
             }));
         } else {
-            setFormData(prev => ({
-                ...prev,
-                existingImages: prev.existingImages.filter((_, i) => i !== index),
-            }));
+            setFormData(prev => {
+                const imageToDelete = prev.existingVariantImages[colorId]?.[index];
+                const newDeletedList = imageToDelete
+                    ? [...prev.imagesToDelete, imageToDelete]
+                    : prev.imagesToDelete;
+
+                return {
+                    ...prev,
+                    existingVariantImages: {
+                        ...prev.existingVariantImages,
+                        [colorId]: prev.existingVariantImages[colorId]?.filter((_, i) => i !== index) || []
+                    },
+                    imagesToDelete: newDeletedList
+                };
+            });
         }
     };
 
@@ -586,7 +804,14 @@ export default function SellerProductForm() {
                                 {currentStep === 1 && (
                                     <div className="space-y-4">
                                         <div className="grid gap-2">
-                                            <Label className={cn(errors.title ? "text-destructive" : "")}>Product Title</Label>
+                                            <div className="flex items-center justify-between">
+                                                <Label className={cn(errors.title ? "text-destructive" : "")}>Product Title</Label>
+                                                {id && !isAdmin && (
+                                                    <Badge variant="secondary" className="text-[10px] bg-amber-50 text-amber-600 border-amber-200 transition-colors hover:bg-amber-100 hover:text-amber-700">
+                                                        Admin Managed
+                                                    </Badge>
+                                                )}
+                                            </div>
                                             <Input
                                                 value={formData.title}
                                                 onChange={e => {
@@ -595,8 +820,14 @@ export default function SellerProductForm() {
                                                 }}
                                                 placeholder="e.g. Vintage Leather Jacket"
                                                 className={cn("text-lg h-12", errors.title ? "border-destructive focus-visible:ring-destructive" : "")}
+                                                disabled={!!id && !isAdmin}
                                                 autoFocus
                                             />
+                                            {id && !isAdmin && (
+                                                <p className="text-[10px] text-muted-foreground italic -mt-1 flex items-center gap-1">
+                                                    <ShieldAlert className="w-3 h-3" /> Core identity is locked. Submit a revision request for changes.
+                                                </p>
+                                            )}
                                             {errors.title && (
                                                 <motion.p initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} className="text-xs text-destructive font-medium">
                                                     {errors.title}
@@ -604,24 +835,80 @@ export default function SellerProductForm() {
                                             )}
                                         </div>
                                         <div className="grid gap-2">
-                                            <Label className={cn(errors.category ? "text-destructive" : "")}>Category</Label>
-                                            <CategoryInput
-                                                value={formData.category}
-                                                onChange={v => {
-                                                    handleChange('category', v);
-                                                    if (errors.category) setErrors(prev => ({ ...prev, category: "" }));
-                                                }}
-                                                placeholder="Select Category"
-                                                allowManagement={isAdmin} // Restricted to Admins
-                                            />
+                                            <div className="flex items-center justify-between">
+                                                <Label className={cn(errors.category ? "text-destructive" : "")}>Category *</Label>
+                                                {id && !isAdmin && <Badge variant="secondary" className="text-[10px] bg-amber-50 text-amber-600 border-amber-200 transition-colors hover:bg-amber-100 hover:text-amber-700">Admin Managed</Badge>}
+                                            </div>
+                                            <Select
+                                                value={formData.selectedCategoryId}
+                                                onValueChange={handleCategoryChange}
+                                                disabled={!!id && !isAdmin}
+                                            >
+                                                <SelectTrigger className={cn(
+                                                    "text-lg h-12",
+                                                    errors.category ? "border-destructive focus-visible:ring-destructive" : ""
+                                                )}>
+                                                    <SelectValue placeholder="Select a category" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {dbCategories.map(cat => (
+                                                        <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
                                             {errors.category && (
                                                 <motion.p initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} className="text-xs text-destructive font-medium">
                                                     {errors.category}
                                                 </motion.p>
                                             )}
                                         </div>
+
+                                        {formData.selectedCategoryId && (
+                                            <div className="grid gap-2">
+                                                <Label className={cn(errors.subcategory ? "text-destructive" : "")}>
+                                                    Subcategory *
+                                                </Label>
+                                                <Select
+                                                    value={formData.selectedSubcategoryId}
+                                                    onValueChange={(v) => {
+                                                        setFormData(prev => ({ ...prev, selectedSubcategoryId: v }));
+                                                        setSubcategoryWarning("");
+                                                        if (errors.subcategory) setErrors(prev => ({ ...prev, subcategory: "" }));
+                                                    }}
+                                                    disabled={isLoadingSubcategories || !formData.selectedCategoryId}
+                                                >
+                                                    <SelectTrigger className={cn(
+                                                        "text-lg h-12",
+                                                        errors.subcategory ? "border-destructive focus-visible:ring-destructive" : ""
+                                                    )}>
+                                                        <SelectValue placeholder="Select a subcategory" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {dbSubcategories
+                                                            .filter(sub => sub.category_id === formData.selectedCategoryId)
+                                                            .map(sub => (
+                                                                <SelectItem key={sub.id} value={sub.id}>{sub.name}</SelectItem>
+                                                            ))
+                                                        }
+                                                    </SelectContent>
+                                                </Select>
+                                                {errors.subcategory && (
+                                                    <motion.p initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} className="text-xs text-destructive font-medium">
+                                                        {errors.subcategory}
+                                                    </motion.p>
+                                                )}
+                                                {subcategoryWarning && !errors.subcategory && (
+                                                    <motion.p initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} className="text-xs text-amber-600 font-medium">
+                                                        {subcategoryWarning}
+                                                    </motion.p>
+                                                )}
+                                            </div>
+                                        )}
                                         <div className="grid gap-2">
-                                            <Label className={cn(errors.description ? "text-destructive" : "")}>Story / Description</Label>
+                                            <div className="flex items-center justify-between">
+                                                <Label className={cn(errors.description ? "text-destructive" : "")}>Story / Description</Label>
+                                                {id && !isAdmin && <Badge variant="secondary" className="text-[10px] bg-amber-50 text-amber-600 border-amber-200 transition-colors hover:bg-amber-100 hover:text-amber-700">Admin Managed</Badge>}
+                                            </div>
                                             <Textarea
                                                 value={formData.description}
                                                 onChange={e => {
@@ -630,6 +917,7 @@ export default function SellerProductForm() {
                                                 }}
                                                 placeholder="Tell the customer about this product..."
                                                 className={cn("min-h-[150px] resize-none", errors.description ? "border-destructive focus-visible:ring-destructive" : "")}
+                                                disabled={!!id && !isAdmin}
                                             />
                                             {errors.description && (
                                                 <motion.p initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} className="text-xs text-destructive font-medium">
@@ -640,88 +928,9 @@ export default function SellerProductForm() {
                                     </div>
                                 )}
 
-                                {/* STEP 2: VISUALS */}
+                                {/* STEP 2: VARIANTS (Reordered) */}
                                 {currentStep === 2 && (
-                                    <div className="space-y-6">
-                                        <label
-                                            className="
-                                                border-2 border-dashed border-gray-300/60 rounded-xl p-10 flex flex-col items-center justify-center 
-                                                cursor-pointer hover:bg-gray-50/80 hover:border-primary/50 transition-all group relative overflow-hidden
-                                            "
-                                        >
-                                            <div className="absolute inset-0 bg-gradient-to-br from-transparent to-gray-50/50 pointer-events-none" />
-                                            <div className="bg-white p-4 rounded-full mb-4 shadow-sm group-hover:scale-110 group-hover:shadow-md transition-all duration-300 relative z-10">
-                                                <Upload className="h-8 w-8 text-primary" />
-                                            </div>
-                                            <h3 className="text-lg font-semibold text-gray-700 relative z-10">Click to Upload Photos</h3>
-                                            <p className="text-sm text-gray-400 text-center max-w-xs mt-2 relative z-10">
-                                                Add high-quality images. Recommended size: 1000x1000px.
-                                            </p>
-                                            <input type="file" multiple accept="image/*" className="hidden" onChange={handleImageUpload} />
-                                        </label>
-
-                                        {(formData.existingImages.length > 0 || formData.imagePreviews.length > 0) && (
-                                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                                                {/* Existing Images */}
-                                                {formData.existingImages.map((src, i) => (
-                                                    <div key={`exist-${i}`} className="relative group aspect-[4/5] rounded-xl overflow-hidden shadow-sm border bg-white cursor-zoom-in" onClick={() => setPreviewImage(src)}>
-                                                        <img src={src} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
-                                                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
-
-                                                        {i === 0 && (
-                                                            <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-md text-white text-[10px] font-bold px-2 py-1 rounded-full border border-white/20 shadow-lg z-10">
-                                                                Main Cover
-                                                            </div>
-                                                        )}
-
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                removeImage(i, 'existing');
-                                                            }}
-                                                            className="absolute top-2 right-2 bg-white/90 hover:bg-destructive hover:text-white text-gray-600 p-1.5 rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-all duration-200 z-20"
-                                                            title="Remove Image"
-                                                        >
-                                                            <X className="h-4 w-4" />
-                                                        </button>
-                                                    </div>
-                                                ))}
-                                                {/* New Uploads */}
-                                                {formData.imagePreviews.map((src, i) => (
-                                                    <div key={`new-${i}`} className="relative group aspect-[4/5] rounded-xl overflow-hidden shadow-md border-2 border-primary/20 bg-white cursor-zoom-in" onClick={() => setPreviewImage(src)}>
-                                                        <img src={src} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
-                                                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
-
-                                                        {formData.existingImages.length === 0 && i === 0 && (
-                                                            <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-md text-white text-[10px] font-bold px-2 py-1 rounded-full border border-white/20 shadow-lg z-10">
-                                                                Main Cover
-                                                            </div>
-                                                        )}
-
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                removeImage(i, 'new');
-                                                            }}
-                                                            className="absolute top-2 right-2 bg-white/90 hover:bg-destructive hover:text-white text-gray-600 p-1.5 rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-all duration-200 z-20"
-                                                            title="Remove Image"
-                                                        >
-                                                            <X className="h-4 w-4" />
-                                                        </button>
-
-                                                        <div className="absolute bottom-2 right-2 bg-primary text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-all delay-100 translate-y-2 group-hover:translate-y-0">
-                                                            New
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-
-                                {/* STEP 3: VARIANTS */}
-                                {currentStep === 3 && (
-                                    <div className="space-y-8">
+                                    <div className="space-y-8 animate-in slide-in-from-right-8 fade-in duration-300">
                                         {/* Dynamic Color Selection */}
                                         <div>
                                             <div className="flex items-center justify-between mb-3">
@@ -771,7 +980,11 @@ export default function SellerProductForm() {
                                                                 return;
                                                             }
 
-                                                            const newColor = { name, hex };
+                                                            const newColor = {
+                                                                id: crypto.randomUUID(),
+                                                                name,
+                                                                hex
+                                                            };
                                                             toggleSelection(formData.selectedColors, newColor, 'selectedColors');
                                                             nameInput.value = "";
                                                         }
@@ -785,7 +998,7 @@ export default function SellerProductForm() {
                                             <div className="flex flex-wrap gap-3">
                                                 {formData.selectedColors.map((color) => (
                                                     <div
-                                                        key={color.name}
+                                                        key={color.id}
                                                         className="group relative px-4 py-2 rounded-full border border-primary/20 bg-primary/5 flex items-center gap-3 animate-in zoom-in-50"
                                                     >
                                                         <div className="w-4 h-4 rounded-full border shadow-sm ring-1 ring-offset-1 ring-black/5" style={{ backgroundColor: color.hex }} />
@@ -838,7 +1051,7 @@ export default function SellerProductForm() {
                                                 </div>
 
                                                 {formData.selectedColors.map(color => (
-                                                    <div key={color.name} className="bg-slate-50 p-5 rounded-xl border border-slate-200">
+                                                    <div key={color.id} className="bg-slate-50 p-5 rounded-xl border border-slate-200">
                                                         <div className="flex items-center gap-3 mb-4">
                                                             <div className="w-5 h-5 rounded-full border shadow-sm" style={{ backgroundColor: color.hex }} />
                                                             <h4 className="font-semibold text-slate-800">{color.name} Variants</h4>
@@ -927,6 +1140,120 @@ export default function SellerProductForm() {
                                                         </div>
                                                     </div>
                                                 ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* STEP 3: VISUALS (New per-variant upload) */}
+                                {currentStep === 3 && (
+                                    <div className="space-y-6 animate-in slide-in-from-right-8 fade-in duration-300">
+                                        <div className="text-center mb-6">
+                                            <h3 className="text-lg font-semibold">Upload Images by Color</h3>
+                                            <p className="text-sm text-muted-foreground">
+                                                Add specific images for each color variant so customers see the right product.
+                                            </p>
+                                        </div>
+
+                                        {formData.selectedColors.length === 0 ? (
+                                            <div className="flex flex-col items-center justify-center py-12 border-2 border-dashed border-gray-200 rounded-xl bg-gray-50 text-center">
+                                                <div className="bg-white p-3 rounded-full shadow-sm mb-3">
+                                                    <Package className="h-6 w-6 text-orange-400" />
+                                                </div>
+                                                <h3 className="font-semibold text-gray-900">No Colors Defined</h3>
+                                                <p className="text-sm text-gray-500 max-w-xs mt-1 mb-4">
+                                                    You need to add at least one color variant in the previous step to upload images.
+                                                </p>
+                                                <Button variant="outline" onClick={handleBack}>
+                                                    Go Back to Variants
+                                                </Button>
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-8">
+                                                {/* Tabs-like interface for colors */}
+                                                {formData.selectedColors.map(color => {
+                                                    const existing = formData.existingVariantImages[color.id] || [];
+                                                    const previews = formData.variantPreviews[color.id] || [];
+                                                    const hasImages = existing.length + previews.length > 0;
+
+                                                    return (
+                                                        <div key={color.id} className="bg-card border rounded-xl overflow-hidden shadow-sm">
+                                                            <div className="px-5 py-4 border-b bg-gray-50/50 flex items-center justify-between">
+                                                                <div className="flex items-center gap-3">
+                                                                    <div>
+                                                                        <h4 className="font-semibold text-sm">
+                                                                            {color.name}
+                                                                            {id && !isAdmin && <Badge variant="secondary" className="ml-2 text-[8px] bg-amber-50 text-amber-700 border-amber-200 uppercase tracking-tighter transition-colors hover:bg-amber-100 hover:text-amber-800">Admin Managed</Badge>}
+                                                                        </h4>
+                                                                        <p className="text-[10px] text-muted-foreground">
+                                                                            {hasImages ? `${existing.length + previews.length} images` : "No images yet"}
+                                                                        </p>
+                                                                    </div>
+                                                                </div>
+                                                                {!hasImages && (
+                                                                    <Badge variant="destructive" className="text-[10px]">Required</Badge>
+                                                                )}
+                                                            </div>
+
+                                                            <div className="p-5">
+                                                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                                                                    {/* Upload Button */}
+                                                                    <label
+                                                                        className={cn(
+                                                                            "aspect-[4/5] border-2 border-dashed border-gray-200 rounded-xl flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 hover:border-primary/50 transition-all group",
+                                                                            id && !isAdmin && "opacity-50 cursor-not-allowed hover:bg-white hover:border-gray-200"
+                                                                        )}
+                                                                    >
+                                                                        <div className="bg-primary/5 p-2 rounded-full mb-2 group-hover:scale-110 transition-transform">
+                                                                            <Upload className="h-5 w-5 text-primary" />
+                                                                        </div>
+                                                                        <span className="text-xs font-semibold text-gray-600">Add Image</span>
+                                                                        <input
+                                                                            type="file"
+                                                                            multiple
+                                                                            accept="image/*"
+                                                                            className="hidden"
+                                                                            onChange={(e) => handleImageUpload(e, color.id)}
+                                                                            disabled={!!id && !isAdmin}
+                                                                        />
+                                                                    </label>
+
+                                                                    {/* Existing Images */}
+                                                                    {existing.map((src, i) => (
+                                                                        <div key={`exist-${color.id}-${i}`} className="relative group aspect-[4/5] rounded-xl overflow-hidden shadow-sm border bg-white">
+                                                                            <img src={src} className="w-full h-full object-cover" />
+                                                                            <button
+                                                                                onClick={() => removeImage(i, 'existing', color.id)}
+                                                                                className={cn(
+                                                                                    "absolute top-2 right-2 bg-white/90 hover:bg-destructive hover:text-white text-gray-600 p-1.5 rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-all",
+                                                                                    id && !isAdmin && "cursor-not-allowed hidden" // Totally hide for sellers during edit
+                                                                                )}
+                                                                                disabled={!!id && !isAdmin}
+                                                                            >
+                                                                                <X className="h-3 w-3" />
+                                                                            </button>
+                                                                            {i === 0 && <span className="absolute bottom-2 left-2 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded-full">Main</span>}
+                                                                        </div>
+                                                                    ))}
+
+                                                                    {/* New Previews */}
+                                                                    {previews.map((src, i) => (
+                                                                        <div key={`new-${color.id}-${i}`} className="relative group aspect-[4/5] rounded-xl overflow-hidden shadow-sm border border-primary/30 bg-white">
+                                                                            <img src={src} className="w-full h-full object-cover" />
+                                                                            <button
+                                                                                onClick={() => removeImage(i, 'new', color.id)}
+                                                                                className="absolute top-2 right-2 bg-white/90 hover:bg-destructive hover:text-white text-gray-600 p-1.5 rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-all"
+                                                                            >
+                                                                                <X className="h-3 w-3" />
+                                                                            </button>
+                                                                            <Badge className="absolute top-2 left-2 text-[10px] h-5 py-0">New</Badge>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
                                             </div>
                                         )}
                                     </div>
@@ -1130,11 +1457,18 @@ export default function SellerProductForm() {
 
                                         <div className="flex gap-4">
                                             <div className="w-1/3 aspect-[3/4] rounded-lg overflow-hidden border shadow-sm relative bg-gray-100">
-                                                {(formData.imagePreviews[0] || formData.existingImages[0]) ? (
-                                                    <img src={formData.imagePreviews[0] || formData.existingImages[0]} className="w-full h-full object-cover" />
-                                                ) : (
-                                                    <div className="flex items-center justify-center h-full text-gray-400">No Image</div>
-                                                )}
+                                                {(() => {
+                                                    const firstColor = formData.selectedColors[0];
+                                                    const previewImage = firstColor
+                                                        ? (formData.variantPreviews[firstColor.id]?.[0] || formData.existingVariantImages[firstColor.id]?.[0])
+                                                        : null;
+
+                                                    return previewImage ? (
+                                                        <img src={previewImage} className="w-full h-full object-cover" />
+                                                    ) : (
+                                                        <div className="flex items-center justify-center h-full text-gray-400">No Image</div>
+                                                    );
+                                                })()}
                                                 {Number(formData.discountPrice) > 0 && (
                                                     <Badge className="absolute top-2 right-2 bg-destructive text-white shadow-lg">Sale</Badge>
                                                 )}
@@ -1275,6 +1609,105 @@ export default function SellerProductForm() {
                     )
                 }
             </AnimatePresence>
+            <WhatsAppButton />
+
+            {/* Change Request Dialog */}
+            <AlertDialog open={isRequestDialogOpen} onOpenChange={setIsRequestDialogOpen}>
+                <AlertDialogContent className="max-w-md rounded-2xl">
+                    <AlertDialogHeader>
+                        <div className="w-12 h-12 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center mb-4 mx-auto">
+                            <ShieldAlert className="w-6 h-6 text-amber-600" />
+                        </div>
+                        <AlertDialogTitle className="text-center text-xl">Restricted Field Update</AlertDialogTitle>
+                        <AlertDialogDescription className="text-center pt-2">
+                            The following restricted fields have been modified:
+                            <div className="mt-3 p-3 bg-muted/50 rounded-xl text-left text-xs space-y-1 font-medium border border-border/40">
+                                {formData.title !== originalData?.title && <p className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-amber-500" /> Product Title</p>}
+                                {(formData.category !== originalData?.category || formData.selectedSubcategoryId !== originalData?.subcategory_id) && <p className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-amber-500" /> Category/Subcategory</p>}
+                                {formData.description !== originalData?.description && <p className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-amber-500" /> Product Description</p>}
+                            </div>
+                            <p className="mt-4 text-xs">
+                                These changes require <strong>Admin Approval</strong> before they are applied.
+                                Pricing and Stock updates will be applied immediately.
+                            </p>
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+
+                    <div className="py-4">
+                        <Label className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground mb-2 block">Reason for Update</Label>
+                        <Textarea
+                            placeholder="Please explain why you need to change these restricted fields..."
+                            value={requestReason}
+                            onChange={e => setRequestReason(e.target.value)}
+                            className="min-h-[100px] text-sm resize-none rounded-xl"
+                        />
+                    </div>
+
+                    <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+                        <AlertDialogCancel className="rounded-xl h-11" onClick={() => setIsRequestDialogOpen(false)}>Discard Changes</AlertDialogCancel>
+                        <AlertDialogAction
+                            className="rounded-xl h-11 bg-[#267A77] hover:bg-[#1f6361]"
+                            onClick={async () => {
+                                if (!requestReason.trim()) {
+                                    toast({ title: "Reason Required", description: "Please explain why you are making these changes.", variant: "destructive" });
+                                    return;
+                                }
+
+                                setIsSaving(true);
+                                try {
+                                    // 1. Submit Restricted Changes to Request Table
+                                    const requestedChanges = {
+                                        title: formData.title !== originalData.title ? formData.title : undefined,
+                                        category: formData.category !== originalData.category ? formData.category : undefined,
+                                        description: formData.description !== originalData.description ? formData.description : undefined,
+                                        subcategory_id: formData.selectedSubcategoryId !== originalData.subcategory_id ? formData.selectedSubcategoryId : undefined,
+                                        reason: requestReason
+                                    };
+
+                                    const { error: reqError } = await supabase
+                                        .from('product_update_requests')
+                                        .insert({
+                                            product_id: id,
+                                            seller_id: user?.id,
+                                            requested_changes: requestedChanges,
+                                            status: 'pending'
+                                        });
+
+                                    // 2. Perform safe update for Allowed fields (Price, Stock)
+                                    const safePayload = {
+                                        price: Number(formData.price),
+                                        discount_price: formData.discountPrice ? Number(formData.discountPrice) : null,
+                                        is_featured: formData.isFeatured,
+                                        is_new: formData.isNew,
+                                        // We keep the original restricted values to ensure no bypass
+                                        title: originalData.title,
+                                        description: originalData.description,
+                                        category: originalData.category,
+                                        subcategory_id: originalData.subcategory_id,
+                                        slug: originalData.slug
+                                    };
+
+                                    await supabase.from('products').update(safePayload).eq('id', id);
+
+                                    toast({
+                                        title: "Request Submitted",
+                                        description: "Your core changes are pending approval. Pricing/Stock updates applied.",
+                                    });
+                                    navigate("/seller/products");
+                                } catch (e) {
+                                    console.error(e);
+                                    toast({ title: "Error", description: "Failed to submit update request.", variant: "destructive" });
+                                } finally {
+                                    setIsSaving(false);
+                                    setIsRequestDialogOpen(false);
+                                }
+                            }}
+                        >
+                            Submit for Approval
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div >
     );
 }

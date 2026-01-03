@@ -59,6 +59,8 @@
     opacity: 0.7;
     transition: opacity 0.2s, background-color 0.2s;
     padding: 0.25rem;
+    z-index: 60;
+    /* Ensure it is above z-indexed content like headers (z-10) */
 }
 
 .close:hover {

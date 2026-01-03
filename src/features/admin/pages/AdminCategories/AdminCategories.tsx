@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/Dialog";
 import { toast } from "@/hooks/use-toast";
 
-import { Pencil, Trash2, Plus, ArrowLeft, Upload, Info } from "lucide-react";
+import { Pencil, Trash2, Plus, ArrowLeft, Upload, Info, ShoppingBag } from "lucide-react";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 
 interface Category {
@@ -241,6 +241,14 @@ export default function AdminCategories() {
             </div>
           </div>
           <div className="flex items-center gap-2 w-full xl:w-auto">
+            <Button
+              variant="outline"
+              onClick={() => navigate('/admin/subcategories')}
+              className="flex-1 sm:flex-none h-10 rounded-xl font-bold text-xs bg-secondary hover:bg-secondary/80 shadow-sm gap-2"
+            >
+              <ShoppingBag className="h-4 w-4" />
+              Manage Subcategories
+            </Button>
             <Dialog open={dialogOpen} onOpenChange={(open) => {
               setDialogOpen(open);
               if (!open) resetForm();

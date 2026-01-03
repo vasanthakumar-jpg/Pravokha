@@ -16,7 +16,6 @@ import layout from "@/styles/Layout.module.css";
 import { supabase } from "@/integrations/supabase/client";
 import { BottomBannerCarousel } from "@/components/common/BottomBannerCarousel";
 import { WhatsAppButton } from "@/components/common/WhatsAppButton";
-import { RecentlyViewed } from "@/features/products/components/RecentlyViewed";
 import { useGsapAnimations } from "@/hooks/useGsapAnimations";
 import { ArrowRight, TrendingUp, Zap, Shield, Mail, Info } from "lucide-react";
 import categoryMenImg from "@/assets/category-men.jpg";
@@ -158,17 +157,11 @@ export function HomePage() {
         );
     }
 
-    // Split categories for display layout
-    // First 3 for small cards
-    const smallCardCategories = categories.slice(0, 3);
-    // Next 3 (or specific ones) for large cards
-    const largeCardCategories = categories.slice(3, 6);
-
     return (
         <div className="min-h-screen flex flex-col">
             <HeroCarousel />
 
-            {/* Shop by Category - Small Cards */}
+            {/* Shop by Category - Universal Carousel */}
             <section className={`${layout.containerResponsive} ${layout.sectionSpacing}`}>
                 <h2 className={`${typography.responsiveH2} text-center mb-3 sm:mb-4`}>Shop by Category</h2>
                 <p className={`${typography.responsiveBody} text-center mb-6 sm:mb-8 max-w-2xl mx-auto`}>
@@ -177,26 +170,10 @@ export function HomePage() {
 
                 {/* Category Carousel with Arrows */}
                 <CategoryCarousel
-                    categories={smallCardCategories}
+                    categories={categories}
                     getFallbackImage={getFallbackImage}
                     isCategoryActive={isCategoryActive}
                 />
-
-                {/* Dynamic Large Cards */}
-                {largeCardCategories.length > 0 && (
-                    <div className={styles.categoryGrid}>
-                        {largeCardCategories.map((category) => (
-                            <CategoryCard
-                                key={category.id}
-                                title={category.name}
-                                description={category.description || "Premium collection"}
-                                image={category.image_url || getFallbackImage(category.slug)}
-                                link={`/products?category=${category.slug}`}
-                                comingSoon={category.status === 'coming_soon'}
-                            />
-                        ))}
-                    </div>
-                )}
             </section>
 
             {/* Featured Products */}
@@ -228,9 +205,6 @@ export function HomePage() {
                 </div>
                 <ProductGrid products={newArrivals} />
             </section>
-
-            {/* Recently Viewed */}
-            <RecentlyViewed />
 
             {/* Features */}
             <section className={`${layout.containerResponsive} ${layout.sectionSpacing} bg-muted/30`}>

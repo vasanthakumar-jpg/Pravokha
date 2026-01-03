@@ -117,6 +117,9 @@ export default function AdminAuditLogs() {
         to: undefined
     });
     const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalCount, setTotalCount] = useState(0);
+    const pageSize = 10;
 
     // CRITICAL: Authentication check to prevent unauthorized access
     useEffect(() => {
@@ -141,11 +144,23 @@ export default function AdminAuditLogs() {
                 supabase.removeChannel(channel);
             };
         }
-    }, [adminLoading, isAdmin]);
+    }, [adminLoading, isAdmin, currentPage]);
 
     const fetchLogs = async () => {
         try {
             setLoading(true);
+
+            // Get total count
+            const { count } = await supabase
+                .from('audit_logs')
+                .select('*', { count: 'exact', head: true });
+
+            setTotalCount(count || 0);
+
+            // Get paginated data
+            const from = (currentPage - 1) * pageSize;
+            const to = from + pageSize - 1;
+
             const { data, error } = await supabase
                 .from('audit_logs')
                 .select(`
@@ -155,7 +170,8 @@ export default function AdminAuditLogs() {
                         email
                     )
                 `)
-                .order('created_at', { ascending: false });
+                .order('created_at', { ascending: false })
+                .range(from, to);
 
             if (error) throw error;
             setLogs(data || []);
@@ -266,8 +282,20 @@ export default function AdminAuditLogs() {
                         </div>
                     </div>
                     <div className="flex items-center gap-2 w-full sm:w-auto">
-                        <Button variant="outline" size="sm" onClick={fetchLogs} className="h-8 gap-2">
-                            <RefreshCw className="h-4 w-4" />
+                        <Button
+                            variant="outline"
+                            disabled={loading}
+                            onClick={() => {
+                                fetchLogs();
+                                toast({
+                                    title: "Registry Synchronized",
+                                    description: "The audit trail has been updated with the latest telemetry data.",
+                                    className: "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800"
+                                });
+                            }}
+                            className="h-8 gap-2"
+                        >
+                            <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
                             Refresh
                         </Button>
                         <Button
@@ -461,13 +489,13 @@ export default function AdminAuditLogs() {
                                             </CardHeader>
                                             <CardContent className="p-4 pt-3 flex flex-col gap-3">
                                                 <p className="text-xs font-medium leading-relaxed line-clamp-2">{log.description.replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, '...')}</p>
-                                                <div className="flex items-center justify-between">
-                                                    <Badge variant="outline" className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-muted/50 border-border/40 text-muted-foreground">
+                                                <div className="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-border/40">
+                                                    <Button variant="ghost" size="sm" className="h-6 text-[10px] font-bold text-muted-foreground hover:text-primary px-0 rounded-md">
+                                                        View <ChevronRight className="ml-0.5 h-3 w-3" />
+                                                    </Button>
+                                                    <Badge variant="outline" className="px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-wider bg-primary/10 border-primary/20 text-primary whitespace-nowrap">
                                                         {log.action_type.replace(/_/g, ' ')}
                                                     </Badge>
-                                                    <Button variant="ghost" size="sm" className="h-7 text-xs font-bold text-primary px-0 hover:bg-transparent">
-                                                        View details <ChevronRight className="ml-1 h-3 w-3" />
-                                                    </Button>
                                                 </div>
                                             </CardContent>
                                         </Card>
@@ -686,6 +714,43 @@ export default function AdminAuditLogs() {
                     )}
                 </SheetContent>
             </Sheet>
+
+            {/* Pagination Controls */}
+            {!loading && totalCount > pageSize && (
+                <Card className="border-border/60 bg-card rounded-2xl">
+                    <CardFooter className="flex flex-col sm:flex-row items-center justify-between gap-4 p-6">
+                        <div className="text-sm text-muted-foreground">
+                            Showing <span className="font-bold text-foreground">{((currentPage - 1) * pageSize) + 1}</span> to{' '}
+                            <span className="font-bold text-foreground">{Math.min(currentPage * pageSize, totalCount)}</span> of{' '}
+                            <span className="font-bold text-foreground">{totalCount}</span> logs
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-9 rounded-xl"
+                                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                disabled={currentPage === 1}
+                            >
+                                Previous
+                            </Button>
+                            <div className="flex items-center gap-1 px-3 py-1 rounded-lg bg-muted">
+                                <span className="text-sm font-bold">Page {currentPage}</span>
+                                <span className="text-sm text-muted-foreground">of {Math.ceil(totalCount / pageSize)}</span>
+                            </div>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-9 rounded-xl"
+                                onClick={() => setCurrentPage(prev => Math.min(Math.ceil(totalCount / pageSize), prev + 1))}
+                                disabled={currentPage >= Math.ceil(totalCount / pageSize)}
+                            >
+                                Next
+                            </Button>
+                        </div>
+                    </CardFooter>
+                </Card>
+            )}
         </div>
     );
 }

@@ -19,6 +19,8 @@ import {
   Eye,
   EyeOff,
   RefreshCcw,
+  BadgeCheck,
+  ShieldAlert,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -93,6 +95,8 @@ interface User {
   created_at: string;
   status: string;
   verification_status: string;
+  phone?: string | null;
+  address?: string | null;
 }
 
 export default function AdminUsers() {
@@ -126,7 +130,7 @@ export default function AdminUsers() {
       setLoading(true);
       const { data: profilesData, error: profileError } = await supabase
         .from("profiles")
-        .select("id, email, full_name, avatar_url, created_at, status, verification_status")
+        .select("id, email, full_name, avatar_url, created_at, status, verification_status, phone, address")
         .order("created_at", { ascending: false });
 
       if (profileError) throw profileError;
@@ -160,7 +164,9 @@ export default function AdminUsers() {
           role: highestRole,
           created_at: profile.created_at,
           status: profile.status || "active",
-          verification_status: profile.verification_status || "pending"
+          verification_status: profile.verification_status || "pending",
+          phone: profile.phone,
+          address: profile.address
         };
       });
 
@@ -592,94 +598,152 @@ export default function AdminUsers() {
           <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden border-border/40 rounded-3xl bg-card/95 backdrop-blur-2xl shadow-xl">
             <DialogHeader className="p-6 bg-primary text-white">
               <div className="flex items-center gap-4">
-                <Avatar className="h-16 w-16 rounded-2xl border-2 border-white/20 shadow-lg">
+                <Avatar className="h-16 w-16 rounded-2xl border-2 border-white/20 shadow-lg" >
                   <AvatarImage src={selectedUser?.avatar_url || ""} />
-                  <AvatarFallback className="bg-white/10 text-white font-bold text-xl">
+                  <AvatarFallback className="bg-white/10 text-white font-bold text-xl" >
                     {selectedUser?.full_name?.charAt(0) || selectedUser?.email.charAt(0)}
                   </AvatarFallback>
                 </Avatar>
-                <div className="space-y-0.5">
-                  <DialogTitle className="text-xl font-bold">Identity dossier</DialogTitle>
-                  <DialogDescription className="text-white/80 font-medium text-xs">
+                <div className="space-y-0.5" >
+                  <DialogTitle className="text-xl font-bold" > Identity dossier </DialogTitle>
+                  <DialogDescription className="text-white/80 font-medium text-xs" >
                     Reviewing: {selectedUser?.full_name || selectedUser?.email}
                   </DialogDescription>
                 </div>
               </div>
             </DialogHeader>
 
-            <div className="p-6 space-y-6">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 rounded-xl bg-muted/50 border border-border/60">
-                  <p className="text-[10px] font-bold text-muted-foreground mb-1">Joined date</p>
-                  <p className="text-sm font-bold">{selectedUser && new Date(selectedUser.created_at).toLocaleDateString()}</p>
-                </div>
-                <div className="p-4 rounded-xl bg-muted/50 border border-border/60">
-                  <p className="text-[10px] font-bold text-muted-foreground mb-1">Current role</p>
-                  <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 rounded-full px-3 py-0">
-                    {selectedUser?.role}
-                  </Badge>
-                </div>
-                <div className="p-4 rounded-xl bg-muted/50 border border-border/60 col-span-2">
-                  <p className="text-[10px] font-bold text-muted-foreground mb-1">Email address</p>
-                  <p className="text-sm font-bold truncate">{selectedUser?.email}</p>
-                </div>
-              </div>
+            <div className="p-0 max-h-[80vh] overflow-y-auto scrollbar-none section-scroll" >
+              <div className="p-6 space-y-8" >
+                {/* Identification Group */}
+                <section className="space-y-4" >
+                  <div className="flex items-center gap-2 border-b border-border/40 pb-2" >
+                    <BadgeCheck className="h-4 w-4 text-primary" />
+                    <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary" > Identification </h4>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4" >
+                    <div className="p-4 rounded-2xl bg-muted/30 border border-border/40 flex flex-col gap-1.5 hover:bg-muted/50 transition-colors" >
+                      <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest" > Platform UUID </p>
+                      <p className="text-[11px] font-mono font-bold break-all text-foreground leading-relaxed" > {selectedUser?.id} </p>
+                    </div>
+                    <div className="p-4 rounded-2xl bg-muted/30 border border-border/40 flex flex-col gap-1.5 hover:bg-muted/50 transition-colors" >
+                      <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest" > Core Role </p>
+                      <Badge variant="outline" className="w-fit bg-primary/10 text-primary border-primary/20 rounded-lg px-2.5 py-0.5 uppercase text-[10px] font-bold" >
+                        {selectedUser?.role}
+                      </Badge>
+                    </div>
+                  </div>
+                </section>
 
-              <div className="pt-2 flex flex-col gap-3">
-                <Button
-                  variant={selectedUser?.status === 'suspended' ? "default" : "destructive"}
-                  className="rounded-xl h-12 font-bold transition-all"
-                  onClick={() => { if (selectedUser) handleSuspendUser(selectedUser); setShowProfileModal(false); }}
-                >
-                  {selectedUser?.status === 'suspended' ? <RefreshCw className="mr-2 h-4 w-4" /> : <Ban className="mr-2 h-4 w-4" />}
-                  {selectedUser?.status === 'suspended' ? "Authorize platform access" : "Revoke platform clearance"}
-                </Button>
-                <Button variant="ghost" className="text-xs font-bold text-muted-foreground" onClick={() => setShowProfileModal(false)}>
-                  Close dossier
-                </Button>
+                {/* Contact Interface Group */}
+                <section className="space-y-4" >
+                  <div className="flex items-center gap-2 border-b border-border/40 pb-2" >
+                    <Mail className="h-4 w-4 text-primary" />
+                    <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary" > Contact interface </h4>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4" >
+                    <div className="p-4 rounded-2xl bg-muted/30 border border-border/40 flex flex-col gap-1.5 hover:bg-muted/50 transition-colors" >
+                      <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest" > Reach Email </p>
+                      <p className="text-sm font-bold truncate text-foreground" > {selectedUser?.email} </p>
+                    </div>
+                    <div className="p-4 rounded-2xl bg-muted/30 border border-border/40 flex flex-col gap-1.5 hover:bg-muted/50 transition-colors" >
+                      <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest" > Official Phone </p>
+                      <p className="text-sm font-bold text-foreground" > {selectedUser?.phone || 'NOT CONNECTED'} </p>
+                    </div>
+                    <div className="sm:col-span-2 p-4 rounded-2xl bg-muted/30 border border-border/40 flex flex-col gap-1.5 hover:bg-muted/50 transition-colors" >
+                      <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest" > Registered Address </p>
+                      <p className="text-sm font-medium text-foreground leading-relaxed" >
+                        {selectedUser?.address || 'NO PHYSICAL ADDRESS REGISTERED'}
+                      </p>
+                    </div>
+                  </div>
+                </section>
+
+                {/* Account Metrics */}
+                <section className="space-y-4" >
+                  <div className="flex items-center gap-2 border-b border-border/40 pb-2" >
+                    <ShieldAlert className="h-4 w-4 text-primary" />
+                    <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary" > Account metrics </h4>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4" >
+                    <div className="p-4 rounded-2xl bg-muted/30 border border-border/40 flex flex-col gap-1.5 hover:bg-muted/50 transition-colors" >
+                      <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest" > Genesis Date </p>
+                      <div className="flex items-center gap-2 mt-1" >
+                        <Calendar className="h-3 w-3 text-muted-foreground" />
+                        <p className="text-sm font-bold text-foreground" >
+                          {selectedUser?.created_at ? new Date(selectedUser.created_at).toLocaleDateString('en-GB', {
+                            day: '2-digit', month: 'short', year: 'numeric'
+                          }) : 'UNKNOWN'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="p-4 rounded-2xl bg-muted/30 border border-border/40 flex flex-col gap-1.5 hover:bg-muted/50 transition-colors" >
+                      <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest" > Clearance Status </p>
+                      <div className="flex items-center gap-2 mt-1" >
+                        <div className={cn("h-2 w-2 rounded-full", selectedUser?.status === 'active' ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" : "bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]")} />
+                        <p className={cn("text-xs font-black uppercase tracking-wider", selectedUser?.status === 'active' ? "text-emerald-600" : "text-rose-600")} >
+                          {selectedUser?.status === 'active' ? "VERIFIED" : "RESTRICTED"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </section>
               </div>
+            </div>
+            <div className="p-6 pt-2 flex flex-col gap-3" >
+              <Button
+                variant={selectedUser?.status === 'suspended' ? "default" : "destructive"}
+                className="rounded-xl h-12 font-bold transition-all"
+                onClick={() => { if (selectedUser) handleSuspendUser(selectedUser); setShowProfileModal(false); }}
+              >
+                {selectedUser?.status === 'suspended' ? <RefreshCw className="mr-2 h-4 w-4" /> : <Ban className="mr-2 h-4 w-4" />}
+                {selectedUser?.status === 'suspended' ? "Authorize platform access" : "Revoke platform clearance"}
+              </Button>
+              <Button variant="ghost" className="text-xs font-bold text-muted-foreground" onClick={() => setShowProfileModal(false)} >
+                Close dossier
+              </Button>
             </div>
           </DialogContent>
         </Dialog>
 
         {/* Role Authorization Dialog */}
-        <Dialog open={showRoleDialog} onOpenChange={setShowRoleDialog}>
-          <DialogContent className="sm:max-w-[450px] p-0 overflow-hidden border-border/40 rounded-3xl bg-card shadow-xl">
-            <DialogHeader className="p-6 bg-slate-900 text-white">
-              <div className="flex items-center gap-3">
+        <Dialog open={showRoleDialog} onOpenChange={setShowRoleDialog} >
+          <DialogContent className="sm:max-w-[450px] p-0 overflow-hidden border-border/40 rounded-3xl bg-card shadow-xl" >
+            <DialogHeader className="p-6 bg-slate-900 text-white" >
+              <div className="flex items-center gap-3" >
                 <UserCog className="h-5 w-5 text-primary" />
-                <DialogTitle className="text-xl font-bold">Role authorization</DialogTitle>
+                <DialogTitle className="text-xl font-bold" > Role authorization </DialogTitle>
               </div>
-              <DialogDescription className="text-slate-400">
-                Update platform clearance for <span className="text-white font-semibold">{selectedUser?.email}</span>
+              <DialogDescription className="text-slate-400" >
+                Update platform clearance for <span className="text-white font-semibold" > {selectedUser?.email} </span>
               </DialogDescription>
             </DialogHeader>
 
-            <div className="p-6 space-y-6">
-              <div className="p-4 bg-amber-500/5 border border-amber-500/20 rounded-xl flex items-start gap-4">
+            <div className="p-6 space-y-6" >
+              <div className="p-4 bg-amber-500/5 border border-amber-500/20 rounded-xl flex items-start gap-4" >
                 <AlertCircle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
-                <p className="text-[11px] text-amber-700 dark:text-amber-400 font-medium leading-relaxed">
+                <p className="text-[11px] text-amber-700 dark:text-amber-400 font-medium leading-relaxed" >
                   Platform roles dictate universal access levels. Admin grants full sovereignty.
                 </p>
               </div>
 
-              <div className="space-y-3">
-                <Label className="text-xs font-bold text-muted-foreground ml-1">New clearance level</Label>
-                <Select value={newRole} onValueChange={setNewRole}>
-                  <SelectTrigger className="h-12 rounded-xl border-border/60 bg-background font-bold px-4">
+              <div className="space-y-3" >
+                <Label className="text-xs font-bold text-muted-foreground ml-1" > New clearance level </Label>
+                <Select value={newRole} onValueChange={setNewRole} >
+                  <SelectTrigger className="h-12 rounded-xl border-border/60 bg-background font-bold px-4" >
                     <SelectValue placeholder="Select role" />
                   </SelectTrigger>
-                  <SelectContent className="rounded-xl p-1">
-                    <SelectItem value="user" className="rounded-lg font-medium">Marketplace User</SelectItem>
-                    <SelectItem value="seller" className="rounded-lg font-medium">Verified Seller</SelectItem>
-                    <SelectItem value="admin" className="rounded-lg font-bold text-primary">Platform Admin</SelectItem>
+                  <SelectContent className="rounded-xl p-1" >
+                    <SelectItem value="user" className="rounded-lg font-medium" > Marketplace User </SelectItem>
+                    <SelectItem value="seller" className="rounded-lg font-medium" > Verified Seller </SelectItem>
+                    <SelectItem value="admin" className="rounded-lg font-bold text-primary" > Platform Admin </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
-              <div className="flex items-center gap-3 pt-2">
-                <Button variant="ghost" onClick={() => setShowRoleDialog(false)} className="flex-1 rounded-xl font-bold">Cancel</Button>
-                <Button onClick={handleUpdateRole} className="flex-1 rounded-xl bg-primary font-bold shadow-lg shadow-primary/20">Update role</Button>
+              <div className="flex items-center gap-3 pt-2" >
+                <Button variant="ghost" onClick={() => setShowRoleDialog(false)} className="flex-1 rounded-xl font-bold" > Cancel </Button>
+                <Button onClick={handleUpdateRole} className="flex-1 rounded-xl bg-primary font-bold shadow-lg shadow-primary/20" > Update role </Button>
               </div>
             </div>
           </DialogContent>

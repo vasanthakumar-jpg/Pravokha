@@ -15,7 +15,7 @@ import { useAdmin } from "@/contexts/AdminContext";
 import { toast } from "@/hooks/use-toast";
 import { AdminHeaderSkeleton, AdminTableSkeleton } from "@/features/admin/components/AdminSkeleton";
 import { motion, AnimatePresence } from "framer-motion";
-import { Loader2, Search, MessageSquare, CheckCircle, XCircle, Eye, Send, ArrowLeft, AlertCircle, ShieldAlert, Check, Clock } from "lucide-react";
+import { Loader2, Search, MessageSquare, CheckCircle, XCircle, Eye, Send, ArrowLeft, AlertCircle, ShieldAlert, Check, Clock, CornerUpLeft, X } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/Avatar";
 
 interface Ticket {
@@ -66,6 +66,7 @@ export default function AdminSuspendedSellerTickets() {
     const [messages, setMessages] = useState<TicketMessage[]>([]);
     const [replyMessage, setReplyMessage] = useState("");
     const [sending, setSending] = useState(false);
+    const [replyingTo, setReplyingTo] = useState<TicketMessage | null>(null);
     const [showReplyDialog, setShowReplyDialog] = useState(false);
 
     useEffect(() => {
@@ -208,6 +209,7 @@ export default function AdminSuspendedSellerTickets() {
 
             toast({ title: "Guidance dispatched", description: "The compliance protocol has been registered." });
             setReplyMessage("");
+            setReplyingTo(null);
             setShowReplyDialog(false);
             fetchTickets();
         } catch (error: any) {
@@ -412,37 +414,27 @@ export default function AdminSuspendedSellerTickets() {
                                     </div>
                                 </div>
 
-                                <div className="flex items-center justify-between gap-2 pt-1">
-                                    <Badge variant="secondary" className="bg-slate-100 text-slate-800 text-[9px] border-none font-bold px-2">
-                                        {ticket.type.replace('_', ' ').charAt(0).toUpperCase() + ticket.type.replace('_', ' ').slice(1)}
+                                <div className="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-border/40">
+                                    <Badge variant="secondary" className="bg-slate-100 text-slate-800 text-[9px] border-none font-black uppercase tracking-tight px-2 py-0.5 rounded-md">
+                                        {ticket.type.replace('_', ' ')}
                                     </Badge>
-                                    <div className="flex gap-1.5">
+                                    <div className="flex gap-1">
                                         <Button
-                                            size="icon"
+                                            size="sm"
                                             variant="ghost"
-                                            className="h-9 w-9 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-xl border border-blue-100"
+                                            className="h-8 text-xs font-bold text-blue-600 hover:bg-blue-50 px-2 rounded-lg"
                                             onClick={() => navigate(`/admin/tickets/${ticket.id}`)}
                                         >
-                                            <Eye className="h-4 w-4" />
+                                            View <Eye className="ml-1 h-3 w-3" />
                                         </Button>
                                         <Button
-                                            size="icon"
+                                            size="sm"
                                             variant="ghost"
-                                            className="h-9 w-9 text-purple-600 hover:text-purple-700 hover:bg-purple-50 rounded-xl border border-purple-100"
+                                            className="h-8 text-xs font-bold text-purple-600 hover:bg-purple-50 px-2 rounded-lg"
                                             onClick={() => openReplyDialog(ticket)}
                                         >
-                                            <MessageSquare className="h-4 w-4" />
+                                            Reply <MessageSquare className="ml-1 h-3 w-3" />
                                         </Button>
-                                        {ticket.status !== 'resolved' && (
-                                            <Button
-                                                size="icon"
-                                                variant="ghost"
-                                                className="h-9 w-9 text-green-600 hover:text-green-700 hover:bg-green-50 rounded-xl border border-green-100"
-                                                onClick={() => updateTicketStatus(ticket.id, 'resolved')}
-                                            >
-                                                <CheckCircle className="h-4 w-4" />
-                                            </Button>
-                                        )}
                                     </div>
                                 </div>
                             </CardContent>
@@ -574,7 +566,22 @@ export default function AdminSuspendedSellerTickets() {
                             messages.map((msg) => {
                                 const isCurrentUser = msg.sender_id === user?.id;
                                 return (
-                                    <div key={msg.id} className={cn("flex gap-3", isCurrentUser ? "flex-row-reverse" : "flex-row")}>
+                                    <motion.div
+                                        key={msg.id}
+                                        drag="x"
+                                        dragConstraints={{ left: 0, right: 0 }}
+                                        onDragEnd={(_, info) => {
+                                            if (info.offset.x > 80) setReplyingTo(msg);
+                                        }}
+                                        className={cn("flex gap-3 group/msg relative select-none", isCurrentUser ? "flex-row-reverse" : "flex-row")}
+                                    >
+                                        <div className={cn(
+                                            "absolute left-0 top-1/2 -translate-y-1/2 -translate-x-12 transition-all opacity-0 scale-50",
+                                            "group-hover/msg:opacity-20 group-hover/msg:scale-100"
+                                        )}>
+                                            <CornerUpLeft className="h-6 w-6 text-primary" />
+                                        </div>
+
                                         <Avatar className="h-8 w-8 shrink-0 border-2 border-background shadow-sm">
                                             {msg.sender?.avatar_url && (
                                                 <AvatarImage src={msg.sender.avatar_url} />
@@ -604,13 +611,40 @@ export default function AdminSuspendedSellerTickets() {
                                                 )}
                                             </div>
                                         </div>
-                                    </div>
+                                    </motion.div>
                                 );
                             })
                         )}
                     </div>
 
                     <div className="p-4 sm:p-6 border-t bg-muted/10 space-y-4">
+                        <AnimatePresence>
+                            {replyingTo && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: 10 }}
+                                    className="flex items-center gap-3 p-3 bg-primary/5 border-l-4 border-primary rounded-r-xl"
+                                >
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-[10px] font-black text-primary uppercase tracking-widest flex items-center gap-2">
+                                            Replying to {replyingTo.sender?.full_name || 'Seller'}
+                                        </p>
+                                        <p className="text-xs text-muted-foreground line-clamp-1 italic mt-0.5">
+                                            "{replyingTo.message}"
+                                        </p>
+                                    </div>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-6 w-6 rounded-full hover:bg-primary/10"
+                                        onClick={() => setReplyingTo(null)}
+                                    >
+                                        <X className="h-3 w-3" />
+                                    </Button>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
                         <div className="relative group">
                             <Textarea
                                 placeholder="Provide clear, legally binding guidance..."

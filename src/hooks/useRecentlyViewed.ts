@@ -3,9 +3,15 @@ import { Product } from '@/data/products';
 
 const STORAGE_KEY = 'pravokha_recently_viewed';
 const MAX_ITEMS = 8;
+const RECENCY_THRESHOLD = 4 * 60 * 60 * 1000; // 4 hours in milliseconds
+
+export interface RecentlyViewedItem {
+  product: Product;
+  viewedAt: number;
+}
 
 export function useRecentlyViewed() {
-  const [recentlyViewed, setRecentlyViewed] = useState<Product[]>([]);
+  const [items, setItems] = useState<RecentlyViewedItem[]>([]);
 
   useEffect(() => {
     loadRecentlyViewed();
@@ -15,7 +21,15 @@ export function useRecentlyViewed() {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
-        setRecentlyViewed(JSON.parse(stored));
+        const parsed: RecentlyViewedItem[] = JSON.parse(stored);
+        // Clean up old items on load
+        const now = Date.now();
+        const valid = parsed.filter(item => now - item.viewedAt < RECENCY_THRESHOLD);
+
+        if (valid.length !== parsed.length) {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(valid));
+        }
+        setItems(valid);
       }
     } catch (error) {
       console.error('Failed to load recently viewed:', error);
@@ -24,16 +38,27 @@ export function useRecentlyViewed() {
 
   const addToRecentlyViewed = (product: Product) => {
     try {
-      let updated = [product];
-      const existing = recentlyViewed.filter(p => p.id !== product.id);
+      const now = Date.now();
+      const newItem: RecentlyViewedItem = { product, viewedAt: now };
+
+      let updated = [newItem];
+      const existing = items.filter(item => item.product.id !== product.id);
       updated = [...updated, ...existing].slice(0, MAX_ITEMS);
-      
-      setRecentlyViewed(updated);
+
+      setItems(updated);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
     } catch (error) {
       console.error('Failed to save recently viewed:', error);
     }
   };
 
-  return { recentlyViewed, addToRecentlyViewed };
+  const clearRecentlyViewed = () => {
+    setItems([]);
+    localStorage.removeItem(STORAGE_KEY);
+  };
+
+  // For backward compatibility and ease of use
+  const recentlyViewed = items.map(i => i.product);
+
+  return { recentlyViewed, items, addToRecentlyViewed, clearRecentlyViewed };
 }

@@ -62,7 +62,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 export default function AdminSettings() {
-  const { user } = useAuth();
+  const { user, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("profile");
   const [roleCounts, setRoleCounts] = useState({
@@ -264,6 +264,8 @@ export default function AdminSettings() {
         title: "Profile Updated",
         description: "Your changes have been saved successfully.",
       });
+
+      await refreshProfile();
     } catch (error) {
       console.error("[AdminSettings] Error updating profile:", error);
       toast({
@@ -411,6 +413,8 @@ export default function AdminSettings() {
         .eq("id", user?.id);
 
       if (updateError) throw updateError;
+
+      await refreshProfile();
 
       toast({ title: "Upload Success", description: "Your photo has been updated." });
     } catch (error) {

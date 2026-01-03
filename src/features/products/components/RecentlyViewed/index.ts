@@ -1,2 +1,1 @@
-export { RecentlyViewed } from "./RecentlyViewed";
-export { default } from "./RecentlyViewed";
+export * from "./RecentlyViewed";

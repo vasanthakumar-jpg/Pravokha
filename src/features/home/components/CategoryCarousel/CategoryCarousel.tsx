@@ -127,6 +127,23 @@ export function CategoryCarousel({ categories, getFallbackImage, isCategoryActiv
                     <ChevronRight className="h-6 w-6" />
                 </button>
             )}
+
+            {/* Dots Indicator */}
+            {showArrows && (
+                <div className={styles.dotsContainer}>
+                    {Array.from({ length: maxIndex + 1 }).map((_, index) => (
+                        <button
+                            key={index}
+                            onClick={() => setCurrentIndex(index)}
+                            className={cn(
+                                styles.dot,
+                                currentIndex === index && styles.dotActive
+                            )}
+                            aria-label={`Go to slide ${index + 1}`}
+                        />
+                    ))}
+                </div>
+            )}
         </div>
     );
 }

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Dialog, DialogContent } from "@/components/ui/Dialog";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/Button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import styles from "./ImageViewer.module.css";
@@ -26,6 +26,10 @@ export function ImageViewer({ images, currentIndex, open, onClose }: ImageViewer
     return (
         <Dialog open={open} onOpenChange={onClose}>
             <DialogContent className={styles.dialogContent} onInteractOutside={onClose}>
+                <DialogTitle className="sr-only">Product Image Viewer</DialogTitle>
+                <DialogDescription className="sr-only">
+                    View larger version of product images and navigate through them.
+                </DialogDescription>
                 {/* Main Image Section */}
                 <div className={styles.mainSection}>
                     <img
