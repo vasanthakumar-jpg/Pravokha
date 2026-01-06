@@ -71,7 +71,8 @@ export function ProductDetailPage() {
             try {
                 setLoading(true);
 
-                const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(slug);
+                // check for any valid UUID format (relaxed)
+                const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slug);
 
                 let query = supabase
                     .from("products")
@@ -94,26 +95,21 @@ export function ProductDetailPage() {
                 if (productError) throw productError;
 
                 if (!productData) {
-                    console.warn(`Product with slug "${slug}" not found`);
-                    toast({
-                        title: "Product not found",
-                        description: "The requested product could not be found.",
-                        variant: "destructive",
-                    });
+                    // Silently redirect to products page for invalid URLs (typos, old bookmarks, etc.)
                     navigate("/products", { replace: true });
                     return;
                 }
 
                 const transformedProduct: Product = {
                     id: productData.id,
-                    title: productData.title,
+                    title: productData.title || 'Untitled Product',
                     slug: productData.slug,
-                    description: productData.description,
-                    price: parseFloat(String(productData.price)),
-                    discountPrice: productData.discount_price ? parseFloat(String(productData.discount_price)) : undefined,
+                    description: productData.description || 'No description available',
+                    price: parseFloat(String(productData.price)) || 0,
+                    discountPrice: productData.discount_price ? (parseFloat(String(productData.discount_price)) || undefined) : undefined,
                     category: productData.category,
-                    rating: parseFloat(String(productData.rating || 4.5)),
-                    reviews: productData.reviews || 0,
+                    rating: Math.min(5, Math.max(0, parseFloat(String(productData.rating || 4.5)))),
+                    reviews: Math.max(0, parseInt(String(productData.reviews || 0))),
                     sku: productData.sku,
                     featured: (productData as any).is_featured || false,
                     newArrival: (productData as any).is_new || false,
@@ -122,7 +118,10 @@ export function ProductDetailPage() {
                         id: v.id,
                         colorName: v.color_name,
                         colorHex: v.color_hex,
-                        images: v.images,
+                        // Validate images and provide fallback
+                        images: Array.isArray(v.images) && v.images.length > 0
+                            ? v.images
+                            : ['https://placehold.co/600x600/e2e8f0/64748b?text=No+Image'],
                         sizes: (v.product_sizes || []).map((s: any) => ({
                             size: s.size,
                             stock: s.stock,
@@ -155,14 +154,14 @@ export function ProductDetailPage() {
 
                     const transformedRelated: Product[] = selected.map((p: any) => ({
                         id: p.id,
-                        title: p.title,
+                        title: p.title || 'Untitled Product',
                         slug: p.slug,
-                        description: p.description,
-                        price: parseFloat(String(p.price)),
-                        discountPrice: p.discount_price ? parseFloat(String(p.discount_price)) : undefined,
+                        description: p.description || 'No description available',
+                        price: parseFloat(String(p.price)) || 0,
+                        discountPrice: p.discount_price ? (parseFloat(String(p.discount_price)) || undefined) : undefined,
                         category: p.category,
-                        rating: parseFloat(String(p.rating || 4.5)),
-                        reviews: p.reviews || 0,
+                        rating: Math.min(5, Math.max(0, parseFloat(String(p.rating || 4.5)))),
+                        reviews: Math.max(0, parseInt(String(p.reviews || 0))),
                         sku: p.sku,
                         featured: (p as any).is_featured || false,
                         newArrival: (p as any).is_new || false,
@@ -170,7 +169,10 @@ export function ProductDetailPage() {
                             id: v.id,
                             colorName: v.color_name,
                             colorHex: v.color_hex,
-                            images: v.images,
+                            // Validate images and provide fallback
+                            images: Array.isArray(v.images) && v.images.length > 0
+                                ? v.images
+                                : ['https://placehold.co/600x600/e2e8f0/64748b?text=No+Image'],
                             sizes: (v.product_sizes || []).map((s: any) => ({
                                 size: s.size,
                                 stock: s.stock,
@@ -270,7 +272,7 @@ export function ProductDetailPage() {
 
     return (
         <div className="min-h-screen flex flex-col">
-            <div className="container max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+            <div className="w-full max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
                 <Link to="/">
                     <Button variant="ghost" className="mb-4">
                         <ChevronLeft className="h-4 w-4 mr-2" />

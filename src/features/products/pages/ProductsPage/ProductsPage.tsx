@@ -256,7 +256,7 @@ export function ProductsPage() {
 
     return (
         <div className="min-h-screen flex flex-col">
-            <div className="container py-8">
+            <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
                 {/* Loading State */}
                 {loading && (
                     <div className="flex gap-8 animate-pulse">

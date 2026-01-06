@@ -3,13 +3,14 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { Trash2, ShoppingCart, Heart } from "lucide-react";
-import { products } from "@/data/products";
+import { Trash2, ShoppingCart, Heart, PackageX } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useCart } from "@/contexts/CartContext";
+import { Product } from "@/data/products";
 
 export function WishlistPage() {
-    const [wishlistItems, setWishlistItems] = useState<any[]>([]);
+    // We store the full extended product object here
+    const [wishlistItems, setWishlistItems] = useState<{ id: string; product: Product }[]>([]);
     const [loading, setLoading] = useState(true);
     const [user, setUser] = useState<any>(null);
     const navigate = useNavigate();
@@ -32,24 +33,99 @@ export function WishlistPage() {
 
     const fetchWishlist = async (userId: string) => {
         try {
-            const { data, error } = await supabase
+            // 1. Fetch Wishlist IDs
+            const { data: wishlistData, error: wishlistError } = await supabase
                 .from("wishlist")
-                .select("*")
+                .select("id, product_id") // Get wishlist ID and Product ID
                 .eq("user_id", userId);
 
-            if (error) throw error;
+            if (wishlistError) throw wishlistError;
 
-            // Match wishlist items with product data
-            const itemsWithDetails = data?.map((item) => {
-                const product = products.find((p) => p.id === item.product_id);
-                return { ...item, product };
-            }).filter((item) => item.product);
+            if (!wishlistData || wishlistData.length === 0) {
+                setWishlistItems([]);
+                return;
+            }
 
-            setWishlistItems(itemsWithDetails || []);
+            const productIds = wishlistData.map(w => w.product_id);
+
+            // 2. Fetch Product Details from DB (Dynamic)
+            const { data: productsData, error: productsError } = await supabase
+                .from("products")
+                .select(`
+                  id,
+                  seller_id,
+                  title,
+                  slug,
+                  description,
+                  price,
+                  discount_price,
+                  category,
+                  subcategory_id,
+                  rating,
+                  reviews,
+                  sku,
+                  is_featured,
+                  is_new,
+                  product_variants (
+                    id,
+                    color_name,
+                    color_hex,
+                    images,
+                    product_sizes (
+                      size,
+                      stock
+                    )
+                  )
+                `)
+                .in("id", productIds)
+                .is("deleted_at", null);
+
+            if (productsError) throw productsError;
+
+            // 3. Transform DB data to frontend Product shape
+            const transformedProducts: Product[] = (productsData || []).map((p: any) => ({
+                id: p.id,
+                title: p.title || 'Untitled Product',
+                slug: p.slug,
+                description: p.description || '',
+                price: parseFloat(p.price) || 0,
+                discountPrice: p.discount_price ? (parseFloat(p.discount_price) || undefined) : undefined,
+                category: p.category,
+                subcategory_id: p.subcategory_id,
+                rating: Math.min(5, Math.max(0, parseFloat(p.rating) || 0)),
+                reviews: Math.max(0, parseInt(p.reviews) || 0),
+                sku: p.sku,
+                sellerId: p.seller_id,
+                featured: p.is_featured || false,
+                newArrival: p.is_new || false,
+                variants: (p.product_variants || []).map((v: any) => ({
+                    id: v.id,
+                    colorName: v.color_name,
+                    colorHex: v.color_hex,
+                    images: Array.isArray(v.images) && v.images.length > 0
+                        ? v.images
+                        : ['https://placehold.co/600x600/e2e8f0/64748b?text=No+Image'],
+                    sizes: (v.product_sizes || []).map((s: any) => ({
+                        size: s.size,
+                        stock: s.stock,
+                    })),
+                })),
+            }));
+
+            // 4. Map back to wishlist items structure
+            const validItems = wishlistData.map(wItem => {
+                const product = transformedProducts.find(p => p.id === wItem.product_id);
+                if (!product) return null; // Product might be deleted
+                return { id: wItem.id, product };
+            }).filter((item): item is { id: string; product: Product } => item !== null);
+
+            setWishlistItems(validItems);
+
         } catch (error: any) {
+            console.error("Error loading wishlist:", error);
             toast({
                 title: "Error",
-                description: error.message,
+                description: "Failed to load wishlist items.",
                 variant: "destructive",
             });
         } finally {
@@ -57,73 +133,62 @@ export function WishlistPage() {
         }
     };
 
-    const removeFromWishlist = async (itemId: string) => {
+    const removeFromWishlist = async (wishlistId: string) => {
         try {
             const { error } = await supabase
                 .from("wishlist")
                 .delete()
-                .eq("id", itemId);
+                .eq("id", wishlistId);
 
             if (error) throw error;
 
-            setWishlistItems(wishlistItems.filter((item) => item.id !== itemId));
+            setWishlistItems(prev => prev.filter(item => item.id !== wishlistId));
             toast({
-                title: "Removed from wishlist",
-                description: "Item has been removed from your wishlist",
+                title: "Removed",
+                description: "Item removed from wishlist",
             });
         } catch (error: any) {
             toast({
                 title: "Error",
-                description: error.message,
+                description: "Could not remove item",
                 variant: "destructive",
             });
         }
     };
 
-    const moveToCart = (product: any) => {
-        const firstVariant = product.variants[0];
-        const firstSize = firstVariant.sizes.find((s: any) => s.stock > 0);
+    const moveToCart = (product: Product) => {
+        // Find first variant with stock
+        const availableVariant = product.variants.find(v => v.sizes.some(s => s.stock > 0));
 
-        if (firstSize) {
+        if (availableVariant) {
+            const sizeObj = availableVariant.sizes.find(s => s.stock > 0);
             addToCart({
                 productId: product.id,
-                variantId: firstVariant.id,
+                variantId: availableVariant.id,
                 title: product.title,
-                colorName: firstVariant.colorName,
-                colorHex: firstVariant.colorHex,
-                size: firstSize.size,
+                colorName: availableVariant.colorName,
+                colorHex: availableVariant.colorHex,
+                size: sizeObj?.size || "M",
                 price: product.discountPrice || product.price,
-                image: firstVariant.images[0],
-                maxStock: firstSize.stock,
+                image: availableVariant.images[0],
+                maxStock: sizeObj?.stock || 0,
                 sellerId: product.sellerId || "",
             });
             toast({
                 title: "Added to cart",
                 description: `${product.title} has been added to your cart`,
             });
+        } else {
+            toast({
+                title: "Out of Stock",
+                description: "This item is currently out of stock.",
+                variant: "destructive",
+            });
         }
     };
 
-    if (loading) {
-        return (
-            <div className="container py-16 text-center">
-                <p className="text-muted-foreground">Loading...</p>
-            </div>
-        );
-    }
-
-    if (wishlistItems.length === 0) {
-        return (
-            <div className="container py-16 text-center space-y-4">
-                <Heart className="h-16 w-16 mx-auto text-muted-foreground" />
-                <h1 className="text-3xl font-bold">Your wishlist is empty</h1>
-                <p className="text-muted-foreground">Start adding items you love!</p>
-                <Button onClick={() => navigate("/products")}>Browse Products</Button>
-            </div>
-        );
-    }
-
     const clearAllWishlist = async () => {
+        if (!user) return;
         try {
             const { error } = await supabase
                 .from("wishlist")
@@ -134,8 +199,8 @@ export function WishlistPage() {
 
             setWishlistItems([]);
             toast({
-                title: "Wishlist cleared",
-                description: "All items have been removed from your wishlist",
+                title: "Cleared",
+                description: "Wishlist has been cleared",
             });
         } catch (error: any) {
             toast({
@@ -146,49 +211,111 @@ export function WishlistPage() {
         }
     };
 
-    return (
-        <div className="container py-8">
-            <div className="flex items-center justify-between mb-8">
-                <h1 className="text-3xl font-bold">My Wishlist ({wishlistItems.length})</h1>
-                {wishlistItems.length > 0 && (
-                    <Button variant="destructive" onClick={clearAllWishlist}>
-                        Clear All
-                    </Button>
-                )}
+    if (loading) {
+        return (
+            <div className="w-full px-4 sm:px-6 lg:px-8 py-16 text-center animate-pulse">
+                <div className="max-w-7xl mx-auto space-y-8">
+                    <div className="h-8 w-48 bg-muted rounded mx-auto mb-8" />
+                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {[1, 2, 3].map(i => (
+                            <div key={i} className="aspect-square bg-muted rounded-xl" />
+                        ))}
+                    </div>
+                </div>
             </div>
+        );
+    }
 
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {wishlistItems.map((item) => (
-                    <Card key={item.id} className="p-4">
-                        <div className="aspect-square mb-4 overflow-hidden rounded-lg">
-                            <img
-                                src={item.product.variants[0].images[0]}
-                                alt={item.product.title}
-                                className="w-full h-full object-cover"
-                            />
-                        </div>
-                        <h3 className="font-semibold mb-2">{item.product.title}</h3>
-                        <p className="text-xl font-bold mb-4">
-                            ₹{item.product.discountPrice || item.product.price}
-                        </p>
-                        <div className="flex gap-2">
-                            <Button
-                                className="flex-1"
-                                onClick={() => moveToCart(item.product)}
-                            >
-                                <ShoppingCart className="h-4 w-4 mr-2" />
-                                Add to Cart
-                            </Button>
-                            <Button
-                                variant="outline"
-                                size="icon"
-                                onClick={() => removeFromWishlist(item.id)}
-                            >
-                                <Trash2 className="h-4 w-4" />
-                            </Button>
-                        </div>
-                    </Card>
-                ))}
+    if (wishlistItems.length === 0) {
+        return (
+            <div className="w-full px-4 sm:px-6 lg:px-8 py-16 text-center space-y-6">
+                <div className="bg-muted/50 p-6 rounded-full w-fit mx-auto">
+                    <Heart className="h-12 w-12 text-muted-foreground" />
+                </div>
+                <div className="space-y-2">
+                    <h1 className="text-3xl font-bold tracking-tight">Your wishlist is empty</h1>
+                    <p className="text-muted-foreground text-lg">Start saving items you love!</p>
+                </div>
+                <Button onClick={() => navigate("/products")} size="lg" className="mt-4">
+                    Browse Products
+                </Button>
+            </div>
+        );
+    }
+
+    return (
+        <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
+            <div className="max-w-7xl mx-auto">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-8">
+                    <div>
+                        <h1 className="text-3xl font-bold tracking-tight">My Wishlist</h1>
+                        <p className="text-muted-foreground mt-1">{wishlistItems.length} items saved</p>
+                    </div>
+                    {wishlistItems.length > 0 && (
+                        <Button variant="outline" onClick={clearAllWishlist} className="text-destructive hover:text-destructive">
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Clear All
+                        </Button>
+                    )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    {wishlistItems.map(({ id, product }) => {
+                        const firstImage = product.variants?.[0]?.images?.[0] || 'https://placehold.co/600x600/e2e8f0/64748b?text=No+Image';
+
+                        return (
+                            <Card key={id} className="group overflow-hidden border-border/50 hover:shadow-lg transition-all duration-300">
+                                <div className="aspect-[4/5] relative overflow-hidden bg-muted">
+                                    <img
+                                        src={firstImage}
+                                        alt={product.title}
+                                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                        loading="lazy"
+                                        onClick={() => navigate(`/product/${product.slug || product.id}`)}
+                                        style={{ cursor: 'pointer' }}
+                                    />
+                                    <Button
+                                        variant="secondary"
+                                        size="icon"
+                                        className="absolute top-2 right-2 h-8 w-8 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                        onClick={() => removeFromWishlist(id)}
+                                        title="Remove from wishlist"
+                                    >
+                                        <Trash2 className="h-4 w-4 text-destructive" />
+                                    </Button>
+                                </div>
+                                <div className="p-4 space-y-3">
+                                    <div
+                                        onClick={() => navigate(`/product/${product.slug || product.id}`)}
+                                        className="cursor-pointer"
+                                    >
+                                        <h3 className="font-semibold text-base line-clamp-1 group-hover:text-primary transition-colors">
+                                            {product.title}
+                                        </h3>
+                                        <div className="flex items-baseline gap-2 mt-1">
+                                            <span className="text-lg font-bold">
+                                                ₹{product.discountPrice || product.price}
+                                            </span>
+                                            {product.discountPrice && (
+                                                <span className="text-sm text-muted-foreground line-through">
+                                                    ₹{product.price}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <Button
+                                        className="w-full"
+                                        onClick={() => moveToCart(product)}
+                                    >
+                                        <ShoppingCart className="h-4 w-4 mr-2" />
+                                        Add to Cart
+                                    </Button>
+                                </div>
+                            </Card>
+                        );
+                    })}
+                </div>
             </div>
         </div>
     );

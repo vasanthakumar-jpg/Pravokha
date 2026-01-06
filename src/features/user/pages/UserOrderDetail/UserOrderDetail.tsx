@@ -301,7 +301,7 @@ export default function UserOrderDetail() {
 
    if (!order) {
       return (
-         <div className="container py-16 text-center">
+         <div className="w-full px-4 sm:px-6 lg:px-8 py-16 text-center">
             <Package className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
             <h1 className="text-2xl font-bold mb-2">Order Not Found</h1>
             <Button onClick={() => navigate('/orders')}>Back to Orders</Button>
@@ -326,7 +326,7 @@ export default function UserOrderDetail() {
    }
 
    return (
-      <div className="container py-4 sm:py-8 px-3 sm:px-6 lg:px-8 max-w-6xl">
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-8 max-w-7xl mx-auto">
          {/* Header */}
          {/* Premium Header */}
          {/* Header */}
@@ -352,15 +352,15 @@ export default function UserOrderDetail() {
                </div>
             </div>
 
-            <div className="flex flex-wrap gap-2 self-start mt-2 sm:mt-0 w-full sm:w-auto">
+            <div className="flex flex-col gap-3 w-full sm:w-auto sm:flex-row mt-4 sm:mt-0">
                {order.order_status !== 'cancelled' && (
-                  <Button variant="outline" size="sm" onClick={handleDownloadInvoice} className="h-10 sm:h-9 flex-1 sm:flex-initial">
+                  <Button variant="outline" size="sm" onClick={handleDownloadInvoice} className="h-10 w-full sm:w-auto justify-center sm:min-w-[100px]">
                      <Download className="h-4 w-4 mr-2" />
                      Invoice
                   </Button>
                )}
                {(order.order_status === 'pending' || order.order_status === 'confirmed') && (
-                  <Button variant="destructive" size="sm" onClick={handleCancelOrder} className="h-10 sm:h-9 flex-1 sm:flex-initial">
+                  <Button variant="destructive" size="sm" onClick={handleCancelOrder} className="h-10 w-full sm:w-auto justify-center sm:min-w-[120px]">
                      <XCircle className="h-4 w-4 mr-2" />
                      Cancel Order
                   </Button>

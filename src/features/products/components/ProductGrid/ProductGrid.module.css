@@ -1,62 +1,43 @@
 .gridContainer {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 1rem;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    /* Default 2 columns (Mobile) */
+    gap: 0.75rem;
     width: 100%;
 }
 
 @media (min-width: 640px) {
     .gridContainer {
+        grid-template-columns: repeat(2, 1fr);
+        /* 2 columns tablet portrait */
         gap: 1.5rem;
     }
 }
 
-.gridItem {
-    flex: 1 1 100%;
-    /* Default to 1 card on tiny mobile if needed, but usually 2 */
-    max-width: 400px;
-    /* Prevent ultra-wide cards */
-    min-width: 0;
-    /* Allow shrinking if needed */
-}
-
-/* 2 columns on mobile/small screens */
-@media (min-width: 480px) {
-    .gridItem {
-        flex: 1 1 calc(50% - 0.5rem);
-        max-width: calc(50% - 0.5rem);
-    }
-}
-
-/* Small tablets and up */
-@media (min-width: 640px) {
-    .gridItem {
-        flex: 1 1 calc(50% - 0.75rem);
-        /* Use 1.5rem gap / 2 */
-        max-width: calc(50% - 0.75rem);
-    }
-}
-
-/* Large tablets/Small desktop */
 @media (min-width: 768px) {
-    .gridItem {
-        flex: 1 1 calc(33.333% - 1rem);
-        /* 1.5rem * 2 / 3 */
-        max-width: calc(33.333% - 1rem);
+    .gridContainer {
+        grid-template-columns: repeat(3, 1fr);
+        /* 3 columns tablet landscape */
     }
 }
 
-/* Desktop - Enforce max 4 columns */
 @media (min-width: 1024px) {
-    .gridItem {
-        flex: 0 1 calc(25% - 1.125rem);
-        /* 1.5rem * 3 / 4 */
-        max-width: 320px;
-        /* Balanced fixed max-width for pro look */
+    .gridContainer {
+        grid-template-columns: repeat(4, 1fr);
+        /* 4 columns desktop */
     }
 }
 
+/* removed 5-col breakpoint */
+
+.gridItem {
+    width: 100%;
+    min-width: 0;
+    /* Prevent overflow */
+    /* Removed max-width to allow fluid zooming */
+}
+
+/* Empty State */
 .emptyState {
     display: flex;
     flex-direction: column;
@@ -65,5 +46,7 @@
     padding: 3rem 1rem;
     text-align: center;
     width: 100%;
+    grid-column: 1 / -1;
+    /* Span full width */
     color: var(--muted-foreground);
 }

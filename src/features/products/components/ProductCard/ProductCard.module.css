@@ -27,11 +27,12 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
-    transition: transform 0.7s ease-out;
+    transition: transform 0.8s cubic-bezier(0.19, 1, 0.22, 1);
 }
 
 .card:hover .image {
-    transform: scale(1.1);
+    transform: scale(1.05);
+    /* Consistent subtle zoom */
 }
 
 .badges {
@@ -41,6 +42,8 @@
     z-index: 10;
     display: flex;
     flex-direction: column;
+    /* Prevent badges from stretching */
+    align-items: flex-start;
     gap: 0.375rem;
 }
 
@@ -109,8 +112,10 @@
     transform: scale(1.1);
 }
 
+/* Mobile Optimizations */
 .content {
-    padding: 0.5rem;
+    padding: 0.375rem;
+    /* Reduced padding for mobile */
     flex: 1;
     display: flex;
     flex-direction: column;
@@ -125,8 +130,9 @@
 
 .title {
     font-weight: 600;
-    font-size: 0.75rem;
-    margin-bottom: 0.25rem;
+    font-size: 0.7rem;
+    /* Smaller title on mobile */
+    margin-bottom: 0.125rem;
     display: -webkit-box;
     -webkit-line-clamp: 1;
     line-clamp: 1;
@@ -138,79 +144,77 @@
 @media (min-width: 640px) {
     .title {
         font-size: 0.875rem;
+        margin-bottom: 0.25rem;
     }
 }
 
-.card:hover .title {
-    color: var(--primary);
-}
-
 .description {
-    font-size: 10px;
+    font-size: 0.65rem;
+    /* Very small text for mobile as requested */
     color: var(--muted-foreground);
     display: -webkit-box;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
+    -webkit-line-clamp: 1;
+    /* Show only 1 line then ... */
+    line-clamp: 1;
     -webkit-box-orient: vertical;
     overflow: hidden;
-    margin-bottom: 0.5rem;
-    display: none;
+    margin-bottom: 0.25rem;
+    height: 1rem;
+    /* Fixed height to prevent layout shifts */
 }
 
 @media (min-width: 640px) {
     .description {
-        display: block;
         font-size: 0.75rem;
+        -webkit-line-clamp: 2;
+        line-clamp: 2;
+        margin-bottom: 0.5rem;
+        height: auto;
     }
 }
 
 .rating {
     display: flex;
     align-items: center;
-    gap: 0.25rem;
-    margin-bottom: 0.5rem;
+    gap: 0.125rem;
+    margin-bottom: 0.25rem;
+    flex-wrap: nowrap;
+    /* Force single row */
 }
 
 .stars {
     display: flex;
     align-items: center;
+    flex-wrap: nowrap;
+    /* Never wrap stars */
+    min-width: max-content;
+    /* Ensure container fits stars */
 }
 
 .star {
-    height: 0.625rem;
-    width: 0.625rem;
+    height: 0.6rem;
+    width: 0.6rem;
+    flex-shrink: 0;
+    /* Prevent stars from squishing */
 }
 
 @media (min-width: 640px) {
+    .rating {
+        gap: 0.25rem;
+        margin-bottom: 0.5rem;
+    }
+
     .star {
         height: 0.75rem;
         width: 0.75rem;
     }
 }
 
-.reviewCount {
-    font-size: 10px;
-    color: var(--muted-foreground);
-}
-
-@media (min-width: 640px) {
-    .reviewCount {
-        font-size: 0.75rem;
-    }
-}
-
-.footer {
-    display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-    margin-top: auto;
-    gap: 0.5rem;
-}
-
 .priceGroup {
     display: flex;
     flex-direction: column;
-    gap: 0.125rem;
+    gap: 0;
+    width: 100%;
 }
 
 @media (min-width: 640px) {
@@ -222,8 +226,9 @@
 .priceRow {
     display: flex;
     flex-wrap: wrap;
-    align-items: baseline;
-    gap: 0.375rem;
+    align-items: center;
+    gap: 0.25rem;
+    line-height: 1.2;
 }
 
 @media (min-width: 640px) {
@@ -233,7 +238,7 @@
 }
 
 .currentPrice {
-    font-size: 0.875rem;
+    font-size: 0.8rem;
     font-weight: 700;
     color: var(--primary);
 }
@@ -245,7 +250,7 @@
 }
 
 .originalPrice {
-    font-size: 10px;
+    font-size: 0.65rem;
     color: var(--muted-foreground);
     text-decoration: line-through;
 }
@@ -256,68 +261,122 @@
     }
 }
 
-.stock {
-    font-size: 10px;
-    font-weight: 700;
-}
-
-@media (min-width: 640px) {
-    .stock {
-        font-size: 0.75rem;
-    }
-}
-
-.stockOut {
-    color: var(--destructive);
-}
-
-.stockLow {
-    color: #dc2626;
+.footer {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    margin-top: auto;
+    gap: 0.25rem;
 }
 
 .cartButton {
-    height: 2rem;
-    width: 2rem;
+    height: 1.75rem;
+    /* Smaller cart button */
+    width: 1.75rem;
     border-radius: 9999px;
     flex-shrink: 0;
+    padding: 0;
+}
+
+.cartButton svg {
+    height: 0.875rem;
+    width: 0.875rem;
 }
 
 @media (min-width: 640px) {
+    .footer {
+        gap: 0.5rem;
+    }
+
     .cartButton {
         height: 2.25rem;
         width: 2.25rem;
     }
+
+    .cartButton svg {
+        height: 1.25rem;
+        width: 1.25rem;
+    }
 }
 
+/* Recently Viewed - Mobile First (Icon Only, Transparent) */
 .recentlyViewed {
     position: absolute;
-    bottom: 0.5rem;
-    right: 0.5rem;
-    z-index: 10;
+    bottom: 0.25rem;
+    right: 0.25rem;
+    z-index: 20;
     display: flex;
     align-items: center;
-    gap: 0.25rem;
-    padding: 0.2rem 0.4rem;
-    background-color: rgba(255, 255, 255, 0.85);
-    backdrop-filter: blur(4px);
-    border-radius: 0.5rem;
-    font-size: 9px;
-    font-weight: 600;
-    color: #64748b;
-    border: 1px solid rgba(226, 232, 240, 0.8);
+    justify-content: center;
+
+    /* Mobile: Minimalist icon */
+    padding: 0;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 50%;
+
+    background: transparent;
+    border: none;
+
+    color: var(--primary);
     pointer-events: none;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-    transition: opacity 0.3s ease;
+    box-shadow: none;
+    transition: all 0.3s ease;
+
+    /* Drop shadow for visibility */
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
 }
 
+/* Tablet/Desktop: Pill with text */
+@media (min-width: 640px) {
+    .recentlyViewed {
+        bottom: 0.5rem;
+        right: 0.5rem;
+        width: auto;
+        height: auto;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.5rem;
+        gap: 0.25rem;
+        font-size: 10px;
+        background-color: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(4px);
+        border: 1px solid rgba(226, 232, 240, 1);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        filter: none;
+    }
+}
+
+.recentlyViewedSpan {
+    display: none;
+}
+
+@media (min-width: 640px) {
+    .recentlyViewedSpan {
+        display: inline;
+    }
+}
+
+/* Dark Mode */
 [data-theme='dark'] .recentlyViewed {
-    background-color: rgba(30, 41, 59, 0.85);
-    color: #94a3b8;
-    border-color: rgba(51, 65, 85, 0.8);
+    color: hsl(var(--primary));
+}
+
+@media (min-width: 640px) {
+    [data-theme='dark'] .recentlyViewed {
+        background-color: hsl(var(--card));
+        border-color: hsl(var(--border));
+    }
 }
 
 .recentlyViewedIcon {
-    width: 0.75rem;
-    height: 0.75rem;
-    opacity: 0.7;
+    width: 1rem;
+    height: 1rem;
+    color: currentColor;
+}
+
+@media (min-width: 640px) {
+    .recentlyViewedIcon {
+        width: 0.875rem;
+        height: 0.875rem;
+    }
 }

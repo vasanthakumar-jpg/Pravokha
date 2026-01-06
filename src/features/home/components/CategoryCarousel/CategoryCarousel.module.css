@@ -3,20 +3,23 @@
 .carouselContainer {
     position: relative;
     width: 100%;
-    /* Create space for arrows on desktop */
-    padding: 0 4rem;
+    /* Match px-8 (2rem) on desktop */
+    padding: 0 2rem;
+    max-width: 100%;
+    overflow: hidden;
 }
 
 @media (max-width: 1024px) {
     .carouselContainer {
-        padding: 0 3rem;
+        /* Match px-6 (1.5rem) on tablet */
+        padding: 0 1.5rem;
     }
 }
 
 @media (max-width: 640px) {
     .carouselContainer {
-        padding: 0 0.5rem;
-        /* Reduced padding for mobile */
+        /* Match px-4 (1rem) on mobile */
+        padding: 0 1rem;
     }
 }
 
@@ -96,8 +99,14 @@
 
 @media (max-width: 640px) {
     .arrowButton {
-        width: 2.5rem;
-        height: 2.5rem;
+        width: 2rem;
+        height: 2rem;
+        border-width: 1px;
+    }
+
+    .arrowButton svg {
+        width: 1rem;
+        height: 1rem;
     }
 }
 

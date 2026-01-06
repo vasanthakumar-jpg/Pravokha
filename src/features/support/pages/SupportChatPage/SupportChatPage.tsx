@@ -159,7 +159,7 @@ export function SupportChatPage() {
     };
 
     return (
-        <div className="container max-w-7xl mx-auto py-8 px-4">
+        <div className="w-full max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between mb-8">
                 <h1 className="text-3xl font-bold">Support Chat</h1>
                 <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

@@ -243,7 +243,7 @@ export function CheckoutPage() {
 
     if (items.length === 0) {
         return (
-            <div className="container py-16 text-center">
+            <div className="w-full px-4 sm:px-6 lg:px-8 py-16 text-center">
                 <h1 className="text-3xl font-bold mb-4">Your cart is empty</h1>
                 <Button onClick={() => navigate("/products")}>Continue Shopping</Button>
             </div>
@@ -251,7 +251,7 @@ export function CheckoutPage() {
     }
 
     return (
-        <div className="container max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+        <div className="w-full max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
             <h1 className="text-2xl sm:text-3xl font-bold mb-8">Checkout</h1>
 
             <div className="grid lg:grid-cols-3 gap-8">

@@ -60,7 +60,7 @@ export function OrderTimeline({ status, trackingUpdates = [], createdAt, onDelet
                                     <div
                                         className={cn(
                                             styles.line,
-                                            isCompleted ? styles.lineCompleted : styles.linePending
+                                            index < currentStatusIndex ? styles.lineCompleted : styles.linePending
                                         )}
                                     />
                                 )}
@@ -125,7 +125,7 @@ export function OrderTimeline({ status, trackingUpdates = [], createdAt, onDelet
             <div className={styles.infoCard}>
                 <h4 className={styles.infoTitle}>Tracking Information</h4>
                 <p className={styles.infoText}>
-                    Stay informed every step of the way with real-time order tracking. You'll receive notifications via email for any important updates.
+                    Track your order's journey in real-time from warehouse to doorstep. Estimated delivery: 3-5 business days from confirmation. You'll receive email and SMS updates at each milestone. Questions? Contact support@pravokha.com or WhatsApp +91-XXXXX-XXXXX.
                 </p>
                 {!isCancelled && currentStatusIndex < statuses.length - 1 && (
                     <p className={styles.nextStep}>

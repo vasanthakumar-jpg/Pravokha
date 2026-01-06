@@ -112,7 +112,7 @@ export default function UserSettings() {
     <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950/50 pb-20 md:pb-10">
       {/* Hero Section - Mobile Optimized */}
       <div className="relative bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border-b">
-        <div className="container max-w-7xl py-8 px-4 md:py-10 md:px-6">
+        <div className="w-full max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8 md:py-10">
           <div className="flex flex-col md:flex-row items-center gap-6 md:gap-8">
             <div className="relative group shrink-0">
               <div className="absolute -inset-0.5 bg-gradient-to-r from-primary to-accent rounded-full opacity-75 group-hover:opacity-100 transition duration-500 blur"></div>
@@ -158,7 +158,7 @@ export default function UserSettings() {
         </div>
       </div>
 
-      <div className="container max-w-7xl py-6 px-4 md:py-8 md:px-6">
+      <div className="w-full max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 md:py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6 md:space-y-8">
           {/* Mobile-Friendly Sticky Navigation */}
           <div className="sticky top-[3.5rem] md:top-0 z-30 -mx-4 px-4 md:mx-0 md:px-0 bg-background/95 backdrop-blur-md md:bg-background/80 md:rounded-xl md:border md:shadow-sm py-2 md:p-1.5 transition-all">

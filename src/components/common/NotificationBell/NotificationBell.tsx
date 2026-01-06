@@ -82,7 +82,7 @@ export function NotificationBell() {
                     <div className={styles.header}>
                         <div className={styles.headerTitle}>
                             <Sparkles className={styles.headerIcon} />
-                            <span className={styles.headerText}>Alert Pulse</span>
+                            <span className={styles.headerText}>Notifications</span>
                         </div>
                         {unreadCount > 0 && (
                             <Button

@@ -261,8 +261,8 @@ export function ProfilePage() {
 
     return (
         <div className="min-h-screen bg-background flex flex-col">
-            <main className="container mx-auto px-4 py-8 flex-1">
-                <div className="max-w-4xl mx-auto space-y-6">
+            <main className="w-full px-4 sm:px-6 lg:px-8 py-8 flex-1">
+                <div className="max-w-5xl mx-auto space-y-6">
                     <Card className="p-4 sm:p-6">
                         <div className="flex items-center gap-3 sm:gap-4">
                             <div className="relative">

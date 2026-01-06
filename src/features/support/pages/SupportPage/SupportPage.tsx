@@ -36,7 +36,7 @@ export function SupportPage() {
     ];
 
     return (
-        <div className="w-full py-6 sm:py-8 px-4 sm:px-6">
+        <div className="w-full py-6 sm:py-8 px-4 sm:px-6 lg:px-8">
             <div className="max-w-6xl mx-auto">
                 <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-3 sm:mb-4 text-center">Support Center</h1>
                 <p className="text-muted-foreground text-center mb-8 sm:mb-12 text-sm sm:text-base md:text-lg">

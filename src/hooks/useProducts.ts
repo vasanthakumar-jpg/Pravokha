@@ -65,18 +65,18 @@ export function useProducts() {
 
       console.log("[useProducts] Products fetched successfully:", productsData?.length);
 
-      // Transform database structure to match Product interface
+      // Transform database structure to match Product interface with data sanitization
       const transformedProducts: Product[] = (productsData || []).map((p: any) => ({
         id: p.id,
-        title: p.title,
+        title: p.title || 'Untitled Product',
         slug: p.slug,
-        description: p.description,
-        price: parseFloat(p.price),
-        discountPrice: p.discount_price ? parseFloat(p.discount_price) : undefined,
+        description: p.description || 'No description available',
+        price: parseFloat(p.price) || 0,
+        discountPrice: p.discount_price ? (parseFloat(p.discount_price) || undefined) : undefined,
         category: p.category,
         subcategory_id: p.subcategory_id,
-        rating: parseFloat(p.rating),
-        reviews: p.reviews,
+        rating: Math.min(5, Math.max(0, parseFloat(p.rating) || 4.5)),
+        reviews: Math.max(0, parseInt(p.reviews) || 0),
         sku: p.sku,
         sellerId: p.seller_id,
         featured: p.is_featured || false,
@@ -85,7 +85,10 @@ export function useProducts() {
           id: v.id,
           colorName: v.color_name,
           colorHex: v.color_hex,
-          images: v.images,
+          // Validate images and provide fallback
+          images: Array.isArray(v.images) && v.images.length > 0
+            ? v.images
+            : ['https://placehold.co/600x600/e2e8f0/64748b?text=No+Image'],
           sizes: (v.product_sizes || []).map((s: any) => ({
             size: s.size,
             stock: s.stock,

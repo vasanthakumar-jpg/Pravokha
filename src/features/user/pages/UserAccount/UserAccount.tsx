@@ -18,7 +18,7 @@ export default function UserAccount() {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b">
-        <div className="container flex items-center justify-between py-4">
+        <div className="w-full px-4 sm:px-6 lg:px-8 flex items-center justify-between py-4">
           <h1 className="text-2xl font-bold">My Account</h1>
           <Button onClick={() => navigate("/")} variant="outline">
             Continue Shopping
@@ -26,7 +26,7 @@ export default function UserAccount() {
         </div>
       </header>
 
-      <main className="container py-8 max-w-4xl">
+      <main className="w-full px-4 sm:px-6 lg:px-8 py-8 max-w-4xl mx-auto">
         <div className="mb-8">
           <h2 className="text-3xl font-bold mb-2">
             Welcome, {profile?.full_name || user?.email}

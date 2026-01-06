@@ -60,8 +60,8 @@ export function FAQPage() {
     ];
 
     return (
-        <div className="container py-8">
-            <div className="max-w-3xl mx-auto">
+        <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
+            <div className="max-w-4xl mx-auto">
                 <h1 className="text-4xl font-bold mb-4 text-center">Frequently Asked Questions</h1>
                 <p className="text-muted-foreground text-center mb-12 text-lg">
                     Find answers to common questions about Pravokha products and services.

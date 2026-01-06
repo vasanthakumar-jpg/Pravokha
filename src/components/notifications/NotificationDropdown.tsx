@@ -81,7 +81,7 @@ export function NotificationDropdown() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-primary" />
-              <span className="text-sm font-black italic tracking-tighter">Alert Pulse</span>
+              <span className="text-sm font-semibold">Notifications</span>
             </div>
             {unreadCount > 0 && (
               <Button

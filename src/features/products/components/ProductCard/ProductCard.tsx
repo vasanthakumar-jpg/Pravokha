@@ -153,7 +153,18 @@ export function ProductCard({ product }: ProductCardProps) {
 
     return (
         <div
-            onClick={() => navigate(`/product/${product.slug}`)}
+            onClick={(e) => {
+                // Prevent navigation if clicking on buttons/badges logic handled inside buttons
+                // But this div wraps everything. 
+                // Ensure we have a valid slug.
+                if (product.slug) {
+                    navigate(`/product/${product.slug}`);
+                } else {
+                    console.error("Product has no slug:", product);
+                    // Fallback to ID if slug missing? or prevent nav
+                    if (product.id) navigate(`/product/${product.id}`);
+                }
+            }}
             className={styles.card}
         >
             <div className={styles.imageContainer}>
@@ -201,7 +212,7 @@ export function ProductCard({ product }: ProductCardProps) {
                 {isRecentlyViewed && (
                     <div className={styles.recentlyViewed} title="You viewed this product recently">
                         <Eye className={styles.recentlyViewedIcon} />
-                        <span>Viewed</span>
+                        <span className={styles.recentlyViewedSpan}>Viewed</span>
                     </div>
                 )}
             </div>

@@ -302,7 +302,7 @@ export function TicketDetailPage() {
 
     if (!ticket) {
         return (
-            <div className="container mx-auto p-6 text-center">
+            <div className="w-full px-4 sm:px-6 lg:px-8 py-16 text-center">
                 <h2 className="text-2xl font-bold mb-4">Ticket not found</h2>
                 <Button onClick={() => navigate(isAdmin ? '/admin/tickets' : '/tickets')}>
                     Back to Tickets
@@ -314,7 +314,7 @@ export function TicketDetailPage() {
     const isAppealType = ['suspension_appeal', 'account_verification', 'compliance_review', 'payout_issue'].includes(ticket.type);
 
     return (
-        <div className="container mx-auto p-3 sm:p-6 max-w-4xl">
+        <div className="w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <Button
                 variant="ghost"
                 size="sm"

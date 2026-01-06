@@ -132,7 +132,7 @@ export function SupportTicketsPage() {
 
     if (showNewTicket) {
         return (
-            <div className="container mx-auto p-6 max-w-3xl">
+            <div className="w-full max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <Button
                     variant="ghost"
                     onClick={() => setShowNewTicket(false)}
@@ -149,7 +149,7 @@ export function SupportTicketsPage() {
     }
 
     return (
-        <div className="container mx-auto p-6">
+        <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
                 <div>
                     <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Support Tickets</h1>

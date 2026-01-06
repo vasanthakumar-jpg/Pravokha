@@ -162,9 +162,9 @@ export function HomePage() {
             <HeroCarousel />
 
             {/* Shop by Category - Universal Carousel */}
-            <section className={`${layout.containerResponsive} ${layout.sectionSpacing}`}>
+            <section className={`w-full ${layout.sectionSpacing}`}>
                 <h2 className={`${typography.responsiveH2} text-center mb-3 sm:mb-4`}>Shop by Category</h2>
-                <p className={`${typography.responsiveBody} text-center mb-6 sm:mb-8 max-w-2xl mx-auto`}>
+                <p className={`${typography.responsiveBody} text-center mb-6 sm:mb-8 max-w-2xl mx-auto px-4`}>
                     Discover comfortable and stylish wear for every day. From premium tees to active track pants and versatile shorts - find your perfect fit.
                 </p>
 
@@ -177,14 +177,16 @@ export function HomePage() {
             </section>
 
             {/* Featured Products */}
-            <section className={`${layout.containerResponsive} ${layout.sectionSpacing}`}>
-                <div className="text-center mb-8 sm:mb-12">
+            <section className={`w-full ${layout.sectionSpacing} px-0`}>
+                <div className="text-center mb-8 sm:mb-12 px-4">
                     <h2 className={`${typography.responsiveH2} mb-3 sm:mb-4`}>Featured Collection</h2>
                     <p className={`${typography.responsiveBody} text-muted-foreground max-w-2xl mx-auto`}>
                         Discover our handpicked selection of premium t-shirts, track pants, and shorts
                     </p>
                 </div>
-                <ProductGrid products={featuredProducts} />
+                <div className="px-4 sm:px-6 lg:px-8">
+                    <ProductGrid products={featuredProducts} />
+                </div>
                 <div className="flex justify-center mt-8">
                     <Link to="/products">
                         <Button size="lg" variant="outline" className="group">
@@ -196,19 +198,21 @@ export function HomePage() {
             </section>
 
             {/* New Arrivals */}
-            <section className={`${layout.containerResponsive} ${layout.sectionSpacing}`}>
-                <div className="text-center mb-8 sm:mb-12">
+            <section className={`w-full ${layout.sectionSpacing} px-0`}>
+                <div className="text-center mb-8 sm:mb-12 px-4">
                     <h2 className={`${typography.responsiveH2} mb-3 sm:mb-4`}>New Arrivals</h2>
                     <p className={`${typography.responsiveBody} text-muted-foreground max-w-2xl mx-auto`}>
                         Check out our latest additions to the collection
                     </p>
                 </div>
-                <ProductGrid products={newArrivals} />
+                <div className="px-4 sm:px-6 lg:px-8">
+                    <ProductGrid products={newArrivals} />
+                </div>
             </section>
 
             {/* Features */}
-            <section className={`${layout.containerResponsive} ${layout.sectionSpacing} bg-muted/30`}>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 max-w-6xl mx-auto">
+            <section className={`w-full ${layout.sectionSpacing} bg-muted/30 px-4 sm:px-6 lg:px-8`}>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 w-full mx-auto">
                     <Card className="p-4 sm:p-6 text-center hover:shadow-xl transition-all duration-300 group h-full flex flex-col justify-center items-center">
                         <TrendingUp className="h-8 w-8 sm:h-10 sm:w-10 md:h-12 md:w-12 mx-auto mb-3 sm:mb-4 text-primary transition-transform duration-300 group-hover:scale-110 group-hover:rotate-12" />
                         <h3 className="text-lg sm:text-xl font-semibold mb-2">Latest Trends</h3>
@@ -228,12 +232,12 @@ export function HomePage() {
             </section>
 
             {/* CTA Section */}
-            <section className={`${layout.containerResponsive} py-12 sm:py-16 text-center`}>
-                <div className="max-w-3xl mx-auto space-y-4 sm:space-y-6">
+            <section className={`w-full py-12 sm:py-16 text-center px-4 sm:px-6 lg:px-8`}>
+                <div className="w-full mx-auto space-y-4 sm:space-y-6">
                     <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold leading-tight">
                         Ready to Upgrade Your Wardrobe?
                     </h2>
-                    <p className="text-sm sm:text-base md:text-lg lg:text-xl text-muted-foreground max-w-2xl mx-auto px-4">
+                    <p className="text-sm sm:text-base md:text-lg lg:text-xl text-muted-foreground max-w-4xl mx-auto px-4">
                         Join thousands of satisfied customers worldwide and discover your perfect style today
                     </p>
                     <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center pt-4 sm:pt-6 w-full max-w-xs sm:max-w-none mx-auto">
