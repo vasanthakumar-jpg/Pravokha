@@ -1,0 +1,159 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  DEALER
+  USER
+}
+
+model User {
+  id                String    @id @default(uuid())
+  email             String    @unique
+  password          String
+  name              String
+  role              Role      @default(USER)
+  
+  // Profile / Dealer Info
+  phone             String?
+  address           String?
+  storeName         String?
+  storeDescription  String?
+  pan               String?
+  bankAccount       String?
+  
+  status            String    @default("active") // active, suspended
+  verificationStatus String   @default("unverified") // pending, verified, rejected
+  
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  products          Product[]
+  orders            Order[]   @relation("UserOrders")
+  soldOrders        Order[]   @relation("SellerOrders")
+  notifications     Notification[]
+  tickets           SupportTicket[]
+
+  @@map("users")
+}
+
+model Category {
+  id          String        @id @default(uuid())
+  name        String
+  slug        String        @unique
+  description String?
+  imageUrl    String?
+  status      String        @default("active")
+  displayOrder Int          @default(0)
+  createdAt   DateTime      @default(now())
+  
+  subcategories Subcategory[]
+  products      Product[]
+
+  @@map("categories")
+}
+
+model Subcategory {
+  id          String    @id @default(uuid())
+  name        String
+  slug        String    @unique
+  description String?
+  categoryId  String
+  category    Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  status      String    @default("active")
+  createdAt   DateTime  @default(now())
+  
+  products    Product[]
+
+  @@map("subcategories")
+}
+
+model Product {
+  id            String      @id @default(uuid())
+  title         String
+  description   String
+  price         Float
+  stock         Int         @default(0)
+  published     Boolean     @default(false)
+  isFeatured    Boolean     @default(false)
+  
+  categoryId    String?
+  category      Category?   @relation(fields: [categoryId], references: [id])
+  subcategoryId String?
+  subcategory   Subcategory? @relation(fields: [subcategoryId], references: [id])
+  
+  dealerId      String
+  dealer        User        @relation(fields: [dealerId], references: [id])
+  
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@map("products")
+}
+
+model Order {
+  id            String    @id @default(uuid())
+  orderNumber   String    @unique
+  total         Float
+  status        String    @default("pending")
+  paymentStatus String    @default("pending")
+  
+  items         Json      // Snapshot of items: [{id, title, price, quantity}]
+  address       Json?     // Shipping address snapshot
+  
+  userId        String?
+  user          User?     @relation("UserOrders", fields: [userId], references: [id])
+  
+  sellerId      String?
+  seller        User?     @relation("SellerOrders", fields: [sellerId], references: [id])
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@map("orders")
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  type      String   // order, info, alert
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@map("notifications")
+}
+
+model SupportTicket {
+  id           String   @id @default(uuid())
+  ticketNumber String   @unique
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
+  subject      String
+  message      String
+  status       String   @default("pending") // pending, resolved
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("support_tickets")
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  actorId     String?
+  targetId    String?
+  targetType  String
+  actionType  String
+  description String?
+  createdAt   DateTime @default(now())
+
+  @@map("audit_logs")
+}
