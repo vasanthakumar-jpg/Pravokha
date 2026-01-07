@@ -1,13 +1,13 @@
 // Email notification helper - Client Wrapper
 // Replaces previous mock implementation with secure calls to emailClient
 
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/infra/api/supabase';
 import { emailClient } from './services/email/EmailClient';
 
 // Helper to get user email/name from ID
 async function getUserDetails(userId: string) {
     const { data: user } = await supabase
-        .from('profiles')
+        .from("users")
         .select('full_name, email')
         .eq('id', userId)
         .single();

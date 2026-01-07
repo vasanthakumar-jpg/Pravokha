@@ -1,20 +1,20 @@
 import { Suspense, lazy, useState, useEffect } from "react";
 import { BrowserRouter, Routes, Route, useLocation, Navigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { TooltipProvider } from "@/components/ui/Tooltip";
-import { Toaster } from "@/components/ui/Toaster";
-import { AuthProvider, useAuth } from "@/contexts/AuthContext";
-import { AdminProvider } from "@/contexts/AdminContext";
-import { CartProvider } from "@/contexts/CartContext";
-import { Navbar } from "@/components/layout/Navbar";
-import { Footer } from "@/components/layout/Footer";
-import { CartDrawer } from "@/components/cart/CartDrawer";
+import { TooltipProvider } from "@/ui/Tooltip";
+import { Toaster } from "@/ui/Toaster";
+import { AuthProvider, useAuth } from "@/core/context/AuthContext";
+import { AdminProvider } from "@/core/context/AdminContext";
+import { CartProvider } from "@/core/context/CartContext";
+import { Navbar } from "@/layout/Navbar";
+import { Footer } from "@/layout/Footer";
+import { CartDrawer } from "@/feat/cart/components/CartDrawer";
 
-import { ProtectedRoute } from "@/components/common/ProtectedRoute";
-import { RoleBasedRedirect } from "@/components/common/RoleBasedRedirect";
-import { AuthLoadingGuard } from "@/components/common/AuthLoadingGuard";
-import AdminLayout from "@/layouts/AdminLayout";
-import SellerLayout from "@/layouts/SellerLayout";
+import { ProtectedRoute } from "@/shared/ui/ProtectedRoute";
+import { RoleBasedRedirect } from "@/shared/ui/RoleBasedRedirect";
+import { AuthLoadingGuard } from "@/shared/ui/AuthLoadingGuard";
+import AdminLayout from "@/layout/AdminLayout";
+import SellerLayout from "@/layout/SellerLayout";
 
 // Simple loading component
 const LoadingFallback = () => (
@@ -24,86 +24,86 @@ const LoadingFallback = () => (
 );
 
 // Lazy load pages for better performance
-const Index = lazy(() => import("./features/home/pages/HomePage"));
-const Products = lazy(() => import("./features/products/pages/ProductsPage"));
-const ProductDetail = lazy(() => import("./features/products/pages/ProductDetailPage"));
-const Checkout = lazy(() => import("./features/checkout/pages/CheckoutPage"));
-const Auth = lazy(() => import("./features/auth/pages/AuthEnhancedPage"));
-const AuthUnified = lazy(() => import("./features/auth/pages/AuthPage"));
-const Support = lazy(() => import("./features/support/pages/SupportPage"));
-const Contact = lazy(() => import("./features/support/pages/ContactPage"));
-const FAQ = lazy(() => import("./features/support/pages/FAQPage"));
-const SizeGuide = lazy(() => import("./features/info/pages/SizeGuidePage"));
-const ShippingReturns = lazy(() => import("./features/info/pages/ShippingReturnsPage"));
-const Wishlist = lazy(() => import("./features/user/pages/WishlistPage"));
-const ResetPassword = lazy(() => import("./features/auth/pages/ResetPasswordPage"));
-const LearnMore = lazy(() => import("./features/info/pages/LearnMorePage"));
-const OrderHistory = lazy(() => import("./features/orders/pages/OrderHistory"));
-const NotFound = lazy(() => import("./features/system/pages/NotFoundPage"));
-const ForgotPassword = lazy(() => import("./features/auth/pages/ForgotPasswordPage"));
+const Index = lazy(() => import("./feat/home/pages/HomePage"));
+const Products = lazy(() => import("./feat/products/pages/ProductsPage"));
+const ProductDetail = lazy(() => import("./feat/products/pages/ProductDetailPage"));
+const Checkout = lazy(() => import("./feat/checkout/pages/CheckoutPage"));
+const Auth = lazy(() => import("./feat/auth/pages/AuthEnhancedPage"));
+const AuthUnified = lazy(() => import("./feat/auth/pages/AuthPage"));
+const Support = lazy(() => import("./feat/support/pages/SupportPage"));
+const Contact = lazy(() => import("./feat/support/pages/ContactPage"));
+const FAQ = lazy(() => import("./feat/support/pages/FAQPage"));
+const SizeGuide = lazy(() => import("./feat/info/pages/SizeGuidePage"));
+const ShippingReturns = lazy(() => import("./feat/info/pages/ShippingReturnsPage"));
+const Wishlist = lazy(() => import("./feat/user/pages/WishlistPage"));
+const ResetPassword = lazy(() => import("./feat/auth/pages/ResetPasswordPage"));
+const LearnMore = lazy(() => import("./feat/info/pages/LearnMorePage"));
+const OrderHistory = lazy(() => import("./feat/orders/pages/OrderHistory"));
+const NotFound = lazy(() => import("./feat/system/pages/NotFoundPage"));
+const ForgotPassword = lazy(() => import("./feat/auth/pages/ForgotPasswordPage"));
 
 // Admin pages
-const AdminDashboard = lazy(() => import("./features/admin/pages/AdminDashboard"));
-const AdminOrders = lazy(() => import("./features/admin/pages/AdminOrders"));
-const AdminProducts = lazy(() => import("./features/admin/pages/AdminProducts"));
+const AdminDashboard = lazy(() => import("./feat/admin/pages/AdminDashboard"));
+const AdminOrders = lazy(() => import("./feat/admin/pages/AdminOrders"));
+const AdminProducts = lazy(() => import("./feat/admin/pages/AdminProducts"));
 
-const EditProduct = lazy(() => import("./features/admin/pages/EditProduct"));
-const AdminProductsManagement = lazy(() => import("./features/admin/pages/AdminProductsManagement"));
-const AdminOrderTracking = lazy(() => import("./features/admin/pages/AdminOrderTracking"));
-const AdminCategories = lazy(() => import("./features/admin/pages/AdminCategories"));
-const AdminSubcategories = lazy(() => import("./features/admin/pages/AdminSubcategories"));
-const AdminAuditLogs = lazy(() => import("./features/admin/pages/AdminAuditLogs"));
-const AdminSupport = lazy(() => import("./features/admin/pages/AdminSupport"));
-const SupportChat = lazy(() => import("./features/support/pages/SupportChatPage"));
-const AdminCustomers = lazy(() => import("./features/admin/pages/AdminCustomers"));
-const AdminAnalytics = lazy(() => import("./features/admin/pages/AdminAnalytics"));
-const AdminComboOffers = lazy(() => import("./features/admin/pages/AdminComboOffers"));
-const Profile = lazy(() => import("./features/user/pages/ProfilePage"));
+const EditProduct = lazy(() => import("./feat/admin/pages/EditProduct"));
+const AdminProductsManagement = lazy(() => import("./feat/admin/pages/AdminProductsManagement"));
+const AdminOrderTracking = lazy(() => import("./feat/admin/pages/AdminOrderTracking"));
+const AdminCategories = lazy(() => import("./feat/admin/pages/AdminCategories"));
+const AdminSubcategories = lazy(() => import("./feat/admin/pages/AdminSubcategories"));
+const AdminAuditLogs = lazy(() => import("./feat/admin/pages/AdminAuditLogs"));
+const AdminSupport = lazy(() => import("./feat/admin/pages/AdminSupport"));
+const SupportChat = lazy(() => import("./feat/support/pages/SupportChatPage"));
+const AdminCustomers = lazy(() => import("./feat/admin/pages/AdminCustomers"));
+const AdminAnalytics = lazy(() => import("./feat/admin/pages/AdminAnalytics"));
+const AdminComboOffers = lazy(() => import("./feat/admin/pages/AdminComboOffers"));
+const Profile = lazy(() => import("./feat/user/pages/ProfilePage"));
 
 // New admin pages
-const AdminUsers = lazy(() => import("./features/admin/pages/AdminUsers"));
-const AdminSellers = lazy(() => import("./features/admin/pages/AdminSellers"));
-const AdminPayments = lazy(() => import("./features/admin/pages/AdminPayments"));
-const AdminReports = lazy(() => import("./features/admin/pages/AdminReports"));
-const AdminSettings = lazy(() => import("./features/admin/pages/AdminSettings"));
-const AdminMessages = lazy(() => import("./features/admin/pages/AdminMessages"));
-const AdminReviews = lazy(() => import("./features/admin/pages/AdminReviews"));
-const AdminRoleManagement = lazy(() => import("./features/admin/pages/AdminRoleManagement"));
-// const AdminAuditLogs = lazy(() => import("./features/admin/pages/AdminAuditLogs"));
+const AdminUsers = lazy(() => import("./feat/admin/pages/AdminUsers"));
+const AdminSellers = lazy(() => import("./feat/admin/pages/AdminSellers"));
+const AdminPayments = lazy(() => import("./feat/admin/pages/AdminPayments"));
+const AdminReports = lazy(() => import("./feat/admin/pages/AdminReports"));
+const AdminSettings = lazy(() => import("./feat/admin/pages/AdminSettings"));
+const AdminMessages = lazy(() => import("./feat/admin/pages/AdminMessages"));
+const AdminReviews = lazy(() => import("./feat/admin/pages/AdminReviews"));
+const AdminRoleManagement = lazy(() => import("./feat/admin/pages/AdminRoleManagement"));
+// const AdminAuditLogs = lazy(() => import("./feat/admin/pages/AdminAuditLogs"));
 
 // Unified Orders Page (for both Admin and Seller)
-const UnifiedOrdersPage = lazy(() => import("./features/orders/pages/UnifiedOrdersPage"));
+const UnifiedOrdersPage = lazy(() => import("./feat/orders/pages/UnifiedOrdersPage"));
 
 // Seller pages
-const SellerDashboard = lazy(() => import("./features/seller/pages/SellerDashboard"));
-const SellerProducts = lazy(() => import("./features/seller/pages/SellerProducts"));
-const SellerOrders = lazy(() => import("./features/seller/pages/SellerOrders"));
-const SellerOrderDetail = lazy(() => import("./features/seller/pages/SellerOrderDetail"));
-const SellerAnalytics = lazy(() => import("./features/seller/pages/SellerAnalytics"));
-const SellerPayouts = lazy(() => import("./features/seller/pages/SellerPayouts"));
-const SellerPromotions = lazy(() => import("./features/seller/pages/SellerPromotions"));
-const SellerSettings = lazy(() => import("./features/seller/pages/SellerSettings"));
+const SellerDashboard = lazy(() => import("./feat/seller/pages/SellerDashboard"));
+const SellerProducts = lazy(() => import("./feat/seller/pages/SellerProducts"));
+const SellerOrders = lazy(() => import("./feat/seller/pages/SellerOrders"));
+const SellerOrderDetail = lazy(() => import("./feat/seller/pages/SellerOrderDetail"));
+const SellerAnalytics = lazy(() => import("./feat/seller/pages/SellerAnalytics"));
+const SellerPayouts = lazy(() => import("./feat/seller/pages/SellerPayouts"));
+const SellerPromotions = lazy(() => import("./feat/seller/pages/SellerPromotions"));
+const SellerSettings = lazy(() => import("./feat/seller/pages/SellerSettings"));
 
-const AdminProductForm = lazy(() => import("./features/admin/pages/AdminProductForm"));
-const SellerProductForm = lazy(() => import("./features/seller/pages/SellerProductForm"));
-const SellerMessages = lazy(() => import("./features/seller/pages/SellerMessages"));
+const AdminProductForm = lazy(() => import("./feat/admin/pages/AdminProductForm"));
+const SellerProductForm = lazy(() => import("./feat/seller/pages/SellerProductForm"));
+const SellerMessages = lazy(() => import("./feat/seller/pages/SellerMessages"));
 
 // User pages
-const UserAccount = lazy(() => import("./features/user/pages/UserAccount"));
-const UserDashboard = lazy(() => import("./features/user/pages/UserDashboard"));
-const UserMessages = lazy(() => import("./features/user/pages/UserMessages"));
+const UserAccount = lazy(() => import("./feat/user/pages/UserAccount"));
+const UserDashboard = lazy(() => import("./feat/user/pages/UserDashboard"));
+const UserMessages = lazy(() => import("./feat/user/pages/UserMessages"));
 
-const UserSettings = lazy(() => import("./features/user/pages/UserSettings"));
-const UserOrderDetail = lazy(() => import("./features/user/pages/UserOrderDetail"));
-const AccessDenied = lazy(() => import("./features/system/pages/AccessDeniedPage"));
+const UserSettings = lazy(() => import("./feat/user/pages/UserSettings"));
+const UserOrderDetail = lazy(() => import("./feat/user/pages/UserOrderDetail"));
+const AccessDenied = lazy(() => import("./feat/system/pages/AccessDeniedPage"));
 
 // Ticket System pages
-const SupportTickets = lazy(() => import("./features/support/pages/SupportTicketsPage"));
-const TicketDetail = lazy(() => import("./features/support/pages/TicketDetailPage"));
-const AdminTickets = lazy(() => import("./features/admin/pages/AdminTickets"));
-const AdminProductUpdates = lazy(() => import("./features/admin/pages/AdminProductUpdates"));
-const AdminSuspendedSellerTickets = lazy(() => import("./features/admin/pages/AdminSuspendedSellerTickets"));
-const TicketFormPage = lazy(() => import("@/components/common/TicketForm"));
+const SupportTickets = lazy(() => import("./feat/support/pages/SupportTicketsPage"));
+const TicketDetail = lazy(() => import("./feat/support/pages/TicketDetailPage"));
+const AdminTickets = lazy(() => import("./feat/admin/pages/AdminTickets"));
+const AdminProductUpdates = lazy(() => import("./feat/admin/pages/AdminProductUpdates"));
+const AdminSuspendedSellerTickets = lazy(() => import("./feat/admin/pages/AdminSuspendedSellerTickets"));
+const TicketFormPage = lazy(() => import("@/shared/ui/TicketForm"));
 
 const queryClient = new QueryClient();
 

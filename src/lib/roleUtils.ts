@@ -1,4 +1,4 @@
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/infra/api/supabase";
 
 export type UserRole = "admin" | "seller" | "user" | "moderator" | null;
 
@@ -7,7 +7,7 @@ export async function fetchUserRole(userId: string): Promise<UserRole> {
         // console.log(`[roleUtils] Fetching role for user: ${userId}`);
 
         const { data, error } = await supabase
-            .from("user_roles")
+            .from("users")
             .select("role")
             .eq("user_id", userId)
             .limit(1)
