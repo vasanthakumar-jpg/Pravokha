@@ -514,8 +514,8 @@ export default function UnifiedOrdersPage() {
               Back
             </Button>
             <div className="min-w-0">
-              <h1 className="text-base sm:text-xl lg:text-2xl font-bold flex items-center gap-3">{isAdmin ? "Admin order management" : "Business orders"}</h1>
-              <p className="text-xs sm:text-sm lg:text-base text-muted-foreground mt-0.5">
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-3">{isAdmin ? "Admin order management" : "All Orders"}</h1>
+              <p className="text-sm sm:text-base text-muted-foreground mt-1">
                 Monitor transaction lifecycle and fulfillment performance.
               </p>
             </div>
@@ -533,38 +533,40 @@ export default function UnifiedOrdersPage() {
       <Tabs value={mainTab} onValueChange={setMainTab} className="space-y-6">
         <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center bg-muted/50 p-1.5 sm:p-1 rounded-lg">
 
-          <TabsList className="grid w-full sm:w-auto sm:max-w-xl grid-cols-2 sm:grid-cols-3 h-auto sm:h-9 bg-transparent p-0.5 gap-1">
-            <TabsTrigger value="my-orders" className="gap-1.5 sm:gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm text-[11px] sm:text-xs font-bold uppercase tracking-wider px-2 sm:px-4 h-8 sm:h-auto" title="My Purchases">
-              <ShoppingBag className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-              <span>Purchases</span>
-              <Badge variant="secondary" className="ml-1 bg-muted-foreground/10 text-muted-foreground h-4 px-1 min-w-[1rem] text-[9px]">
-                {myOrdersCount}
-              </Badge>
-            </TabsTrigger>
-            <TabsTrigger value="customer-orders" className="gap-1.5 sm:gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm text-[11px] sm:text-xs font-bold uppercase tracking-wider px-2 sm:px-4 h-8 sm:h-auto" title="Business Sales">
-              <Users className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-              <span>Sales</span>
-              <Badge variant="secondary" className="ml-1 bg-muted-foreground/10 text-muted-foreground h-4 px-1 min-w-[1rem] text-[9px]">
-                {businessOrdersCount}
-              </Badge>
-            </TabsTrigger>
-            {isAdmin && (
-              <TabsTrigger value="platform-orders" className="gap-1.5 sm:gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm text-[11px] sm:text-xs font-bold uppercase tracking-wider px-2 sm:px-4 h-8 sm:h-auto" title="Marketplace Orders">
-                <Package className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                <span>Marketplace</span>
+          <div className="w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
+            <TabsList className="flex w-fit sm:w-auto h-auto sm:h-9 bg-transparent p-0.5 gap-1 min-w-full sm:min-w-0">
+              <TabsTrigger value="my-orders" className="flex-1 sm:flex-none gap-1.5 sm:gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm text-[11px] sm:text-xs font-bold tracking-wider px-3 sm:px-4 h-8 sm:h-auto whitespace-nowrap" title="My Purchases">
+                <ShoppingBag className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                <span>Purchases</span>
                 <Badge variant="secondary" className="ml-1 bg-muted-foreground/10 text-muted-foreground h-4 px-1 min-w-[1rem] text-[9px]">
-                  {platformOrdersCount}
+                  {myOrdersCount}
                 </Badge>
               </TabsTrigger>
-            )}
-          </TabsList>
+              <TabsTrigger value="customer-orders" className="flex-1 sm:flex-none gap-1.5 sm:gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm text-[11px] sm:text-xs font-bold tracking-wider px-3 sm:px-4 h-8 sm:h-auto whitespace-nowrap" title="Business Sales">
+                <Users className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                <span>Sales</span>
+                <Badge variant="secondary" className="ml-1 bg-muted-foreground/10 text-muted-foreground h-4 px-1 min-w-[1rem] text-[9px]">
+                  {businessOrdersCount}
+                </Badge>
+              </TabsTrigger>
+              {isAdmin && (
+                <TabsTrigger value="platform-orders" className="flex-1 sm:flex-none gap-1.5 sm:gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm text-[11px] sm:text-xs font-bold tracking-wider px-3 sm:px-4 h-8 sm:h-auto whitespace-nowrap" title="Marketplace Orders">
+                  <Package className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                  <span>Marketplace</span>
+                  <Badge variant="secondary" className="ml-1 bg-muted-foreground/10 text-muted-foreground h-4 px-1 min-w-[1rem] text-[9px]">
+                    {platformOrdersCount}
+                  </Badge>
+                </TabsTrigger>
+              )}
+            </TabsList>
+          </div>
 
           {/* Filters (Shared) */}
-          <div className="flex gap-2 w-full sm:w-auto items-center">
-            <div className="relative flex-[2]">
+          <div className="flex flex-wrap lg:flex-nowrap gap-2 w-full lg:w-auto items-center mt-2 lg:mt-0">
+            <div className="relative flex-[2] min-w-[140px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search..."
+                placeholder="Search orders..."
                 className="pl-9 h-10 sm:h-9 bg-background border-border text-sm"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
@@ -572,7 +574,7 @@ export default function UnifiedOrdersPage() {
             </div>
 
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="flex-[1.2] h-10 sm:h-9 bg-background border-border text-sm whitespace-nowrap overflow-hidden text-ellipsis">
+              <SelectTrigger className="flex-[1.2] min-w-[120px] h-10 sm:h-9 bg-background border-border text-sm whitespace-nowrap overflow-hidden text-ellipsis">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
@@ -645,12 +647,12 @@ export default function UnifiedOrdersPage() {
               <Table>
                 <TableHeader className="bg-muted/40">
                   <TableRow className="hover:bg-transparent">
-                    <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Order Details</TableHead>
-                    <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Date</TableHead>
-                    <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Total</TableHead>
-                    <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Status</TableHead>
-                    <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Payment</TableHead>
-                    <TableHead className="text-right text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Actions</TableHead>
+                    <TableHead className="text-[11px] font-bold tracking-wider text-muted-foreground/60">Order details</TableHead>
+                    <TableHead className="text-[11px] font-bold tracking-wider text-muted-foreground/60">Date</TableHead>
+                    <TableHead className="text-[11px] font-bold tracking-wider text-muted-foreground/60">Total</TableHead>
+                    <TableHead className="text-[11px] font-bold tracking-wider text-muted-foreground/60">Status</TableHead>
+                    <TableHead className="text-[11px] font-bold tracking-wider text-muted-foreground/60">Payment</TableHead>
+                    <TableHead className="text-right text-[11px] font-bold tracking-wider text-muted-foreground/60">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -808,13 +810,13 @@ export default function UnifiedOrdersPage() {
               <Table>
                 <TableHeader className="bg-muted/40">
                   <TableRow className="bg-muted/30">
-                    <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Order ID</TableHead>
-                    <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Customer</TableHead>
-                    <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Items</TableHead>
-                    <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Total Amount</TableHead>
-                    <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Status</TableHead>
-                    <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Payment</TableHead>
-                    <TableHead className="text-right text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 pr-6">Action</TableHead>
+                    <TableHead className="text-[11px] font-bold tracking-wider text-muted-foreground/60">Order ID</TableHead>
+                    <TableHead className="text-[11px] font-bold tracking-wider text-muted-foreground/60">Customer</TableHead>
+                    <TableHead className="text-[11px] font-bold tracking-wider text-muted-foreground/60">Items</TableHead>
+                    <TableHead className="text-[11px] font-bold tracking-wider text-muted-foreground/60">Total amount</TableHead>
+                    <TableHead className="text-[11px] font-bold tracking-wider text-muted-foreground/60">Status</TableHead>
+                    <TableHead className="text-[11px] font-bold tracking-wider text-muted-foreground/60">Payment</TableHead>
+                    <TableHead className="text-right text-[11px] font-bold tracking-wider text-muted-foreground/60 pr-6">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -924,13 +926,13 @@ export default function UnifiedOrdersPage() {
                 <Table>
                   <TableHeader className="bg-muted/40">
                     <TableRow className="bg-muted/30">
-                      <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Order ID</TableHead>
-                      <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Customer</TableHead>
-                      <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Items</TableHead>
-                      <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Total Amount</TableHead>
-                      <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Status</TableHead>
-                      <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Payment</TableHead>
-                      <TableHead className="text-right text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 pr-6">Action</TableHead>
+                      <TableHead className="text-[11px] font-bold tracking-wider text-muted-foreground/60">Order ID</TableHead>
+                      <TableHead className="text-[11px] font-bold tracking-wider text-muted-foreground/60">Customer</TableHead>
+                      <TableHead className="text-[11px] font-bold tracking-wider text-muted-foreground/60">Items</TableHead>
+                      <TableHead className="text-[11px] font-bold tracking-wider text-muted-foreground/60">Total amount</TableHead>
+                      <TableHead className="text-[11px] font-bold tracking-wider text-muted-foreground/60">Status</TableHead>
+                      <TableHead className="text-[11px] font-bold tracking-wider text-muted-foreground/60">Payment</TableHead>
+                      <TableHead className="text-right text-[11px] font-bold tracking-wider text-muted-foreground/60 pr-6">Action</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -939,7 +941,7 @@ export default function UnifiedOrdersPage() {
                         <TableCell colSpan={7} className="h-48 text-center text-muted-foreground bg-card">
                           <div className="flex flex-col items-center justify-center gap-2">
                             <Package className="w-10 h-10 opacity-20" />
-                            <p>No marketplace orders yet</p>
+                            <p>No Marketplace Orders Yet</p>
                           </div>
                         </TableCell>
                       </TableRow>

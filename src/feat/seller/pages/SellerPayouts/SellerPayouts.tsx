@@ -325,16 +325,16 @@ export default function SellerPayouts() {
 
   return (
     <div className="container py-8 space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-1000">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
         <div>
-          <h1 className="responsive-h1">Ledger & payouts</h1>
-          <p className="responsive-body text-muted-foreground mt-1">Capital workflow for your store</p>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Payouts</h1>
+          <p className="text-xs sm:text-base text-muted-foreground mt-1">Manage payouts & settlements</p>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto mt-4 sm:mt-0">
+        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto mt-4 lg:mt-0 sm:ml-auto lg:ml-0">
           <Button
             variant="default"
-            className="flex-1 sm:flex-none h-12 px-6 bg-emerald-600 hover:bg-emerald-700 text-white responsive-button rounded-xl border border-emerald-500/20 transition-all active:scale-95"
+            className="flex-1 sm:flex-none h-11 sm:h-12 px-6 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm rounded-xl border border-emerald-500/20 transition-all active:scale-95 font-semibold"
             onClick={handleWithdrawal}
             disabled={!isVerified || payoutStats.pendingBalance < 1000 || isRequesting}
           >
@@ -343,16 +343,16 @@ export default function SellerPayouts() {
           </Button>
           <Button
             variant="outline"
-            className="flex-1 sm:flex-none h-12 px-6 border-border/60 responsive-button rounded-xl hover:bg-muted transition-all active:scale-95"
+            className="flex-1 sm:flex-none h-11 sm:h-12 px-6 border-border/60 rounded-xl hover:bg-muted transition-all active:scale-95 font-semibold"
             disabled={!isVerified || transactions.length === 0}
             onClick={exportTransactions}
           >
             {!isVerified ? <Lock className="h-4 w-4 mr-2" /> : <Download className="h-4 w-4 mr-2" />}
-            Export statement
+            Statement
           </Button>
           <Button
             variant="outline"
-            className="flex-1 sm:flex-none h-12 px-6 border-indigo-200 bg-indigo-50/50 text-indigo-700 dark:border-indigo-500/30 dark:bg-indigo-500/10 dark:text-indigo-300 responsive-button rounded-xl hover:bg-indigo-50 dark:hover:bg-indigo-500/20 shadow-sm transition-all active:scale-95 disabled:opacity-40"
+            className="flex-1 sm:flex-none h-11 sm:h-12 px-6 border-indigo-200 bg-indigo-50/50 text-indigo-700 dark:border-indigo-500/30 dark:bg-indigo-500/10 dark:text-indigo-300 rounded-xl hover:bg-indigo-50 dark:hover:bg-indigo-500/20 shadow-sm transition-all active:scale-95 disabled:opacity-40 font-semibold"
             disabled={!isVerified || transactions.length === 0}
             onClick={exportTaxReport}
           >
@@ -363,55 +363,47 @@ export default function SellerPayouts() {
       </div>
 
       {!isVerified && (
-        <Alert className="border-amber-500/20 bg-amber-500/5 rounded-[32px] p-6 overflow-hidden relative group">
-          <div className="absolute -right-4 -top-4 opacity-5 group-hover:rotate-12 transition-transform">
-            <ShieldAlert className="h-24 w-24 text-amber-500" />
-          </div>
+        <Alert className="border-amber-200 bg-amber-50 rounded-2xl p-6 overflow-hidden relative shadow-sm">
           <div className="flex flex-col md:flex-row items-center gap-6">
-            <div className="bg-amber-500 text-white p-4 rounded-3xl border border-white/20 rotate-3">
-              <ShieldAlert className="h-8 w-8" />
+            <div className="bg-amber-100 text-amber-600 p-3 rounded-xl border border-amber-200">
+              <ShieldAlert className="h-6 w-6" />
             </div>
-            <div className="space-y-2 text-center md:text-left">
-              <AlertTitle className="responsive-h4 text-amber-900 shadow-sm">Financial restriction active</AlertTitle>
-              <AlertDescription className="text-amber-800/70 responsive-body max-w-2xl leading-relaxed mt-1">
-                Your capital flow is currently paused. To receive payouts, download high-fidelity statements, and link banking channels, please complete the marketplace compliance protocol.
+            <div className="space-y-1 text-center md:text-left flex-1">
+              <AlertTitle className="text-lg font-bold text-amber-900">Financial restriction active</AlertTitle>
+              <AlertDescription className="text-amber-800/80 text-sm leading-relaxed">
+                Your capital flow is currently paused. Please complete the marketplace compliance protocol to enable payouts.
               </AlertDescription>
-              <Button onClick={() => navigate('/seller/settings')} variant="outline" className="h-9 rounded-xl border-amber-500/30 text-amber-700 hover:bg-amber-500/10 responsive-button">
-                Verify now <ArrowUpRight className="ml-2 h-3 w-3" />
-              </Button>
             </div>
+            <Button onClick={() => navigate('/seller/settings')} variant="outline" className="h-10 rounded-xl border-amber-300 text-amber-800 hover:bg-amber-100 font-semibold bg-white/50">
+              Verify now <ArrowUpRight className="ml-2 h-3 w-3" />
+            </Button>
           </div>
         </Alert>
       )}
 
       {/* Financial Pulse Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         {[
-          { label: "Floating Balance", val: payoutStats.pendingBalance, icon: Clock, sub: "Pending settlement", iconBg: "bg-blue-600" },
-          { label: "Scheduled", val: payoutStats.nextPayout, icon: Calendar, sub: `Next cycle: ${format(payoutStats.nextPayoutDate, 'MMM dd')}`, iconBg: "bg-violet-600" },
-          { label: "Gross Pure", val: payoutStats.totalEarnings, icon: DollarSign, sub: "All-time net revenue", iconBg: "bg-emerald-500" },
-          { label: "Fee Matrix", val: `${payoutStats.commissionRate.toFixed(1)}%`, icon: TrendingUp, sub: "Marketplace commission", iconBg: "bg-rose-500" }
+          { label: "Pending", val: payoutStats.pendingBalance, icon: Clock, sub: "To be settled", iconBg: "bg-blue-600" },
+          { label: "Next Payout", val: payoutStats.nextPayout, icon: Calendar, sub: format(payoutStats.nextPayoutDate, 'MMM dd'), iconBg: "bg-violet-600" },
+          { label: "Total Earnings", val: payoutStats.totalEarnings, icon: DollarSign, sub: "Lifetime net", iconBg: "bg-emerald-500" },
+          { label: "Commission", val: `${payoutStats.commissionRate.toFixed(1)}%`, icon: TrendingUp, sub: "Platform fee", iconBg: "bg-rose-500" }
         ].map((s, i) => (
-          <Card key={i} className="group overflow-hidden border-border/40 bg-card/40 backdrop-blur-xl hover:border-primary/40 transition-all duration-500 rounded-2xl relative">
-            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0 p-4 sm:p-6">
-              <CardTitle className="responsive-label">{s.label}</CardTitle>
-              <div className={cn("p-2.5 rounded-2xl text-white border border-white/10 transition-transform duration-500 group-hover:scale-110", s.iconBg)}>
-                <s.icon className="h-4 w-4" />
+          <Card key={i} className="group overflow-hidden border border-border/60 bg-card shadow-sm hover:shadow-md transition-all duration-300 rounded-xl">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0 p-5">
+              <CardTitle className="text-sm font-semibold text-muted-foreground">{s.label}</CardTitle>
+              <div className={cn("p-2 rounded-lg text-white opacity-80 group-hover:opacity-100 transition-opacity", s.iconBg)}>
+                <s.icon className="h-3.5 w-3.5" />
               </div>
             </CardHeader>
-            <CardContent className="p-4 sm:p-6 pt-0">
-              <div className="responsive-h2">
+            <CardContent className="p-5 pt-0">
+              <div className="text-2xl font-bold tracking-tight">
                 {typeof s.val === 'number' ? `₹${s.val.toLocaleString()}` : s.val}
               </div>
-              <p className="responsive-small text-muted-foreground mt-1 flex items-center gap-1.5">
-                <span className="h-1 w-1 rounded-full bg-primary/40" />
+              <p className="text-xs text-muted-foreground mt-1 font-medium">
                 {s.sub}
               </p>
             </CardContent>
-            <div className={cn(
-              "absolute top-0 right-0 w-24 h-24 opacity-[0.02] group-hover:opacity-[0.05] transition-opacity duration-700 blur-2xl rounded-full -mr-12 -mt-12",
-              s.iconBg
-            )} />
           </Card>
         ))}
       </div>
@@ -442,38 +434,38 @@ export default function SellerPayouts() {
         </div>
 
         <TabsContent value="transactions" className="animate-in fade-in slide-in-from-top-2 duration-500">
-          <Card className="border-border/40 bg-card/40 backdrop-blur-xl rounded-[32px] overflow-hidden">
+          <Card className="border border-border/60 bg-card shadow-sm rounded-2xl overflow-hidden">
             <CardContent className="p-0">
               {/* Mobile View */}
               <div className="block sm:hidden p-4 space-y-4">
                 {transactions.length === 0 ? (
-                  <div className="h-40 flex flex-col items-center justify-center text-muted-foreground/30 gap-2 border border-dashed rounded-[32px]">
+                  <div className="h-40 flex flex-col items-center justify-center text-muted-foreground/30 gap-2 border border-dashed rounded-2xl">
                     <Clock className="h-8 w-8 opacity-20" />
                     <Clock className="h-8 w-8 opacity-20" />
-                    <p className="responsive-small font-bold">No ledger detected.</p>
+                    <p className="text-sm font-bold">No ledger detected.</p>
                   </div>
                 ) : transactions.map((t) => (
-                  <div key={t.id} className="p-5 rounded-[24px] border border-border/40 bg-white/50 space-y-4">
+                  <div key={t.id} className="p-5 rounded-2xl border border-border/60 bg-background space-y-4">
                     <div className="flex justify-between items-start">
                       <div>
-                        <p className="responsive-label leading-none mb-1">Entry id</p>
-                        <h4 className="responsive-body font-semibold">{t.order_id}</h4>
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Entry id</p>
+                        <h4 className="text-sm font-bold">{t.order_id}</h4>
                       </div>
                       <Badge variant={t.status === 'completed' ? 'default' : 'secondary'} className={cn(
                         "text-[10px] font-bold px-2.5 py-0.5 rounded-md",
-                        t.status === 'completed' ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" : "bg-amber-500/10 text-amber-600 border-amber-500/20"
+                        t.status === 'completed' ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-amber-50 text-amber-700 border-amber-200"
                       )}>
                         {t.status}
                       </Badge>
                     </div>
                     <div className="flex justify-between items-end border-t border-dashed mt-2 pt-3">
                       <div>
-                        <p className="responsive-label leading-none mb-1">Net flow</p>
-                        <p className="responsive-h2 text-emerald-600">₹{t.net_amount.toLocaleString()}</p>
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Net flow</p>
+                        <p className="text-lg font-bold text-emerald-600">₹{t.net_amount.toLocaleString()}</p>
                       </div>
                       <div className="text-right">
-                        <p className="responsive-label mb-1">Gross: ₹{t.amount.toLocaleString()}</p>
-                        <p className="responsive-label leading-none">{format(new Date(t.date), 'MMM dd, HH:mm')}</p>
+                        <p className="text-xs font-medium text-muted-foreground mb-1">Gross: ₹{t.amount.toLocaleString()}</p>
+                        <p className="text-[10px] font-bold text-muted-foreground">{format(new Date(t.date), 'MMM dd, HH:mm')}</p>
                       </div>
                     </div>
                   </div>
@@ -484,13 +476,13 @@ export default function SellerPayouts() {
               <div className="hidden sm:block overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow className="border-b-border/40 h-16 bg-muted/5 transition-none">
-                      <TableHead className="responsive-label pl-8">Entry id</TableHead>
-                      <TableHead className="responsive-label text-center">Timestamp</TableHead>
-                      <TableHead className="responsive-label text-right">Order gross</TableHead>
-                      <TableHead className="responsive-label text-right text-rose-500">System fee</TableHead>
-                      <TableHead className="responsive-label text-right text-emerald-500">Net flow</TableHead>
-                      <TableHead className="responsive-label text-right pr-8">Status</TableHead>
+                    <TableRow className="border-b-border/40 h-14 bg-muted/20 transition-none">
+                      <TableHead className="font-semibold text-xs uppercase tracking-wider pl-8">Entry id</TableHead>
+                      <TableHead className="font-semibold text-xs uppercase tracking-wider text-center">Timestamp</TableHead>
+                      <TableHead className="font-semibold text-xs uppercase tracking-wider text-right">Order gross</TableHead>
+                      <TableHead className="font-semibold text-xs uppercase tracking-wider text-right text-rose-500">System fee</TableHead>
+                      <TableHead className="font-semibold text-xs uppercase tracking-wider text-right text-emerald-600">Net flow</TableHead>
+                      <TableHead className="font-semibold text-xs uppercase tracking-wider text-right pr-8">Status</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -501,23 +493,23 @@ export default function SellerPayouts() {
                         </TableCell>
                       </TableRow>
                     ) : transactions.map((t) => (
-                      <TableRow key={t.id} className="border-b-border/20 group hover:bg-muted/5 transition-all duration-300 h-20 cursor-help">
-                        <TableCell className="responsive-body font-semibold pl-8 group-hover:pl-10 transition-all">
+                      <TableRow key={t.id} className="border-b-border/20 group hover:bg-muted/5 transition-all duration-300 h-16 cursor-help">
+                        <TableCell className="font-semibold text-sm pl-8 group-hover:pl-10 transition-all">
                           <Popover>
                             <PopoverTrigger asChild>
                               <span className="cursor-pointer hover:text-emerald-600 underline underline-offset-4 decoration-dotted decoration-border/40 transition-colors">
                                 {t.order_id}
                               </span>
                             </PopoverTrigger>
-                            <PopoverContent className="w-80 rounded-3xl p-6 border-border/40 shadow-2xl backdrop-blur-xl bg-card/95">
+                            <PopoverContent className="w-80 rounded-2xl p-6 border-border/40 shadow-xl bg-card">
                               <div className="space-y-4">
                                 <div className="flex items-center gap-3 border-b border-border/20 pb-4">
-                                  <div className="p-2.5 bg-emerald-500/10 rounded-2xl">
+                                  <div className="p-2.5 bg-emerald-50 rounded-xl">
                                     <FileCheck className="h-5 w-5 text-emerald-600" />
                                   </div>
                                   <div>
-                                    <h4 className="responsive-label">Payout audit</h4>
-                                    <p className="responsive-small text-muted-foreground font-medium">{t.order_id}</p>
+                                    <h4 className="font-bold text-sm">Payout audit</h4>
+                                    <p className="text-xs text-muted-foreground font-medium">{t.order_id}</p>
                                   </div>
                                 </div>
 
@@ -535,8 +527,8 @@ export default function SellerPayouts() {
                                     <span className="font-bold text-rose-400/70">-₹{(t.amount * 0.18).toFixed(2)}</span>
                                   </div>
                                   <div className="pt-2.5 border-t border-border/20 mt-2 flex justify-between items-center">
-                                    <span className="responsive-body font-semibold">Net payout</span>
-                                    <span className="responsive-h2 text-emerald-600">
+                                    <span className="font-bold text-sm">Net payout</span>
+                                    <span className="text-lg font-bold text-emerald-600">
                                       ₹{(t.amount - t.commission - (t.amount * 0.18)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                     </span>
                                   </div>
@@ -545,14 +537,14 @@ export default function SellerPayouts() {
                             </PopoverContent>
                           </Popover>
                         </TableCell>
-                        <TableCell className="text-xs font-bold text-muted-foreground/50 text-center">{format(new Date(t.date), 'MMM dd, HH:mm')}</TableCell>
-                        <TableCell className="text-right font-bold text-sm">₹{t.amount.toLocaleString()}</TableCell>
-                        <TableCell className="text-right font-bold text-rose-500/80 text-xs">-₹{t.commission.toLocaleString()}</TableCell>
-                        <TableCell className="text-right font-bold text-emerald-600 text-[18px]">₹{t.net_amount.toLocaleString()}</TableCell>
+                        <TableCell className="text-xs font-medium text-muted-foreground text-center">{format(new Date(t.date), 'MMM dd, HH:mm')}</TableCell>
+                        <TableCell className="text-right font-medium text-sm">₹{t.amount.toLocaleString()}</TableCell>
+                        <TableCell className="text-right font-medium text-rose-500 text-xs">-₹{t.commission.toLocaleString()}</TableCell>
+                        <TableCell className="text-right font-bold text-emerald-600 text-base">₹{t.net_amount.toLocaleString()}</TableCell>
                         <TableCell className="text-right pr-8">
                           <Badge variant={t.status === 'completed' ? 'default' : 'secondary'} className={cn(
-                            "text-[10px] font-bold px-3 py-1 rounded-full",
-                            t.status === 'completed' ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" : "bg-amber-500/10 text-amber-600 border-amber-500/20"
+                            "text-[10px] font-bold px-3 py-0.5 rounded-full",
+                            t.status === 'completed' ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200 border-emerald-200" : "bg-amber-100 text-amber-700 hover:bg-amber-200 border-amber-200"
                           )}>
                             {t.status}
                           </Badge>
@@ -566,15 +558,15 @@ export default function SellerPayouts() {
               <div className="p-8 bg-muted/10 border-t border-border/40">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center max-w-4xl mx-auto">
                   <div className="space-y-1">
-                    <p className="text-[11px] sm:text-xs font-bold text-muted-foreground/60 tracking-wider">Total Lifecycle Volume</p>
+                    <p className="text-[10px] uppercase font-bold text-muted-foreground/60 tracking-wider">Total Lifecycle Volume</p>
                     <p className="text-xl sm:text-2xl font-bold">₹{transactions.reduce((s, t) => s + t.amount, 0).toLocaleString()}</p>
                   </div>
                   <div className="space-y-1 border-x border-border/40 px-8">
-                    <p className="text-[11px] sm:text-xs font-bold text-rose-500/60 tracking-wider">Global Commissions</p>
+                    <p className="text-[10px] uppercase font-bold text-rose-500/60 tracking-wider">Global Commissions</p>
                     <p className="text-xl sm:text-2xl font-bold text-rose-500">-₹{transactions.reduce((s, t) => s + t.commission, 0).toLocaleString()}</p>
                   </div>
                   <div className="space-y-1">
-                    <p className="text-[11px] sm:text-xs font-bold text-emerald-500/60 tracking-wider">Net Realized Capital</p>
+                    <p className="text-[10px] uppercase font-bold text-emerald-500/60 tracking-wider">Net Realized Capital</p>
                     <p className="text-xl sm:text-2xl font-bold text-emerald-600">₹{transactions.reduce((s, t) => s + t.net_amount, 0).toLocaleString()}</p>
                   </div>
                 </div>
@@ -584,25 +576,25 @@ export default function SellerPayouts() {
         </TabsContent>
 
         <TabsContent value="payouts" className="animate-in fade-in slide-in-from-top-2 duration-500">
-          <Card className="border-border/40 bg-card/40 backdrop-blur-xl rounded-[32px] overflow-hidden">
-            <CardHeader>
-              <CardTitle className="text-xl font-bold tracking-tight">Withdrawal Ledger</CardTitle>
-              <CardDescription className="font-medium text-muted-foreground/70">Historical payout requests and settlement status.</CardDescription>
+          <Card className="border border-border/60 bg-card shadow-sm rounded-2xl overflow-hidden">
+            <CardHeader className="p-6 pb-4">
+              <CardTitle className="text-lg font-bold tracking-tight">Withdrawal Ledger</CardTitle>
+              <CardDescription className="text-sm font-medium text-muted-foreground/70">Historical payout requests and settlement status.</CardDescription>
             </CardHeader>
             <CardContent className="p-0">
               {/* Mobile View */}
               <div className="block sm:hidden p-4 space-y-4">
                 {payouts.length === 0 ? (
-                  <div className="h-40 flex flex-col items-center justify-center text-muted-foreground/30 gap-2 border border-dashed rounded-[32px]">
+                  <div className="h-40 flex flex-col items-center justify-center text-muted-foreground/30 gap-2 border border-dashed rounded-2xl">
                     <Clock className="h-8 w-8 opacity-20" />
                     <p className="text-xs font-bold">No payouts recorded.</p>
                   </div>
                 ) : payouts.map((p) => (
-                  <div key={p.id} className="p-5 rounded-[24px] border border-border/40 bg-white/50 space-y-4">
+                  <div key={p.id} className="p-5 rounded-2xl border border-border/60 bg-background space-y-4">
                     <div className="flex justify-between items-start">
                       <div>
-                        <p className="responsive-label leading-none mb-1">Period block</p>
-                        <h4 className="responsive-small font-semibold">{p.period}</h4>
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Period block</p>
+                        <h4 className="text-sm font-bold">{p.period}</h4>
                       </div>
                       <Badge className={cn(
                         "text-[10px] font-bold px-2.5 py-0.5 rounded-md",
@@ -613,8 +605,8 @@ export default function SellerPayouts() {
                     </div>
                     <div className="flex justify-between items-end border-t border-dashed mt-2 pt-3">
                       <div>
-                        <p className="responsive-label leading-none mb-1">Settlement amount</p>
-                        <p className="responsive-h2">₹{p.amount.toLocaleString()}</p>
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Settlement amount</p>
+                        <p className="text-lg font-bold">₹{p.amount.toLocaleString()}</p>
                       </div>
                       <div className="text-right">
                         <p className="text-[10px] font-bold text-muted-foreground leading-none">ID: {p.id.slice(0, 8)}</p>
@@ -628,21 +620,21 @@ export default function SellerPayouts() {
               <div className="hidden sm:block overflow-x-auto">
                 <Table>
                   <TableHeader className="bg-muted/10">
-                    <TableRow className="border-b-border/40 h-16 bg-muted/5 transition-none">
-                      <TableHead className="responsive-label pl-8">Period block</TableHead>
-                      <TableHead className="responsive-label text-right">Settlement amount</TableHead>
-                      <TableHead className="responsive-label text-right pr-8">Status</TableHead>
+                    <TableRow className="border-b-border/40 h-14 bg-muted/20 transition-none">
+                      <TableHead className="font-semibold text-xs uppercase tracking-wider pl-8">Period block</TableHead>
+                      <TableHead className="font-semibold text-xs uppercase tracking-wider text-right">Settlement amount</TableHead>
+                      <TableHead className="font-semibold text-xs uppercase tracking-wider text-right pr-8">Status</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {payouts.map(p => (
-                      <TableRow key={p.id} className="border-b-border/20 h-20 group hover:bg-muted/5 transition-all duration-300 animate-in fade-in">
-                        <TableCell className="responsive-body font-semibold pl-8 text-muted-foreground group-hover:text-foreground transition-colors">{p.period}</TableCell>
-                        <TableCell className="text-right responsive-h4">₹{p.amount.toLocaleString()}</TableCell>
+                      <TableRow key={p.id} className="border-b-border/20 h-16 group hover:bg-muted/5 transition-all duration-300 animate-in fade-in">
+                        <TableCell className="font-medium text-sm pl-8 text-muted-foreground group-hover:text-foreground transition-colors">{p.period}</TableCell>
+                        <TableCell className="text-right font-bold text-base">₹{p.amount.toLocaleString()}</TableCell>
                         <TableCell className="text-right pr-8">
                           <Badge className={cn(
                             "text-[10px] font-bold px-3 py-1 rounded-full",
-                            p.status === 'completed' ? "bg-emerald-500 text-white" : "bg-blue-600 text-white shadow-lg shadow-blue-500/20"
+                            p.status === 'completed' ? "bg-emerald-500 text-white" : "bg-blue-600 text-white"
                           )}>
                             {p.status}
                           </Badge>
@@ -658,37 +650,37 @@ export default function SellerPayouts() {
 
         <TabsContent value="settings" className="animate-in fade-in slide-in-from-top-2 duration-500">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <Card className="border-border/40 dark:border-emerald-500/50 bg-card/40 backdrop-blur-xl rounded-[32px] overflow-hidden relative group">
-              <CardHeader>
-                <CardTitle className="responsive-h4 flex items-center justify-between">
+            <Card className="border border-border/60 bg-card shadow-sm rounded-2xl overflow-hidden relative group">
+              <CardHeader className="p-6 pb-4">
+                <CardTitle className="text-lg font-bold flex items-center justify-between">
                   Primary channel
                   <Wallet className="h-6 w-6 text-emerald-500 transition-transform group-hover:scale-110" />
                 </CardTitle>
-                <CardDescription className="responsive-small text-muted-foreground/70">Designated bank account for instant payouts.</CardDescription>
+                <CardDescription className="text-sm font-medium text-muted-foreground/70">Designated bank account for instant payouts.</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
+              <CardContent className="space-y-6 p-6 pt-0">
                 {isVerified ? (
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between p-4 bg-muted/20 border border-border/40 rounded-2xl">
+                    <div className="flex items-center justify-between p-4 bg-muted/20 border border-border/40 rounded-xl">
                       <div>
-                        <p className="responsive-label">Account holder</p>
-                        <p className="responsive-body font-semibold">{profile?.full_name || 'Verified Merchant'}</p>
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Account holder</p>
+                        <p className="text-sm font-bold">{profile?.full_name || 'Verified Merchant'}</p>
                       </div>
                       <CheckCircle className="h-5 w-5 text-emerald-500" />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
-                      <div className="p-4 bg-muted/20 border border-border/40 rounded-2xl">
-                        <p className="responsive-label">Bank</p>
-                        <p className="responsive-small font-semibold truncate">{profile?.payout_details?.bank_name || 'Linked Bank'}</p>
+                      <div className="p-4 bg-muted/20 border border-border/40 rounded-xl">
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Bank</p>
+                        <p className="text-sm font-bold truncate">{profile?.payout_details?.bank_name || 'Linked Bank'}</p>
                       </div>
-                      <div className="p-4 bg-muted/20 border border-border/40 rounded-2xl">
-                        <p className="responsive-label">Identifier</p>
-                        <p className="responsive-small font-semibold">****{profile?.bank_account?.slice(-4) || 'XXXX'}</p>
+                      <div className="p-4 bg-muted/20 border border-border/40 rounded-xl">
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Identifier</p>
+                        <p className="text-sm font-bold">****{profile?.bank_account?.slice(-4) || 'XXXX'}</p>
                       </div>
                     </div>
                   </div>
                 ) : (
-                  <div className="flex flex-col items-center justify-center py-10 text-center gap-4 bg-muted/10 border border-dashed rounded-3xl">
+                  <div className="flex flex-col items-center justify-center py-10 text-center gap-4 bg-muted/10 border border-dashed rounded-2xl">
                     <Lock className="h-8 w-8 text-muted-foreground/30" />
                     <p className="text-xs font-bold text-muted-foreground/50">Banking Locked</p>
                     <Button onClick={() => navigate('/seller/settings')} size="sm" variant="outline" className="h-8 rounded-lg text-[10px] font-bold">Unlock</Button>
@@ -697,34 +689,33 @@ export default function SellerPayouts() {
                 <Button
                   onClick={() => navigate('/seller/settings?tab=payment')}
                   disabled={!isVerified}
-                  className="w-full h-12 rounded-2xl responsive-button bg-primary/10 border border-primary/20 text-primary hover:bg-primary/20 transition-all"
+                  className="w-full h-11 rounded-xl bg-primary/10 border border-primary/20 text-primary hover:bg-primary/20 transition-all font-semibold"
                 >
                   Manage channels
                 </Button>
               </CardContent>
             </Card>
 
-            <Card className="border-border/40 bg-card/40 backdrop-blur-xl rounded-[32px] overflow-hidden relative">
-              <CardHeader>
-                <CardTitle className="responsive-h4">Schedule matrix</CardTitle>
-                <CardDescription className="responsive-small text-muted-foreground/70">Automated settlement frequency and limits.</CardDescription>
+            <Card className="border border-border/60 bg-card shadow-sm rounded-2xl overflow-hidden relative">
+              <CardHeader className="p-6 pb-4">
+                <CardTitle className="text-lg font-bold">Schedule matrix</CardTitle>
+                <CardDescription className="text-sm font-medium text-muted-foreground/70">Automated settlement frequency and limits.</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="p-6 bg-gradient-to-br from-emerald-500/10 to-primary/10 border border-emerald-500/20 rounded-3xl relative overflow-hidden">
-                  <div className="absolute inset-0 bg-grid-white/5 opacity-20" />
-                  <h4 className="responsive-label text-emerald-600 dark:text-emerald-400 mb-2">Cycle frequency</h4>
-                  <p className="responsive-body font-semibold leading-relaxed">
+              <CardContent className="space-y-6 p-6 pt-0">
+                <div className="p-6 bg-gradient-to-br from-emerald-50 to-primary/5 border border-emerald-100 rounded-2xl relative overflow-hidden">
+                  <h4 className="text-xs font-bold text-emerald-700 uppercase tracking-wider mb-2">Cycle frequency</h4>
+                  <p className="text-sm font-bold leading-relaxed text-emerald-900">
                     Payouts are audited and cleared bi-monthly on the 1st and 16th.
                   </p>
                 </div>
                 <div className="space-y-4">
-                  <div className="flex justify-between items-center bg-muted/20 p-4 rounded-2xl border border-border/40">
-                    <span className="responsive-label">Burn threshold</span>
-                    <span className="responsive-body font-semibold">₹1,000</span>
+                  <div className="flex justify-between items-center bg-muted/20 p-4 rounded-xl border border-border/40">
+                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Burn threshold</span>
+                    <span className="text-sm font-bold">₹1,000</span>
                   </div>
-                  <div className="flex justify-between items-center bg-muted/20 p-4 rounded-2xl border border-border/40">
-                    <span className="responsive-label">Audit speed</span>
-                    <span className="responsive-body font-semibold">3-5 Cycles</span>
+                  <div className="flex justify-between items-center bg-muted/20 p-4 rounded-xl border border-border/40">
+                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Audit speed</span>
+                    <span className="text-sm font-bold">3-5 Cycles</span>
                   </div>
                 </div>
               </CardContent>

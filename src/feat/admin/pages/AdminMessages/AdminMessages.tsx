@@ -67,15 +67,15 @@ export default function AdminMessages() {
             <Button
               variant="outline"
               size="sm"
-              className="h-9 rounded-xl border-border/40 bg-card/40 backdrop-blur-sm gap-2 font-bold text-xs w-fit justify-start"
+              className="h-9 rounded-xl border-border/60 bg-card gap-2 font-medium text-xs w-fit justify-start shadow-sm"
               onClick={() => navigate("/admin")}
             >
               <ArrowLeft className="h-4 w-4" />
               Back
             </Button>
             <div className="min-w-0">
-              <h1 className="text-xl sm:text-2xl font-bold">Messages & Notifications</h1>
-              <p className="text-sm sm:text-base text-muted-foreground mt-0.5">Platform telemetry and communication hub</p>
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Messages & Notifications</h1>
+              <p className="text-xs sm:text-base text-muted-foreground mt-1">Platform communications</p>
             </div>
           </div>
           <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -83,7 +83,7 @@ export default function AdminMessages() {
               <Button
                 onClick={() => markAllAsRead()}
                 variant="outline"
-                className="flex-1 sm:flex-none h-10 rounded-xl border-border/40 bg-card/20 backdrop-blur-sm font-bold text-xs"
+                className="flex-1 sm:flex-none h-10 rounded-xl border-border/60 bg-card font-medium text-xs shadow-sm"
               >
                 <Check className="mr-2 h-4 w-4" /> Mark all as read
               </Button>

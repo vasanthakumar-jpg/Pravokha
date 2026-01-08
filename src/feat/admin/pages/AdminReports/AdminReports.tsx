@@ -193,45 +193,41 @@ export default function AdminReports() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8 flex flex-col gap-8 animate-in fade-in duration-500 pb-10">
-      {/* Header - Adaptive to Sidebar State */}
-      <div className="flex flex-col gap-4 sm:gap-6 mb-6 sm:mb-8">
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full sm:w-auto">
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-9 rounded-xl border-border/40 bg-card/40 backdrop-blur-sm gap-2 font-bold text-xs w-fit justify-start"
-              onClick={() => navigate("/admin")}
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Back
-            </Button>
-            <div className="min-w-0">
-              <h1 className="text-xl sm:text-2xl font-bold">Governance intelligence</h1>
-              <p className="text-sm sm:text-base text-muted-foreground mt-0.5">
-                Comprehensive telemetry of platform operations and financial growth
-              </p>
-            </div>
+    <div className="max-w-[1600px] mx-auto py-8 px-4 sm:px-6 lg:px-8 flex flex-col gap-8 animate-in fade-in duration-500 pb-10">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+        <div className="flex items-center gap-4">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-10 w-10 rounded-xl border-border/60 bg-card p-0 flex items-center justify-center shadow-sm hover:bg-accent transition-colors"
+            onClick={() => navigate("/admin")}
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div className="min-w-0">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Reports & Analytics</h1>
+            <p className="text-xs sm:text-base text-muted-foreground mt-1">
+              Comprehensive telemetry of platform operations and financial growth
+            </p>
           </div>
-          <div className="flex items-center gap-2 w-full lg:w-auto lg:flex-shrink-0">
-            <Select value={dateRange} onValueChange={setDateRange}>
-              <SelectTrigger className="w-full sm:w-[180px] h-10 rounded-xl border-border/40 bg-card/20 backdrop-blur-sm">
-                <Calendar className="mr-2 h-4 w-4 text-primary" />
-                <SelectValue placeholder="Select range" />
-              </SelectTrigger>
-              <SelectContent className="rounded-xl border-border/40 bg-card/90 backdrop-blur-xl">
-                <SelectItem value="24h">Last 24 hours</SelectItem>
-                <SelectItem value="7d">Last 7 days</SelectItem>
-                <SelectItem value="30d">Last 30 days</SelectItem>
-                <SelectItem value="all">All time</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button variant="outline" className="h-10 rounded-xl border-border/40 bg-card/20 backdrop-blur-sm font-bold text-xs flex-shrink-0">
-              <Download className="mr-2 h-4 w-4" />
-              Export
-            </Button>
-          </div>
+        </div>
+        <div className="flex flex-wrap lg:flex-nowrap items-center gap-3 w-full lg:w-auto mt-4 lg:mt-0">
+          <Select value={dateRange} onValueChange={setDateRange}>
+            <SelectTrigger className="flex-1 sm:flex-none w-full sm:w-[180px] h-10 rounded-xl border-border/60 bg-card font-medium text-sm shadow-sm">
+              <Calendar className="mr-2 h-4 w-4 text-primary" />
+              <SelectValue placeholder="Select range" />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl border-border/60 bg-card shadow-lg">
+              <SelectItem value="24h">Last 24 hours</SelectItem>
+              <SelectItem value="7d">Last 7 days</SelectItem>
+              <SelectItem value="30d">Last 30 days</SelectItem>
+              <SelectItem value="all">All time</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button variant="outline" className="flex-1 sm:flex-none h-10 rounded-xl border-border/60 bg-card font-medium text-xs shadow-sm">
+            <Download className="mr-2 h-4 w-4" />
+            Export
+          </Button>
         </div>
       </div>
 
@@ -273,7 +269,7 @@ export default function AdminReports() {
 
       {/* Charts Section - Responsive Layout */}
       <div className="grid gap-4 sm:gap-6 grid-cols-1 xl:grid-cols-7">
-        <Card className="col-span-1 lg:col-span-4 border-border/40 bg-card/40 backdrop-blur-xl transition-all duration-500 rounded-2xl shadow-none">
+        <Card className="col-span-1 lg:col-span-4 border-border/60 bg-card transition-all duration-500 rounded-xl shadow-sm">
           <CardHeader className="p-6 pb-2">
             <CardTitle className="text-sm font-medium">Revenue velocity</CardTitle>
             <CardDescription className="text-xs">
@@ -326,7 +322,7 @@ export default function AdminReports() {
           </CardContent>
         </Card>
 
-        <Card className="col-span-1 lg:col-span-3 border-border/40 bg-card/40 backdrop-blur-xl transition-all duration-500 rounded-2xl shadow-none">
+        <Card className="col-span-1 lg:col-span-3 border-border/60 bg-card transition-all duration-500 rounded-xl shadow-sm">
           <CardHeader className="p-6 pb-2">
             <CardTitle className="text-sm font-medium">Sales by category</CardTitle>
             <CardDescription className="text-xs">
@@ -371,7 +367,7 @@ export default function AdminReports() {
       </div>
 
       {/* Product Performance Table */}
-      <Card className="border-border/40 bg-card/40 backdrop-blur-xl transition-all duration-500 rounded-2xl shadow-none">
+      <Card className="border-border/60 bg-card transition-all duration-500 rounded-xl shadow-sm">
         <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-6 gap-4">
           <div>
             <CardTitle className="text-sm font-medium">Top performing products</CardTitle>
@@ -379,26 +375,28 @@ export default function AdminReports() {
               Products with the highest sales volume
             </CardDescription>
           </div>
-          <Select value={productFilter} onValueChange={setProductFilter}>
-            <SelectTrigger className="w-full sm:w-[180px] h-10 rounded-xl border-border/40 bg-card/20 backdrop-blur-sm text-xs font-bold">
-              <Filter className="mr-2 h-4 w-4 text-primary" />
-              <SelectValue placeholder="Filter products" />
-            </SelectTrigger>
-            <SelectContent className="rounded-2xl border-border/40 backdrop-blur-xl">
-              <SelectItem value="all">All products</SelectItem>
-              <SelectItem value="high-sales">High sales (&gt;10)</SelectItem>
-              <SelectItem value="top-revenue">Top revenue</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex-shrink-0 w-full sm:w-auto">
+            <Select value={productFilter} onValueChange={setProductFilter}>
+              <SelectTrigger className="w-full sm:w-[220px] h-10 rounded-xl border-border/60 bg-card font-medium text-sm shadow-sm">
+                <Filter className="mr-2 h-4 w-4 text-primary" />
+                <SelectValue placeholder="All products" />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl border-border/60 bg-card shadow-lg">
+                <SelectItem value="all">All products</SelectItem>
+                <SelectItem value="high-sales">High sales (&gt;10)</SelectItem>
+                <SelectItem value="top-revenue">Top revenue</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </CardHeader>
         <CardContent className="p-0">
           <Table>
             <TableHeader className="bg-muted/30">
               <TableRow className="hover:bg-transparent border-border/40">
-                <TableHead className="px-6 h-12 text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Product name</TableHead>
-                <TableHead className="text-right text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Sales</TableHead>
-                <TableHead className="text-right text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Revenue</TableHead>
-                <TableHead className="text-right pr-10 text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Growth</TableHead>
+                <TableHead className="px-6 h-12 text-[11px] font-bold tracking-wider text-muted-foreground/60 normal-case">Product Name</TableHead>
+                <TableHead className="text-right text-[11px] font-bold tracking-wider text-muted-foreground/60 normal-case">Sales</TableHead>
+                <TableHead className="text-right text-[11px] font-bold tracking-wider text-muted-foreground/60 normal-case">Revenue</TableHead>
+                <TableHead className="text-right pr-10 text-[11px] font-bold tracking-wider text-muted-foreground/60 normal-case">Growth</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

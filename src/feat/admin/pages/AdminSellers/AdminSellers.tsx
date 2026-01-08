@@ -204,10 +204,10 @@ export default function AdminSellers() {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'approved': return <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 hover:bg-emerald-500/20 rounded-full px-3 py-0.5 font-bold text-[10px]">VERIFIED</Badge>;
-      case 'rejected': return <Badge variant="destructive" className="bg-rose-500/10 text-rose-600 border-rose-500/20 hover:bg-rose-500/20 rounded-full px-3 py-0.5 font-bold text-[10px]">REJECTED</Badge>;
-      case 'under_review': return <Badge className="bg-sky-500/10 text-sky-600 border-sky-500/20 hover:bg-sky-500/20 rounded-full px-3 py-0.5 font-bold text-[10px]">REVIEWING</Badge>;
-      default: return <Badge variant="secondary" className="bg-amber-500/10 text-amber-600 border-amber-500/20 hover:bg-amber-500/20 rounded-full px-3 py-0.5 font-bold text-[10px]">PENDING</Badge>;
+      case 'approved': return <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 hover:bg-emerald-500/20 rounded-full px-3 py-0.5 font-medium text-xs">Verified</Badge>;
+      case 'rejected': return <Badge variant="destructive" className="bg-rose-500/10 text-rose-600 border-rose-500/20 hover:bg-rose-500/20 rounded-full px-3 py-0.5 font-medium text-xs">Rejected</Badge>;
+      case 'under_review': return <Badge className="bg-sky-500/10 text-sky-600 border-sky-500/20 hover:bg-sky-500/20 rounded-full px-3 py-0.5 font-medium text-xs">Reviewing</Badge>;
+      default: return <Badge variant="secondary" className="bg-amber-500/10 text-amber-600 border-amber-500/20 hover:bg-amber-500/20 rounded-full px-3 py-0.5 font-medium text-xs">Pending</Badge>;
     }
   };
 
@@ -226,20 +226,20 @@ export default function AdminSellers() {
             <Button
               variant="outline"
               size="sm"
-              className="h-8 sm:h-9 rounded-xl border-border/40 bg-card/40 backdrop-blur-sm gap-2 font-bold text-xs w-fit justify-start"
+              className="h-9 rounded-xl border-border/60 bg-card gap-2 font-medium text-xs w-fit justify-start shadow-sm"
               onClick={() => navigate("/admin")}
             >
               <ArrowLeft className="h-4 w-4" />
               Back
             </Button>
             <div className="min-w-0">
-              <h1 className="text-base sm:text-xl lg:text-2xl font-bold flex items-center flex-wrap gap-2 sm:gap-3">
-                Seller verification workspace
-                <Badge variant="outline" className="text-[10px] font-bold tracking-tight bg-primary/5 rounded-lg border-primary/20 shrink-0 h-5 px-1.5">
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center flex-wrap gap-3">
+                Seller Management
+                <Badge variant="outline" className="text-xs font-medium bg-primary/5 rounded-lg border-primary/20 shrink-0">
                   {sellers.length} Total
                 </Badge>
               </h1>
-              <p className="text-xs sm:text-sm lg:text-base text-muted-foreground mt-0.5">Manage platform partner registrations and vetting</p>
+              <p className="text-xs sm:text-base text-muted-foreground mt-1">Manage platform partner registrations and vetting</p>
             </div>
           </div>
         </div>
@@ -285,7 +285,7 @@ export default function AdminSellers() {
         {loading ? (
           <AdminSkeleton variant="list" skeletonProps={{ count: 3 }} />
         ) : filteredSellers.length === 0 ? (
-          <Card className="border-border/40 bg-card/40 backdrop-blur-xl">
+          <Card className="border-border/60 bg-card shadow-sm">
             <CardContent className="py-12 text-center text-muted-foreground">
               <ShieldAlert className="h-12 w-12 mx-auto mb-3 opacity-20" />
               <p>No verification cases found</p>
@@ -293,7 +293,7 @@ export default function AdminSellers() {
           </Card>
         ) : (
           filteredSellers.map((seller) => (
-            <Card key={seller.id} className="border-border/40 bg-card/40 backdrop-blur-xl overflow-hidden shadow-sm">
+            <Card key={seller.id} className="border-border/60 bg-card overflow-hidden shadow-sm">
               <CardHeader className="p-2.5 bg-muted/20 border-b border-border/10 pb-2">
                 <div className="flex justify-between items-start">
                   <div className="flex flex-col max-w-[70%]">
@@ -305,7 +305,7 @@ export default function AdminSellers() {
                       seller.verificationStatus === 'rejected' ? "bg-rose-500/5 text-rose-600 border-rose-500/20" :
                         "bg-amber-500/5 text-amber-600 border-amber-500/20"
                   )}>
-                    {seller.verificationStatus.toUpperCase()}
+                    {seller.verificationStatus.charAt(0).toUpperCase() + seller.verificationStatus.slice(1)}
                   </Badge>
                 </div>
               </CardHeader>
@@ -331,7 +331,7 @@ export default function AdminSellers() {
         )}
       </div>
 
-      <Card className="hidden sm:block border-border/40 bg-card/40 backdrop-blur-xl transition-all duration-500 rounded-2xl shadow-none overflow-hidden min-h-[600px]">
+      <Card className="hidden sm:block border-border/60 bg-card transition-all duration-500 rounded-xl shadow-sm overflow-hidden min-h-[600px]">
         <CardHeader className="bg-muted/10 border-b border-border/40 p-3 sm:p-6">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
             <div className="relative flex-1 max-w-md w-full">
@@ -340,15 +340,15 @@ export default function AdminSellers() {
                 placeholder="Search sellers by name, store or email..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-11 h-10 sm:h-11 bg-card/20 border-border/40 focus:ring-primary/20 rounded-xl backdrop-blur-sm text-xs sm:text-sm placeholder:text-[10px] sm:placeholder:text-sm"
+                className="pl-11 h-11 bg-card border-border/60 focus:ring-primary/20 rounded-xl text-sm w-full"
               />
             </div>
             <div className="flex items-center gap-3 w-full md:w-auto">
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-full md:w-[200px] h-10 sm:h-11 bg-card/20 rounded-xl border-border/40 backdrop-blur-sm font-bold text-xs">
+                <SelectTrigger className="w-full md:w-[200px] h-11 bg-card rounded-xl border-border/60 font-medium text-sm">
                   <SelectValue placeholder="Status Filter" />
                 </SelectTrigger>
-                <SelectContent className="rounded-2xl border-border/40 backdrop-blur-xl">
+                <SelectContent className="rounded-xl border-border/40">
                   <SelectItem value="all">All Verification</SelectItem>
                   <SelectItem value="pending">Pending Review</SelectItem>
                   <SelectItem value="approved">Greenlit (Approved)</SelectItem>
@@ -363,10 +363,10 @@ export default function AdminSellers() {
             <Table>
               <TableHeader className="bg-muted/30">
                 <TableRow className="border-border/40 hover:bg-transparent">
-                  <TableHead className="px-6 h-12 text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Shop details</TableHead>
-                  <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Contact information</TableHead>
-                  <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Status</TableHead>
-                  <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 text-right pr-10">Verification</TableHead>
+                  <TableHead className="px-6 h-12 text-[11px] font-bold tracking-wider text-muted-foreground/60">Shop details</TableHead>
+                  <TableHead className="text-[11px] font-bold tracking-wider text-muted-foreground/60">Contact information</TableHead>
+                  <TableHead className="text-[11px] font-bold tracking-wider text-muted-foreground/60">Status</TableHead>
+                  <TableHead className="text-[11px] font-bold tracking-wider text-muted-foreground/60 text-right pr-10">Verification</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -414,7 +414,7 @@ export default function AdminSellers() {
                         <Button
                           variant="outline"
                           size="sm"
-                          className="h-9 px-4 rounded-xl font-bold border-border/40 bg-card/20 backdrop-blur-sm hover:bg-primary hover:text-white transition-all shadow-none text-xs"
+                          className="h-9 px-4 rounded-xl font-medium border-border/60 bg-card hover:bg-primary hover:text-white transition-all shadow-sm text-xs"
                           onClick={() => {
                             setSelectedSeller(seller);
                             setShowVerifyDialog(true);
@@ -433,10 +433,10 @@ export default function AdminSellers() {
       </Card>
 
       <Dialog open={showVerifyDialog} onOpenChange={setShowVerifyDialog}>
-        <DialogContent className="sm:max-w-[550px] p-0 overflow-hidden border-border/40 shadow-[0_32px_64px_-12px_rgba(0,0,0,0.4)] rounded-3xl bg-card/95 backdrop-blur-2xl">
+        <DialogContent className="sm:max-w-[550px] p-0 overflow-hidden border-border/60 shadow-xl rounded-2xl bg-card">
           <DialogHeader className="p-6 bg-gradient-to-br from-primary to-primary/90 text-white">
             <div className="flex items-center gap-4">
-              <div className="p-3 bg-white/10 rounded-xl backdrop-blur-md border border-white/20">
+              <div className="p-3 bg-white/20 rounded-xl border border-white/30 shadow-sm flex items-center justify-center">
                 <Briefcase className="h-6 w-6" />
               </div>
               <div className="space-y-0.5">

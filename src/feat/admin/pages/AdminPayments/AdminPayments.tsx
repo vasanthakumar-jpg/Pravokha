@@ -447,13 +447,13 @@ export default function AdminPayments() {
   const getStatusBadge = (status: string) => {
     const normalizedStatus = status?.toLowerCase() || "";
     if (normalizedStatus === "paid" || normalizedStatus === "completed") {
-      return <Badge className="bg-emerald-500/10 text-emerald-600 border-none shadow-none font-bold text-[10px] px-2 py-0.5 rounded-lg">PAID</Badge>;
+      return <Badge className="bg-emerald-500/10 text-emerald-600 border-none shadow-none font-medium text-xs px-2 py-0.5 rounded-lg">Paid</Badge>;
     } else if (normalizedStatus === "pending") {
-      return <Badge className="bg-amber-500/10 text-amber-600 border-none shadow-none font-bold text-[10px] px-2 py-0.5 rounded-lg">PENDING</Badge>;
+      return <Badge className="bg-amber-500/10 text-amber-600 border-none shadow-none font-medium text-xs px-2 py-0.5 rounded-lg">Pending</Badge>;
     } else if (normalizedStatus === "failed") {
-      return <Badge className="bg-rose-500/10 text-rose-600 border-none shadow-none font-bold text-[10px] px-2 py-0.5 rounded-lg">FAILED</Badge>;
+      return <Badge className="bg-rose-500/10 text-rose-600 border-none shadow-none font-medium text-xs px-2 py-0.5 rounded-lg">Failed</Badge>;
     } else if (normalizedStatus === "refunded") {
-      return <Badge className="bg-blue-500/10 text-blue-600 border-none shadow-none font-bold text-[10px] px-2 py-0.5 rounded-lg">REFUNDED</Badge>;
+      return <Badge className="bg-blue-500/10 text-blue-600 border-none shadow-none font-medium text-xs px-2 py-0.5 rounded-lg">Refunded</Badge>;
     } else {
       return <Badge variant="outline" className="text-[10px] font-bold px-2 py-0.5 rounded-lg">{status.toUpperCase()}</Badge>;
     }
@@ -504,15 +504,15 @@ export default function AdminPayments() {
               <Button
                 variant="outline"
                 size="sm"
-                className="h-9 rounded-xl border-border/40 bg-card/40 backdrop-blur-sm gap-2 font-bold text-xs w-fit justify-start"
+                className="h-9 rounded-xl border-border/60 bg-card gap-2 font-medium text-xs w-fit justify-start shadow-sm"
                 onClick={() => navigate("/admin")}
               >
                 <ArrowLeft className="h-4 w-4" />
                 Back
               </Button>
               <div className="min-w-0">
-                <h1 className="text-xl sm:text-2xl font-bold">Financial governance</h1>
-                <p className="text-sm sm:text-base text-muted-foreground mt-0.5">Reconcile transactions and authorize partner payouts.</p>
+                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Payment Management</h1>
+                <p className="text-xs sm:text-base text-muted-foreground mt-1">Transaction reconciliation and payout approvals</p>
               </div>
             </div>
             <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -537,17 +537,19 @@ export default function AdminPayments() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
-          <TabsList className="bg-card/20 p-1 rounded-xl border border-border/40 backdrop-blur-md">
-            <TabsTrigger value="transactions" className="rounded-lg px-8 py-2 text-xs font-bold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all">Marketplace Transactions</TabsTrigger>
-            <TabsTrigger value="payouts" className="rounded-lg px-8 py-2 text-xs font-bold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all">
-              Payout Approvals
-              {stats.pendingPayoutCount > 0 && (
-                <Badge className="ml-2 bg-red-500 hover:bg-red-500 text-[10px] h-4 min-w-[16px] px-1 justify-center">
-                  {stats.pendingPayoutCount}
-                </Badge>
-              )}
-            </TabsTrigger>
-          </TabsList>
+          <div className="w-full overflow-x-auto scrollbar-none pb-1">
+            <TabsList className="flex w-fit bg-card p-1 rounded-xl border border-border/60 gap-1">
+              <TabsTrigger value="transactions" className="rounded-lg px-6 sm:px-8 py-2 text-[11px] sm:text-xs font-bold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all whitespace-nowrap">Marketplace Transactions</TabsTrigger>
+              <TabsTrigger value="payouts" className="rounded-lg px-6 sm:px-8 py-2 text-[11px] sm:text-xs font-bold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all whitespace-nowrap">
+                Payout Approvals
+                {stats.pendingPayoutCount > 0 && (
+                  <Badge className="ml-2 bg-red-500 hover:bg-red-500 text-[10px] h-4 min-w-[16px] px-1 justify-center">
+                    {stats.pendingPayoutCount}
+                  </Badge>
+                )}
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           {/* Dynamic KPI Stats */}
           <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4">
@@ -622,7 +624,7 @@ export default function AdminPayments() {
 
           {/* Financial Visualization */}
           <div className="grid gap-6 md:grid-cols-2">
-            <Card className="border-border/40 bg-card/40 backdrop-blur-xl transition-all duration-500 rounded-2xl shadow-none">
+            <Card className="border-border/60 bg-card transition-all duration-500 rounded-xl shadow-sm">
               <CardHeader className="p-6 pb-2">
                 <CardTitle className="text-sm font-medium">Revenue velocity</CardTitle>
                 <CardDescription className="text-xs">Platform transaction volume and flow lifecycle</CardDescription>
@@ -679,7 +681,7 @@ export default function AdminPayments() {
               </CardContent>
             </Card>
 
-            <Card className="border-border/40 bg-card/40 backdrop-blur-xl transition-all duration-500 rounded-2xl shadow-none">
+            <Card className="border-border/60 bg-card transition-all duration-500 rounded-xl shadow-sm">
               <CardHeader className="p-6 pb-2">
                 <CardTitle className="text-sm font-medium">Payout volume trend</CardTitle>
                 <CardDescription className="text-xs">rolling 7-day settlement velocity</CardDescription>
@@ -733,7 +735,7 @@ export default function AdminPayments() {
               {loading ? (
                 <AdminSkeleton variant="list" skeletonProps={{ count: 3 }} />
               ) : filteredTransactions.length === 0 ? (
-                <Card className="border-border/40 bg-card/40 backdrop-blur-xl">
+                <Card className="border-border/60 bg-card">
                   <CardContent className="py-12 text-center text-muted-foreground">
                     <Receipt className="h-12 w-12 mx-auto mb-3 opacity-20" />
                     <p>No transactions found</p>
@@ -741,7 +743,7 @@ export default function AdminPayments() {
                 </Card>
               ) : (
                 paginatedTransactions.map((trx) => (
-                  <Card key={trx.id} className="border-border/40 bg-card/40 backdrop-blur-xl overflow-hidden shadow-sm" onClick={() => handleRowClick(trx)}>
+                  <Card key={trx.id} className="border-border/60 bg-card overflow-hidden shadow-sm" onClick={() => handleRowClick(trx)}>
                     <CardHeader className="p-3 bg-muted/20 border-b border-border/10 pb-2">
                       <div className="flex justify-between items-start">
                         <div className="flex flex-col">
@@ -801,7 +803,7 @@ export default function AdminPayments() {
               )}
             </div>
 
-            <Card className="hidden sm:block border-border/40 bg-card/40 backdrop-blur-xl transition-all duration-500 rounded-2xl shadow-none overflow-hidden">
+            <Card className="hidden sm:block border-border/60 bg-card transition-all duration-500 rounded-xl shadow-sm overflow-hidden">
               <CardHeader className="bg-muted/10 border-b border-border/40 p-6">
                 <div className="flex items-center justify-between">
                   <div>
@@ -813,7 +815,7 @@ export default function AdminPayments() {
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
                         placeholder="Search Order # or Customer..."
-                        className="pl-9 w-[300px] h-10 bg-card/20 border-border/40 rounded-xl focus:ring-primary/20 backdrop-blur-sm text-sm"
+                        className="pl-9 w-[300px] h-10 bg-card border-border/60 rounded-xl focus:ring-primary/20 shadow-sm text-sm"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                       />
@@ -826,14 +828,14 @@ export default function AdminPayments() {
                   <Table>
                     <TableHeader className="bg-muted/30">
                       <TableRow className="border-border/40 hover:bg-transparent">
-                        <TableHead className="px-6 h-12 text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Order Details</TableHead>
-                        <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Date</TableHead>
-                        <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Type</TableHead>
-                        <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Customer</TableHead>
-                        <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Amount</TableHead>
-                        <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Commission</TableHead>
-                        <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Payment</TableHead>
-                        <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 text-right pr-6">Actions</TableHead>
+                        <TableHead className="px-6 h-12 text-[11px] font-bold tracking-wider text-muted-foreground/60 normal-case">Order details</TableHead>
+                        <TableHead className="text-[11px] font-bold tracking-wider text-muted-foreground/60 normal-case">Date</TableHead>
+                        <TableHead className="text-[11px] font-bold tracking-wider text-muted-foreground/60 normal-case">Type</TableHead>
+                        <TableHead className="text-[11px] font-bold tracking-wider text-muted-foreground/60 normal-case">Customer</TableHead>
+                        <TableHead className="text-[11px] font-bold tracking-wider text-muted-foreground/60 normal-case">Amount</TableHead>
+                        <TableHead className="text-[11px] font-bold tracking-wider text-muted-foreground/60 normal-case">Commission</TableHead>
+                        <TableHead className="text-[11px] font-bold tracking-wider text-muted-foreground/60 normal-case">Payment</TableHead>
+                        <TableHead className="text-[11px] font-bold tracking-wider text-muted-foreground/60 text-right pr-6 normal-case">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -891,13 +893,18 @@ export default function AdminPayments() {
           </TabsContent>
 
           <TabsContent value="payouts" className="space-y-4">
+            {/* Mobile Title for Payouts */}
+            <div className="sm:hidden mb-4 px-1">
+              <h2 className="text-lg font-bold">Payout Approval Queue</h2>
+              <p className="text-xs text-muted-foreground">Review and authorize seller requests</p>
+            </div>
 
             {/* Mobile Card View for Payouts */}
             <div className="space-y-2 sm:hidden">
               {loading ? (
                 <AdminSkeleton variant="list" skeletonProps={{ count: 3 }} />
               ) : payoutRequests.length === 0 ? (
-                <Card className="border-border/40 bg-card/40 backdrop-blur-xl">
+                <Card className="border-border/60 bg-card shadow-sm">
                   <CardContent className="py-12 text-center text-muted-foreground">
                     <Wallet className="h-12 w-12 mx-auto mb-3 opacity-20" />
                     <p>No payout requests in queue.</p>
@@ -905,7 +912,7 @@ export default function AdminPayments() {
                 </Card>
               ) : (
                 payoutRequests.map((request) => (
-                  <Card key={request.id} className="border-border/40 bg-card/40 backdrop-blur-xl overflow-hidden shadow-sm">
+                  <Card key={request.id} className="border-border/60 bg-card overflow-hidden shadow-sm">
                     <CardHeader className="p-3 bg-muted/20 border-b border-border/10 pb-2">
                       <div className="flex justify-between items-start">
                         <div className="flex flex-col">
@@ -965,7 +972,7 @@ export default function AdminPayments() {
               )}
             </div>
 
-            <Card className="hidden sm:block border-border/40 bg-card/40 backdrop-blur-xl transition-all duration-500 rounded-2xl shadow-none overflow-hidden">
+            <Card className="hidden sm:block border-border/60 bg-card transition-all duration-500 rounded-xl shadow-sm overflow-hidden">
               <CardHeader className="bg-muted/10 border-b border-border/40 p-6">
                 <div className="flex items-center justify-between">
                   <div>
@@ -979,12 +986,12 @@ export default function AdminPayments() {
                   <Table>
                     <TableHeader className="bg-muted/30">
                       <TableRow className="border-border/40 hover:bg-transparent">
-                        <TableHead className="px-6 h-12 text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Partner</TableHead>
-                        <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Requested Amount</TableHead>
-                        <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Banking Info</TableHead>
-                        <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Submission</TableHead>
-                        <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Status</TableHead>
-                        <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 text-right pr-6">Governance Actions</TableHead>
+                        <TableHead className="px-6 h-12 text-[11px] font-bold tracking-wider text-muted-foreground/60 normal-case">Partner</TableHead>
+                        <TableHead className="text-[11px] font-bold tracking-wider text-muted-foreground/60 normal-case">Requested amount</TableHead>
+                        <TableHead className="text-[11px] font-bold tracking-wider text-muted-foreground/60 normal-case">Banking info</TableHead>
+                        <TableHead className="text-[11px] font-bold tracking-wider text-muted-foreground/60 normal-case">Submission</TableHead>
+                        <TableHead className="text-[11px] font-bold tracking-wider text-muted-foreground/60 normal-case">Status</TableHead>
+                        <TableHead className="text-[11px] font-bold tracking-wider text-muted-foreground/60 text-right pr-6 normal-case">Governance actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -1068,7 +1075,7 @@ export default function AdminPayments() {
 
         {/* Detail Sheets Logic remains the same... */}
         <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-          <SheetContent className="w-full sm:max-w-md p-0 flex flex-col border-l border-border/40 bg-card/60 backdrop-blur-xl">
+          <SheetContent className="w-full sm:max-w-md p-0 flex flex-col border-l border-border/40 bg-card shadow-2xl">
             {selectedTransaction && (
               <>
                 {/* Header with gradient */}
@@ -1078,7 +1085,7 @@ export default function AdminPayments() {
                     <SheetTitle>Order Details</SheetTitle>
                     <SheetDescription>Detailed view of order #{selectedTransaction.order_number}</SheetDescription>
                   </SheetHeader>
-                  <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center mx-auto mb-3">
+                  <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-inner">
                     <Package className="h-7 w-7 text-white" />
                   </div>
                   <h2 className="text-xl font-bold">Order Details</h2>
@@ -1182,7 +1189,7 @@ export default function AdminPayments() {
                 </ScrollArea>
 
                 {/* Footer Actions */}
-                <div className="p-4 border-t bg-muted/10 backdrop-blur-sm space-y-3">
+                <div className="p-4 border-t bg-muted/30 space-y-3">
                   <Button
                     className="w-full"
                     variant="outline"
@@ -1214,7 +1221,7 @@ export default function AdminPayments() {
 
         {/* Payout Rejection Modal */}
         <Dialog open={rejectionModalOpen} onOpenChange={setRejectionModalOpen}>
-          <DialogContent className="sm:max-w-md bg-card/60 backdrop-blur-xl border-border/40">
+          <DialogContent className="sm:max-w-md bg-card border-border/60 shadow-2xl">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <AlertCircle className="h-5 w-5 text-destructive" />
@@ -1251,7 +1258,7 @@ export default function AdminPayments() {
 
         {/* High-Risk Action Confirmation Dialog */}
         <AlertDialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
-          <AlertDialogContent className="bg-card/60 backdrop-blur-xl border-border/40 rounded-[2rem] p-8">
+          <AlertDialogContent className="bg-card border-border/60 rounded-[2rem] p-8 shadow-2xl">
             <AlertDialogHeader>
               <AlertDialogTitle className="text-2xl font-bold flex items-center gap-3">
                 <Shield className="h-6 w-6 text-primary" />
@@ -1287,7 +1294,7 @@ export default function AdminPayments() {
           </AlertDialogContent>
         </AlertDialog>
       </div>
-    </div>
+    </div >
   );
 }
 

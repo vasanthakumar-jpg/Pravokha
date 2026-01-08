@@ -245,7 +245,7 @@ export default function AdminProductsManagement() {
             <Button
               variant="outline"
               size="sm"
-              className="h-8 sm:h-9 rounded-xl border-border/40 bg-card/40 backdrop-blur-sm gap-2 font-bold text-xs w-fit justify-start"
+              className="h-9 rounded-xl border-border/60 bg-card gap-2 font-medium text-xs w-fit justify-start shadow-sm"
               onClick={() => navigate("/admin")}
             >
               <ArrowLeft className="h-4 w-4" />
@@ -263,7 +263,7 @@ export default function AdminProductsManagement() {
             <Button
               variant="outline"
               onClick={() => setViewMode(viewMode === "table" ? "grid" : "table")}
-              className="flex-1 sm:flex-none h-8 sm:h-10 rounded-xl border-border/40 bg-card/20 backdrop-blur-sm font-bold text-xs"
+              className="flex-1 sm:flex-none h-10 rounded-xl border-border/60 bg-card font-medium text-xs shadow-sm"
             >
               {viewMode === "table" ? <LayoutGrid className="h-3.5 w-3.5 mr-2" /> : <List className="h-3.5 w-3.5 mr-2" />}
               {viewMode === "table" ? "Grid" : "Table"}
@@ -271,7 +271,7 @@ export default function AdminProductsManagement() {
             <Button
               onClick={handleExportCSV}
               variant="outline"
-              className="flex-1 sm:flex-none h-8 sm:h-10 rounded-xl border-border/40 bg-card/20 backdrop-blur-sm font-bold text-xs"
+              className="flex-1 sm:flex-none h-10 rounded-xl border-border/60 bg-card font-medium text-xs shadow-sm"
             >
               <Download className="h-3.5 w-3.5 mr-2" />
               Export CSV
@@ -325,7 +325,7 @@ export default function AdminProductsManagement() {
 
 
       {/* Main Controls */}
-      <Card className="border-border/40 bg-card/40 backdrop-blur-xl transition-all duration-500 rounded-2xl shadow-none overflow-hidden">
+      <Card className="border-border/60 bg-card transition-all duration-500 rounded-xl shadow-sm overflow-hidden">
         <CardHeader className="border-b border-border/40 pb-4">
           <div className="flex flex-col sm:flex-row gap-4 justify-between items-center text-sm font-medium text-muted-foreground grayscale">
             <div className="relative w-full sm:w-80">
@@ -334,7 +334,7 @@ export default function AdminProductsManagement() {
                 placeholder="Search by Title, SKU or Category..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 h-10 bg-card/20 border-border/40 rounded-xl focus:ring-primary/20 backdrop-blur-sm text-sm"
+                className="pl-10 h-10 bg-card border-border/60 rounded-xl focus:ring-primary/20 shadow-sm text-sm"
               />
             </div>
             <div className="flex items-center gap-4 w-full sm:w-auto font-bold text-[10px]">
@@ -348,8 +348,8 @@ export default function AdminProductsManagement() {
                     <span>Filter</span>
                   </div>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-64 bg-card/90 backdrop-blur-xl border-border/50 rounded-2xl p-2">
-                  <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground opacity-70 px-2 py-1.5">Intelligent Categorization</DropdownMenuLabel>
+                <DropdownMenuContent align="end" className="w-64 bg-card border-border/60 shadow-xl rounded-xl">
+                  <DropdownMenuLabel className="text-[10px] font-black tracking-widest text-muted-foreground opacity-70 px-2 py-1.5">Intelligent categorization</DropdownMenuLabel>
                   <DropdownMenuItem onClick={() => setCategoryFilter("all")} className={cn("rounded-lg px-2 py-2 flex justify-between items-center", categoryFilter === "all" && "bg-primary/10 text-primary")}>
                     <span>All Collections</span>
                     <Badge variant="secondary" className="text-[9px] px-1.5">{products.length}</Badge>
@@ -365,7 +365,7 @@ export default function AdminProductsManagement() {
                     </DropdownMenuItem>
                   ))}
                   <DropdownMenuSeparator className="bg-border/50 my-1" />
-                  <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground opacity-70 px-2 py-1.5">Governance Status</DropdownMenuLabel>
+                  <DropdownMenuLabel className="text-[10px] font-black tracking-widest text-muted-foreground opacity-70 px-2 py-1.5">Governance status</DropdownMenuLabel>
                   <DropdownMenuItem onClick={() => setStatusFilter("all")} className={cn("rounded-lg px-2 py-1.5", statusFilter === "all" && "bg-primary/10 text-primary")}>All Status</DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setStatusFilter("published")} className={cn("rounded-lg px-2 py-1.5", statusFilter === "published" && "bg-primary/10 text-primary")}>Live Published</DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setStatusFilter("draft")} className={cn("rounded-lg px-2 py-1.5", statusFilter === "draft" && "bg-primary/10 text-primary")}>Draft Archives</DropdownMenuItem>
@@ -382,7 +382,7 @@ export default function AdminProductsManagement() {
                     <span>Sort</span>
                   </div>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48 bg-card/90 backdrop-blur-xl border-border/50 rounded-2xl p-2">
+                <DropdownMenuContent align="end" className="w-48 bg-card border-border/60 shadow-xl rounded-xl">
                   <DropdownMenuItem onClick={() => setSortBy("newest")} className={cn("rounded-lg px-2 py-1.5", sortBy === "newest" && "bg-primary/10 text-primary")}>Newest First</DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setSortBy("oldest")} className={cn("rounded-lg px-2 py-1.5", sortBy === "oldest" && "bg-primary/10 text-primary")}>Oldest Record</DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setSortBy("price-low")} className={cn("rounded-lg px-2 py-1.5", sortBy === "price-low" && "bg-primary/10 text-primary")}>Price: Ascending</DropdownMenuItem>
@@ -405,12 +405,12 @@ export default function AdminProductsManagement() {
                   <Table>
                     <TableHeader className="bg-muted/30">
                       <TableRow className="border-border/40 hover:bg-transparent">
-                        <TableHead className="w-[80px] px-6 h-12 text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Image</TableHead>
-                        <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Intelligence</TableHead>
-                        <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Category</TableHead>
-                        <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Price matrix</TableHead>
-                        <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Governance</TableHead>
-                        <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 text-right pr-10">Actions</TableHead>
+                        <TableHead className="w-[80px] px-6 h-12 text-[11px] font-bold tracking-wider text-muted-foreground/60">Image</TableHead>
+                        <TableHead className="text-[11px] font-bold tracking-wider text-muted-foreground/60">Intelligence</TableHead>
+                        <TableHead className="text-[11px] font-bold tracking-wider text-muted-foreground/60">Category</TableHead>
+                        <TableHead className="text-[11px] font-bold tracking-wider text-muted-foreground/60">Price matrix</TableHead>
+                        <TableHead className="text-[11px] font-bold tracking-wider text-muted-foreground/60">Governance</TableHead>
+                        <TableHead className="text-[11px] font-bold tracking-wider text-muted-foreground/60 text-right pr-10">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -428,7 +428,7 @@ export default function AdminProductsManagement() {
                           <TableCell>
                             <div>
                               <div className="text-sm font-bold tracking-tight text-foreground/90">{product.title}</div>
-                              <div className="text-[10px] font-mono text-muted-foreground flex items-center gap-1 uppercase">
+                              <div className="text-[10px] font-mono text-muted-foreground flex items-center gap-1">
                                 SKU: {product.sku}
                                 {product.featured && <Badge className="h-3 px-1 text-[8px] bg-amber-500/10 text-amber-600 border-amber-500/20">FEATURED</Badge>}
                               </div>
@@ -473,7 +473,7 @@ export default function AdminProductsManagement() {
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="w-48 bg-card/80 backdrop-blur-xl border-border/50">
-                                  <DropdownMenuLabel className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground opacity-70">Governance</DropdownMenuLabel>
+                                  <DropdownMenuLabel className="text-[10px] font-bold tracking-widest text-muted-foreground opacity-70">Governance</DropdownMenuLabel>
                                   <DropdownMenuItem onClick={() => togglePublished(product.id, product.published)} className="cursor-pointer gap-2 text-xs font-bold">
                                     {product.published ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                                     {product.published ? "Draft Archive" : "Publish Live"}
@@ -496,7 +496,7 @@ export default function AdminProductsManagement() {
                 {/* Mobile Table View (Cards) */}
                 <div className="block sm:hidden space-y-3 p-3">
                   {filteredProducts.map((product) => (
-                    <div key={product.id} className="flex gap-3 bg-card/40 border border-border/40 p-3 rounded-xl backdrop-blur-sm">
+                    <div key={product.id} className="flex gap-3 bg-card border border-border/60 p-3 rounded-xl shadow-sm">
                       <div className="h-16 w-16 min-w-[4rem] rounded-lg bg-muted overflow-hidden border border-border/50">
                         {product.product_variants?.[0]?.images?.[0] ? (
                           <img src={product.product_variants[0].images[0]} className="w-full h-full object-cover" />
@@ -531,7 +531,7 @@ export default function AdminProductsManagement() {
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </div>
-                          <p className="text-[10px] text-muted-foreground font-mono uppercase truncate">{product.sku}</p>
+                          <p className="text-[10px] text-muted-foreground font-mono truncate">{product.sku}</p>
                         </div>
                         <div className="flex items-center justify-between mt-2">
                           <div className="flex items-center gap-1.5">
@@ -561,7 +561,7 @@ export default function AdminProductsManagement() {
                 {filteredProducts.map((product) => (
                   <Card
                     key={product.id}
-                    className="group relative overflow-hidden bg-card/40 backdrop-blur-xl border-border/40 hover:border-primary/40 transition-all duration-500 rounded-2xl shadow-none cursor-pointer"
+                    className="group relative overflow-hidden bg-card border-border/60 hover:border-primary/40 transition-all duration-500 rounded-xl shadow-sm cursor-pointer"
                     onClick={() => navigate(`/admin/products/edit/${product.id}`)}
                   >
                     <div className="aspect-[4/5] bg-muted relative overflow-hidden">
@@ -582,7 +582,7 @@ export default function AdminProductsManagement() {
                             e.stopPropagation();
                             navigate(`/admin/products/edit/${product.id}`);
                           }}
-                          className="h-8 w-8 rounded-xl bg-white/90 dark:bg-black/90 backdrop-blur-md shadow-lg border border-white/20 hover:scale-110 active:scale-95 transition-all text-primary"
+                          className="h-8 w-8 rounded-xl bg-card shadow-lg border border-border/60 hover:scale-110 active:scale-95 transition-all text-primary"
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
@@ -605,7 +605,7 @@ export default function AdminProductsManagement() {
                       </div>
                     </div>
                     <CardHeader className="p-4 space-y-1">
-                      <div className="text-[10px] font-semibold text-primary uppercase tracking-widest">{product.category}</div>
+                      <div className="text-[10px] font-semibold text-primary tracking-widest">{product.category}</div>
                       <CardTitle className="text-sm font-heading font-semibold tracking-tight flex items-center justify-between">
                         {product.title}
                         <span className="font-mono text-[9px] text-muted-foreground opacity-50">{product.sku}</span>

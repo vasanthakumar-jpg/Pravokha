@@ -183,15 +183,15 @@ export default function AdminSupport() {
             <Button
               variant="outline"
               size="sm"
-              className="h-9 rounded-xl border-border/40 bg-card/40 backdrop-blur-sm gap-2 font-bold text-xs w-full sm:w-auto justify-start"
+              className="h-9 rounded-xl border-border/60 bg-card gap-2 font-medium text-xs w-full sm:w-auto justify-start shadow-sm"
               onClick={() => navigate("/admin")}
             >
               <ArrowLeft className="h-4 w-4" />
               Back
             </Button>
             <div className="min-w-0">
-              <h1 className="text-xl sm:text-2xl font-bold">Support Operations</h1>
-              <p className="text-sm sm:text-base text-muted-foreground mt-0.5">Real-time platform support and issue resolution</p>
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Support Management</h1>
+              <p className="text-xs sm:text-base text-muted-foreground mt-1">Real-time support conversations</p>
             </div>
           </div>
         </div>

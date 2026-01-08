@@ -263,21 +263,21 @@ export default function AdminAuditLogs() {
                         <Button
                             variant="outline"
                             size="sm"
-                            className="h-9 rounded-xl border-border/40 bg-card/40 backdrop-blur-sm gap-2 font-bold text-xs w-fit justify-start"
+                            className="h-9 rounded-xl border-border/60 bg-card gap-2 font-medium text-xs w-fit justify-start shadow-sm"
                             onClick={() => navigate("/admin")}
                         >
                             <ArrowLeft className="h-4 w-4" />
                             Back
                         </Button>
                         <div className="min-w-0">
-                            <h1 className="text-xl sm:text-2xl font-bold flex items-center flex-wrap gap-3">
-                                System audit registry
-                                <Badge variant="outline" className="text-[10px] font-bold tracking-tight bg-primary/5 rounded-lg border-primary/20 shrink-0">
+                            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center flex-wrap gap-3">
+                                System Audit Registry
+                                <Badge variant="outline" className="text-xs font-medium bg-primary/5 rounded-lg border-primary/20 shrink-0">
                                     {logs.length} Total
                                 </Badge>
                             </h1>
-                            <p className="text-sm sm:text-base text-muted-foreground mt-0.5">
-                                Real-time governance telemetry and operational traceability.
+                            <p className="text-xs sm:text-base text-muted-foreground mt-1">
+                                Real-time governance telemetry and operational traceability
                             </p>
                         </div>
                     </div>
@@ -458,7 +458,7 @@ export default function AdminAuditLogs() {
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                                    <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Live pulse</span>
+                                    <span className="text-xs font-medium text-emerald-600">Live pulse</span>
                                 </div>
                             </div>
                         </CardHeader>
@@ -508,11 +508,11 @@ export default function AdminAuditLogs() {
                                 <Table>
                                     <TableHeader>
                                         <TableRow className="bg-muted/30 border-b border-border/40 hover:bg-transparent">
-                                            <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 pl-6">Timestamp</TableHead>
-                                            <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Description</TableHead>
-                                            <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Principal</TableHead>
+                                            <TableHead className="text-xs font-medium text-muted-foreground/70 pl-6">Timestamp</TableHead>
+                                            <TableHead className="text-xs font-medium text-muted-foreground/70">Description</TableHead>
+                                            <TableHead className="text-xs font-medium text-muted-foreground/70">Principal</TableHead>
 
-                                            <TableHead className="text-right text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 pr-6">Actions</TableHead>
+                                            <TableHead className="text-right text-xs font-medium text-muted-foreground/70 pr-6">Actions</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -602,7 +602,7 @@ export default function AdminAuditLogs() {
 
             {/* Event Detail Sheet */}
             <Sheet open={!!selectedLog} onOpenChange={(open) => !open && setSelectedLog(null)}>
-                <SheetContent className="w-full sm:max-w-2xl p-0 flex flex-col border-l border-border/40 bg-background/95 backdrop-blur-3xl">
+                <SheetContent className="w-full sm:max-w-2xl p-0 flex flex-col border-l border-border/60 bg-background shadow-2xl">
                     {selectedLog && (
                         <div className="flex flex-col h-full relative overflow-hidden">
                             {/* Accent blur for high priority */}
@@ -636,7 +636,7 @@ export default function AdminAuditLogs() {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div className="space-y-6">
                                         <div className="space-y-2">
-                                            <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                                            <label className="text-xs font-medium text-muted-foreground flex items-center gap-2">
                                                 <Activity className="h-3 w-3 text-primary" /> Action context
                                             </label>
                                             <p className="text-lg font-black leading-tight text-foreground">{selectedLog.description}</p>
@@ -644,11 +644,11 @@ export default function AdminAuditLogs() {
 
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="space-y-1 p-3 rounded-2xl bg-muted/30 border border-border/40">
-                                                <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Category</span>
+                                                <span className="text-xs font-medium text-muted-foreground">Category</span>
                                                 <p className="text-xs font-bold text-primary truncate">{selectedLog.action_type.replace(/_/g, ' ')}</p>
                                             </div>
                                             <div className="space-y-1 p-3 rounded-2xl bg-muted/30 border border-border/40">
-                                                <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Target</span>
+                                                <span className="text-xs font-medium text-muted-foreground">Target</span>
                                                 <p className="text-xs font-bold text-emerald-600 truncate">{selectedLog.target_type}</p>
                                             </div>
                                         </div>
@@ -661,7 +661,7 @@ export default function AdminAuditLogs() {
                                                     <User className="h-5 w-5 text-primary" />
                                                 </div>
                                                 <div className="flex flex-col">
-                                                    <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Principal actor</span>
+                                                    <span className="text-xs font-medium text-muted-foreground">Principal actor</span>
                                                     <span className="text-sm font-black truncate">{selectedLog.profiles?.full_name || 'System Principal'}</span>
                                                 </div>
                                             </div>
@@ -672,7 +672,7 @@ export default function AdminAuditLogs() {
                                                 <span className="text-[10px] font-bold text-muted-foreground truncate">{selectedLog.profiles?.email || 'Automated Daemon'}</span>
                                             </div>
                                             <div className="pt-4 border-t border-border/20">
-                                                <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground block mb-2">Actor ID hash</span>
+                                                <span className="text-xs font-medium text-muted-foreground block mb-2">Actor ID hash</span>
                                                 <code className="text-[10px] font-bold bg-muted p-2 rounded-lg block truncate">{selectedLog.actor_id}</code>
                                             </div>
                                         </div>
@@ -682,7 +682,7 @@ export default function AdminAuditLogs() {
                                 <div className="space-y-4 pt-4">
                                     <div className="flex items-center gap-2 mb-2">
                                         <Database className="h-4 w-4 text-primary" />
-                                        <h4 className="text-sm font-black uppercase tracking-widest">Metadata telemetry</h4>
+                                        <h4 className="text-sm font-semibold">Metadata telemetry</h4>
                                     </div>
                                     <MetadataRenderer data={selectedLog.metadata} />
                                 </div>
@@ -692,7 +692,7 @@ export default function AdminAuditLogs() {
                                         <div className="flex items-center gap-3">
                                             <Clock className="h-5 w-5 text-primary" />
                                             <div className="flex flex-col">
-                                                <span className="text-[10px] font-black uppercase tracking-widest text-primary/60">Registry timestamp</span>
+                                                <span className="text-xs font-medium text-primary/60">Registry timestamp</span>
                                                 <span className="text-sm font-black italic">{format(new Date(selectedLog.created_at), "MMMM dd, yyyy • HH:mm:ss.SSS")}</span>
                                             </div>
                                         </div>
@@ -704,7 +704,7 @@ export default function AdminAuditLogs() {
                             <div className="p-8 bg-muted/30 border-t border-border/40 relative z-10">
                                 <Button
                                     variant="outline"
-                                    className="w-full rounded-2xl h-14 font-black uppercase tracking-widest text-[10px] hover:bg-primary hover:text-white transition-all shadow-sm"
+                                    className="w-full rounded-2xl h-14 font-medium text-xs hover:bg-primary hover:text-white transition-all shadow-sm"
                                     onClick={() => setSelectedLog(null)}
                                 >
                                     Dismiss record

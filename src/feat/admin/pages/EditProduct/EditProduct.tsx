@@ -588,7 +588,7 @@ export default function EditProduct() {
               <Button
                 variant="outline"
                 size="sm"
-                className="h-9 rounded-xl border-border/40 bg-card/40 backdrop-blur-sm gap-2 font-bold text-xs w-full sm:w-auto justify-start"
+                className="h-9 rounded-xl border-border/60 bg-card gap-2 font-medium text-xs w-full sm:w-auto justify-start shadow-sm"
                 onClick={() => navigate("/admin/products")}
               >
                 <ArrowLeft className="h-4 w-4" />

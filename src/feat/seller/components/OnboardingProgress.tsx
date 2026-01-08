@@ -15,36 +15,36 @@ export function OnboardingProgress({ profile, productsCount }: OnboardingProgres
     const steps = [
         {
             id: "profile",
-            title: "Merchant Profile",
-            description: "Personal and contact details",
+            title: "Profile",
+            description: "Personal details",
             isCompleted: !!(profile.full_name && (profile.avatar_url || profile.email)),
             link: "/seller/settings?tab=profile"
         },
         {
             id: "branding",
-            title: "Store Identity",
-            description: "Name, logo, and banner",
+            title: "Identity",
+            description: "Store name & logo",
             isCompleted: !!(profile.store_name && (profile.store_logo_url || profile.store_description)),
             link: "/seller/settings?tab=general"
         },
         {
             id: "financial",
-            title: "Payment Ledger",
-            description: "PAN and payout bank details",
+            title: "Payments",
+            description: "Bank details for payout",
             isCompleted: !!(profile.pan && profile.bank_account),
             link: "/seller/settings?tab=payment"
         },
         {
             id: "product",
-            title: "Inventory Start",
-            description: "List your first marketplace item",
+            title: "Inventory",
+            description: "List first item",
             isCompleted: productsCount > 0,
             link: "/seller/products/add"
         },
         {
             id: "verification",
-            title: "Compliance Seal",
-            description: "KYC and business verification",
+            title: "Compliance",
+            description: "KYC verification",
             isCompleted: profile.verificationStatus === "verified",
             link: "/seller/settings?tab=business"
         },
@@ -73,7 +73,7 @@ export function OnboardingProgress({ profile, productsCount }: OnboardingProgres
     }
 
     return (
-        <Card className="border-border/40 bg-card/40 backdrop-blur-xl hover:border-primary/40 transition-all duration-500 rounded-2xl overflow-hidden relative group shadow-none">
+        <Card className="border-border bg-card shadow-sm rounded-2xl overflow-hidden relative group">
             <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform cursor-default">
                 <Sparkles className="h-12 w-12 text-primary" />
             </div>
@@ -87,11 +87,20 @@ export function OnboardingProgress({ profile, productsCount }: OnboardingProgres
                         <span className="text-[10px] font-bold text-muted-foreground">Setup</span>
                     </div>
                 </div>
-                <div className="h-2 w-full bg-primary/10 rounded-full overflow-hidden">
+                {/* Progress Bar - Solid Color */}
+                <div className="h-2 w-full bg-secondary/50 rounded-full overflow-hidden">
                     <div
-                        className="h-full bg-gradient-to-r from-primary to-indigo-500 transition-all duration-1000 ease-out"
+                        className="h-full bg-primary transition-all duration-1000 ease-out"
                         style={{ width: `${progressPercentage}%` }}
                     />
+                </div>
+                {/* Reward Text */}
+                <div className="mt-3 bg-primary/5 border border-primary/10 rounded-lg p-3">
+                    <p className="text-xs font-medium text-primary text-center">
+                        {progressPercentage < 100
+                            ? "Complete setup to unlock full selling potential 🚀"
+                            : "Store fully optimized! Ready for sales 🎉"}
+                    </p>
                 </div>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -99,8 +108,10 @@ export function OnboardingProgress({ profile, productsCount }: OnboardingProgres
                     <Link key={step.id} to={step.link} className="relative group/item block select-none">
                         <div className="flex items-start gap-4">
                             <div className={cn(
-                                "h-6 w-6 rounded-full flex items-center justify-center transition-all duration-500 mt-0.5",
-                                step.isCompleted ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/20" : "bg-muted text-muted-foreground group-hover/item:border-primary/40 group-hover/item:bg-primary/5"
+                                "h-6 w-6 rounded-full flex items-center justify-center transition-all duration-500 mt-0.5 shrink-0",
+                                step.isCompleted
+                                    ? "bg-emerald-500 text-white shadow-sm"
+                                    : "bg-background border border-primary/30 text-primary group-hover/item:bg-primary/5"
                             )}>
                                 {step.isCompleted ? (
                                     <CheckCircle2 className="h-4 w-4" />
@@ -109,24 +120,28 @@ export function OnboardingProgress({ profile, productsCount }: OnboardingProgres
                                 )}
                             </div>
                             <div className="flex-1 min-w-0">
-                                <div className="flex items-center justify-between gap-2">
+                                <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
                                     <p className={cn(
-                                        "text-sm font-bold tracking-tight transition-colors",
+                                        "text-sm font-bold tracking-tight transition-colors whitespace-nowrap",
                                         step.isCompleted ? "text-muted-foreground/60" : "text-foreground group-hover/item:text-primary"
                                     )}>
                                         {step.title}
                                     </p>
                                     {!step.isCompleted && (
-                                        <div className="text-[10px] font-black text-primary flex items-center hover:translate-x-1 transition-transform whitespace-nowrap bg-primary/5 px-2 py-0.5 rounded-full">
-                                            Fix <ArrowRight className="h-3 w-3 ml-1" />
+                                        <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-rose-50 border border-rose-100 text-rose-600">
+                                            <span className="text-[9px] font-bold uppercase tracking-wider">Incomplete</span>
+                                            <ArrowRight className="h-2.5 w-2.5" />
                                         </div>
                                     )}
                                 </div>
-                                <p className="text-[11px] font-medium text-muted-foreground/70 leading-relaxed">{step.description}</p>
+                                <p className={cn(
+                                    "text-[11px] font-medium leading-relaxed mt-0.5",
+                                    step.isCompleted ? "text-muted-foreground/50" : "text-muted-foreground"
+                                )}>{step.description}</p>
                             </div>
                         </div>
                         {idx !== steps.length - 1 && (
-                            <div className="absolute left-3 top-7 bottom-[-16px] w-[1px] bg-border/40" />
+                            <div className="absolute left-3 top-7 bottom-[-16px] w-[1px] bg-border" />
                         )}
                     </Link>
                 ))}

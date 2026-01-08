@@ -276,24 +276,24 @@ export default function AdminUsers() {
               <Button
                 variant="outline"
                 size="sm"
-                className="h-9 rounded-xl border-border/40 bg-card/40 backdrop-blur-sm gap-2 font-bold text-xs w-fit justify-start"
+                className="h-9 rounded-xl border-border/60 bg-card gap-2 font-medium text-xs w-fit justify-start shadow-sm"
                 onClick={() => navigate("/admin")}
               >
                 <ArrowLeft className="h-4 w-4" />
                 Back
               </Button>
               <div className="min-w-0">
-                <h1 className="text-xl sm:text-2xl font-bold flex items-center flex-wrap gap-3">
-                  Identity registry
-                  <Badge variant="outline" className="text-[10px] font-bold tracking-tight bg-primary/5 rounded-lg border-primary/20 shrink-0">{users.length} Total</Badge>
+                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center flex-wrap gap-3">
+                  User Management
+                  <Badge variant="outline" className="text-xs font-medium bg-primary/5 rounded-lg border-primary/20 shrink-0">{users.length} Total</Badge>
                 </h1>
-                <p className="text-sm sm:text-base text-muted-foreground mt-0.5">Global account governance & authorization management</p>
+                <p className="text-xs sm:text-base text-muted-foreground mt-1">Account management and permissions</p>
               </div>
             </div>
             <div className="flex items-center gap-2 w-full sm:w-auto">
               <Button
                 variant="outline"
-                className="flex-1 sm:flex-none h-10 rounded-xl border-border/40 bg-card/20 backdrop-blur-sm font-bold text-xs"
+                className="flex-1 sm:flex-none h-10 rounded-xl border-border/60 bg-card font-medium text-xs shadow-sm"
                 onClick={fetchUsers}
               >
                 <RefreshCcw className="mr-2 h-4 w-4" /> Refresh
@@ -338,7 +338,7 @@ export default function AdminUsers() {
         </div>
 
         {/* Main Identity Grid/Table */}
-        <Card className="border-border/40 bg-card/40 backdrop-blur-xl transition-all duration-500 rounded-2xl shadow-none overflow-hidden">
+        <Card className="border-border/60 bg-card transition-all duration-500 rounded-xl shadow-sm overflow-hidden">
           <CardHeader className="bg-muted/10 border-b border-border/40 p-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="flex items-center gap-3">
@@ -353,14 +353,14 @@ export default function AdminUsers() {
                     placeholder="Search users..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-11 h-11 bg-card/20 border-border/40 focus:ring-primary/20 rounded-xl backdrop-blur-sm text-sm"
+                    className="pl-11 h-11 bg-card border-border/60 focus:ring-primary/20 rounded-xl text-sm"
                   />
                 </div>
                 <Select value={roleFilter} onValueChange={setRoleFilter}>
-                  <SelectTrigger className="w-full sm:w-[180px] h-11 rounded-xl border-border/40 bg-card/20 backdrop-blur-sm px-4 text-sm font-medium">
+                  <SelectTrigger className="w-full sm:w-[160px] h-11 rounded-xl border-border/60 bg-card px-4 text-sm font-medium">
                     <SelectValue placeholder="Role filter" />
                   </SelectTrigger>
-                  <SelectContent className="rounded-xl border-border/40 backdrop-blur-xl bg-card/95">
+                  <SelectContent className="rounded-xl border-border/40">
                     <SelectItem value="all" className="text-sm font-medium">All roles</SelectItem>
                     <SelectItem value="user" className="text-sm font-medium">Users</SelectItem>
                     <SelectItem value="seller" className="text-sm font-medium">Sellers</SelectItem>
@@ -381,7 +381,7 @@ export default function AdminUsers() {
               </div>
             ) : (
               paginatedUsers.map((user) => (
-                <Card key={user.id} className="border-border/40 bg-card/60 backdrop-blur-sm overflow-hidden shadow-sm" onClick={() => { setSelectedUser(user); setShowProfileModal(true); }}>
+                <Card key={user.id} className="border-border/60 bg-card overflow-hidden shadow-sm" onClick={() => { setSelectedUser(user); setShowProfileModal(true); }}>
                   <CardHeader className="p-3 bg-muted/20 border-b border-border/10 pb-2 flex flex-row items-center justify-between space-y-0">
                     <div className="flex items-center gap-3 w-[75%]">
                       <Avatar className="h-8 w-8 rounded-lg border border-border/40">
@@ -455,11 +455,11 @@ export default function AdminUsers() {
               <Table>
                 <TableHeader className="bg-muted/30">
                   <TableRow className="border-border/40 hover:bg-transparent">
-                    <TableHead className="px-6 h-12 text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">User information</TableHead>
-                    <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 text-center">Role</TableHead>
-                    <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 text-center">Status</TableHead>
-                    <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 text-center">Joined on</TableHead>
-                    <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 text-right pr-6">Actions</TableHead>
+                    <TableHead className="px-6 h-12 text-xs font-medium text-muted-foreground/70">User information</TableHead>
+                    <TableHead className="text-xs font-medium text-muted-foreground/70 text-center">Role</TableHead>
+                    <TableHead className="text-xs font-medium text-muted-foreground/70 text-center">Status</TableHead>
+                    <TableHead className="text-xs font-medium text-muted-foreground/70 text-center">Joined on</TableHead>
+                    <TableHead className="text-xs font-medium text-muted-foreground/70 text-right pr-6">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -541,7 +541,7 @@ export default function AdminUsers() {
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="rounded-2xl w-56 p-2 border-border/40">
-                                  <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest px-3 py-2 opacity-50">Operational Logic</DropdownMenuLabel>
+                                  <DropdownMenuLabel className="text-xs font-medium px-3 py-2 text-muted-foreground">Actions</DropdownMenuLabel>
                                   <DropdownMenuItem className="rounded-xl px-3 py-2.5 cursor-pointer" onClick={(e) => { e.stopPropagation(); setSelectedUser(user); setShowRoleDialog(true); }}>
                                     <UserCog className="mr-3 h-4 w-4 text-primary" /> Modify authorization
                                   </DropdownMenuItem>
@@ -576,7 +576,7 @@ export default function AdminUsers() {
                 <PaginationItem>
                   <PaginationPrevious
                     onClick={(e) => { e.preventDefault(); if (currentPage > 1) setCurrentPage(p => p - 1); }}
-                    className={cn("h-9 rounded-xl border-border/40 bg-card/40 backdrop-blur-sm font-bold text-[10px] uppercase tracking-wider", currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer hover:bg-muted transition-all")}
+                    className={cn("h-9 rounded-xl border-border/60 bg-card font-medium text-xs", currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer hover:bg-muted transition-all")}
                   />
                 </PaginationItem>
                 <div className="h-9 px-4 rounded-xl border border-border/40 bg-primary/5 flex items-center justify-center font-bold text-[11px] text-primary">
@@ -585,7 +585,7 @@ export default function AdminUsers() {
                 <PaginationItem>
                   <PaginationNext
                     onClick={(e) => { e.preventDefault(); if (currentPage < totalPages) setCurrentPage(p => p + 1); }}
-                    className={cn("h-9 rounded-xl border-border/40 bg-card/40 backdrop-blur-sm font-bold text-[10px] uppercase tracking-wider", currentPage >= totalPages ? "pointer-events-none opacity-50" : "cursor-pointer hover:bg-muted transition-all")}
+                    className={cn("h-9 rounded-xl border-border/60 bg-card font-medium text-xs", currentPage >= totalPages ? "pointer-events-none opacity-50" : "cursor-pointer hover:bg-muted transition-all")}
                   />
                 </PaginationItem>
               </PaginationContent>
@@ -595,7 +595,7 @@ export default function AdminUsers() {
 
         {/* Profile Detail Dialog */}
         <Dialog open={showProfileModal} onOpenChange={setShowProfileModal}>
-          <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden border-border/40 rounded-3xl bg-card/95 backdrop-blur-2xl shadow-xl">
+          <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden border-border/60 rounded-2xl bg-card shadow-xl">
             <DialogHeader className="p-6 bg-primary text-white">
               <div className="flex items-center gap-4">
                 <Avatar className="h-16 w-16 rounded-2xl border-2 border-white/20 shadow-lg" >
@@ -619,16 +619,16 @@ export default function AdminUsers() {
                 <section className="space-y-4" >
                   <div className="flex items-center gap-2 border-b border-border/40 pb-2" >
                     <BadgeCheck className="h-4 w-4 text-primary" />
-                    <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary" > Identification </h4>
+                    <h4 className="text-[10px] font-black tracking-[0.2em] text-primary" > Identification </h4>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4" >
                     <div className="p-4 rounded-2xl bg-muted/30 border border-border/40 flex flex-col gap-1.5 hover:bg-muted/50 transition-colors" >
-                      <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest" > Platform UUID </p>
+                      <p className="text-[9px] font-black text-muted-foreground tracking-widest" > Platform UUID </p>
                       <p className="text-[11px] font-mono font-bold break-all text-foreground leading-relaxed" > {selectedUser?.id} </p>
                     </div>
                     <div className="p-4 rounded-2xl bg-muted/30 border border-border/40 flex flex-col gap-1.5 hover:bg-muted/50 transition-colors" >
-                      <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest" > Core Role </p>
-                      <Badge variant="outline" className="w-fit bg-primary/10 text-primary border-primary/20 rounded-lg px-2.5 py-0.5 uppercase text-[10px] font-bold" >
+                      <p className="text-[9px] font-black text-muted-foreground tracking-widest" > Core role </p>
+                      <Badge variant="outline" className="w-fit bg-primary/10 text-primary border-primary/20 rounded-lg px-2.5 py-0.5 text-[10px] font-bold" >
                         {selectedUser?.role}
                       </Badge>
                     </div>
@@ -639,21 +639,21 @@ export default function AdminUsers() {
                 <section className="space-y-4" >
                   <div className="flex items-center gap-2 border-b border-border/40 pb-2" >
                     <Mail className="h-4 w-4 text-primary" />
-                    <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary" > Contact interface </h4>
+                    <h4 className="text-[10px] font-black tracking-[0.2em] text-primary" > Contact interface </h4>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4" >
                     <div className="p-4 rounded-2xl bg-muted/30 border border-border/40 flex flex-col gap-1.5 hover:bg-muted/50 transition-colors" >
-                      <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest" > Reach Email </p>
+                      <p className="text-[9px] font-black text-muted-foreground tracking-widest" > Reach email </p>
                       <p className="text-sm font-bold truncate text-foreground" > {selectedUser?.email} </p>
                     </div>
                     <div className="p-4 rounded-2xl bg-muted/30 border border-border/40 flex flex-col gap-1.5 hover:bg-muted/50 transition-colors" >
-                      <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest" > Official Phone </p>
+                      <p className="text-[9px] font-black text-muted-foreground tracking-widest" > Official phone </p>
                       <p className="text-sm font-bold text-foreground" > {selectedUser?.phone || 'NOT CONNECTED'} </p>
                     </div>
                     <div className="sm:col-span-2 p-4 rounded-2xl bg-muted/30 border border-border/40 flex flex-col gap-1.5 hover:bg-muted/50 transition-colors" >
-                      <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest" > Registered Address </p>
+                      <p className="text-[9px] font-black text-muted-foreground tracking-widest" > Registered address </p>
                       <p className="text-sm font-medium text-foreground leading-relaxed" >
-                        {selectedUser?.address || 'NO PHYSICAL ADDRESS REGISTERED'}
+                        {selectedUser?.address || 'No address registered'}
                       </p>
                     </div>
                   </div>
@@ -663,26 +663,26 @@ export default function AdminUsers() {
                 <section className="space-y-4" >
                   <div className="flex items-center gap-2 border-b border-border/40 pb-2" >
                     <ShieldAlert className="h-4 w-4 text-primary" />
-                    <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary" > Account metrics </h4>
+                    <h4 className="text-[10px] font-black tracking-[0.2em] text-primary" > Account metrics </h4>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4" >
                     <div className="p-4 rounded-2xl bg-muted/30 border border-border/40 flex flex-col gap-1.5 hover:bg-muted/50 transition-colors" >
-                      <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest" > Genesis Date </p>
+                      <p className="text-[9px] font-black text-muted-foreground tracking-widest" > Genesis date </p>
                       <div className="flex items-center gap-2 mt-1" >
                         <Calendar className="h-3 w-3 text-muted-foreground" />
                         <p className="text-sm font-bold text-foreground" >
                           {selectedUser?.created_at ? new Date(selectedUser.created_at).toLocaleDateString('en-GB', {
                             day: '2-digit', month: 'short', year: 'numeric'
-                          }) : 'UNKNOWN'}
+                          }) : 'Unknown'}
                         </p>
                       </div>
                     </div>
                     <div className="p-4 rounded-2xl bg-muted/30 border border-border/40 flex flex-col gap-1.5 hover:bg-muted/50 transition-colors" >
-                      <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest" > Clearance Status </p>
+                      <p className="text-[9px] font-black text-muted-foreground tracking-widest" > Clearance status </p>
                       <div className="flex items-center gap-2 mt-1" >
                         <div className={cn("h-2 w-2 rounded-full", selectedUser?.status === 'active' ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" : "bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]")} />
-                        <p className={cn("text-xs font-black uppercase tracking-wider", selectedUser?.status === 'active' ? "text-emerald-600" : "text-rose-600")} >
-                          {selectedUser?.status === 'active' ? "VERIFIED" : "RESTRICTED"}
+                        <p className={cn("text-xs font-black tracking-wider", selectedUser?.status === 'active' ? "text-emerald-600" : "text-rose-600")} >
+                          {selectedUser?.status === 'active' ? "Active" : "Suspended"}
                         </p>
                       </div>
                     </div>
@@ -757,7 +757,7 @@ export default function AdminUsers() {
 function InfoItem({ label, value, icon }: { label: string; value: string | undefined | null; icon: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1">
+      <span className="text-[8px] font-black tracking-widest text-muted-foreground flex items-center gap-1">
         {icon} {label}
       </span>
       <span className="text-sm font-bold truncate max-w-full">{value || "UNDEFINED"}</span>

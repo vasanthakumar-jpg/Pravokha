@@ -166,7 +166,7 @@ export default function AdminProductUpdates() {
                 </Button>
             </div>
 
-            <Card className="border-border/40 bg-card/40 backdrop-blur-sm rounded-2xl overflow-hidden shadow-none">
+            <Card className="border-border/60 bg-card rounded-xl overflow-hidden shadow-sm">
                 <Table>
                     <TableHeader>
                         <TableRow>
@@ -224,7 +224,7 @@ export default function AdminProductUpdates() {
                                         <Badge
                                             variant="outline"
                                             className={cn(
-                                                "text-[9px] font-bold uppercase tracking-wider",
+                                                "text-[9px] font-bold tracking-wider",
                                                 request.status === 'pending' ? "bg-amber-50 text-amber-600 border-amber-200" :
                                                     request.status === 'approved' ? "bg-emerald-50 text-emerald-600 border-emerald-200" :
                                                         "bg-rose-50 text-rose-600 border-rose-200"
@@ -265,7 +265,7 @@ export default function AdminProductUpdates() {
                     <div className="space-y-6 py-4">
                         {/* Diff Section */}
                         <div className="space-y-4">
-                            <h4 className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                            <h4 className="text-xs font-bold tracking-widest text-muted-foreground flex items-center gap-2">
                                 <ShieldAlert className="w-3 h-3" /> Field Comparisons
                             </h4>
 
@@ -299,13 +299,13 @@ export default function AdminProductUpdates() {
 
                         {/* Seller Reason */}
                         <div className="bg-muted/30 p-4 rounded-2xl border border-dashed border-border/60">
-                            <h4 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Seller's Justification</h4>
+                            <h4 className="text-[10px] font-bold tracking-widest text-muted-foreground mb-2">Seller's justification</h4>
                             <p className="text-sm italic">"{selectedRequest?.requested_changes?.reason || 'No reason provided.'}"</p>
                         </div>
 
                         {/* Admin Notes */}
                         <div className="space-y-2">
-                            <h4 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Reviewer Notes (Internal)</h4>
+                            <h4 className="text-[10px] font-bold tracking-widest text-muted-foreground">Reviewer notes (Internal)</h4>
                             <Textarea
                                 placeholder="Provide feedback or internal notes for this decision..."
                                 value={adminNotes}

@@ -359,18 +359,18 @@ export default function AdminComboOffers() {
             <Button
               variant="outline"
               size="sm"
-              className="h-8 sm:h-9 rounded-xl border-border/40 bg-card/40 backdrop-blur-sm gap-2 font-bold text-xs w-fit justify-start"
+              className="h-9 rounded-xl border-border/60 bg-card gap-2 font-medium text-xs w-fit justify-start shadow-sm"
               onClick={() => navigate("/admin")}
             >
               <ArrowLeft className="h-4 w-4" />
               Back
             </Button>
             <div className="min-w-0">
-              <h1 className="text-base sm:text-xl lg:text-2xl font-bold flex items-center gap-2">
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2">
                 Combo Offers
-                <span className="text-[10px] font-bold tracking-tight bg-primary/5 text-primary rounded-lg border border-primary/20 px-1.5 py-0.5">{offers.length} Total</span>
+                <span className="text-xs font-medium bg-primary/5 text-primary rounded-lg border border-primary/20 px-2 py-0.5">{offers.length} Total</span>
               </h1>
-              <p className="text-xs sm:text-sm lg:text-base text-muted-foreground mt-0.5">Create and curate platform product bundles</p>
+              <p className="text-xs sm:text-base text-muted-foreground mt-1">Create product bundles</p>
             </div>
           </div>
           <div className="flex items-center gap-2 w-full xl:w-auto">
@@ -522,12 +522,12 @@ export default function AdminComboOffers() {
                       ) : (
                         <Label className="h-24 w-24 border-2 border-dashed border-border/50 rounded-2xl flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-muted/50 hover:border-primary/30 transition-all">
                           {uploading ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : <Upload className="h-6 w-6 text-muted-foreground" />}
-                          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest text-center px-2">Upload Asset</span>
+                          <span className="text-xs font-medium text-muted-foreground text-center px-2">Upload asset</span>
                           <input type="file" className="hidden" accept="image/*" onChange={handleImageUpload} disabled={uploading} />
                         </Label>
                       )}
                       <div className="flex-1 space-y-2">
-                        <Label htmlFor="image_url" className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Manual URL Override</Label>
+                        <Label htmlFor="image_url" className="text-xs font-medium text-muted-foreground">Manual URL override</Label>
                         <Input
                           id="image_url"
                           type="url"
@@ -580,7 +580,7 @@ export default function AdminComboOffers() {
             className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4"
           >
             {offers.map((offer) => (
-              <Card key={offer.id} className="group flex flex-col overflow-hidden bg-card/40 backdrop-blur-xl border-border/40 hover:shadow-lg transition-all duration-300 rounded-2xl">
+              <Card key={offer.id} className="group flex flex-col overflow-hidden bg-card border-border/60 hover:shadow-lg transition-all duration-300 rounded-xl">
                 {/* Image Section */}
                 <div className="relative h-48 bg-muted/30 overflow-hidden border-b border-border/40">
                   {offer.image_url ? (
@@ -592,16 +592,16 @@ export default function AdminComboOffers() {
                   ) : (
                     <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
                       <ImageIcon className="h-10 w-10 mb-2 opacity-50" />
-                      <span className="text-[10px] uppercase font-bold tracking-widest opacity-50">No Image</span>
+                      <span className="text-xs font-medium">No image</span>
                     </div>
                   )}
                   <div className="absolute top-3 right-3 flex gap-2">
-                    <Badge variant={offer.active ? "default" : "secondary"} className={`${offer.active ? "bg-emerald-500 text-white hover:bg-emerald-600" : "bg-gray-500 text-white"} backdrop-blur-md shadow-sm`}>
+                    <Badge variant={offer.active ? "default" : "secondary"} className={`${offer.active ? "bg-emerald-500 text-white hover:bg-emerald-600" : "bg-gray-500 text-white"} shadow-sm border-0`}>
                       {offer.active ? "Active" : "Inactive"}
                     </Badge>
                   </div>
                   <div className="absolute bottom-3 left-3">
-                    <Badge variant="secondary" className="bg-background/80 backdrop-blur-md text-foreground font-bold shadow-sm border-0">
+                    <Badge variant="secondary" className="bg-background text-foreground font-bold shadow-sm border border-border/40">
                       {offer.discount_percentage}% OFF
                     </Badge>
                   </div>
@@ -621,11 +621,11 @@ export default function AdminComboOffers() {
                 <CardContent className="p-4 sm:p-5 pt-0 flex flex-col flex-1 gap-4">
                   <div className="grid grid-cols-2 gap-2 mt-2 bg-muted/20 p-3 rounded-xl border border-border/50">
                     <div>
-                      <p className="text-[10px] text-muted-foreground uppercase font-bold">Bundle Price</p>
+                      <p className="text-xs text-muted-foreground font-medium">Bundle price</p>
                       <p className="text-sm font-bold text-emerald-600">₹{offer.combo_price}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-[10px] text-muted-foreground uppercase font-bold">Items</p>
+                      <p className="text-xs text-muted-foreground font-medium">Items</p>
                       <p className="text-sm font-medium">{offer.product_ids.length}</p>
                     </div>
                   </div>

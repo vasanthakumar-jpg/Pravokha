@@ -39,31 +39,28 @@ export default function AdminAnalytics() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-muted/20 to-background flex flex-col">
-      <div className="w-full mx-auto py-3 sm:py-6 lg:py-8 px-2 sm:px-4 lg:px-6 xl:px-8 flex-1 flex flex-col gap-3 sm:gap-6 lg:gap-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-        <div className="flex flex-col gap-3 sm:gap-6 mb-8">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 w-full sm:w-auto">
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 sm:h-9 rounded-xl border-border/40 bg-card/40 backdrop-blur-sm gap-2 font-bold text-xs w-fit justify-start"
-                onClick={() => navigate("/admin")}
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Back
-              </Button>
-              <div className="min-w-0">
-                <h1 className="text-base sm:text-xl lg:text-2xl font-bold">Analytics & Reports</h1>
-                <p className="text-xs sm:text-sm lg:text-base text-muted-foreground mt-0.5">Platform performance telemetry and market insights</p>
-              </div>
+    <div className="min-h-screen bg-background flex flex-col">
+      <div className="w-full mx-auto py-4 sm:py-6 lg:py-8 px-3 sm:px-4 lg:px-6 xl:px-8 flex-1 flex flex-col gap-4 sm:gap-6 lg:gap-8 pb-6 sm:pb-8 lg:pb-10">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-10 w-10 rounded-xl border-border/60 bg-card p-0 flex items-center justify-center shadow-sm hover:bg-accent transition-colors"
+              onClick={() => navigate("/admin")}
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <div className="min-w-0">
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Analytics & Reports</h1>
+              <p className="text-xs sm:text-base text-muted-foreground mt-1">Platform performance insights</p>
             </div>
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-              <Button className="flex-1 sm:flex-none h-8 sm:h-10 rounded-xl font-bold text-xs bg-primary hover:bg-primary/90 shadow-md shadow-primary/20">
-                <Download className="mr-2 h-3.5 w-3.5" />
-                Export Report
-              </Button>
-            </div>
+          </div>
+          <div className="flex items-center gap-2 w-full md:w-auto">
+            <Button className="flex-1 md:flex-none h-10 rounded-xl font-bold text-xs bg-primary hover:bg-primary/90 shadow-md shadow-primary/20 border-0">
+              <Download className="mr-2 h-4 w-4" />
+              Export Report
+            </Button>
           </div>
         </div>
 

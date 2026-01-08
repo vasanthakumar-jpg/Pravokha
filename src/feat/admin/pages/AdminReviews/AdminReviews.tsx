@@ -272,22 +272,22 @@ export default function AdminReviews() {
             <Button
               variant="outline"
               size="sm"
-              className="h-9 rounded-xl border-border/40 bg-card/40 backdrop-blur-sm gap-2 font-bold text-xs w-fit justify-start"
+              className="h-9 rounded-xl border-border/60 bg-card gap-2 font-medium text-xs w-fit justify-start shadow-sm"
               onClick={() => navigate("/admin")}
             >
               <ArrowLeft className="h-4 w-4" />
               Back
             </Button>
             <div className="min-w-0">
-              <h1 className="text-xl sm:text-2xl font-bold">Review moderation</h1>
-              <p className="text-sm sm:text-base text-muted-foreground mt-0.5">Moderate product feedback and safeguard content integrity</p>
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Review Management</h1>
+              <p className="text-xs sm:text-base text-muted-foreground mt-1">Moderate product feedback</p>
             </div>
           </div>
           <div className="flex items-center gap-2 w-full sm:w-auto">
             <Button
               onClick={fetchReviews}
               variant="outline"
-              className="flex-1 sm:flex-none h-10 rounded-xl border-border/40 bg-card/20 backdrop-blur-sm font-bold text-xs"
+              className="flex-1 sm:flex-none h-10 rounded-xl border-border/60 bg-card font-medium text-xs shadow-sm"
             >
               <RefreshCw className="h-4 w-4 mr-2" /> Refresh Feed
             </Button>

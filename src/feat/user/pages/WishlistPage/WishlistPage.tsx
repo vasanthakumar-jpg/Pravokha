@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/infra/api/supabase";
 import { Button } from "@/ui/Button";
 import { Card } from "@/ui/Card";
-import { Trash2, ShoppingCart, Heart, PackageX } from "lucide-react";
+import { Trash2, ShoppingCart, Heart, PackageX, Minus, Plus } from "lucide-react";
 import { toast } from "@/shared/hook/use-toast";
 import { useCart } from "@/core/context/CartContext";
 import { Product } from "@/data/products";
@@ -11,6 +11,7 @@ import { Product } from "@/data/products";
 export function WishlistPage() {
     // We store the full extended product object here
     const [wishlistItems, setWishlistItems] = useState<{ id: string; product: Product }[]>([]);
+    const [quantities, setQuantities] = useState<Record<string, number>>({});
     const [loading, setLoading] = useState(true);
     const [user, setUser] = useState<any>(null);
     const navigate = useNavigate();
@@ -121,6 +122,13 @@ export function WishlistPage() {
 
             setWishlistItems(validItems);
 
+            // Initialize quantities for new items
+            const initialQuantities: Record<string, number> = {};
+            validItems.forEach(item => {
+                initialQuantities[item.id] = 1;
+            });
+            setQuantities(initialQuantities);
+
         } catch (error: any) {
             console.error("Error loading wishlist:", error);
             toast({
@@ -156,7 +164,15 @@ export function WishlistPage() {
         }
     };
 
-    const moveToCart = (product: Product) => {
+    const updateQuantity = (id: string, delta: number) => {
+        setQuantities(prev => ({
+            ...prev,
+            [id]: Math.max(1, (prev[id] || 1) + delta)
+        }));
+    };
+
+    const moveToCart = (product: Product, wishlistId: string) => {
+        const qty = quantities[wishlistId] || 1;
         // Find first variant with stock
         const availableVariant = product.variants.find(v => v.sizes.some(s => s.stock > 0));
 
@@ -173,10 +189,10 @@ export function WishlistPage() {
                 image: availableVariant.images[0],
                 maxStock: sizeObj?.stock || 0,
                 sellerId: product.sellerId || "",
-            });
+            }, qty);
             toast({
                 title: "Added to cart",
-                description: `${product.title} has been added to your cart`,
+                description: `${qty} x ${product.title} added to cart`,
             });
         } else {
             toast({
@@ -304,13 +320,36 @@ export function WishlistPage() {
                                         </div>
                                     </div>
 
-                                    <Button
-                                        className="w-full"
-                                        onClick={() => moveToCart(product)}
-                                    >
-                                        <ShoppingCart className="h-4 w-4 mr-2" />
-                                        Add to Cart
-                                    </Button>
+                                    <div className="flex flex-col gap-2">
+                                        <div className="flex items-center justify-between bg-muted/40 rounded-xl p-1 border border-border/40">
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-8 w-8 rounded-lg hover:bg-background"
+                                                onClick={() => updateQuantity(id, -1)}
+                                                disabled={quantities[id] <= 1}
+                                            >
+                                                <Minus className="h-3 w-3" />
+                                            </Button>
+                                            <span className="text-sm font-bold w-8 text-center">{quantities[id] || 1}</span>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-8 w-8 rounded-lg hover:bg-background"
+                                                onClick={() => updateQuantity(id, 1)}
+                                            >
+                                                <Plus className="h-3 w-3" />
+                                            </Button>
+                                        </div>
+
+                                        <Button
+                                            className="w-full rounded-xl"
+                                            onClick={() => moveToCart(product, id)}
+                                        >
+                                            <ShoppingCart className="h-4 w-4 mr-2" />
+                                            Add to Cart
+                                        </Button>
+                                    </div>
                                 </div>
                             </Card>
                         );

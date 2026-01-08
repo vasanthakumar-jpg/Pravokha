@@ -132,14 +132,14 @@ export default function AdminProducts() {
             <Button
               variant="outline"
               size="sm"
-              className="h-9 rounded-xl border-border/40 bg-card/40 backdrop-blur-sm gap-2 font-bold text-xs"
+              className="h-9 rounded-xl border-border/60 bg-card gap-2 font-medium text-xs shadow-sm"
               onClick={() => navigate("/admin")}
             >
               <ArrowLeft className="h-4 w-4" /> Back
             </Button>
             <div>
-              <h1 className="text-xl sm:text-2xl font-bold">Product inventory</h1>
-              <p className="text-sm text-muted-foreground mt-0.5">Manage global marketplace listings</p>
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Product Inventory</h1>
+              <p className="text-xs sm:text-base text-muted-foreground mt-1">Manage marketplace listings</p>
             </div>
           </div>
           <Button

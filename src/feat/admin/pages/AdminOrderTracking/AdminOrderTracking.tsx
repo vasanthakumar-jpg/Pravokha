@@ -210,11 +210,11 @@ export default function AdminOrderTracking() {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case "pending": return <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/20 font-bold px-2 py-0.5 rounded-full text-[10px]">PENDING</Badge>;
-      case "confirmed": return <Badge variant="outline" className="bg-sky-500/10 text-sky-600 border-sky-500/20 font-bold px-2 py-0.5 rounded-full text-[10px]">CONFIRMED</Badge>;
-      case "shipped": return <Badge variant="outline" className="bg-indigo-500/10 text-indigo-600 border-indigo-500/20 font-bold px-2 py-0.5 rounded-full text-[10px]">SHIPPED</Badge>;
-      case "delivered": return <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 font-bold px-2 py-0.5 rounded-full text-[10px]">DELIVERED</Badge>;
-      case "cancelled": return <Badge variant="outline" className="bg-rose-500/10 text-rose-600 border-rose-500/20 font-bold px-2 py-0.5 rounded-full text-[10px]">CANCELLED</Badge>;
+      case "pending": return <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/20 font-medium px-2 py-0.5 rounded-full text-xs">Pending</Badge>;
+      case "confirmed": return <Badge variant="outline" className="bg-sky-500/10 text-sky-600 border-sky-500/20 font-medium px-2 py-0.5 rounded-full text-xs">Confirmed</Badge>;
+      case "shipped": return <Badge variant="outline" className="bg-indigo-500/10 text-indigo-600 border-indigo-500/20 font-medium px-2 py-0.5 rounded-full text-xs">Shipped</Badge>;
+      case "delivered": return <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 font-medium px-2 py-0.5 rounded-full text-xs">Delivered</Badge>;
+      case "cancelled": return <Badge variant="outline" className="bg-rose-500/10 text-rose-600 border-rose-500/20 font-medium px-2 py-0.5 rounded-full text-xs">Cancelled</Badge>;
       default: return <Badge variant="secondary" className="px-2 py-0.5 rounded-full text-[10px]">{status}</Badge>;
     }
   };
@@ -243,23 +243,23 @@ export default function AdminOrderTracking() {
             <Button
               variant="outline"
               size="sm"
-              className="h-9 rounded-xl border-border/40 bg-card/40 backdrop-blur-sm gap-2 font-bold text-xs w-fit justify-start"
+              className="h-9 rounded-xl border-border/60 bg-card gap-2 font-medium text-xs w-fit justify-start shadow-sm"
               onClick={() => navigate("/admin")}
             >
               <ArrowLeft className="h-4 w-4" />
               Back
             </Button>
             <div className="min-w-0">
-              <h1 className="text-lg sm:text-xl lg:text-2xl font-bold">
-                Order Tracking and Operations
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
+                Order Tracking
               </h1>
-              <p className="text-xs sm:text-sm lg:text-base text-muted-foreground mt-0.5">Real-time marketplace fulfillment governance center.</p>
+              <p className="text-xs sm:text-base text-muted-foreground mt-1">Real-time fulfillment management</p>
             </div>
           </div>
           <div className="flex items-center gap-2 w-full sm:w-auto">
             <Button
               variant="outline"
-              className="flex-1 sm:flex-none h-10 rounded-xl border-border/40 font-bold text-xs bg-card/20 backdrop-blur-sm"
+              className="flex-1 sm:flex-none h-10 rounded-xl border-border/60 font-medium text-xs bg-card shadow-sm"
               onClick={loadOrders}
             >
               <RefreshCw className={cn("h-4 w-4 mr-2", loading && "animate-spin")} /> Refresh Hub
@@ -269,23 +269,23 @@ export default function AdminOrderTracking() {
       </div>
 
       {/* Control Bar */}
-      <Card className="border-border/50 bg-card/60 backdrop-blur-xl rounded-2xl overflow-hidden shadow-2xl shadow-primary/5">
+      <Card className="border-border/60 bg-card rounded-xl overflow-hidden shadow-sm">
         <CardContent className="p-3 sm:p-4 flex flex-col sm:flex-row gap-3 sm:gap-4">
-          <div className="relative flex-1">
+          <div className="relative flex-[3] min-w-[200px]">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Filter by Order # or Customer..."
+              placeholder="Search by Order ID, Customer Name or Phone..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-11 h-10 sm:h-11 bg-background/50 border-border/50 rounded-xl focus:ring-primary/20 text-xs sm:text-sm placeholder:text-[10px] sm:placeholder:text-sm"
             />
           </div>
           <Select value={statusFilter} onValueChange={(val) => { setStatusFilter(val); setCurrentPage(1); }}>
-            <SelectTrigger className="w-full sm:w-[200px] h-11 bg-background/50 rounded-xl border-border/50">
+            <SelectTrigger className="flex-1 sm:max-w-[220px] h-11 bg-background/50 rounded-xl border-border/50">
               <Filter className="h-4 w-4 mr-2 opacity-60" />
               <SelectValue placeholder="Lifecycle Filter" />
             </SelectTrigger>
-            <SelectContent className="rounded-xl border-border/10 bg-card/95 backdrop-blur-xl">
+            <SelectContent className="rounded-xl border-border/40">
               <SelectItem value="all">All Tracking</SelectItem>
               <SelectItem value="pending">Pending Fulfilment</SelectItem>
               <SelectItem value="confirmed">Confirmed Logs</SelectItem>
@@ -303,7 +303,7 @@ export default function AdminOrderTracking() {
         {loading ? (
           <AdminSkeleton variant="list" skeletonProps={{ count: 3 }} />
         ) : filteredOrders.length === 0 ? (
-          <Card className="border-border/50 bg-card/40 backdrop-blur-xl">
+          <Card className="border-border/60 bg-card">
             <CardContent className="py-12 text-center text-muted-foreground">
               <Package className="h-12 w-12 mx-auto mb-3 opacity-20" />
               <p>No orders found</p>
@@ -311,12 +311,12 @@ export default function AdminOrderTracking() {
           </Card>
         ) : (
           filteredOrders.map((order) => (
-            <Card key={order.id} className="border-border/50 bg-card/40 backdrop-blur-xl overflow-hidden">
+            <Card key={order.id} className="border-border/60 bg-card overflow-hidden">
               <CardHeader className="p-2.5 bg-muted/20 border-b border-border/10 pb-2">
                 <div className="flex justify-between items-start">
                   <div className="flex flex-col">
                     <span className="font-semibold text-foreground" style={{ fontSize: '14px' }}>#{order.order_number}</span>
-                    <span className="text-[10px] text-muted-foreground uppercase">{format(new Date(order.created_at), 'MMM dd, HH:mm')}</span>
+                    <span className="text-[10px] text-muted-foreground">{format(new Date(order.created_at), 'MMM dd, HH:mm')}</span>
                   </div>
                   {getStatusBadge(order.order_status)}
                 </div>
@@ -346,16 +346,16 @@ export default function AdminOrderTracking() {
 
 
       {/* Desktop Orders Table */}
-      <Card className="border-border/50 bg-card/40 backdrop-blur-xl rounded-2xl overflow-hidden shadow-sm hidden sm:block">
+      <Card className="border-border/60 bg-card rounded-xl overflow-hidden shadow-sm hidden sm:block">
         <CardContent className="p-0 overflow-x-auto">
           <Table>
             <TableHeader className="bg-muted/30">
               <TableRow className="hover:bg-transparent">
-                <TableHead className="w-[150px] text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Order Details</TableHead>
-                <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Customer Identity</TableHead>
-                <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Lifecycle State</TableHead>
-                <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Financial Value</TableHead>
-                <TableHead className="text-right text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 pr-6">Governance</TableHead>
+                <TableHead className="w-[150px] px-6 h-12 text-[11px] font-bold tracking-wider text-muted-foreground/60 normal-case">Order Details</TableHead>
+                <TableHead className="text-[11px] font-bold tracking-wider text-muted-foreground/60 normal-case">Customer Identity</TableHead>
+                <TableHead className="text-[11px] font-bold tracking-wider text-muted-foreground/60 normal-case">Lifecycle State</TableHead>
+                <TableHead className="text-[11px] font-bold tracking-wider text-muted-foreground/60 normal-case">Financial Value</TableHead>
+                <TableHead className="text-right text-[11px] font-bold tracking-wider text-muted-foreground/60 pr-6 normal-case">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -376,7 +376,7 @@ export default function AdminOrderTracking() {
                     <TableCell className="py-5">
                       <div className="flex flex-col">
                         <span className="font-semibold text-sm tracking-tight">#{order.order_number}</span>
-                        <span className="text-[10px] text-muted-foreground font-mono uppercase tracking-tighter opacity-70">
+                        <span className="text-[10px] text-muted-foreground font-mono tracking-tighter opacity-70">
                           {format(new Date(order.created_at), 'MMM dd, HH:mm')}
                         </span>
                       </div>
@@ -460,7 +460,7 @@ export default function AdminOrderTracking() {
 
       {/* Side Detail Sheet */}
       <Sheet open={showDetailSheet} onOpenChange={setShowDetailSheet}>
-        <SheetContent className="w-full sm:max-w-[500px] bg-card/95 backdrop-blur-2xl border-l-border/30 p-0">
+        <SheetContent className="w-full sm:max-w-[500px] bg-card border-l-border/60 shadow-2xl p-0">
           <div className="flex flex-col h-full">
             <SheetHeader className="p-8 pb-4 bg-primary/5 border-b border-primary/10">
               <div className="flex items-center gap-4 mb-2">
@@ -469,7 +469,7 @@ export default function AdminOrderTracking() {
                 </div>
                 <div>
                   <SheetTitle className="text-2xl font-semibold">Lifecycle Governance</SheetTitle>
-                  <SheetDescription className="font-semibold text-primary italic uppercase tracking-widest text-[10px]">
+                  <SheetDescription className="font-semibold text-primary italic tracking-widest text-[10px]">
                     ORDER ID: {selectedOrder?.order_number}
                   </SheetDescription>
                 </div>
@@ -480,15 +480,15 @@ export default function AdminOrderTracking() {
               {/* Order Info Summary */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <Label className="text-[10px] font-semibold text-muted-foreground uppercase">Customer</Label>
+                  <Label className="text-[10px] font-semibold text-muted-foreground">Customer</Label>
                   <p className="text-sm font-semibold truncate">{selectedOrder?.customer_name}</p>
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-[10px] font-semibold text-muted-foreground uppercase">Revenue</Label>
+                  <Label className="text-[10px] font-semibold text-muted-foreground">Revenue</Label>
                   <p className="text-sm font-semibold">₹{selectedOrder?.total.toLocaleString()}</p>
                 </div>
                 <div className="col-span-2 space-y-1">
-                  <Label className="text-[10px] font-semibold text-muted-foreground uppercase">Destination</Label>
+                  <Label className="text-[10px] font-semibold text-muted-foreground">Destination</Label>
                   <p className="text-xs font-medium text-muted-foreground leading-relaxed">
                     {selectedOrder?.shipping_address}, {selectedOrder?.shipping_city}
                   </p>

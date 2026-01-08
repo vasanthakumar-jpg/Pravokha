@@ -295,7 +295,7 @@ export default function SellerLayout() {
                     size="sm"
                     className={cn(
                       "group font-semibold whitespace-nowrap h-8 lg:h-9 px-2 xl:px-3 transition-all duration-200 overflow-hidden",
-                      location.pathname === "/seller" && "text-primary"
+                      location.pathname === "/seller" ? "text-[#3FA6A6]" : "text-[#263140]"
                     )}
                   >
                     <LayoutDashboard className="h-4 w-4 xl:h-4 xl:w-4 flex-shrink-0" />
@@ -360,7 +360,7 @@ export default function SellerLayout() {
                           size="sm"
                           className={cn(
                             "group font-semibold whitespace-nowrap h-8 lg:h-9 px-2 xl:px-3 transition-all duration-200 overflow-hidden",
-                            isActive && "text-primary"
+                            isActive ? "text-[#3FA6A6]" : "text-[#263140]"
                           )}
                         >
                           <span className="[&>svg]:h-4 [&>svg]:w-4 xl:[&>svg]:h-4 xl:[&>svg]:w-4 flex-shrink-0">
@@ -412,17 +412,17 @@ export default function SellerLayout() {
               </Tooltip>
 
               {profileMenuOpen && (
-                <div className="absolute right-0 top-full mt-2 w-48 sm:w-52 md:w-56 lg:w-60 bg-background border rounded-lg shadow-lg overflow-hidden animate-scale-in z-50">
-                  <div className="p-2 sm:p-3 border-b bg-muted/50">
-                    <p className="font-semibold text-xs sm:text-sm truncate">{profile?.full_name || user?.email?.split('@')[0] || "Seller"}</p>
-                    <p className="text-[10px] text-muted-foreground truncate">{user?.email}</p>
-                    {isSuspended && <p className="text-[10px] text-destructive font-semibold mt-1">Suspended</p>}
+                <div className="absolute right-0 top-full mt-1 w-56 bg-background border rounded-md shadow-lg overflow-hidden animate-scale-in z-50">
+                  <div className="px-3 py-1.5 border-b bg-muted/30">
+                    <p className="font-semibold text-sm truncate leading-tight">{profile?.full_name || user?.email?.split('@')[0] || "Seller"}</p>
+                    <p className="text-[10px] text-muted-foreground truncate leading-tight">{user?.email}</p>
+                    {isSuspended && <p className="text-[10px] text-destructive font-semibold mt-0.5">Suspended</p>}
                   </div>
-                  <div className="py-1">
+                  <div className="p-1 space-y-0.5">
                     {isSuspended ? (
                       <>
-                        <Link to="/orders" onClick={() => setProfileMenuOpen(false)} className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm hover:bg-muted transition-colors">
-                          <Package className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> My Orders
+                        <Link to="/orders" onClick={() => setProfileMenuOpen(false)} className="flex items-center gap-2 px-2 py-1.5 text-xs font-medium hover:bg-muted rounded-sm transition-colors">
+                          <Package className="h-3.5 w-3.5" /> My Orders
                         </Link>
                       </>
                     ) : (
@@ -430,26 +430,26 @@ export default function SellerLayout() {
                         <Link
                           to="/"
                           onClick={() => setProfileMenuOpen(false)}
-                          className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm hover:bg-muted transition-colors"
+                          className="flex items-center gap-2 px-2 py-1.5 text-xs font-medium hover:bg-muted rounded-sm transition-colors"
                         >
-                          <LayoutDashboard className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                          <LayoutDashboard className="h-3.5 w-3.5" />
                           Home
                         </Link>
                         <Link
                           to="/seller/settings"
                           onClick={() => setProfileMenuOpen(false)}
-                          className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm text-foreground hover:bg-muted transition-colors"
+                          className="flex items-center gap-2 px-2 py-1.5 text-xs font-medium text-foreground hover:bg-muted rounded-sm transition-colors"
                         >
-                          <SettingsIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                          <SettingsIcon className="h-3.5 w-3.5" />
                           Store Settings
                         </Link>
                       </>
                     )}
                     <button
                       onClick={() => { handleLogout(); setProfileMenuOpen(false); }}
-                      className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm hover:bg-muted transition-colors w-full text-left border-t mt-1"
+                      className="flex items-center gap-2 px-2 py-1.5 text-xs font-medium hover:bg-muted rounded-sm transition-colors w-full text-left mt-0.5 text-destructive hover:text-destructive hover:bg-destructive/10"
                     >
-                      <LogOut className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                      <LogOut className="h-3.5 w-3.5" />
                       Logout
                     </button>
                   </div>

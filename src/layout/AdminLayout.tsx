@@ -43,6 +43,8 @@ import {
   ChevronRight,
   Command as CommandIcon,
   TrendingUp,
+  ShieldAlert,
+  LogOutIcon,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -54,6 +56,14 @@ import {
   CommandList,
   CommandSeparator,
 } from "@/ui/Command";
+
+import { NotificationBell } from "@/shared/ui/NotificationBell";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/ui/DropdownMenu";
 
 interface NavLink {
   title: string;
@@ -105,16 +115,6 @@ const navSections: NavSection[] = [
     ]
   }
 ];
-
-import { ShieldAlert, LogOut as LogOutIcon } from "lucide-react";
-
-import { NotificationBell } from "@/shared/ui/NotificationBell";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/ui/DropdownMenu";
 
 export default function AdminLayout() {
   const navigate = useNavigate();
@@ -182,7 +182,7 @@ export default function AdminLayout() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex">
+    <div className="min-h-screen bg-background flex flex-col overflow-hidden">
       {/* Command Palette */}
       <CommandDialog open={commandOpen} onOpenChange={setCommandOpen}>
         <CommandInput placeholder="Type a command or search..." />
@@ -217,196 +217,182 @@ export default function AdminLayout() {
         </CommandList>
       </CommandDialog>
 
-      {/* Desktop Sidebar */}
-      <motion.aside
-        initial={false}
-        animate={{ width: sidebarCollapsed ? "80px" : "280px" }}
-        className="hidden lg:flex flex-col border-r bg-card/60 backdrop-blur-xl sticky top-0 h-screen z-50 transition-all duration-300 ease-in-out group"
-      >
-        <div className="p-6 flex items-center justify-between h-20 border-b border-border/10 relative">
-          <AnimatePresence mode="wait">
-            {sidebarCollapsed ? (
-              <motion.div
-                key="collapsed-logo"
-                initial={{ scale: 0.5, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.5, opacity: 0 }}
-                className="flex items-center justify-center flex-1"
-              >
-                <div className="w-10 h-10 flex items-center justify-center overflow-hidden">
-                  <img
-                    src={resolvedTheme === "dark" ? logoDark : logoLight}
-                    alt="Logo"
-                    className="h-full w-full object-contain scale-[2.2] translate-y-[-2px]"
-                  />
-                </div>
-              </motion.div>
-            ) : (
-              <motion.div
-                key="expanded-logo"
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -10 }}
-                className="flex items-center gap-3 w-full"
-              >
-                <img
-                  src={resolvedTheme === "dark" ? logoDark : logoLight}
-                  alt="Logo"
-                  className="h-8 w-auto object-contain"
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
+      {/* FIXED Navbar */}
+      <header className="fixed top-0 left-0 right-0 h-20 border-b bg-card/60 backdrop-blur-xl flex items-center justify-between z-40 px-0">
+        <div
+          className="flex-1 flex items-center justify-between h-full transition-all duration-300 ease-in-out"
+          style={{ marginLeft: sidebarCollapsed ? "80px" : "280px" }}
+        >
+          {/* Left Section: Logo & Search */}
+          <div className="flex items-center gap-4 px-6 h-full">
+            {/* Brand Logo */}
+            <Link to="/admin" className="hidden sm:block transition-all hover:opacity-80">
+              <img
+                src={resolvedTheme === "dark" ? logoDark : logoLight}
+                alt="Logo"
+                className="h-8 w-auto object-contain"
+              />
+            </Link>
 
-          {/* Sidebar Toggle Button - Now at the Top */}
+            {/* Deep-Search Trigger */}
+            <div
+              onClick={() => setCommandOpen(true)}
+              className="flex items-center gap-3 px-4 py-2 rounded-xl border border-border/50 bg-muted/30 cursor-pointer hover:bg-muted/50 transition-all shadow-sm"
+            >
+              <Search className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-semibold text-muted-foreground hidden md:block">Search...</span>
+              <kbd className="hidden lg:inline-flex h-5 select-none items-center gap-1 rounded border bg-background px-1.5 font-mono text-[9px] font-bold opacity-70">
+                <span className="text-xs">⌘</span>K
+              </kbd>
+            </div>
+
+            {/* Mobile Menu Trigger */}
+            <div className="lg:hidden ml-2">
+              <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+                <SheetTrigger asChild>
+                  <Button variant="ghost" size="icon">
+                    <Menu className="h-6 w-6" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-72 p-0 border-r bg-card/60 backdrop-blur-xl">
+                  <div className="p-6 border-b border-border/50">
+                    <img
+                      src={resolvedTheme === "dark" ? logoDark : logoLight}
+                      alt="Logo"
+                      className="h-10 w-auto"
+                    />
+                  </div>
+                  <ScrollArea className="h-[calc(100vh-80px)] px-4 py-6">
+                    {navSections.map((section) => (
+                      <div key={section.title} className="mb-6 last:mb-0">
+                        <h3 className="px-3 mb-2 text-[10px] font-semibold tracking-widest text-muted-foreground/50">
+                          {section.title}
+                        </h3>
+                        <div className="space-y-1">
+                          {section.links.map((link) => (
+                            <Link key={link.href} to={link.href} onClick={() => setMobileMenuOpen(false)}>
+                              <Button
+                                variant="ghost"
+                                className={cn(
+                                  "w-full justify-start h-11 px-3 rounded-xl transition-all",
+                                  location.pathname === link.href
+                                    ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
+                                    : "hover:bg-primary/10 hover:text-primary"
+                                )}
+                              >
+                                <span className={cn("mr-3", location.pathname === link.href ? "text-primary-foreground" : "text-muted-foreground")}>
+                                  {link.icon}
+                                </span>
+                                <span className="text-sm font-semibold">{link.title}</span>
+                              </Button>
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </ScrollArea>
+                </SheetContent>
+              </Sheet>
+            </div>
+          </div>
+
+          {/* Right Section: Controls */}
+          <div className="flex items-center gap-6 pr-6 h-full text-right">
+            <div className="flex items-center gap-4">
+              <ThemeToggle />
+              <NotificationBell />
+              <div className="hidden sm:block">
+                <p className="text-xs font-bold leading-none mb-0.5 whitespace-nowrap">{profile?.full_name || "Admin"}</p>
+                <p className="text-[10px] text-muted-foreground font-medium opacity-60">Platform Governance</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Layout Body */}
+      <div className="flex flex-1 pt-20 h-screen overflow-hidden">
+        {/* FIXED Sidebar */}
+        <motion.aside
+          initial={false}
+          animate={{ width: sidebarCollapsed ? "80px" : "280px" }}
+          className="fixed left-0 top-0 bottom-0 z-50 hidden lg:flex flex-col border-r bg-card/40 backdrop-blur-xl transition-all duration-300 ease-in-out shrink-0"
+        >
+          {/* ARROW TOGGLE (On the border) - Moved slightly TOP */}
           <Button
             variant="ghost"
             size="icon"
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className={cn(
-              "h-7 w-7 rounded-lg border border-border/50 bg-background/50 hover:bg-accent text-muted-foreground transition-all duration-300 shadow-sm",
-              sidebarCollapsed ? "absolute -right-3.5 top-1/2 -translate-y-1/2 z-50" : "ml-auto"
-            )}
+            className="absolute -right-4 top-16 z-50 h-8 w-8 rounded-full border bg-background shadow-md hover:bg-accent hover:text-accent-foreground flex items-center justify-center transition-all duration-300"
           >
-            {sidebarCollapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronLeft className="h-3.5 w-3.5" />}
+            <motion.div
+              animate={{ rotate: sidebarCollapsed ? 0 : 180 }}
+              transition={{ type: "spring", stiffness: 200, damping: 20 }}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </motion.div>
           </Button>
-        </div>
 
-        <ScrollArea className="flex-1 px-4">
-          <div className="space-y-6 pb-4">
-            {navSections.map((section) => (
-              <div key={section.title} className="space-y-2">
-                {!sidebarCollapsed && (
-                  <h3 className="px-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">
-                    {section.title}
-                  </h3>
-                )}
-                <div className="space-y-1">
-                  {section.links.map((link) => (
-                    <NavItem key={link.href} link={link} collapsed={sidebarCollapsed} />
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </ScrollArea>
-
-        <div className="p-4 border-t border-border/50 bg-muted/30 relative">
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className={cn("w-full transition-all rounded-xl", sidebarCollapsed ? "px-0 justify-center h-12 w-12 mx-auto" : "px-3 justify-start gap-3 h-12")}>
-                <Avatar className="h-8 w-8 ring-2 ring-primary/10">
-                  <AvatarImage src={profile?.avatar_url || undefined} />
-                  <AvatarFallback className="bg-primary text-primary-foreground text-xs font-bold">
-                    {profile?.full_name?.[0] || user?.email?.[0]}
-                  </AvatarFallback>
-                </Avatar>
-                {!sidebarCollapsed && (
-                  <div className="flex flex-col items-start min-w-0">
-                    <span className="text-sm font-bold truncate w-full">{profile?.full_name || "Admin"}</span>
-                    <span className="text-[10px] text-muted-foreground truncate w-full opacity-70 font-medium">{user?.email}</span>
+          <ScrollArea className="flex-1">
+            <div className="space-y-6 py-8 px-4">
+              {navSections.map((section) => (
+                <div key={section.title} className="space-y-2">
+                  {!sidebarCollapsed && (
+                    <h3 className="px-3 text-[10px] font-bold tracking-[0.2em] text-muted-foreground/40 uppercase">
+                      {section.title}
+                    </h3>
+                  )}
+                  <div className="space-y-1">
+                    {section.links.map((link) => (
+                      <NavItem key={link.href} link={link} collapsed={sidebarCollapsed} />
+                    ))}
                   </div>
-                )}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56 rounded-2xl border-border/50 shadow-xl">
-              <DropdownMenuItem onClick={() => handleLogout()} className="text-destructive cursor-pointer font-bold focus:bg-destructive/10">
-                <LogOut className="h-4 w-4 mr-2" />
-                Logout
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </motion.aside>
-
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
-        {/* Header / TopNav */}
-        <header className="h-16 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 flex items-center justify-between px-4 sm:px-6 lg:px-8 z-40">
-          <div className="flex items-center gap-4 flex-1">
-            <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="lg:hidden">
-                  <Menu className="h-6 w-6" />
-                </Button>
-              </SheetTrigger>
-              <div className="lg:hidden flex items-center gap-2">
-                <img
-                  src={resolvedTheme === "dark" ? logoDark : logoLight}
-                  alt="Logo"
-                  className="h-8 w-auto"
-                />
-              </div>
-              <SheetContent side="left" className="w-72 p-0 border-r bg-card/60 backdrop-blur-xl">
-                <div className="p-6 border-b border-border/50">
-                  <img
-                    src={resolvedTheme === "dark" ? logoDark : logoLight}
-                    alt="Logo"
-                    className="h-10 w-auto"
-                  />
                 </div>
-                <ScrollArea className="h-[calc(100vh-80px)] px-4 py-6">
-                  {navSections.map((section) => (
-                    <div key={section.title} className="mb-6 last:mb-0">
-                      <h3 className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">
-                        {section.title}
-                      </h3>
-                      <div className="space-y-1">
-                        {section.links.map((link) => (
-                          <Link key={link.href} to={link.href} onClick={() => setMobileMenuOpen(false)}>
-                            <Button
-                              variant="ghost"
-                              className={cn(
-                                "w-full justify-start h-11 px-3 rounded-xl transition-all",
-                                location.pathname === link.href
-                                  ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
-                                  : "hover:bg-primary/10 hover:text-primary"
-                              )}
-                            >
-                              <span className={cn("mr-3", location.pathname === link.href ? "text-primary-foreground" : "text-muted-foreground")}>
-                                {link.icon}
-                              </span>
-                              <span className="text-sm font-semibold">{link.title}</span>
-                            </Button>
-                          </Link>
-                        ))}
-                      </div>
+              ))}
+            </div>
+          </ScrollArea>
+
+          {/* User Profile & Logout (Sidebar Bottom) */}
+          <div className="mt-auto p-4 border-t border-border/50">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className={cn(
+                    "w-full transition-all duration-300 rounded-xl overflow-hidden",
+                    sidebarCollapsed ? "px-0 justify-center h-12" : "px-3 h-14 justify-start gap-3"
+                  )}
+                >
+                  <Avatar className={cn("ring-2 ring-primary/10 transition-all", sidebarCollapsed ? "h-9 w-9" : "h-10 w-10")}>
+                    <AvatarImage src={profile?.avatar_url || undefined} />
+                    <AvatarFallback className="bg-primary text-primary-foreground text-xs font-bold">
+                      {profile?.full_name?.[0] || user?.email?.[0]}
+                    </AvatarFallback>
+                  </Avatar>
+                  {!sidebarCollapsed && (
+                    <div className="flex flex-col items-start overflow-hidden">
+                      <p className="text-xs font-bold leading-none mb-1 truncate w-full">{profile?.full_name || "Admin"}</p>
+                      <p className="text-[10px] text-muted-foreground font-medium opacity-60 truncate w-full">Account Settings</p>
                     </div>
-                  ))}
-                </ScrollArea>
-              </SheetContent>
-            </Sheet>
-
-            {/* Breadcrumbs or Command trigger */}
-            <div className="hidden md:flex items-center text-sm text-muted-foreground">
-              <div
-                onClick={() => setCommandOpen(true)}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-md border bg-muted/50 cursor-pointer hover:bg-muted transition-colors mr-4"
-              >
-                <Search className="h-4 w-4" />
-                <span>Search...</span>
-                <kbd className="hidden lg:inline-flex h-5 select-none items-center gap-1 rounded border bg-background px-1.5 font-mono text-[10px] font-medium opacity-100">
-                  <span className="text-xs">⌘</span>K
-                </kbd>
-              </div>
-            </div>
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align={sidebarCollapsed ? "center" : "start"} side="right" className="w-56 rounded-2xl border-border/50 shadow-xl ml-2">
+                <DropdownMenuItem onClick={() => handleLogout()} className="text-destructive cursor-pointer font-bold focus:bg-destructive/10">
+                  <LogOutIcon className="h-4 w-4 mr-2" />
+                  Logout
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
+        </motion.aside>
 
-          <div className="flex items-center gap-2 sm:gap-4">
-            <ThemeToggle />
-            <NotificationBell />
-            <div className="h-8 w-[1px] bg-border mx-1 hidden sm:block" />
-            <div className="hidden sm:block">
-              <p className="text-xs font-semibold">{profile?.full_name || "Admin"}</p>
-              <p className="text-[10px] text-muted-foreground">Platform Governance</p>
-            </div>
-          </div>
-        </header>
-
-        {/* Dynamic Content */}
-        <main className="flex-1 overflow-y-auto bg-muted/10">
-          <div className="container mx-auto py-8 px-4 sm:px-6 lg:px-8 max-w-7xl">
+        {/* Main Content Area (Independent Scroll) */}
+        <main
+          className="flex-1 overflow-y-auto bg-muted/10 h-full transition-all duration-300 ease-in-out"
+          style={{ marginLeft: sidebarCollapsed ? "80px" : "280px" }}
+        >
+          <div className="container mx-auto py-8 px-4 sm:px-6 lg:px-8 max-w-7xl animate-in fade-in duration-500">
             <Outlet />
           </div>
         </main>
@@ -414,4 +400,3 @@ export default function AdminLayout() {
     </div>
   );
 }
-

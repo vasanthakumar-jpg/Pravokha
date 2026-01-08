@@ -5,6 +5,7 @@ import { useAdmin } from "@/core/context/AdminContext";
 import { AdminSkeleton } from "@/feat/admin/components/AdminSkeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/ui/Card";
 import { Button } from "@/ui/Button";
+import { Badge } from "@/ui/Badge";
 import { Input } from "@/ui/Input";
 import { Label } from "@/ui/Label";
 import { Textarea } from "@/ui/Textarea";
@@ -224,11 +225,11 @@ export default function AdminSubcategories() {
                         Back to Categories
                     </Button>
                     <div>
-                        <h1 className="text-2xl font-bold flex items-center gap-2">
+                        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2">
                             Subcategory Management
-                            <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">{subcategories.length} Total</span>
+                            <Badge variant="outline" className="text-xs font-medium bg-primary/5 rounded-lg border-primary/20">{subcategories.length} Total</Badge>
                         </h1>
-                        <p className="text-sm text-muted-foreground">Manage product subcategories within categories</p>
+                        <p className="text-xs sm:text-base text-muted-foreground mt-1">Manage product subcategories within categories</p>
                     </div>
                 </div>
                 <Dialog open={dialogOpen} onOpenChange={(open) => {
@@ -374,11 +375,11 @@ export default function AdminSubcategories() {
                             </p>
                             <div className="flex flex-col gap-1">
                                 <div className="flex justify-between text-xs text-muted-foreground font-mono bg-muted/30 px-2 py-1 rounded">
-                                    <span>SLUG</span>
+                                    <span>Slug</span>
                                     <span className="truncate max-w-[120px]">{subcategory.slug}</span>
                                 </div>
                                 <div className="flex justify-between text-xs text-muted-foreground font-mono bg-muted/30 px-2 py-1 rounded">
-                                    <span>ORDER</span>
+                                    <span>Order</span>
                                     <span>#{subcategory.display_order}</span>
                                 </div>
                             </div>

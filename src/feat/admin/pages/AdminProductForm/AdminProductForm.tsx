@@ -518,14 +518,14 @@ export default function AdminProductForm() {
     return (
         <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8 flex flex-col gap-8 pb-20 animate-in fade-in slide-in-from-bottom-4 duration-500">
             {/* Sticky Top Bar (SAP-H v1 adaptation for Form) */}
-            <div className="sticky top-0 z-30 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-4 bg-background/80 backdrop-blur-md border-b border-border/40">
+            <div className="sticky top-0 z-30 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-4 bg-background border-b border-border/60 shadow-sm">
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                     <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full sm:w-auto">
                         <Button
                             variant="outline"
                             size="sm"
                             onClick={() => navigate("/admin/products/manage")}
-                            className="h-9 rounded-xl border-border/40 bg-card/40 backdrop-blur-sm gap-2 font-bold text-xs justify-start"
+                            className="h-9 rounded-xl border-border/60 bg-card gap-2 font-bold text-xs justify-start shadow-sm"
                         >
                             <ArrowLeft className="h-4 w-4" />
                             Back
@@ -549,7 +549,7 @@ export default function AdminProductForm() {
                                     Discard
                                 </Button>
                             </AlertDialogTrigger>
-                            <AlertDialogContent className="bg-card/90 backdrop-blur-xl border-border/50 rounded-3xl">
+                            <AlertDialogContent className="bg-card border-border/60 rounded-3xl shadow-2xl">
                                 <AlertDialogHeader>
                                     <AlertDialogTitle className="text-xl font-bold">Discard Changes?</AlertDialogTitle>
                                     <AlertDialogDescription className="text-muted-foreground font-medium">
@@ -776,7 +776,7 @@ export default function AdminProductForm() {
                                             {/* Color Palette */}
                                             <div className="space-y-4">
                                                 <div className="flex items-center justify-between">
-                                                    <Label className={cn("text-sm font-bold uppercase tracking-wider text-muted-foreground", errors.colors && "text-rose-500")}>Color Configurations</Label>
+                                                    <Label className={cn("text-sm font-bold tracking-wider text-muted-foreground", errors.colors && "text-rose-500")}>Color configurations</Label>
                                                     <Badge variant="outline" className="rounded-lg">{formData.selectedColors.length} Active</Badge>
                                                 </div>
                                                 {errors.colors && <p className="text-[10px] font-bold text-rose-500 -mt-2 animate-in fade-in slide-in-from-top-1">{errors.colors}</p>}
@@ -837,7 +837,7 @@ export default function AdminProductForm() {
                                                 </ScrollArea>
                                                 <Separator className="opacity-50" />
                                                 <div>
-                                                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3">Quick Inject</p>
+                                                    <p className="text-[10px] font-bold tracking-widest text-muted-foreground mb-3">Quick inject</p>
                                                     <div className="flex flex-wrap gap-2">
                                                         {Object.entries(COLORS).map(([name, hex]) => {
                                                             const isSelected = formData.selectedColors.some(c => c.hex === hex);
@@ -859,7 +859,7 @@ export default function AdminProductForm() {
 
                                             {/* Size Architecture */}
                                             <div className="space-y-4">
-                                                <Label className={cn("text-sm font-bold uppercase tracking-wider text-muted-foreground", errors.sizes && "text-rose-500")}>Size Architecture</Label>
+                                                <Label className={cn("text-sm font-bold tracking-wider text-muted-foreground", errors.sizes && "text-rose-500")}>Size architecture</Label>
                                                 {errors.sizes && <p className="text-[10px] font-bold text-rose-500 -mt-2 animate-in fade-in slide-in-from-top-1">{errors.sizes}</p>}
                                                 <div className="flex flex-wrap gap-3">
                                                     {SIZES.map(size => (
@@ -887,7 +887,7 @@ export default function AdminProductForm() {
                                             {formData.selectedColors.length > 0 && formData.selectedSizes.length > 0 && (
                                                 <div className="pt-6 border-t space-y-6">
                                                     <div className="flex items-center justify-between px-1">
-                                                        <h4 className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
+                                                        <h4 className="text-sm font-black tracking-widest flex items-center gap-2">
                                                             <Layout className="h-4 w-4 text-primary" /> Matrix Synchronization
                                                         </h4>
                                                         <Badge variant="outline" className="rounded-lg text-[10px] font-mono">
@@ -999,7 +999,7 @@ export default function AdminProductForm() {
                                                                         <div className="p-2 rounded-full bg-muted group-hover:bg-primary/20 transition-colors">
                                                                             <Upload className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
                                                                         </div>
-                                                                        <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Add Media</span>
+                                                                        <span className="text-[10px] font-black text-muted-foreground tracking-widest">Add media</span>
                                                                         <input type="file" multiple accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, color.id)} />
                                                                     </label>
 
@@ -1012,7 +1012,7 @@ export default function AdminProductForm() {
                                                                                     <Trash2 className="h-3.5 w-3.5" />
                                                                                 </button>
                                                                             </div>
-                                                                            <div className="absolute bottom-2 left-2 bg-background/90 backdrop-blur-sm px-1.5 py-0.5 rounded text-[8px] font-bold uppercase border border-border/20">Stored</div>
+                                                                            <div className="absolute bottom-2 left-2 bg-background px-1.5 py-0.5 rounded text-[8px] font-bold border border-border/40 shadow-sm">Stored</div>
                                                                         </div>
                                                                     ))}
 
@@ -1025,7 +1025,7 @@ export default function AdminProductForm() {
                                                                                     <Trash2 className="h-3.5 w-3.5" />
                                                                                 </button>
                                                                             </div>
-                                                                            <div className="absolute top-2 left-2 bg-primary text-primary-foreground px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider shadow-sm">New</div>
+                                                                            <div className="absolute top-2 left-2 bg-primary text-primary-foreground px-1.5 py-0.5 rounded text-[8px] font-bold tracking-wider shadow-sm">New</div>
                                                                         </div>
                                                                     ))}
                                                                 </div>
@@ -1052,7 +1052,7 @@ export default function AdminProductForm() {
                     {/* Live Preview Card */}
                     <Card className="border-border/50 bg-card/60 backdrop-blur-xl overflow-hidden rounded-3xl sticky top-24">
                         <CardHeader className="pb-4">
-                            <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center justify-between">
+                            <CardTitle className="text-sm font-black tracking-widest flex items-center justify-between">
                                 Marketplace Preview
                                 <Eye className="h-4 w-4 text-primary" />
                             </CardTitle>
@@ -1070,12 +1070,12 @@ export default function AdminProductForm() {
                                     ) : (
                                         <div className="w-full h-full flex flex-col items-center justify-center gap-4 text-muted-foreground grayscale opacity-30">
                                             <ImageIcon className="h-12 w-12" />
-                                            <span className="text-[10px] font-bold tracking-widest uppercase">Asset Undefined</span>
+                                            <span className="text-[10px] font-bold tracking-widest">Asset undefined</span>
                                         </div>
                                     );
                                 })()}
                                 {discountPercent > 0 && (
-                                    <div className="absolute top-3 left-3 bg-rose-500 text-white px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider shadow-lg shadow-rose-500/30">
+                                    <div className="absolute top-3 left-3 bg-rose-500 text-white px-2 py-1 rounded-lg text-[10px] font-black tracking-wider shadow-lg shadow-rose-500/30">
                                         -{discountPercent}%
                                     </div>
                                 )}

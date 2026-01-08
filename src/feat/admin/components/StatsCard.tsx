@@ -19,7 +19,7 @@ export function StatsCard({ title, value, icon: Icon, trend, description, color 
   const trendValue = typeof trend === 'object' ? `${Math.abs(trend.value)}%` : trend;
 
   return (
-    <Card className="group overflow-hidden border-border/40 bg-card/40 backdrop-blur-xl hover:border-primary/40 transition-all duration-500 rounded-2xl relative shadow-none border">
+    <Card className="group overflow-hidden border-border/60 bg-card hover:border-primary/40 transition-all duration-500 rounded-xl relative shadow-sm border">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-6">
         <CardTitle className="text-sm font-medium transition-colors group-hover:text-foreground/90">
           {title}

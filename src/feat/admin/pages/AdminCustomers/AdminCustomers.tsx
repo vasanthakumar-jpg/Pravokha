@@ -173,26 +173,26 @@ export default function AdminCustomers() {
             <Button
               variant="outline"
               size="sm"
-              className="h-8 sm:h-9 rounded-xl border-border/40 bg-card/40 backdrop-blur-sm gap-2 font-bold text-xs w-fit justify-start"
+              className="h-9 rounded-xl border-border/60 bg-card gap-2 font-medium text-xs w-fit justify-start shadow-sm"
               onClick={() => navigate("/admin")}
             >
               <ArrowLeft className="h-4 w-4" />
               Back
             </Button>
             <div className="min-w-0">
-              <h1 className="text-base sm:text-xl lg:text-2xl font-bold flex items-center flex-wrap gap-2 sm:gap-3">
-                Customer registry
-                <Badge variant="outline" className="text-[10px] font-bold tracking-tight bg-primary/5 rounded-lg border-primary/20 shrink-0 h-5 px-1.5">
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center flex-wrap gap-3">
+                Customer Management
+                <Badge variant="outline" className="text-xs font-medium bg-primary/5 rounded-lg border-primary/20 shrink-0 h-5 px-2">
                   {profiles.length} Total
                 </Badge>
               </h1>
-              <p className="text-xs sm:text-sm lg:text-base text-muted-foreground mt-0.5">
-                Manage registered users and their platform engagement.
+              <p className="text-xs sm:text-base text-muted-foreground mt-1">
+                Manage registered users and engagement
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2 w-full sm:w-auto">
-            <Button variant="outline" className="flex-1 sm:flex-none rounded-xl h-8 sm:h-10 font-bold text-xs bg-card/20 backdrop-blur-sm" onClick={loadProfiles}>
+            <Button variant="outline" className="flex-1 sm:flex-none rounded-xl h-10 font-medium text-xs bg-card shadow-sm" onClick={loadProfiles}>
               Refresh
             </Button>
             <Button className="flex-1 sm:flex-none h-8 sm:h-10 rounded-xl font-bold text-xs bg-primary hover:bg-primary/90 shadow-md shadow-primary/20">
@@ -203,7 +203,7 @@ export default function AdminCustomers() {
       </div>
 
       {/* Filters & Search */}
-      <Card className="border-border/50 bg-card/60 backdrop-blur-xl">
+      <Card className="border-border/60 bg-card">
         <CardContent className="p-3 sm:p-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -220,7 +220,7 @@ export default function AdminCustomers() {
       {/* Mobile Card View */}
       <div className="space-y-2 sm:hidden">
         {filteredProfiles.length === 0 ? (
-          <Card className="border-border/40 bg-card/40 backdrop-blur-xl">
+          <Card className="border-border/60 bg-card">
             <CardContent className="py-12 text-center text-muted-foreground">
               <Users className="h-12 w-12 mx-auto mb-3 opacity-20" />
               <p>No customer matching your query.</p>
@@ -228,7 +228,7 @@ export default function AdminCustomers() {
           </Card>
         ) : (
           filteredProfiles.map((profile) => (
-            <Card key={profile.id} className="border-border/40 bg-card/40 backdrop-blur-xl overflow-hidden shadow-sm">
+            <Card key={profile.id} className="border-border/60 bg-card overflow-hidden shadow-sm">
               <CardHeader className="p-2.5 bg-muted/20 border-b border-border/10 pb-2">
                 <div className="flex justify-between items-start">
                   <div className="flex items-center gap-2 max-w-[70%]">
@@ -296,16 +296,16 @@ export default function AdminCustomers() {
       </div>
 
       {/* Customers Table */}
-      <Card className="hidden sm:block border-border/50 bg-card/60 backdrop-blur-xl overflow-hidden">
+      <Card className="hidden sm:block border-border/60 bg-card overflow-hidden">
         <CardContent className="p-0 overflow-x-auto">
           <Table>
             <TableHeader className="bg-muted/30">
               <TableRow>
-                <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 px-4">Customer</TableHead>
-                <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Contact information</TableHead>
-                <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Account status</TableHead>
-                <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60">Registration date</TableHead>
-                <TableHead className="text-right text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 pr-6">Actions</TableHead>
+                <TableHead className="text-xs font-medium text-muted-foreground/70 px-4">Customer</TableHead>
+                <TableHead className="text-xs font-medium text-muted-foreground/70">Contact information</TableHead>
+                <TableHead className="text-xs font-medium text-muted-foreground/70">Account status</TableHead>
+                <TableHead className="text-xs font-medium text-muted-foreground/70">Registration date</TableHead>
+                <TableHead className="text-right text-xs font-medium text-muted-foreground/70 pr-6">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

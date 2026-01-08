@@ -239,21 +239,21 @@ export default function AdminRoleManagement() {
             <Button
               variant="outline"
               size="sm"
-              className="h-9 rounded-xl border-border/40 bg-card/40 backdrop-blur-sm gap-2 font-bold text-xs w-fit justify-start"
+              className="h-9 rounded-xl border-border/60 bg-card gap-2 font-medium text-xs w-fit justify-start shadow-sm"
               onClick={() => navigate("/admin")}
             >
               <ArrowLeft className="h-4 w-4" />
               Back
             </Button>
             <div className="min-w-0">
-              <h1 className="text-xl sm:text-2xl font-bold">Access Control</h1>
-              <p className="text-sm sm:text-base text-muted-foreground mt-0.5">Manage administrative roles and platform permissions</p>
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Role Management</h1>
+              <p className="text-xs sm:text-base text-muted-foreground mt-1">Manage user roles and permissions</p>
             </div>
           </div>
         </div>
       </div>
 
-      <Card className="border-border/50 bg-card/40 backdrop-blur-xl rounded-2xl overflow-hidden shadow-sm">
+      <Card className="border-border/60 bg-card rounded-xl overflow-hidden shadow-sm">
         <CardContent>
           <AnimatePresence mode="wait">
             {loading ? (

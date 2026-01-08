@@ -226,18 +226,18 @@ export default function AdminCategories() {
             <Button
               variant="outline"
               size="sm"
-              className="h-8 sm:h-9 rounded-xl border-border/40 bg-card/40 backdrop-blur-sm gap-2 font-bold text-xs w-fit justify-start"
+              className="h-9 rounded-xl border-border/60 bg-card gap-2 font-medium text-xs w-fit justify-start shadow-sm"
               onClick={() => navigate("/admin")}
             >
               <ArrowLeft className="h-4 w-4" />
               Back
             </Button>
             <div className="min-w-0">
-              <h1 className="text-base sm:text-xl lg:text-2xl font-bold flex items-center gap-2">
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2">
                 Category Management
-                <span className="text-[10px] font-bold tracking-tight bg-primary/5 text-primary rounded-lg border border-primary/20 px-1.5 py-0.5">{categories.length} Total</span>
+                <span className="text-xs font-medium bg-primary/5 text-primary rounded-lg border border-primary/20 px-2 py-0.5">{categories.length} Total</span>
               </h1>
-              <p className="text-xs sm:text-sm lg:text-base text-muted-foreground mt-0.5">Organize and manage platform product categories</p>
+              <p className="text-xs sm:text-base text-muted-foreground mt-1">Organize product categories</p>
             </div>
           </div>
           <div className="flex items-center gap-2 w-full xl:w-auto">
@@ -273,7 +273,7 @@ export default function AdminCategories() {
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label htmlFor="name" className="text-xs font-bold uppercase text-muted-foreground">Category Name *</Label>
+                          <Label htmlFor="name" className="text-xs font-medium text-muted-foreground">Category name *</Label>
                           <Input
                             id="name"
                             placeholder="e.g. Summer Collection"
@@ -287,7 +287,7 @@ export default function AdminCategories() {
                           {errors.name && <p className="text-[10px] font-medium text-destructive mt-1">{errors.name}</p>}
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="slug" className="text-xs font-bold uppercase text-muted-foreground flex items-center justify-between">
+                          <Label htmlFor="slug" className="text-xs font-medium text-muted-foreground flex items-center justify-between">
                             URL Slug
                             <span className="text-[10px] font-normal text-muted-foreground normal-case bg-muted px-2 py-0.5 rounded">Auto-generated</span>
                           </Label>
@@ -309,7 +309,7 @@ export default function AdminCategories() {
                         </div>
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="description" className="text-xs font-bold uppercase text-muted-foreground">Description</Label>
+                        <Label htmlFor="description" className="text-xs font-medium text-muted-foreground">Description</Label>
                         <Textarea
                           id="description"
                           placeholder="Describe this category for SEO and customers..."
@@ -329,7 +329,7 @@ export default function AdminCategories() {
                       </div>
                       <div className="flex gap-4 items-start">
                         <div className="space-y-2 flex-1">
-                          <Label className="text-xs font-bold uppercase text-muted-foreground">Category Image</Label>
+                          <Label className="text-xs font-medium text-muted-foreground">Category image</Label>
                           <div className="flex flex-col gap-2">
                             <Input
                               type="file"
@@ -370,7 +370,7 @@ export default function AdminCategories() {
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label htmlFor="status" className="text-xs font-bold uppercase text-muted-foreground">Visibility Status *</Label>
+                          <Label htmlFor="status" className="text-xs font-medium text-muted-foreground">Visibility status *</Label>
                           <Select
                             value={formData.status}
                             onValueChange={(value: any) => setFormData({ ...formData, status: value })}
@@ -392,7 +392,7 @@ export default function AdminCategories() {
                           </Select>
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="display_order" className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-2">
+                          <Label htmlFor="display_order" className="text-xs font-medium text-muted-foreground flex items-center gap-2">
                             Sort Order
                             <div className="group relative">
                               <Info className="h-3 w-3 text-muted-foreground cursor-help" />
@@ -431,11 +431,11 @@ export default function AdminCategories() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3 sm:gap-6">
         {categories.map((category) => (
-          <Card key={category.id} className="group hover:border-primary/50 transition-all duration-300 bg-card/40 backdrop-blur-xl border-border/40 shadow-sm hover:shadow-md rounded-2xl overflow-hidden">
+          <Card key={category.id} className="group hover:border-primary/50 transition-all duration-300 bg-card borderFONborder/60 shadow-sm hover:shadow-md rounded-xl overflow-hidden">
             <CardHeader className="p-4 sm:p-5 pb-2">
               <CardTitle className="flex items-start justify-between gap-2">
                 <span className="text-sm sm:text-base font-bold tracking-tight truncate pr-2">{category.name}</span>
-                <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border shrink-0 ${category.status === "active" ? "bg-emerald-500/5 text-emerald-600 border-emerald-500/20" :
+                <span className={`text-xs font-medium px-2 py-0.5 rounded-full border shrink-0 capitalize ${category.status === "active" ? "bg-emerald-500/5 text-emerald-600 border-emerald-500/20" :
                   category.status === "coming_soon" ? "bg-amber-500/5 text-amber-600 border-amber-500/20" :
                     "bg-muted/50 text-muted-foreground border-border/50"
                   }`}>
@@ -448,11 +448,11 @@ export default function AdminCategories() {
                 <p className="text-xs text-muted-foreground line-clamp-2 min-h-[2.5em]">{category.description || "No description provided."}</p>
                 <div className="flex flex-col gap-1 mt-2">
                   <div className="flex items-center justify-between text-[10px] text-muted-foreground font-mono bg-muted/30 px-2 py-1 rounded-lg">
-                    <span>SLUG</span>
+                    <span>Slug</span>
                     <span className="truncate max-w-[120px]">{category.slug}</span>
                   </div>
                   <div className="flex items-center justify-between text-[10px] text-muted-foreground font-mono bg-muted/30 px-2 py-1 rounded-lg">
-                    <span>ORDER</span>
+                    <span>Order</span>
                     <span>#{category.display_order}</span>
                   </div>
                 </div>

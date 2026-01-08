@@ -321,15 +321,15 @@ export default function AdminOrders() {
               <Button
                 variant="outline"
                 size="sm"
-                className="h-9 rounded-xl border-border/40 bg-card/40 backdrop-blur-sm gap-2 font-bold text-xs w-fit justify-start"
+                className="h-9 rounded-xl border-border/60 bg-card gap-2 font-medium text-xs w-fit justify-start shadow-sm"
                 onClick={() => navigate("/admin")}
               >
                 <ArrowLeft className="h-4 w-4" />
                 Back
               </Button>
               <div className="min-w-0">
-                <h1 className="text-lg sm:text-xl lg:text-2xl font-bold">Orders Management</h1>
-                <p className="text-xs sm:text-sm lg:text-base text-muted-foreground mt-0.5">
+                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Order Management</h1>
+                <p className="text-xs sm:text-base text-muted-foreground mt-1">
                   View and manage all orders
                 </p>
               </div>

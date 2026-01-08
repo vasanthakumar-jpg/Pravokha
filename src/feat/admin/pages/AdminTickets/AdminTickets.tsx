@@ -344,24 +344,24 @@ export default function AdminTickets() {
               <Button
                 variant="outline"
                 size="sm"
-                className="h-9 rounded-xl border-border/40 bg-card/40 backdrop-blur-sm gap-2 font-bold text-xs w-fit justify-start"
+                className="h-9 rounded-xl border-border/60 bg-card gap-2 font-medium text-xs w-fit justify-start shadow-sm"
                 onClick={() => navigate("/admin")}
               >
                 <ArrowLeft className="h-4 w-4" />
                 Back
               </Button>
               <div className="min-w-0">
-                <h1 className="text-xl sm:text-2xl font-bold flex items-center flex-wrap gap-3">
-                  Support registry
-                  <Badge variant="outline" className="text-[10px] font-bold tracking-tight bg-primary/5 rounded-lg border-primary/20 shrink-0">{tickets.length} Total</Badge>
+                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center flex-wrap gap-3">
+                  Support Tickets
+                  <Badge variant="outline" className="text-xs font-medium bg-primary/5 rounded-lg border-primary/20 shrink-0">{tickets.length} Total</Badge>
                 </h1>
-                <p className="text-sm sm:text-base text-muted-foreground mt-0.5">Manage user support requests and platform appeals</p>
+                <p className="text-xs sm:text-base text-muted-foreground mt-1">User support and platform appeals</p>
               </div>
             </div>
             <div className="flex items-center gap-2 w-full sm:w-auto">
               <Button
                 variant="outline"
-                className="flex-1 sm:flex-none h-10 rounded-xl border-border/40 bg-card/20 backdrop-blur-sm font-bold text-xs"
+                className="flex-1 sm:flex-none h-10 rounded-xl border-border/60 bg-card font-medium text-xs shadow-sm"
                 disabled={loading}
                 onClick={fetchTickets}
               >
@@ -376,7 +376,7 @@ export default function AdminTickets() {
 
         {/* High risk governance alert */}
         {tickets.some(t => t.suspended_seller) && (
-          <Card className="border-rose-200 dark:border-rose-900/40 bg-rose-50/50 dark:bg-rose-950/30 backdrop-blur-sm overflow-hidden relative group cursor-pointer hover:bg-rose-100/60 dark:hover:bg-rose-950/50 transition-colors" onClick={() => navigate("/admin/tickets/suspended")}>
+          <Card className="border-rose-200 dark:border-rose-900/40 bg-rose-50 dark:bg-rose-950/50 overflow-hidden relative group cursor-pointer hover:bg-rose-100 dark:hover:bg-rose-950/80 transition-all shadow-sm" onClick={() => navigate("/admin/tickets/suspended")}>
             <div className="absolute inset-y-0 left-0 w-1.5 bg-rose-600 dark:bg-rose-500" />
             <CardContent className="p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div className="flex items-start sm:items-center gap-3 sm:gap-4 flex-1 min-w-0">
@@ -432,7 +432,7 @@ export default function AdminTickets() {
           />
         </div>
 
-        <Card className="border-border/40 bg-card/40 backdrop-blur-xl transition-all duration-500 rounded-2xl shadow-none overflow-hidden mb-8">
+        <Card className="border-border/60 bg-card transition-all duration-500 rounded-xl shadow-sm overflow-hidden mb-8">
           <CardHeader className="bg-muted/10 border-b border-border/40 p-4 sm:p-6">
             <div className="flex flex-col gap-4">
               <div className="flex items-center gap-3">
@@ -447,15 +447,15 @@ export default function AdminTickets() {
                     placeholder={placeholder}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-11 h-11 bg-card/20 border-border/40 focus:ring-primary/20 rounded-xl backdrop-blur-sm text-sm w-full"
+                    className="pl-11 h-11 bg-card border-border/60 focus:ring-primary/20 rounded-xl text-sm w-full"
                   />
                 </div>
                 <div className="flex gap-2 flex-wrap sm:flex-nowrap">
                   <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="flex-1 sm:flex-none sm:w-[140px] md:w-[150px] h-11 rounded-xl border-border/40 bg-card/20 backdrop-blur-sm px-3 sm:px-4 text-sm font-medium">
+                    <SelectTrigger className="flex-1 sm:flex-none sm:w-[140px] md:w-[150px] h-11 rounded-xl border-border/60 bg-card px-4 text-sm font-medium">
                       <SelectValue placeholder="Status" />
                     </SelectTrigger>
-                    <SelectContent className="rounded-xl border-border/40 backdrop-blur-xl bg-card/95">
+                    <SelectContent className="rounded-xl border-border/40">
                       <SelectItem value="all">All statuses</SelectItem>
                       <SelectItem value="pending">Pending</SelectItem>
                       <SelectItem value="under_review">Under review</SelectItem>
@@ -465,10 +465,10 @@ export default function AdminTickets() {
                     </SelectContent>
                   </Select>
                   <Select value={typeFilter} onValueChange={setTypeFilter}>
-                    <SelectTrigger className="flex-1 sm:flex-none sm:w-[140px] md:w-[150px] h-11 rounded-xl border-border/40 bg-card/20 backdrop-blur-sm px-3 sm:px-4 text-sm font-medium">
+                    <SelectTrigger className="flex-1 sm:flex-none sm:w-[140px] md:w-[150px] h-11 rounded-xl border-border/60 bg-card px-4 text-sm font-medium">
                       <SelectValue placeholder="Type" />
                     </SelectTrigger>
-                    <SelectContent className="rounded-xl border-border/40 backdrop-blur-xl bg-card/95">
+                    <SelectContent className="rounded-xl border-border/40">
                       <SelectItem value="all">All types</SelectItem>
                       <SelectItem value="suspension_appeal">Suspension appeal</SelectItem>
                       <SelectItem value="general_support">General support</SelectItem>
@@ -489,7 +489,7 @@ export default function AdminTickets() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             >
-              <div className="bg-card/40 backdrop-blur-sm border border-border/40 rounded-2xl p-8">
+              <div className="bg-card border border-border/60 rounded-xl p-8">
                 <AdminTableSkeleton />
               </div>
             </motion.div>
@@ -594,14 +594,14 @@ export default function AdminTickets() {
                   <Table>
                     <TableHeader className="bg-muted/30">
                       <TableRow className="hover:bg-transparent border-b border-border/40">
-                        <TableHead className="font-bold text-[11px] tracking-wider">Ticket #</TableHead>
-                        <TableHead className="font-bold text-[11px] tracking-wider">User</TableHead>
-                        <TableHead className="font-bold text-[11px] tracking-wider">Subject</TableHead>
-                        <TableHead className="font-bold text-[11px] tracking-wider">Type</TableHead>
-                        <TableHead className="font-bold text-[11px] tracking-wider">Priority</TableHead>
-                        <TableHead className="font-bold text-[11px] tracking-wider">Status</TableHead>
-                        <TableHead className="font-bold text-[11px] tracking-wider">Created</TableHead>
-                        <TableHead className="font-bold text-[11px] tracking-wider text-right">Guidance</TableHead>
+                        <TableHead className="text-xs font-medium text-muted-foreground/70">Ticket #</TableHead>
+                        <TableHead className="text-xs font-medium text-muted-foreground/70">User</TableHead>
+                        <TableHead className="text-xs font-medium text-muted-foreground/70">Subject</TableHead>
+                        <TableHead className="text-xs font-medium text-muted-foreground/70">Type</TableHead>
+                        <TableHead className="text-xs font-medium text-muted-foreground/70">Priority</TableHead>
+                        <TableHead className="text-xs font-medium text-muted-foreground/70">Status</TableHead>
+                        <TableHead className="text-xs font-medium text-muted-foreground/70">Created</TableHead>
+                        <TableHead className="text-xs font-medium text-muted-foreground/70 text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>

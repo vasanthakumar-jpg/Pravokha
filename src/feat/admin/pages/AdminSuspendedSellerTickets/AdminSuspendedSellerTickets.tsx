@@ -415,7 +415,7 @@ export default function AdminSuspendedSellerTickets() {
                                 </div>
 
                                 <div className="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-border/40">
-                                    <Badge variant="secondary" className="bg-slate-100 text-slate-800 text-[9px] border-none font-black uppercase tracking-tight px-2 py-0.5 rounded-md">
+                                    <Badge variant="secondary" className="bg-slate-100 text-slate-800 text-[9px] border-none font-black tracking-tight px-2 py-0.5 rounded-md">
                                         {ticket.type.replace('_', ' ')}
                                     </Badge>
                                     <div className="flex gap-1">
@@ -627,7 +627,7 @@ export default function AdminSuspendedSellerTickets() {
                                     className="flex items-center gap-3 p-3 bg-primary/5 border-l-4 border-primary rounded-r-xl"
                                 >
                                     <div className="flex-1 min-w-0">
-                                        <p className="text-[10px] font-black text-primary uppercase tracking-widest flex items-center gap-2">
+                                        <p className="text-[10px] font-black text-primary tracking-widest flex items-center gap-2">
                                             Replying to {replyingTo.sender?.full_name || 'Seller'}
                                         </p>
                                         <p className="text-xs text-muted-foreground line-clamp-1 italic mt-0.5">

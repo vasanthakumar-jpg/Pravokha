@@ -180,15 +180,15 @@ export default function AdminDashboard() {
       {/* Header with Welcome Stats */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold">Admin Command Center</h1>
-          <p className="text-sm sm:text-base text-muted-foreground">Platform performance and governance oversight.</p>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Admin Dashboard</h1>
+          <p className="text-xs sm:text-base text-muted-foreground mt-1">Platform performance and governance oversight</p>
         </div>
         <div className="flex flex-col items-end gap-2">
           <div className={cn(
             "flex items-center gap-2 px-4 py-2 border rounded-xl transition-colors",
-            systemHealth === 'optimal' ? "bg-emerald-500/5 border-emerald-500/20 text-emerald-600" :
-              systemHealth === 'degraded' ? "bg-red-500/5 border-red-500/20 text-red-600" :
-                "bg-muted/5 border-border/20 text-muted-foreground"
+            systemHealth === 'optimal' ? "bg-emerald-50 border-emerald-500/20 text-emerald-600 shadow-sm" :
+              systemHealth === 'degraded' ? "bg-rose-50 border-rose-500/20 text-rose-600 shadow-sm" :
+                "bg-muted border-border/20 text-muted-foreground shadow-sm"
           )}>
             <Activity className={cn("h-4 w-4", systemHealth === 'optimal' && "animate-pulse")} />
             <span className="text-sm font-semibold capitalize">System Health: {systemHealth}</span>
@@ -202,12 +202,12 @@ export default function AdminDashboard() {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, scale: 0.95 }}
                 className={cn(
-                  "flex items-center gap-2 px-3 py-1.5 rounded-lg border text-[10px] font-bold uppercase tracking-widest",
-                  alert.type === 'warning' ? "bg-amber-500/10 border-amber-500/20 text-amber-600" : "bg-blue-500/10 border-blue-500/20 text-blue-600"
+                  "flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium shadow-sm transition-all hover:scale-105",
+                  alert.type === 'warning' ? "bg-amber-50 border-amber-500/30 text-amber-600" : "bg-blue-50 border-blue-500/30 text-blue-600"
                 )}
               >
                 <AlertCircle className="h-3 w-3" />
-                {alert.message}
+                <span className="first-letter:uppercase">{alert.message}</span>
               </motion.div>
             ))}
           </AnimatePresence>
@@ -267,7 +267,7 @@ export default function AdminDashboard() {
 
         {/* Urgent Action Center - 1/3 width on desktop */}
         <motion.div variants={item}>
-          <Card className="border-primary/20 bg-primary/5 transition-all duration-500 rounded-2xl relative overflow-hidden shadow-none">
+          <Card className="border-primary/20 bg-primary/10 transition-all duration-500 rounded-xl relative overflow-hidden shadow-sm">
             <div className="absolute top-0 right-0 p-4">
               <span className="relative flex h-3 w-3">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
@@ -280,7 +280,7 @@ export default function AdminDashboard() {
             </CardHeader>
             <CardContent className="space-y-4 p-6 pt-0">
               {urgentTasks.map((task, idx) => (
-                <div key={idx} className="flex items-center justify-between p-3 rounded-xl bg-background/50 border shadow-sm">
+                <div key={idx} className="flex items-center justify-between p-3 rounded-xl bg-background border border-border/60 shadow-sm transition-all hover:translate-x-1 cursor-pointer">
                   <div className="flex items-center gap-3">
                     <div className={cn("p-2 rounded-lg bg-background border", task.color)}>
                       <task.icon className="h-4 w-4" />
@@ -305,7 +305,7 @@ export default function AdminDashboard() {
 
       {/* Governance Feed - Full Width Row */}
       <motion.div variants={item}>
-        <Card className="border-border/40 bg-card/40 backdrop-blur-xl transition-all duration-500 rounded-2xl shadow-none">
+        <Card className="border-border/60 bg-card transition-all duration-500 rounded-xl shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between p-6">
             <div>
               <CardTitle className="text-sm font-medium">Governance feed</CardTitle>
@@ -319,15 +319,15 @@ export default function AdminDashboard() {
                 recentLogs.slice(0, 8).map((log) => (
                   <div key={log.id} className="relative pl-6 before:absolute before:left-0 before:top-1.5 before:bottom-0 before:w-[2px] before:bg-muted">
                     <div className="absolute left-[-4px] top-1.5 h-2 w-2 rounded-full border-2 border-background bg-primary" />
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase">
+                    <p className="text-xs font-medium text-muted-foreground">
                       {format(new Date(log.created_at), "h:mm a · MMM d")}
                     </p>
                     <p className="text-sm font-medium mt-1 line-clamp-2">
                       {log.description.replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, 'User')}
                     </p>
                     <div className="flex items-center gap-2 mt-2">
-                      <Badge variant="outline" className="text-[9px] uppercase tracking-tighter h-4 px-1 rounded-sm">
-                        {log.action_type}
+                      <Badge variant="outline" className="text-[9px] font-medium h-4 px-1 rounded-sm">
+                        {log.action_type.replace(/_/g, ' ')}
                       </Badge>
                     </div>
                   </div>
@@ -350,7 +350,7 @@ export default function AdminDashboard() {
       {/* Bottom Row - Inventory Health, Marketplace Reach, Top Performers */}
       <motion.div variants={item} className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
         {/* Inventory Health */}
-        <Card className="border-border/40 bg-card/40 backdrop-blur-xl transition-all duration-500 rounded-2xl shadow-none">
+        <Card className="border-border/60 bg-card transition-all duration-500 rounded-xl shadow-sm">
           <CardHeader className="p-6 pb-2">
             <CardTitle className="text-sm font-medium">Inventory health</CardTitle>
           </CardHeader>
@@ -376,7 +376,7 @@ export default function AdminDashboard() {
         </Card>
 
         {/* Marketplace Reach */}
-        <Card className="border-border/40 bg-card/40 backdrop-blur-xl transition-all duration-500 rounded-2xl shadow-none">
+        <Card className="border-border/60 bg-card transition-all duration-500 rounded-xl shadow-sm">
           <CardHeader className="p-6 pb-2">
             <CardTitle className="text-sm font-medium">Marketplace reach</CardTitle>
           </CardHeader>
@@ -402,7 +402,7 @@ export default function AdminDashboard() {
         </Card>
 
         {/* Top Performers */}
-        <Card className="border-border/40 bg-card/40 backdrop-blur-xl transition-all duration-500 rounded-2xl shadow-none sm:col-span-2 xl:col-span-1">
+        <Card className="border-border/60 bg-card transition-all duration-500 rounded-xl shadow-sm sm:col-span-2 xl:col-span-1">
           <CardHeader className="flex flex-row items-center justify-between p-6">
             <div>
               <CardTitle className="text-sm font-medium">Top performers</CardTitle>

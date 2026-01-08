@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/ui/Card";
 import { Button } from "@/ui/Button";
 import { Input } from "@/ui/Input";
+import { useSearchParams } from "react-router-dom";
 import { Label } from "@/ui/Label";
 import { Textarea } from "@/ui/Textarea";
 import { Switch } from "@/ui/Switch";
@@ -105,8 +106,21 @@ export default function SellerSettings() {
   // Personal Profile Hooks
   const { profile, updateProfile } = useProfile(user?.id);
 
-  const [activeTab, setActiveTab] = useState("general");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "general");
   const { toast } = useToast();
+
+  useEffect(() => {
+    const tab = searchParams.get("tab");
+    if (tab && activeTab !== tab) {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
+
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    setSearchParams({ tab: value });
+  };
 
   // Hidden File Inputs Refs
   const logoInputRef = useRef<HTMLInputElement>(null);
@@ -327,10 +341,10 @@ export default function SellerSettings() {
   return (
     <div className="w-full mx-auto py-4 sm:py-6 lg:py-8 px-2 sm:px-4 lg:px-6 xl:px-8 animate-in fade-in duration-500 overflow-x-hidden">
       {/* Header */}
-      <div className="mb-4 sm:mb-8 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 sm:gap-6 bg-card/40 backdrop-blur-xl p-4 sm:p-7 rounded-2xl border border-border/60 shadow-sm transition-all animate-in slide-in-from-top duration-500">
+      <div className="mb-4 sm:mb-8 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 sm:gap-6 bg-card p-4 sm:p-7 rounded-2xl border border-border/60 shadow-sm transition-all animate-in slide-in-from-top duration-500">
         <div className="space-y-1 w-full lg:w-auto">
-          <h1 className="responsive-h1">Store settings</h1>
-          <p className="responsive-body text-muted-foreground italic max-w-xl">Manage your storefront, business profile and preferences with precision.</p>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Store settings</h1>
+          <p className="text-sm sm:text-base text-muted-foreground italic max-w-xl leading-relaxed">Manage your storefront, business profile and preferences with precision.</p>
         </div>
 
         <div className="w-full lg:w-auto flex items-center gap-3">
@@ -365,7 +379,7 @@ export default function SellerSettings() {
             <aside className="w-full lg:w-64 xl:w-72 shrink-0 space-y-4">
               {/* Mobile Switcher - Visible on < LG */}
               <div className="lg:hidden">
-                <Select value={activeTab} onValueChange={setActiveTab}>
+                <Select value={activeTab} onValueChange={handleTabChange}>
                   <SelectTrigger className="w-full h-12 rounded-xl border-primary/20 bg-muted/30 responsive-button focus:ring-primary/20">
                     <div className="flex items-center gap-2">
                       <Settings className="w-4 h-4 text-primary" />
@@ -386,12 +400,12 @@ export default function SellerSettings() {
               </div>
 
               {/* Desktop Nav - Visible on >= LG */}
-              <div className="hidden lg:block sticky top-24 bg-card/40 backdrop-blur-xl rounded-2xl border border-border/40 p-2 shadow-sm space-y-1">
+              <div className="hidden lg:block sticky top-24 bg-card rounded-2xl border border-border/40 p-2 shadow-sm space-y-1">
                 {tabs.map((tab) => (
                   <button
                     key={tab.id}
                     type="button"
-                    onClick={() => setActiveTab(tab.id)}
+                    onClick={() => handleTabChange(tab.id)}
                     className={`w-full flex items-center gap-3 p-3.5 rounded-xl text-left transition-all duration-300 ${activeTab === tab.id
                       ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20 font-semibold translate-x-1"
                       : "hover:bg-primary/5 text-muted-foreground hover:text-foreground"
@@ -411,20 +425,20 @@ export default function SellerSettings() {
 
             {/* Main Content Area */}
             <main className="flex-1 min-w-0">
-              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
 
                 {/* ================= GENERAL ================= */}
-                <TabsContent value="general" className="mt-0 space-y-6">
+                <TabsContent value="general" className="mt-0 space-y-8">
                   <Card>
                     <CardHeader>
-                      <CardTitle className="responsive-h4">Branding</CardTitle>
-                      <CardDescription className="responsive-body">Your store's visual identity</CardDescription>
+                      <CardTitle className="text-lg sm:text-xl font-bold">Branding</CardTitle>
+                      <CardDescription className="text-sm leading-relaxed">Your store's visual identity</CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-6 pt-0 sm:pt-6">
-                      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6">
+                    <CardContent className="space-y-8 pt-0 sm:pt-6">
+                      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 sm:gap-8">
                         {/* Logo Upload */}
                         <div>
-                          <Label className="mb-3 block responsive-label">Store logo</Label>
+                          <Label className="mb-3 block font-semibold">Store logo</Label>
                           <input type="file" ref={logoInputRef} className="hidden" accept="image/*" onChange={(e) => handleStoreImageChange(e, 'logo')} />
                           <div
                             onClick={() => logoInputRef.current?.click()}
@@ -441,10 +455,10 @@ export default function SellerSettings() {
                                 <div className="p-3 bg-muted rounded-full mb-2 group-hover:scale-110 transition-transform shadow-sm">
                                   <Store className="w-6 h-6 text-muted-foreground" />
                                 </div>
-                                <span className="responsive-label text-muted-foreground font-medium">Upload logo</span>
+                                <span className="text-sm text-muted-foreground font-medium">Upload logo</span>
                               </>
                             )}
-                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white responsive-body font-bold backdrop-blur-[2px]">
+                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white font-bold backdrop-blur-[2px]">
                               Change image
                             </div>
                           </div>
@@ -452,7 +466,7 @@ export default function SellerSettings() {
 
                         {/* Banner Upload */}
                         <div>
-                          <Label className="mb-3 block responsive-label">Store banner</Label>
+                          <Label className="mb-3 block font-semibold">Store banner</Label>
                           <input type="file" ref={bannerInputRef} className="hidden" accept="image/*" onChange={(e) => handleStoreImageChange(e, 'banner')} />
                           <div
                             onClick={() => bannerInputRef.current?.click()}
@@ -465,7 +479,7 @@ export default function SellerSettings() {
                                 <div className="p-3 bg-muted rounded-full mb-2 group-hover:scale-110 transition-transform shadow-sm">
                                   <ImageIcon className="w-6 h-6 text-muted-foreground" />
                                 </div>
-                                <span className="responsive-label text-muted-foreground font-medium">Upload banner</span>
+                                <span className="text-sm text-muted-foreground font-medium">Upload banner</span>
                               </>
                             )}
                             <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white font-bold backdrop-blur-[2px]">
@@ -479,47 +493,49 @@ export default function SellerSettings() {
 
                   <Card>
                     <CardHeader>
-                      <CardTitle className="responsive-h4">Basic information</CardTitle>
-                      <CardDescription className="responsive-body">Public details visible to customers</CardDescription>
+                      <CardTitle className="text-lg sm:text-xl font-bold">Basic information</CardTitle>
+                      <CardDescription className="text-sm leading-relaxed">Public details visible to customers</CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-4">
-                      <FormField
-                        control={form.control}
-                        name="storeName"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="responsive-label">Store name <span className="text-red-500">*</span></FormLabel>
-                            <FormControl>
-                              <Input placeholder="My Amazing Store" {...field} />
-                            </FormControl>
-                            <FormMessage className="text-red-500" />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="storeDescription"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="responsive-label">Bio / description</FormLabel>
-                            <FormControl>
-                              <Textarea placeholder="Tell customers about your store..." {...field} rows={3} />
-                            </FormControl>
-                            <FormMessage className="text-red-500" />
-                          </FormItem>
-                        )}
-                      />
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <CardContent className="space-y-6">
+                      <div className="space-y-6">
+                        <FormField
+                          control={form.control}
+                          name="storeName"
+                          render={({ field }) => (
+                            <FormItem className="space-y-3">
+                              <FormLabel className="text-base font-semibold">Store Name <span className="text-red-500">*</span></FormLabel>
+                              <FormControl>
+                                <Input placeholder="Official Store Name" {...field} className="h-11" />
+                              </FormControl>
+                              <FormMessage className="text-red-500" />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="storeDescription"
+                          render={({ field }) => (
+                            <FormItem className="space-y-3">
+                              <FormLabel className="text-base font-semibold">About Store</FormLabel>
+                              <FormControl>
+                                <Textarea placeholder="Briefly describe your business..." {...field} rows={4} className="resize-none" />
+                              </FormControl>
+                              <FormMessage className="text-red-500" />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                         <FormField
                           control={form.control}
                           name="email"
                           render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="responsive-label">Business email (Read only)</FormLabel>
+                            <FormItem className="space-y-3">
+                              <FormLabel className="text-base font-semibold">Business Email</FormLabel>
                               <FormControl>
-                                <Input {...field} disabled className="bg-muted text-muted-foreground" />
+                                <Input {...field} disabled className="bg-muted text-muted-foreground h-11" />
                               </FormControl>
-                              <FormDescription>Linked to your login account.</FormDescription>
+                              <FormDescription className="text-xs">Linked to your login account.</FormDescription>
                             </FormItem>
                           )}
                         />
@@ -527,10 +543,10 @@ export default function SellerSettings() {
                           control={form.control}
                           name="phone"
                           render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="responsive-label">Support phone</FormLabel>
+                            <FormItem className="space-y-3">
+                              <FormLabel className="text-base font-semibold">One-tap Contact</FormLabel>
                               <FormControl>
-                                <Input placeholder="+91 ..." {...field} />
+                                <Input placeholder="Mobile number" {...field} className="h-11" />
                               </FormControl>
                               <FormMessage className="text-red-500" />
                             </FormItem>
@@ -541,10 +557,10 @@ export default function SellerSettings() {
                         control={form.control}
                         name="address"
                         render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="responsive-label">Warehouse address</FormLabel>
+                          <FormItem className="space-y-3">
+                            <FormLabel className="text-base font-semibold">Warehouse Address</FormLabel>
                             <FormControl>
-                              <Textarea placeholder="Full address..." {...field} rows={2} />
+                              <Textarea placeholder="Building, Street, City, State, Zip" {...field} rows={3} className="resize-none" />
                             </FormControl>
                             <FormMessage className="text-red-500" />
                           </FormItem>
@@ -555,26 +571,25 @@ export default function SellerSettings() {
 
                   <Card className="border-indigo-100 bg-indigo-50/10 dark:bg-indigo-900/5">
                     <CardHeader>
-                      <CardTitle className="flex items-center gap-2 responsive-h4">
+                      <CardTitle className="flex items-center gap-2 text-lg sm:text-xl font-bold">
                         <Shield className="h-5 w-5 text-indigo-600" />
-                        Store SEO & discoverability
+                        Visibility & SEO
                       </CardTitle>
-                      <CardDescription className="responsive-body">Optimize how your store appears in search results and social shares.</CardDescription>
+                      <CardDescription className="text-sm leading-relaxed">Optimize how your store appears in search results and social shares.</CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-4">
+                    <CardContent className="space-y-6">
                       <FormField
                         control={form.control}
                         name="metaTitle"
                         render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="flex justify-between responsive-label">
-                              Meta title
+                          <FormItem className="space-y-3">
+                            <FormLabel className="flex justify-between text-base font-semibold">
+                              Page Title
                               <span className="text-[10px] text-muted-foreground font-mono">{((field.value as string) || "").length}/60</span>
                             </FormLabel>
                             <FormControl>
-                              <Input placeholder="E.g. Premium Cotton Apparels | Official Pravokha Store" {...field} value={field.value as string || ""} />
+                              <Input placeholder="Title for search engines" {...field} value={field.value as string || ""} className="h-11" />
                             </FormControl>
-                            <FormDescription>The title shown in browser tabs and search engine results.</FormDescription>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -583,20 +598,20 @@ export default function SellerSettings() {
                         control={form.control}
                         name="metaDescription"
                         render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="flex justify-between responsive-label">
-                              Meta description
+                          <FormItem className="space-y-3">
+                            <FormLabel className="flex justify-between text-base font-semibold">
+                              Meta Description
                               <span className="text-[10px] text-muted-foreground font-mono">{((field.value as string) || "").length}/160</span>
                             </FormLabel>
                             <FormControl>
                               <Textarea
-                                placeholder="E.g. Discover a wide range of premium cotton t-shirts, track pants and shorts designed for comfort and style..."
+                                placeholder="Summary for search results..."
                                 {...field}
                                 value={field.value as string || ""}
                                 rows={3}
+                                className="resize-none"
                               />
                             </FormControl>
-                            <FormDescription>A brief summary of your store shown in search engine snippets.</FormDescription>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -740,9 +755,9 @@ export default function SellerSettings() {
                     </CardHeader>
                     <CardContent>
                       {profile?.verificationStatus === 'verified' ? (
-                        <div className="flex items-center justify-between p-5 border rounded-2xl bg-gradient-to-br from-emerald-500/5 to-emerald-500/10 dark:from-emerald-500/10 dark:to-emerald-500/5 border-emerald-200/50 dark:border-emerald-500/20 shadow-sm transition-all hover:shadow-md">
+                        <div className="flex items-center justify-between p-5 border rounded-2xl bg-emerald-50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800 shadow-sm transition-all hover:shadow-md">
                           <div className="flex items-center gap-4">
-                            <div className="bg-emerald-500/10 dark:bg-emerald-500/20 p-2.5 rounded-xl border border-emerald-200/20 dark:border-emerald-500/30">
+                            <div className="bg-emerald-100 dark:bg-emerald-800/40 p-2.5 rounded-xl border border-emerald-200 dark:border-emerald-700">
                               <BadgeCheck className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
                             </div>
                             <div>
@@ -753,14 +768,14 @@ export default function SellerSettings() {
                           <Badge className="bg-emerald-600 text-white dark:bg-emerald-500/40 dark:text-emerald-400 border-none font-black text-[10px] tracking-widest px-3 py-1">Active</Badge>
                         </div>
                       ) : profile?.verificationStatus === 'rejected' ? (
-                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-5 border rounded-2xl bg-gradient-to-br from-rose-500/5 to-rose-500/10 dark:from-rose-500/10 dark:to-rose-500/5 border-rose-200 dark:border-rose-500/30 shadow-lg shadow-rose-500/5 transition-all hover:shadow-xl ring-4 ring-rose-500/5 gap-4">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-5 border rounded-2xl bg-rose-50 dark:bg-rose-900/10 border-rose-200 dark:border-rose-800 shadow-sm gap-4">
                           <div className="flex items-start gap-4 flex-1">
-                            <div className="bg-rose-500/10 dark:bg-rose-500/20 p-2.5 rounded-xl border border-rose-200 dark:border-rose-500/30 mt-1">
+                            <div className="bg-rose-100 dark:bg-rose-900/40 p-2.5 rounded-xl border border-rose-200 dark:border-rose-700 mt-1">
                               <ShieldAlert className="w-6 h-6 text-rose-600 dark:text-rose-400" />
                             </div>
                             <div className="space-y-2">
                               <p className="font-black text-rose-900 dark:text-rose-300 text-lg leading-none">Identity Verification Rejected</p>
-                              <div className="text-xs p-3.5 bg-white/80 dark:bg-black/60 rounded-xl border border-rose-200/60 dark:border-rose-500/20 text-rose-900 dark:text-rose-300 font-medium leading-relaxed shadow-inner">
+                              <div className="text-xs p-3.5 bg-white dark:bg-black/20 rounded-xl border border-rose-200 dark:border-rose-800 text-rose-900 dark:text-rose-300 font-medium leading-relaxed">
                                 <p className="font-black mb-1 opacity-50 tracking-widest text-[9px] flex items-center gap-1.5">
                                   <AlertTriangle className="h-3 w-3" /> Compliance Feedback
                                 </p>
@@ -768,12 +783,12 @@ export default function SellerSettings() {
                               </div>
                             </div>
                           </div>
-                          <Badge variant="destructive" className="bg-rose-600 text-white dark:bg-rose-500 dark:text-white border-none font-black text-[10px] tracking-widest px-4 py-1.5 shadow-lg shadow-rose-500/20 whitespace-nowrap self-end sm:self-center">Rejected</Badge>
+                          <Badge variant="destructive" className="bg-rose-600 text-white dark:bg-rose-500 dark:text-white border-none font-black text-[10px] tracking-widest px-4 py-1.5 whitespace-nowrap self-end sm:self-center">Rejected</Badge>
                         </div>
                       ) : (
-                        <div className="flex items-center justify-between p-5 border rounded-2xl bg-gradient-to-br from-amber-500/5 to-amber-500/10 dark:from-amber-500/10 dark:to-amber-500/5 border-amber-200/50 dark:border-amber-500/20 shadow-sm transition-all hover:shadow-md border-dashed">
+                        <div className="flex items-center justify-between p-5 border rounded-2xl bg-amber-50 dark:bg-amber-900/10 border-amber-200 dark:border-amber-800 shadow-sm transition-all hover:shadow-md border-dashed">
                           <div className="flex items-center gap-4">
-                            <div className="bg-amber-500/10 dark:bg-amber-500/20 p-2.5 rounded-xl border border-amber-200/20 dark:border-amber-500/30">
+                            <div className="bg-amber-100 dark:bg-amber-800/40 p-2.5 rounded-xl border border-amber-200 dark:border-amber-700">
                               <Clock className="w-6 h-6 text-amber-600 dark:text-amber-400 animate-pulse" />
                             </div>
                             <div>
@@ -811,7 +826,7 @@ export default function SellerSettings() {
                             <FormItem>
                               <FormLabel className="responsive-label">Beneficiary name</FormLabel>
                               <FormControl>
-                                <Input placeholder="Name on Passbook" {...field} />
+                                <Input placeholder="Account Holder Name" {...field} />
                               </FormControl>
                               <FormMessage className="text-red-500" />
                             </FormItem>

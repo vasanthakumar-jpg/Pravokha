@@ -8,6 +8,7 @@ import { TrendingUp, TrendingDown, Download, DollarSign, ShoppingCart, Package, 
 import { supabase } from "@/infra/api/supabase";
 import { useAuth } from "@/core/context/AuthContext";
 import { subDays, format as formatDate, startOfDay } from "date-fns";
+import { cn } from "@/lib/utils";
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 
@@ -218,8 +219,8 @@ export default function SellerAnalytics() {
     <div className="container py-8">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold">Analytics & Reports</h1>
-          <p className="text-sm sm:text-base text-muted-foreground">Track your store performance</p>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Reports & Analytics</h1>
+          <p className="text-sm sm:text-base text-muted-foreground mt-1">Track your store performance</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
           <Select value={dateRange} onValueChange={setDateRange}>
@@ -252,78 +253,30 @@ export default function SellerAnalytics() {
       </div>
 
       {/* Key Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-        <Card className="group overflow-hidden border-border/40 bg-card/40 backdrop-blur-xl hover:border-primary/40 transition-all duration-500 rounded-2xl relative shadow-none">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-            <div className="p-2 rounded-xl text-white shadow-sm transition-transform duration-500 group-hover:scale-110 bg-rose-500">
-              <DollarSign className="h-4 w-4" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">₹{stats.totalRevenue.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground flex items-center mt-1">
-              <TrendingUp className="h-3 w-3 text-green-500 mr-1" />
-              <span className="text-green-500">{stats.revenueGrowth}%</span>
-              <span className="ml-1 text-[10px]">from last period</span>
-            </p>
-          </CardContent>
-          <div className="absolute top-0 right-0 w-24 h-24 opacity-[0.02] group-hover:opacity-[0.05] transition-opacity duration-700 blur-2xl rounded-full -mr-12 -mt-12 bg-rose-500" />
-        </Card>
-
-        <Card className="group overflow-hidden border-border/40 bg-card/40 backdrop-blur-xl hover:border-primary/40 transition-all duration-500 rounded-2xl relative shadow-none">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
-            <div className="p-2 rounded-xl text-white shadow-sm transition-transform duration-500 group-hover:scale-110 bg-emerald-500">
-              <ShoppingCart className="h-4 w-4" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalOrders}</div>
-            <p className="text-xs text-muted-foreground flex items-center mt-1">
-              <TrendingUp className="h-3 w-3 text-green-500 mr-1" />
-              <span className="text-green-500">{stats.ordersGrowth}%</span>
-              <span className="ml-1 text-[10px]">from last period</span>
-            </p>
-          </CardContent>
-          <div className="absolute top-0 right-0 w-24 h-24 opacity-[0.02] group-hover:opacity-[0.05] transition-opacity duration-700 blur-2xl rounded-full -mr-12 -mt-12 bg-emerald-500" />
-        </Card>
-
-        <Card className="group overflow-hidden border-border/40 bg-card/40 backdrop-blur-xl hover:border-primary/40 transition-all duration-500 rounded-2xl relative shadow-none">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg Order Value</CardTitle>
-            <div className="p-2 rounded-xl text-white shadow-sm transition-transform duration-500 group-hover:scale-110 bg-blue-600">
-              <Package className="h-4 w-4" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">₹{stats.avgOrderValue}</div>
-            <p className="text-xs text-muted-foreground flex items-center mt-1">
-              <TrendingUp className="h-3 w-3 text-green-500 mr-1" />
-              <span className="text-green-500">{stats.avgOrderGrowth}%</span>
-              <span className="ml-1 text-[10px]">from last period</span>
-            </p>
-          </CardContent>
-          <div className="absolute top-0 right-0 w-24 h-24 opacity-[0.02] group-hover:opacity-[0.05] transition-opacity duration-700 blur-2xl rounded-full -mr-12 -mt-12 bg-blue-600" />
-        </Card>
-
-        <Card className="group overflow-hidden border-border/40 bg-card/40 backdrop-blur-xl hover:border-primary/40 transition-all duration-500 rounded-2xl relative shadow-none">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Customers</CardTitle>
-            <div className="p-2 rounded-xl text-white shadow-sm transition-transform duration-500 group-hover:scale-110 bg-violet-600">
-              <Users className="h-4 w-4" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalCustomers}</div>
-            <p className="text-xs text-muted-foreground flex items-center mt-1">
-              <TrendingUp className="h-3 w-3 text-green-500 mr-1" />
-              <span className="text-green-500">{stats.customersGrowth}%</span>
-              <span className="ml-1 text-[10px]">from last period</span>
-            </p>
-          </CardContent>
-          <div className="absolute top-0 right-0 w-24 h-24 opacity-[0.02] group-hover:opacity-[0.05] transition-opacity duration-700 blur-2xl rounded-full -mr-12 -mt-12 bg-violet-600" />
-        </Card>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6">
+        {[
+          { label: "Total Revenue", val: `₹${stats.totalRevenue.toLocaleString()}`, growth: stats.revenueGrowth, icon: DollarSign, iconBg: "bg-rose-500", trendColor: "text-green-500" },
+          { label: "Total Orders", val: stats.totalOrders, growth: stats.ordersGrowth, icon: ShoppingCart, iconBg: "bg-emerald-500", trendColor: "text-green-500" },
+          { label: "Avg Order Value", val: `₹${stats.avgOrderValue}`, growth: stats.avgOrderGrowth, icon: Package, iconBg: "bg-blue-600", trendColor: "text-green-500" },
+          { label: "Total Customers", val: stats.totalCustomers, growth: stats.customersGrowth, icon: Users, iconBg: "bg-violet-600", trendColor: "text-green-500" }
+        ].map((s, i) => (
+          <Card key={i} className="group overflow-hidden border border-border/60 bg-card shadow-sm hover:shadow-md transition-all duration-300 rounded-xl">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-5">
+              <CardTitle className="text-sm font-semibold text-[#627084]">{s.label}</CardTitle>
+              <div className={cn("p-2 rounded-lg text-white opacity-80 group-hover:opacity-100 transition-opacity", s.iconBg)}>
+                <s.icon className="h-3.5 w-3.5" />
+              </div>
+            </CardHeader>
+            <CardContent className="p-5 pt-0">
+              <div className="text-2xl font-bold tracking-tight">{s.val}</div>
+              <p className="text-xs text-[#627084] flex items-center mt-1 font-medium">
+                <TrendingUp className={cn("h-3 w-3 mr-1", s.trendColor)} />
+                <span className={s.trendColor}>{s.growth}%</span>
+                <span className="ml-1 text-[10px]">from last period</span>
+              </p>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
       {/* Charts Tabs */}
@@ -336,40 +289,46 @@ export default function SellerAnalytics() {
 
         <TabsContent value="revenue" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Revenue Trend</CardTitle>
-                <CardDescription>Monthly revenue over time</CardDescription>
+            <Card className="border border-border/60 shadow-sm rounded-2xl">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg sm:text-xl font-bold tracking-tight">Revenue Trend</CardTitle>
+                <CardDescription className="text-xs sm:text-sm text-[#627084]">Monthly revenue over time</CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="pt-2">
                 <ResponsiveContainer width="100%" height={300}>
                   <LineChart data={salesData}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis dataKey="date" className="text-xs" />
-                    <YAxis className="text-xs" />
-                    <Tooltip />
-                    <Legend />
-                    <Line type="monotone" dataKey="revenue" stroke="#8884d8" strokeWidth={2} name="Revenue (₹)" />
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted/20" />
+                    <XAxis dataKey="date" className="text-xs font-medium" tick={{ fill: '#627084' }} />
+                    <YAxis className="text-xs font-medium" tick={{ fill: '#627084' }} />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: 'var(--background)', borderRadius: '12px', border: '1px solid var(--border)' }}
+                      itemStyle={{ color: 'var(--foreground)' }}
+                    />
+                    <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
+                    <Line type="monotone" dataKey="revenue" stroke="#8884d8" strokeWidth={2.5} dot={{ r: 4 }} activeDot={{ r: 6 }} name="Revenue (₹)" />
                   </LineChart>
                 </ResponsiveContainer>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Orders & Customers</CardTitle>
-                <CardDescription>Monthly orders and new customers</CardDescription>
+            <Card className="border border-border/60 shadow-sm rounded-2xl">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg sm:text-xl font-bold tracking-tight">Orders & Customers</CardTitle>
+                <CardDescription className="text-xs sm:text-sm text-[#627084]">Monthly orders and new customers</CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="pt-2">
                 <ResponsiveContainer width="100%" height={300}>
                   <BarChart data={salesData}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis dataKey="date" className="text-xs" />
-                    <YAxis className="text-xs" />
-                    <Tooltip />
-                    <Legend />
-                    <Bar dataKey="orders" fill="#8884d8" name="Orders" />
-                    <Bar dataKey="customers" fill="#82ca9d" name="Customers" />
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted/20" />
+                    <XAxis dataKey="date" className="text-xs font-medium" tick={{ fill: '#627084' }} />
+                    <YAxis className="text-xs font-medium" tick={{ fill: '#627084' }} />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: 'var(--background)', borderRadius: '12px', border: '1px solid var(--border)' }}
+                      itemStyle={{ color: 'var(--foreground)' }}
+                    />
+                    <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
+                    <Bar dataKey="orders" fill="#8884d8" name="Orders" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="customers" fill="#82ca9d" name="Customers" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -379,19 +338,22 @@ export default function SellerAnalytics() {
 
         <TabsContent value="products" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Top Products by Revenue</CardTitle>
-                <CardDescription>Best performing products</CardDescription>
+            <Card className="border border-border/60 shadow-sm rounded-2xl">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg sm:text-xl font-bold tracking-tight">Top Products by Revenue</CardTitle>
+                <CardDescription className="text-xs sm:text-sm text-[#627084]">Best performing products</CardDescription>
               </CardHeader>
               <CardContent>
                 {productPerformance.length > 0 ? (
                   <ResponsiveContainer width="100%" height={300}>
                     <BarChart data={productPerformance} layout="vertical">
-                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                      <XAxis type="number" className="text-xs" />
-                      <YAxis dataKey="name" type="category" className="text-xs" width={100} />
-                      <Tooltip />
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted/20" />
+                      <XAxis type="number" className="text-xs font-medium" tick={{ fill: '#627084' }} />
+                      <YAxis dataKey="name" type="category" className="text-xs font-medium" tick={{ fill: '#627084' }} width={100} />
+                      <Tooltip
+                        contentStyle={{ backgroundColor: 'var(--background)', borderRadius: '12px', border: '1px solid var(--border)' }}
+                        itemStyle={{ color: 'var(--foreground)' }}
+                      />
                       <Bar dataKey="revenue" fill="#8884d8" name="Revenue (₹)" radius={[0, 4, 4, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
@@ -404,10 +366,10 @@ export default function SellerAnalytics() {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Sales by Category</CardTitle>
-                <CardDescription>Distribution of sales across categories</CardDescription>
+            <Card className="border border-border/60 shadow-sm rounded-2xl">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg sm:text-xl font-bold tracking-tight">Sales by Category</CardTitle>
+                <CardDescription className="text-xs sm:text-sm text-[#627084]">Distribution of sales across categories</CardDescription>
               </CardHeader>
               <CardContent>
                 {categoryBreakdown.length > 0 ? (
@@ -476,8 +438,8 @@ export default function SellerAnalytics() {
         <TabsContent value="traffic" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Traffic Sources</CardTitle>
-              <CardDescription>Where your visitors come from</CardDescription>
+              <CardTitle className="text-lg sm:text-xl font-bold tracking-tight">Traffic Sources</CardTitle>
+              <CardDescription className="text-xs sm:text-sm text-[#627084]">Where your visitors come from</CardDescription>
             </CardHeader>
             <CardContent>
               {trafficData.length > 0 && trafficData.some(d => d.visits > 0) ? (
