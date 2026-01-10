@@ -6,7 +6,7 @@ import { Label } from "@/ui/Label";
 import { Textarea } from "@/ui/Textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/Select";
 import { toast } from "@/shared/hook/use-toast";
-import { supabase } from "@/infra/api/supabase";
+import { apiClient } from "@/infra/api/apiClient";
 import { useAuth } from "@/core/context/AuthContext";
 import { Loader2, Upload, X, ShieldAlert } from "lucide-react";
 import { Badge } from "@/ui/Badge";
@@ -58,74 +58,38 @@ export function TicketForm({ onSuccess, initialType = "suspension_appeal" }: Tic
         try {
             const evidenceUrls: string[] = [];
 
-            for (const file of files) {
-                const fileExt = file.name.split('.').pop();
-                const fileName = `${user.id}/${Date.now()}.${fileExt}`;
-
-                const { error: uploadError } = await supabase.storage
-                    .from('ticket-evidence')
-                    .upload(fileName, file);
-
-                if (uploadError) throw uploadError;
-
-                const { data: { publicUrl } } = supabase.storage
-                    .from('ticket-evidence')
-                    .getPublicUrl(fileName);
-
-                evidenceUrls.push(publicUrl);
+            // TODO: Implement backend file upload endpoint
+            // For now, we simulate file upload or log it
+            if (files.length > 0) {
+                console.warn("Backend file upload for tickets not yet implemented. Skipping attachments.");
             }
 
-            const { error } = await (supabase as any)
-                .from('support_tickets')
-                .insert({
-                    user_id: user.id,
-                    type: formData.type,
-                    subject: formData.subject,
-                    description: formData.description,
-                    priority: formData.priority,
-                    evidence_urls: evidenceUrls.length > 0 ? evidenceUrls : null
+            const response = await apiClient.post('/support/tickets', {
+                type: formData.type,
+                subject: formData.subject,
+                description: formData.description,
+                priority: formData.priority,
+                evidenceUrls: evidenceUrls.length > 0 ? evidenceUrls : null
+            });
+
+            if (response.data.success) {
+                toast({
+                    title: "Success",
+                    description: "Your ticket has been submitted. We'll review it shortly."
                 });
 
-            if (error) throw error;
+                setFormData({
+                    type: initialType,
+                    subject: "",
+                    description: "",
+                    priority: "medium"
+                });
+                setFiles([]);
 
-            try {
-                const { data: admins } = await supabase
-                    .from("users")
-                    .select('user_id')
-                    .eq('role', 'admin');
-
-                if (admins && admins.length > 0) {
-                    const adminNotifications = admins.map(admin => ({
-                        user_id: admin.user_id,
-                        title: "New Support Ticket",
-                        message: `A new ${formData.type.replace('_', ' ')} ticket has been submitted by ${user.email}.`,
-                        type: 'alert',
-                        link: '/admin/tickets',
-                        is_read: false
-                    }));
-
-                    await supabase
-                        .from('notifications')
-                        .insert(adminNotifications);
-                }
-            } catch (notifyError) {
-                console.warn('Failed to notify admins:', notifyError);
+                onSuccess?.();
+            } else {
+                throw new Error(response.data.message || "Failed to submit ticket");
             }
-
-            toast({
-                title: "Success",
-                description: "Your ticket has been submitted. We'll review it shortly."
-            });
-
-            setFormData({
-                type: initialType,
-                subject: "",
-                description: "",
-                priority: "medium"
-            });
-            setFiles([]);
-
-            onSuccess?.();
 
         } catch (error: any) {
             console.error('Error submitting ticket:', error);

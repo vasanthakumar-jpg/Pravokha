@@ -1,13 +1,14 @@
-import { useEffect, useState, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { apiClient } from "@/infra/api/apiClient";
+import { useToast } from "@/shared/hook/use-toast";
+import { useAuth } from "@/core/context/AuthContext";
 import { useAdmin } from "@/core/context/AdminContext";
 import { AdminSkeleton } from "@/feat/admin/components/AdminSkeleton";
 import { Card, CardContent } from "@/ui/Card";
 import { Button } from "@/ui/Button";
-import { ArrowLeft, Plus } from "lucide-react";
-import { supabase } from "@/infra/api/supabase";
-import { useToast } from "@/shared/hook/use-toast";
-import { useAuth } from "@/core/context/AuthContext";
+import { ArrowLeft, Plus, Package } from "lucide-react";
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -60,29 +61,17 @@ export default function AdminProducts() {
 
   const handleTogglePublish = async (productId: string, currentStatus: boolean) => {
     try {
-      const { error } = await supabase
-        .from("products")
-        .update({ published: !currentStatus })
-        .eq("id", productId);
-
-      if (error) throw error;
-
-      toast({
-        title: currentStatus ? "Product unpublished" : "Product published",
-        description: currentStatus ? "Product is now in draft mode" : "Product is now live",
+      const response = await apiClient.put(`/products/${productId}`, {
+        published: !currentStatus
       });
 
-      // Audit Log
-      await supabase.from('audit_logs').insert({
-        actor_id: user?.id,
-        target_id: productId,
-        target_type: 'product',
-        action_type: 'product_update',
-        severity: 'info',
-        description: `Product ${productId} ${!currentStatus ? 'published' : 'unpublished'} by admin.`
-      });
-
-      refresh();
+      if (response.data.success) {
+        toast({
+          title: currentStatus ? "Product unpublished" : "Product published",
+          description: currentStatus ? "Product is now in draft mode" : "Product is now live",
+        });
+        refresh();
+      }
     } catch (error) {
       console.error("Error toggling publish status:", error);
       toast({ title: "Error", description: "Failed to update product status" });
@@ -98,11 +87,11 @@ export default function AdminProducts() {
     if (!productToDelete) return;
 
     try {
-      const { error } = await supabase.from("products").update({ deleted_at: new Date().toISOString() }).eq("id", productToDelete);
-      if (error) throw error;
-
-      toast({ title: "Product Deleted", description: "Product has been moved to trash" });
-      refresh();
+      const response = await apiClient.delete(`/products/${productToDelete}`);
+      if (response.data.success) {
+        toast({ title: "Product Deleted", description: "Product has been moved to trash" });
+        refresh();
+      }
     } catch (error) {
       console.error("Error deleting product:", error);
       toast({ title: "Error", description: "Failed to delete product", variant: "destructive" });
@@ -212,67 +201,7 @@ export default function AdminProducts() {
   );
 }
 
-// Helper component to load product image
-function ProductImage({
-  productId,
-  title,
-  size = "list",
-}: {
-  productId: string;
-  title: string;
-  size?: "list" | "grid";
-}) {
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const loadImage = async () => {
-      try {
-        const { data, error } = await supabase
-          .from("product_variants")
-          .select("images")
-          .eq("product_id", productId)
-          .limit(1)
-          .single();
-
-        if (!error && data && data.images && data.images.length > 0) {
-          setImageUrl(data.images[0]);
-        }
-      } catch (err) {
-        console.error("Error loading image:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadImage();
-  }, [productId]);
-
-  if (size === "list") {
-    if (loading) {
-      return <div className="h-12 w-12 rounded-md bg-muted animate-pulse" />;
-    }
-    if (!imageUrl) {
-      return (
-        <div className="h-12 w-12 rounded-md bg-muted flex items-center justify-center">
-          <Package className="h-5 w-5 text-muted-foreground" />
-        </div>
-      );
-    }
-    return <img src={imageUrl} alt={title} className="h-12 w-12 rounded-md object-cover" />;
-  }
-
-  // Grid size
-  if (loading) {
-    return <div className="w-full h-full bg-muted animate-pulse" />;
-  }
-  if (!imageUrl) {
-    return (
-      <div className="w-full h-full bg-muted flex items-center justify-center">
-        <Package className="h-16 w-16 text-muted-foreground opacity-30" />
-      </div>
-    );
-  }
-  return <img src={imageUrl} alt={title} className="w-full h-full object-cover" />;
+  );
 }
 

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/infra/api/supabase";
+import { apiClient } from "@/infra/api/apiClient";
 import { useAdmin } from "@/core/context/AdminContext";
 import { AdminSkeleton } from "@/feat/admin/components/AdminSkeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/ui/Card";
@@ -70,12 +70,13 @@ export default function AdminCategories() {
 
   const fetchCategories = async () => {
     try {
-      const { data, error } = await supabase
-        .from("categories")
-        .select("*")
-        .order("display_order", { ascending: true });
-
-      if (error) throw error;
+      const response = await apiClient.get('/categories');
+      // Map camelCase from backend to snake_case for frontend
+      const data = response.data.categories.map((cat: any) => ({
+        ...cat,
+        image_url: cat.imageUrl,
+        display_order: cat.displayOrder
+      }));
       setCategories(data || []);
     } catch (error: any) {
       toast({
@@ -113,39 +114,25 @@ export default function AdminCategories() {
     try {
       let imageUrl = formData.image_url;
 
-      // Handle Image Upload
+      // Handle Image Upload using Node.js backend
       if (imageFile) {
-        const fileExt = imageFile.name.split('.').pop();
-        const fileName = `categories/${Math.random().toString(36).substring(7)}.${fileExt}`;
-        const { error: uploadError } = await supabase.storage
-          .from('products') // Reusing products bucket, standardizing
-          .upload(fileName, imageFile);
+        const formDataUpload = new FormData();
+        formDataUpload.append('file', imageFile);
 
-        if (uploadError) throw uploadError;
+        const uploadResponse = await apiClient.post('/uploads/single', formDataUpload, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
 
-        const { data: { publicUrl } } = supabase.storage
-          .from('products')
-          .getPublicUrl(fileName);
-
-        imageUrl = publicUrl;
+        imageUrl = uploadResponse.data.url;
       }
 
       const categoryData = { ...formData, image_url: imageUrl };
 
       if (editingCategory) {
-        const { error } = await supabase
-          .from("categories")
-          .update(categoryData)
-          .eq("id", editingCategory.id);
-
-        if (error) throw error;
+        await apiClient.patch(`/categories/${editingCategory.id}`, categoryData);
         toast({ title: "Success", description: "Category updated successfully" });
       } else {
-        const { error } = await supabase
-          .from("categories")
-          .insert([categoryData]);
-
-        if (error) throw error;
+        await apiClient.post('/categories', categoryData);
         toast({ title: "Success", description: "Category created successfully" });
       }
 
@@ -155,7 +142,7 @@ export default function AdminCategories() {
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message,
+        description: error.response?.data?.message || error.message,
         variant: "destructive",
       });
     } finally {
@@ -167,18 +154,13 @@ export default function AdminCategories() {
     if (!confirm("Are you sure you want to delete this category?")) return;
 
     try {
-      const { error } = await supabase
-        .from("categories")
-        .delete()
-        .eq("id", id);
-
-      if (error) throw error;
+      await apiClient.delete(`/categories/${id}`);
       toast({ title: "Success", description: "Category deleted successfully" });
       fetchCategories();
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message,
+        description: error.response?.data?.message || error.message,
         variant: "destructive",
       });
     }

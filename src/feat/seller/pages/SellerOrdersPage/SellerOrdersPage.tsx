@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/core/context/AuthContext";
-import { supabase } from "@/infra/api/supabase";
+import { apiClient } from "@/infra/api/apiClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/ui/Card";
 import { Button } from "@/ui/Button";
 import { Input } from "@/ui/Input";
@@ -92,52 +92,19 @@ export default function SellerOrdersPage() {
 
     try {
       setLoading(true);
-      let query = (supabase as any)
-        .from('orders')
-        .select(`
-          id,
-          order_number,
-          customer_name,
-          customer_email,
-          total,
-          order_status,
-          payment_status,
-          created_at,
-          items
-        `)
-        .is('deleted_at', null);
 
-      const { data: userData } = await supabase
-        .from("users")
-        .select('role')
-        .eq('user_id', user.id)
-        .single();
+      const { data } = await apiClient.get('/orders', {
+        params: {
+          role: 'seller', // Ensure backend filters by seller_id = user.id if role is seller
+          status: currentTab !== 'all' ? currentTab : (statusFilter !== 'all' ? statusFilter : undefined),
+          search: searchQuery || undefined
+          // Add pagination if needed, currently not in original code explicitly beyond backend range capability which wasn't fully used in snippet
+        }
+      });
 
-      const isAdmin = userData?.role === 'admin';
+      const ordersData = data.orders || data || [];
 
-      if (!isAdmin) {
-        query = query.eq('seller_id', user.id);
-      }
-
-      // Apply DB filters
-      if (currentTab !== 'all') {
-        query = query.eq('order_status', currentTab);
-      } else if (statusFilter !== 'all') {
-        query = query.eq('order_status', statusFilter);
-      }
-
-      if (searchQuery) {
-        // Search in order_number or customer_email
-        query = query.or(`order_number.ilike.%${searchQuery}%,customer_email.ilike.%${searchQuery}%,customer_name.ilike.%${searchQuery}%`);
-      }
-
-      query = query.order('created_at', { ascending: false });
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-
-      const transformedOrders: Order[] = (data || []).map((order: any) => ({
+      const transformedOrders: Order[] = ordersData.map((order: any) => ({
         id: order.id,
         order_number: order.order_number,
         customer_name: order.customer_name,
@@ -150,7 +117,7 @@ export default function SellerOrdersPage() {
       }));
 
       setOrders(transformedOrders);
-      setFilteredOrders(transformedOrders); // We now use DB results directly
+      setFilteredOrders(transformedOrders);
     } catch (error) {
       console.error('Error fetching orders:', error);
       setOrders([]);
@@ -169,18 +136,10 @@ export default function SellerOrdersPage() {
     if (!orderToCancel) return;
 
     try {
-      const { error } = await supabase
-        .from('orders')
-        .update({
-          order_status: 'cancelled',
-          notes: JSON.stringify({
-            cancellation_reason: 'Cancelled by seller/admin',
-            cancelled_at: new Date().toISOString()
-          })
-        })
-        .eq('id', orderToCancel.id);
-
-      if (error) throw error;
+      await apiClient.patch(`/orders/${orderToCancel.id}/status`, {
+        status: 'cancelled',
+        message: 'Cancelled by seller'
+      });
 
       toast({
         title: "Order Cancelled",
@@ -188,11 +147,11 @@ export default function SellerOrdersPage() {
       });
 
       fetchOrders();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error cancelling order:', error);
       toast({
         title: "Error",
-        description: "Failed to cancel order",
+        description: error.response?.data?.message || "Failed to cancel order",
         variant: "destructive",
       });
     } finally {
@@ -208,43 +167,23 @@ export default function SellerOrdersPage() {
 
   const handleDeleteOrder = async () => {
     if (!orderToDelete) return;
-
-    const deletedOrder = orderToDelete;
-
     try {
-      // Soft delete - set deleted_at timestamp
-      const { error } = await (supabase as any)
-        .from('orders')
-        .update({ deleted_at: new Date().toISOString() })
-        .eq('id', deletedOrder.id);
+      await apiClient.delete(`/orders/${orderToDelete.id}`);
+      setOrders(prev => prev.filter(o => o.id !== orderToDelete.id));
 
-      if (error) throw error;
-
-      // Remove from local state
-      setOrders(prev => prev.filter(o => o.id !== deletedOrder.id));
-
-      // Show toast with undo option
       toast({
         title: "Order Deleted",
-        description: `Order #${deletedOrder.order_number} has been deleted. Click Undo to restore.`,
+        description: `Order #${orderToDelete.order_number} has been deleted.`,
         action: (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handleUndoDelete(deletedOrder.id)}
-          >
+          <Button variant="outline" size="sm" onClick={() => handleUndoDelete(orderToDelete.id)}>
             <RotateCcw className="h-3 w-3 mr-1" /> Undo
           </Button>
         ),
-        duration: 10000, // 10 seconds to undo
+        duration: 10000,
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting order:', error);
-      toast({
-        title: "Error",
-        description: "Failed to delete order",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     } finally {
       setDeleteDialogOpen(false);
       setOrderToDelete(null);
@@ -253,27 +192,12 @@ export default function SellerOrdersPage() {
 
   const handleUndoDelete = async (orderId: string) => {
     try {
-      // Restore - remove deleted_at timestamp
-      const { error } = await (supabase as any)
-        .from('orders')
-        .update({ deleted_at: null })
-        .eq('id', orderId);
-
-      if (error) throw error;
-
-      toast({
-        title: "Order Restored",
-        description: "The order has been restored successfully.",
-      });
-
-      fetchOrders(); // Refresh the list
-    } catch (error) {
+      await apiClient.patch(`/orders/${orderId}/restore`);
+      toast({ title: "Order Restored", description: "The order has been restored successfully." });
+      fetchOrders();
+    } catch (error: any) {
       console.error('Error restoring order:', error);
-      toast({
-        title: "Error",
-        description: "Failed to restore order",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     }
   };
 

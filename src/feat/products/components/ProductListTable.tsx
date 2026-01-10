@@ -50,7 +50,7 @@ export function ProductListTable({ products, onTogglePublish, onDelete, basePath
                         return (
                             <TableRow key={product.id}>
                                 <TableCell>
-                                    <ProductImage productId={product.id} title={product.title} />
+                                    <ProductImage productId={product.id} title={product.title} src={product.main_image} />
                                 </TableCell>
                                 <TableCell>
                                     <div className="flex items-center gap-2">

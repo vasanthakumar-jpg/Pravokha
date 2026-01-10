@@ -1,17 +1,20 @@
 // Email notification helper - Client Wrapper
 // Replaces previous mock implementation with secure calls to emailClient
 
-import { supabase } from '@/infra/api/supabase';
+
 import { emailClient } from './services/email/EmailClient';
 
 // Helper to get user email/name from ID
+import { apiClient } from '@/infra/api/apiClient';
+
 async function getUserDetails(userId: string) {
-    const { data: user } = await supabase
-        .from("users")
-        .select('full_name, email')
-        .eq('id', userId)
-        .single();
-    return user;
+    try {
+        const { data: user } = await apiClient.get(`/users/${userId}`);
+        return user;
+    } catch (error) {
+        console.error("Error fetching user details:", error);
+        return null;
+    }
 }
 
 export async function sendSuspensionEmail(userId: string, reason?: string) {
@@ -56,11 +59,7 @@ export async function sendReactivationEmail(userId: string) {
 
 export async function sendTicketReplyEmail(ticketId: string, adminName?: string) {
     try {
-        const { data: ticket } = await (supabase as any)
-            .from('support_tickets')
-            .select(`ticket_number, user:profiles!support_tickets_user_id_fkey(email)`)
-            .eq('id', ticketId)
-            .single();
+        const { data: ticket } = await apiClient.get(`/support/tickets/${ticketId}`);
 
         if (!ticket || !ticket.user?.email) return;
 
@@ -81,11 +80,7 @@ export async function sendAppealStatusEmail(
     reason?: string
 ) {
     try {
-        const { data: ticket } = await (supabase as any)
-            .from('support_tickets')
-            .select(`ticket_number, user:profiles!support_tickets_user_id_fkey(email)`)
-            .eq('id', ticketId)
-            .single();
+        const { data: ticket } = await apiClient.get(`/support/tickets/${ticketId}`);
 
         if (!ticket || !ticket.user?.email) return;
 
@@ -105,6 +100,6 @@ export async function sendAppealStatusEmail(
 
 export const EMAIL_CONFIG = {
     enabled: true,
-    provider: 'supabase-edge'
+    provider: 'custom-backend'
 };
 

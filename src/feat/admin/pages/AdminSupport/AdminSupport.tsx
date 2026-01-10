@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/infra/api/supabase";
+import { apiClient } from "@/infra/api/apiClient";
 import { useAdmin } from "@/core/context/AdminContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/ui/Card";
 import { Button } from "@/ui/Button";
@@ -27,6 +27,10 @@ interface Conversation {
   last_message_at: string;
   created_at: string;
   user_id: string;
+  user?: {
+    name: string;
+    email: string;
+  };
 }
 
 export default function AdminSupport() {
@@ -53,12 +57,14 @@ export default function AdminSupport() {
 
   const fetchConversations = async () => {
     try {
-      const { data, error } = await supabase
-        .from("support_conversations")
-        .select("*")
-        .order("last_message_at", { ascending: false });
-
-      if (error) throw error;
+      setLoading(true);
+      const response = await apiClient.get('/support/admin/conversations');
+      const data = response.data.conversations.map((conv: any) => ({
+        ...conv,
+        user_id: conv.userId,
+        last_message_at: conv.lastMessageAt,
+        created_at: conv.createdAt
+      }));
       setConversations(data || []);
     } catch (error: any) {
       toast({
@@ -72,18 +78,19 @@ export default function AdminSupport() {
   };
 
   const fetchMessages = async (conversationId: string) => {
-    const { data, error } = await supabase
-      .from("support_messages")
-      .select("*")
-      .eq("conversation_id", conversationId)
-      .order("created_at", { ascending: true });
-
-    if (error) {
+    try {
+      const response = await apiClient.get(`/support/conversations/${conversationId}/messages`);
+      const data = response.data.messages.map((msg: any) => ({
+        ...msg,
+        user_id: msg.userId,
+        is_admin: msg.isAdmin,
+        created_at: msg.createdAt
+      }));
+      setMessages(data || []);
+      scrollToBottom();
+    } catch (error: any) {
       toast({ title: "Error", description: "Failed to load messages", variant: "destructive" });
-      return;
     }
-    setMessages(data || []);
-    scrollToBottom();
   };
 
   useEffect(() => {
@@ -91,26 +98,8 @@ export default function AdminSupport() {
 
     fetchMessages(selectedConversation);
 
-    const channel = supabase
-      .channel(`admin-support:${selectedConversation}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "support_messages",
-          filter: `conversation_id=eq.${selectedConversation}`,
-        },
-        (payload) => {
-          setMessages((prev) => [...prev, payload.new as Message]);
-          scrollToBottom();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    // Note: Real-time removed for backend migration simplicity
+    // Polling could be added here if needed
   }, [selectedConversation]);
 
   const scrollToBottom = () => {
@@ -122,48 +111,29 @@ export default function AdminSupport() {
   const sendMessage = async () => {
     if (!selectedConversation || !newMessage.trim()) return;
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    try {
+      await apiClient.post(`/support/conversations/${selectedConversation}/messages`, {
+        message: newMessage
+      });
 
-    const selectedConv = conversations.find(c => c.id === selectedConversation);
-    if (!selectedConv) return;
-
-    const { error } = await supabase
-      .from("support_messages")
-      .insert([{
-        conversation_id: selectedConversation,
-        user_id: selectedConv.user_id,
-        message: newMessage,
-        is_admin: true,
-      }]);
-
-    if (error) {
+      setNewMessage("");
+      fetchMessages(selectedConversation);
+    } catch (error: any) {
       toast({ title: "Error", description: "Failed to send message", variant: "destructive" });
-      return;
     }
-
-    await supabase
-      .from("support_conversations")
-      .update({ last_message_at: new Date().toISOString() })
-      .eq("id", selectedConversation);
-
-    setNewMessage("");
   };
 
   const toggleStatus = async (conversationId: string, currentStatus: string) => {
     const newStatus = currentStatus === "open" ? "closed" : "open";
-    const { error } = await supabase
-      .from("support_conversations")
-      .update({ status: newStatus })
-      .eq("id", conversationId);
-
-    if (error) {
+    try {
+      await apiClient.patch(`/support/conversations/${conversationId}/status`, {
+        status: newStatus
+      });
+      toast({ title: "Success", description: `Conversation ${newStatus}` });
+      fetchConversations();
+    } catch (error: any) {
       toast({ title: "Error", description: "Failed to update status", variant: "destructive" });
-      return;
     }
-
-    toast({ title: "Success", description: `Conversation ${newStatus}` });
-    fetchConversations();
   };
 
   if (adminLoading || (loading && conversations.length === 0)) {
@@ -226,12 +196,18 @@ export default function AdminSupport() {
                     className={`p-4 border rounded-lg cursor-pointer transition-all ${selectedConversation === conv.id ? "border-primary bg-primary/5" : "hover:border-primary/50"
                       }`}
                   >
-                    <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center justify-between mb-1">
                       <p className="font-semibold text-sm">{conv.subject}</p>
                       <Badge variant={conv.status === "open" ? "default" : "secondary"}>
                         {conv.status}
                       </Badge>
                     </div>
+                    {conv.user && (
+                      <div className="mb-2">
+                        <p className="text-[10px] font-bold text-primary">{conv.user.name}</p>
+                        <p className="text-[10px] text-muted-foreground">{conv.user.email}</p>
+                      </div>
+                    )}
                     <p className="text-xs text-muted-foreground">
                       {new Date(conv.last_message_at).toLocaleDateString()}
                     </p>

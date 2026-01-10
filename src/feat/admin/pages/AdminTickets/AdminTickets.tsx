@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/ui/Dialog";
 import { Textarea } from "@/ui/Textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/ui/Avatar";
-import { supabase } from "@/infra/api/supabase";
+import { apiClient } from "@/infra/api/apiClient";
 import { useAuth } from "@/core/context/AuthContext";
 import { useAdmin } from "@/core/context/AdminContext";
 import { toast } from "@/shared/hook/use-toast";
@@ -122,15 +122,19 @@ export default function AdminTickets() {
   const fetchTickets = async () => {
     try {
       setLoading(true);
-      const { data, error } = await (supabase as any)
-        .from('support_tickets')
-        .select(`
-          *,
-          user:profiles!support_tickets_user_id_fkey(full_name, email, status)
-        `)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
+      const response = await apiClient.get('/support/admin/tickets');
+      const data = response.data.tickets.map((ticket: any) => ({
+        ...ticket,
+        ticket_number: ticket.ticketNumber,
+        user_id: ticket.userId,
+        created_at: ticket.createdAt,
+        updated_at: ticket.updatedAt,
+        user: ticket.user ? {
+          full_name: ticket.user.name,
+          email: ticket.user.email,
+          status: ticket.user.status
+        } : undefined
+      }));
       setTickets(data || []);
     } catch (error: any) {
       console.error('Error fetching tickets:', error);
@@ -172,30 +176,18 @@ export default function AdminTickets() {
 
     // Fetch messages
     try {
-      const { data, error } = await (supabase as any)
-        .from('ticket_messages')
-        .select(`
-          id, 
-          message, 
-          sender_id, 
-          is_read, 
-          created_at,
-          sender:profiles!ticket_messages_sender_id_fkey(full_name, avatar_url)
-        `)
-        .eq('ticket_id', ticket.id)
-        .order('created_at', { ascending: true });
-
-      if (error) throw error;
-      setMessages(data || []);
-
-      // Mark user messages as read
-      const unreadUserMessages = (data || []).filter((m: any) => m.sender_id !== user?.id && !m.is_read);
-      if (unreadUserMessages.length > 0) {
-        await (supabase as any)
-          .from('ticket_messages')
-          .update({ is_read: true })
-          .in('id', unreadUserMessages.map((m: any) => m.id));
-      }
+      const response = await apiClient.get(`/support/tickets/${ticket.id}/messages`);
+      const mappedMessages = response.data.messages.map((msg: any) => ({
+        ...msg,
+        sender_id: msg.senderId,
+        is_read: msg.isRead,
+        created_at: msg.createdAt,
+        sender: msg.sender ? {
+          full_name: msg.sender.name,
+          avatar_url: msg.sender.avatarUrl
+        } : undefined
+      }));
+      setMessages(mappedMessages || []);
     } catch (error: any) {
       console.error('Error fetching messages:', error);
     }
@@ -207,40 +199,9 @@ export default function AdminTickets() {
     setSending(true);
 
     try {
-      // 1. Send message
-      const { error: messageError } = await (supabase as any)
-        .from('ticket_messages')
-        .insert({
-          ticket_id: selectedTicket.id,
-          sender_id: user.id,
-          message: replyMessage,
-          is_internal: false
-        });
-
-      if (messageError) throw messageError;
-
-      // 2. Update ticket status to awaiting_user
-      const { error: updateError } = await (supabase as any)
-        .from('support_tickets')
-        .update({
-          status: 'awaiting_user',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', selectedTicket.id);
-
-      if (updateError) throw updateError;
-
-      // 3. Insert professional notification for the user
-      await (supabase as any)
-        .from('notifications')
-        .insert({
-          user_id: selectedTicket.user_id,
-          title: "Official support update",
-          message: `The Pravokha registry has issued a new response regarding "${selectedTicket.subject}".`,
-          type: 'message',
-          link: `/tickets/${selectedTicket.id}`,
-          metadata: { ticket_id: selectedTicket.id, sender_name: "Support Admin" }
-        });
+      await apiClient.post(`/support/tickets/${selectedTicket.id}/reply`, {
+        message: replyMessage
+      });
 
       toast({
         title: "Communication logged",
@@ -265,12 +226,9 @@ export default function AdminTickets() {
 
   const updateTicketStatus = async (ticketId: string, newStatus: string) => {
     try {
-      const { error } = await (supabase as any)
-        .from('support_tickets')
-        .update({ status: newStatus })
-        .eq('id', ticketId);
-
-      if (error) throw error;
+      await apiClient.patch(`/support/tickets/${ticketId}/status`, {
+        status: newStatus
+      });
 
       toast({
         title: "Success",

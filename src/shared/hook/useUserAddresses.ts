@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { supabase } from "@/infra/api/supabase";
+import { apiClient } from "@/infra/api/apiClient";
 import { useAuth } from "@/core/context/AuthContext";
 import { useToast } from "@/shared/hook/use-toast";
 
@@ -25,21 +25,45 @@ export function useUserAddresses() {
     const [addresses, setAddresses] = useState<Address[]>([]);
     const [loading, setLoading] = useState(true);
 
+    // Map backend camelCase to frontend snake_case
+    const mapAddress = (data: any): Address => ({
+        id: data.id,
+        user_id: data.userId,
+        label: data.label,
+        full_name: data.fullName,
+        phone: data.phone,
+        address_line1: data.addressLine1,
+        address_line2: data.addressLine2,
+        city: data.city,
+        state: data.state,
+        pincode: data.pincode,
+        is_default: data.isDefault,
+        created_at: data.createdAt,
+        updated_at: data.updatedAt
+    });
+
+    // Map frontend snake_case to backend camelCase
+    const mapAddressToBackend = (address: any) => ({
+        label: address.label,
+        fullName: address.full_name,
+        phone: address.phone,
+        addressLine1: address.address_line1,
+        addressLine2: address.address_line2,
+        city: address.city,
+        state: address.state,
+        pincode: address.pincode,
+        isDefault: address.is_default,
+    });
+
     // Fetch addresses
     const fetchAddresses = async () => {
         if (!user) return;
 
         setLoading(true);
         try {
-            const { data, error } = await supabase
-                .from("user_addresses" as any)
-                .select("*")
-                .eq("user_id", user.id)
-                .order("is_default", { ascending: false })
-                .order("created_at", { ascending: false });
-
-            if (error) throw error;
-            setAddresses((data as unknown as Address[]) || []);
+            const response = await apiClient.get('/users/addresses');
+            const data = response.data;
+            setAddresses(data.map(mapAddress));
         } catch (error: any) {
             console.error("Error fetching addresses:", error);
             toast({
@@ -57,28 +81,16 @@ export function useUserAddresses() {
         if (!user) return;
 
         try {
-            // If this is set as default, unset others first
-            if (address.is_default) {
-                await supabase
-                    .from("user_addresses" as any)
-                    .update({ is_default: false })
-                    .eq("user_id", user.id);
-            }
+            const backendData = mapAddressToBackend(address);
+            const response = await apiClient.post('/users/addresses', backendData);
+            const data = response.data;
 
-            const { data, error } = await supabase
-                .from("user_addresses" as any)
-                .insert({ ...address, user_id: user.id })
-                .select()
-                .single();
-
-            if (error) throw error;
-
-            setAddresses((prev) => [data as unknown as Address, ...prev]);
+            setAddresses((prev) => [mapAddress(data), ...prev]);
             toast({
                 title: "Success",
                 description: "Address added successfully",
             });
-            return data as unknown as Address;
+            return mapAddress(data);
         } catch (error: any) {
             console.error("Error adding address:", error);
             toast({
@@ -95,33 +107,28 @@ export function useUserAddresses() {
         if (!user) return;
 
         try {
-            // If setting as default, unset others first
-            if (updates.is_default) {
-                await supabase
-                    .from("user_addresses" as any)
-                    .update({ is_default: false })
-                    .eq("user_id", user.id)
-                    .neq("id", id);
-            }
+            const backendUpdates: any = {};
+            if (updates.label !== undefined) backendUpdates.label = updates.label;
+            if (updates.full_name !== undefined) backendUpdates.fullName = updates.full_name;
+            if (updates.phone !== undefined) backendUpdates.phone = updates.phone;
+            if (updates.address_line1 !== undefined) backendUpdates.addressLine1 = updates.address_line1;
+            if (updates.address_line2 !== undefined) backendUpdates.addressLine2 = updates.address_line2;
+            if (updates.city !== undefined) backendUpdates.city = updates.city;
+            if (updates.state !== undefined) backendUpdates.state = updates.state;
+            if (updates.pincode !== undefined) backendUpdates.pincode = updates.pincode;
+            if (updates.is_default !== undefined) backendUpdates.isDefault = updates.is_default;
 
-            const { data, error } = await supabase
-                .from("user_addresses" as any)
-                .update(updates)
-                .eq("id", id)
-                .eq("user_id", user.id)
-                .select()
-                .single();
-
-            if (error) throw error;
+            const response = await apiClient.patch(`/users/addresses/${id}`, backendUpdates);
+            const data = response.data;
 
             setAddresses((prev) =>
-                prev.map((addr) => (addr.id === id ? (data as unknown as Address) : addr))
+                prev.map((addr) => (addr.id === id ? mapAddress(data) : addr))
             );
             toast({
                 title: "Success",
                 description: "Address updated successfully",
             });
-            return data as unknown as Address;
+            return mapAddress(data);
         } catch (error: any) {
             console.error("Error updating address:", error);
             toast({
@@ -138,14 +145,7 @@ export function useUserAddresses() {
         if (!user) return;
 
         try {
-            const { error } = await supabase
-                .from("user_addresses" as any)
-                .delete()
-                .eq("id", id)
-                .eq("user_id", user.id);
-
-            if (error) throw error;
-
+            await apiClient.delete(`/users/addresses/${id}`);
             setAddresses((prev) => prev.filter((addr) => addr.id !== id));
             toast({
                 title: "Success",

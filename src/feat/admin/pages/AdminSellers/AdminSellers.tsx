@@ -47,7 +47,7 @@ import { useNavigate } from "react-router-dom";
 import { AdminSkeleton, AdminHeaderSkeleton } from "@/feat/admin/components/AdminSkeleton";
 import { useAdmin } from "@/core/context/AdminContext";
 import { useAuth } from "@/core/context/AuthContext";
-import { supabase } from "@/infra/api/supabase";
+import { apiClient } from "@/infra/api/apiClient";
 import { toast } from "@/shared/hook/use-toast";
 import {
   DropdownMenu,
@@ -97,40 +97,22 @@ export default function AdminSellers() {
     try {
       setLoading(true);
 
-      const { data: userRoles, error: roleError } = await supabase
-        .from("users")
-        .select("user_id")
-        .eq("role", "seller");
-
-      if (roleError) throw roleError;
-      const sellerIds = userRoles.map(ur => ur.user_id);
-
-      if (sellerIds.length === 0) {
-        setSellers([]);
-        return;
+      const response = await apiClient.get('/users?role=DEALER');
+      if (response.data.success) {
+        const mappedSellers: Seller[] = (response.data.users as any[]).map(profile => ({
+          id: profile.id,
+          user_id: profile.id,
+          full_name: profile.storeName || profile.name || "Unnamed Store",
+          verificationStatus: profile.verificationStatus || "pending",
+          rejection_reason: profile.verificationComments,
+          total_sales: 0,
+          created_at: profile.createdAt || new Date().toISOString(),
+          email: profile.email,
+          pan: profile.pan,
+          bank_account: profile.bankAccount
+        }));
+        setSellers(mappedSellers);
       }
-
-      const { data: profiles, error: profileError } = await supabase
-        .from("users")
-        .select("*")
-        .in("id", sellerIds);
-
-      if (profileError) throw profileError;
-
-      const mappedSellers: Seller[] = (profiles as any[]).map(profile => ({
-        id: profile.id,
-        user_id: profile.id,
-        full_name: profile.full_name || profile.business_name || "Unnamed Store",
-        verificationStatus: profile.verificationStatus || "pending",
-        rejection_reason: profile.rejection_reason,
-        total_sales: 0,
-        created_at: profile.created_at || new Date().toISOString(),
-        email: profile.email,
-        pan: profile.pan,
-        bank_account: profile.bank_account
-      }));
-
-      setSellers(mappedSellers);
     } catch (error) {
       console.error("Error fetching sellers:", error);
       toast({ title: "Fetch Failed", description: "Could not load sellers", variant: "destructive" });
@@ -144,48 +126,29 @@ export default function AdminSellers() {
 
     try {
       setProcessing(true);
-      const { error } = await supabase.rpc('admin_verify_seller', {
-        p_user_id: selectedSeller.id,
-        p_new_status: newStatus,
-        p_reason: reason || null
+      const response = await apiClient.post(`/users/${selectedSeller.id}/verify`, {
+        status: newStatus,
+        reason: reason || null
       });
 
-      if (error) {
-        console.error("RPC Error:", error);
-        throw error;
+      if (response.data.success) {
+        toast({
+          title: newStatus === 'approved' ? "Verification Approved" : "Verification Rejected",
+          description: `${selectedSeller.full_name}'s status has been updated.`,
+        });
+
+        setSellers(prev => prev.map(s =>
+          s.id === selectedSeller.id ? { ...s, verificationStatus: newStatus === 'approved' ? 'verified' : 'rejected', rejection_reason: reason } : s
+        ));
+        setShowVerifyDialog(false);
+        setSelectedSeller(null);
+        setJustification("");
       }
-
-      toast({
-        title: newStatus === 'approved' ? "Verification Approved" : "Verification Rejected",
-        description: `${selectedSeller.full_name}'s status has been updated.`,
-      });
-
-      setSellers(prev => prev.map(s =>
-        s.id === selectedSeller.id ? { ...s, verificationStatus: newStatus, rejection_reason: reason } : s
-      ));
-
-      // Log audit
-      await supabase.from('audit_logs').insert({
-        actor_id: user?.id,
-        target_id: selectedSeller.id,
-        target_type: 'seller_verification',
-        action_type: newStatus === 'approved' ? 'verification_approved' : 'verification_rejected',
-        severity: newStatus === 'approved' ? 'info' : 'warning',
-        description: `Seller ${selectedSeller.full_name} (${selectedSeller.id}) verification status updated to ${newStatus}.`,
-        metadata: {
-          new_status: newStatus,
-          rejection_reason: reason
-        }
-      });
-
-      setShowVerifyDialog(false);
-      setSelectedSeller(null);
-      setJustification("");
     } catch (error: any) {
       console.error("Verification error:", error);
       toast({
         title: "Action Item Failed",
-        description: error.message || "Could not update seller status. Check database constraints.",
+        description: error.response?.data?.message || "Could not update seller status.",
         variant: "destructive"
       });
     } finally {

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/ui/Button";
-import { supabase } from "@/infra/api/supabase";
+import { apiClient } from "@/infra/api/apiClient";
 import hero1 from "@/assets/hero-premium-tees.jpg";
 import hero2 from "@/assets/hero-2.jpg";
 import hero3 from "@/assets/hero-3.jpg";
@@ -60,20 +60,14 @@ export function HeroCarousel() {
 
     const fetchComboOffers = async () => {
         try {
-            const { data, error } = await supabase
-                .from("combo_offers")
-                .select("*")
-                .eq("active", true)
-                .order("created_at", { ascending: false });
+            const response = await apiClient.get("/home/combo-offers", { params: { activeOnly: "true" } });
 
-            if (error) throw error;
-
-            if (data && data.length > 0) {
-                const comboSlides: Slide[] = data.map((offer: any) => ({
+            if (response.data.success && response.data.offers) {
+                const comboSlides: Slide[] = response.data.offers.map((offer: any) => ({
                     id: offer.id,
-                    image: offer.image_url || hero1,
+                    image: offer.imageUrl || hero1,
                     title: offer.title,
-                    description: offer.description || `Get this bundle for just ₹${offer.combo_price}`,
+                    description: offer.description || `Get this bundle for just ₹${offer.comboPrice}`,
                     cta: "Shop Bundle",
                     link: `/products?search=${offer.title}`,
                     isCombo: true,

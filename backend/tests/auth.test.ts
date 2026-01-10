@@ -1,9 +1,9 @@
 import request from 'supertest';
-import app from '../src/app';
-import { prisma } from '../src/config/db';
+import app from '../src/core/app';
+import { prisma } from '../src/infra/database/client';
 
 // Mock Prisma
-jest.mock('../src/config/db', () => ({
+jest.mock('../src/infra/database/client', () => ({
     prisma: {
         user: {
             findUnique: jest.fn(),

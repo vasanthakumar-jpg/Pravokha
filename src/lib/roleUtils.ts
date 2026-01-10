@@ -1,28 +1,16 @@
-import { supabase } from "@/infra/api/supabase";
+import { apiClient } from "@/infra/api/apiClient";
 
 export type UserRole = "admin" | "seller" | "user" | "moderator" | null;
 
 export async function fetchUserRole(userId: string): Promise<UserRole> {
     try {
-        // console.log(`[roleUtils] Fetching role for user: ${userId}`);
-
-        const { data, error } = await supabase
-            .from("users")
-            .select("role")
-            .eq("user_id", userId)
-            .limit(1)
-            .maybeSingle();
-
-        if (error) {
-            // console.error("[roleUtils] Error fetching role:", error);
-            return "user";
+        const response = await apiClient.get(`/users/${userId}/role`);
+        if (response.data.success) {
+            return response.data.role || "user";
         }
-
-        const role = (data?.role as UserRole) || "user";
-        // console.log(`[roleUtils] Role determined: ${role}`);
-        return role;
+        return "user";
     } catch (error) {
-        // console.error("[roleUtils] Exception fetching role:", error);
+        console.error("[roleUtils] Exception fetching role:", error);
         return "user";
     }
 }

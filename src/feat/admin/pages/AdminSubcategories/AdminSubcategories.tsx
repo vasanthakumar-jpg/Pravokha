@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/infra/api/supabase";
+import { apiClient } from "@/infra/api/apiClient";
 import { useAdmin } from "@/core/context/AdminContext";
 import { AdminSkeleton } from "@/feat/admin/components/AdminSkeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/ui/Card";
@@ -77,23 +77,21 @@ export default function AdminSubcategories() {
 
     const fetchData = async () => {
         try {
+            setLoading(true);
             // Fetch categories
-            const { data: categoriesData, error: categoriesError } = await supabase
-                .from("categories")
-                .select("id, name, slug")
-                .order("display_order");
-
-            if (categoriesError) throw categoriesError;
-            setCategories(categoriesData || []);
+            const catResponse = await apiClient.get('/categories');
+            setCategories(catResponse.data.categories || []);
 
             // Fetch subcategories with category info
-            const { data: subcategoriesData, error: subcategoriesError } = await supabase
-                .from("subcategories")
-                .select("*, categories(name)")
-                .order("display_order");
-
-            if (subcategoriesError) throw subcategoriesError;
-            setSubcategories(subcategoriesData || []);
+            const subResponse = await apiClient.get('/categories/subcategories');
+            const data = subResponse.data.subcategories.map((sub: any) => ({
+                ...sub,
+                category_id: sub.categoryId,
+                display_order: sub.displayOrder,
+                image_url: sub.imageUrl,
+                categories: sub.category // Match the categories property name used in UI
+            }));
+            setSubcategories(data || []);
         } catch (error: any) {
             toast({
                 title: "Error",
@@ -129,19 +127,10 @@ export default function AdminSubcategories() {
 
         try {
             if (editingSubcategory) {
-                const { error } = await supabase
-                    .from("subcategories")
-                    .update(formData)
-                    .eq("id", editingSubcategory.id);
-
-                if (error) throw error;
+                await apiClient.patch(`/categories/subcategories/${editingSubcategory.id}`, formData);
                 toast({ title: "Success", description: "Subcategory updated successfully" });
             } else {
-                const { error } = await supabase
-                    .from("subcategories")
-                    .insert([formData]);
-
-                if (error) throw error;
+                await apiClient.post('/categories/subcategories', formData);
                 toast({ title: "Success", description: "Subcategory created successfully" });
             }
 
@@ -151,7 +140,7 @@ export default function AdminSubcategories() {
         } catch (error: any) {
             toast({
                 title: "Error",
-                description: error.message,
+                description: error.response?.data?.message || error.message,
                 variant: "destructive",
             });
         } finally {
@@ -163,18 +152,13 @@ export default function AdminSubcategories() {
         if (!confirm("Are you sure you want to delete this subcategory?")) return;
 
         try {
-            const { error } = await supabase
-                .from("subcategories")
-                .delete()
-                .eq("id", id);
-
-            if (error) throw error;
+            await apiClient.delete(`/categories/subcategories/${id}`);
             toast({ title: "Success", description: "Subcategory deleted successfully" });
             fetchData();
         } catch (error: any) {
             toast({
                 title: "Error",
-                description: error.message,
+                description: error.response?.data?.message || error.message,
                 variant: "destructive",
             });
         }

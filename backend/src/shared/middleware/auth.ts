@@ -72,3 +72,32 @@ export const authorize = (roles: Role[]) => {
         next();
     };
 };
+
+/**
+ * Optional Authentication Middleware: Attempts to verify JWT but doesn't fail if token is missing.
+ */
+export const optionalAuthenticate = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const authHeader = req.headers.authorization;
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return next();
+        }
+
+        const token = authHeader.split(' ')[1];
+        const decoded = jwt.verify(token, config.jwtSecret) as JwtPayload;
+
+        const user = await prisma.user.findUnique({
+            where: { id: decoded.id },
+            select: { id: true, role: true, status: true },
+        });
+
+        if (user && user.status !== 'suspended') {
+            req.user = { id: user.id, role: user.role as Role };
+        }
+
+        next();
+    } catch (error) {
+        // Just proceed without user context if token is invalid
+        next();
+    }
+};

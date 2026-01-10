@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { supabase } from "@/infra/api/supabase";
+import { apiClient } from "@/infra/api/apiClient";
 import { Button } from "@/ui/Button";
 import { Input } from "@/ui/Input";
 import { Label } from "@/ui/Label";
@@ -31,24 +31,26 @@ export function ForgotPasswordPage() {
         }
 
         setLoading(true);
-        const { error } = await supabase.auth.resetPasswordForEmail(email, {
-            redirectTo: `${window.location.origin}/reset-password`,
-        });
+        try {
+            const response = await apiClient.post('/auth/forgot-password', { email });
 
-        setLoading(false);
+            if (!response.data.success) {
+                throw new Error(response.data.message || 'Password reset failed');
+            }
 
-        if (error) {
-            toast({
-                title: "Error",
-                description: error.message,
-                variant: "destructive",
-            });
-        } else {
             setEmailSent(true);
             toast({
                 title: "Check your email",
                 description: "We've sent you a password reset link. Please check your inbox (and spam folder).",
             });
+        } catch (error: any) {
+            toast({
+                title: "Error",
+                description: error.message || 'Failed to send reset email',
+                variant: "destructive",
+            });
+        } finally {
+            setLoading(false);
         }
     };
 

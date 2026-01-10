@@ -15,6 +15,7 @@ export interface ProductDomain {
     is_verified?: boolean;
     seller_id?: string;
     deleted_at?: string | null;
+    main_image?: string | null;
 }
 
 export type ProductViewMode = "list" | "grid";

@@ -32,3 +32,16 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
 
     res.status(200).json({ success: true, ...result });
 });
+
+export const getMe = asyncHandler(async (req: any, res: Response) => {
+    // req.user is set by authenticate middleware
+    res.status(200).json({
+        success: true,
+        user: {
+            id: req.user.id,
+            email: req.user.email,
+            name: req.user.name,
+            role: req.user.role
+        }
+    });
+});

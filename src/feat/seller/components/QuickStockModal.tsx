@@ -9,7 +9,7 @@ import {
 import { Button } from "@/ui/Button";
 import { Input } from "@/ui/Input";
 import { Label } from "@/ui/Label";
-import { supabase } from "@/infra/api/supabase";
+import { apiClient } from "@/infra/api/apiClient";
 import { toast } from "@/shared/hook/use-toast";
 import { Loader2, Package, RefreshCw } from "lucide-react";
 
@@ -35,17 +35,20 @@ export function QuickStockModal({ product, isOpen, onClose, onSuccess }: QuickSt
     const fetchVariants = async () => {
         setFetching(true);
         try {
-            const { data, error } = await supabase
-                .from('product_variants')
-                .select('*, product_sizes(*)')
-                .eq('product_id', product.id);
+            const { data } = await apiClient.get(`/products/${product.id}`);
 
-            if (error) throw error;
-            setVariants(data || []);
+            // Adapt response: data might be the product object which contains variants
+            const productVariants = data.variants || [];
+
+            setVariants(productVariants);
 
             // Initialize updates state
             const initialUpdates: Record<string, number> = {};
-            data?.forEach(v => {
+            productVariants.forEach((v: any) => {
+                v.sizes?.forEach((s: any) => { // API likely returns 'sizes' not 'product_sizes' based on AdminForm
+                    initialUpdates[s.id] = s.stock || 0;
+                });
+                // Fallback if it is product_sizes
                 v.product_sizes?.forEach((s: any) => {
                     initialUpdates[s.id] = s.stock || 0;
                 });
@@ -66,16 +69,13 @@ export function QuickStockModal({ product, isOpen, onClose, onSuccess }: QuickSt
     const handleUpdate = async () => {
         setLoading(true);
         try {
+            // Use bulk update or individual updates
+            // Using individual updates to match previous logic logic structure
             const updatePromises = Object.entries(updates).map(([sizeId, stock]) =>
-                supabase
-                    .from('product_sizes')
-                    .update({ stock })
-                    .eq('id', sizeId)
+                apiClient.patch(`/product-sizes/${sizeId}`, { stock })
             );
 
-            const results = await Promise.all(updatePromises);
-            const firstError = results.find(r => r.error);
-            if (firstError) throw firstError.error;
+            await Promise.all(updatePromises);
 
             toast({
                 title: "Inventory Updated",
@@ -84,9 +84,10 @@ export function QuickStockModal({ product, isOpen, onClose, onSuccess }: QuickSt
             onSuccess();
             onClose();
         } catch (error: any) {
+            console.error(error);
             toast({
                 title: "Update Failed",
-                description: error.message || "Failed to update stock",
+                description: error.response?.data?.message || "Failed to update stock",
                 variant: "destructive",
             });
         } finally {
@@ -123,7 +124,7 @@ export function QuickStockModal({ product, isOpen, onClose, onSuccess }: QuickSt
                                     <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
-                                    {v.product_sizes?.map((s: any) => (
+                                    {(v.sizes || v.product_sizes)?.map((s: any) => (
                                         <div key={s.id} className="space-y-2">
                                             <Label htmlFor={`size-${s.id}`} className="text-[10px] font-bold text-muted-foreground ml-1">Size {s.size}</Label>
                                             <div className="relative">

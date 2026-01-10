@@ -6,27 +6,19 @@ import { Input } from "@/ui/Input";
 import { Label } from "@/ui/Label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/ui/Card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/ui/Tabs";
-import { supabase } from "@/infra/api/supabase";
 import { useAuth } from "@/core/context/AuthContext";
 import { useToast } from "@/shared/hook/use-toast";
-import { AccountSuspendedMessage } from "@/shared/ui/AccountSuspendedMessage";
-import { fetchUserRole } from "@/lib/roleUtils";
-import { Eye, EyeOff, Mail, Lock, User, Phone, Github, Facebook, Chrome, Apple as AppleIcon } from "lucide-react";
-import { Provider } from "@supabase/supabase-js";
+import { Eye, EyeOff, Mail, Lock, User, Phone } from "lucide-react";
 
 const emailSchema = z.string().email("Please enter a valid email address");
 const passwordSchema = z.string()
-    .min(8, "Password must be at least 8 characters")
-    .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
-    .regex(/[a-z]/, "Password must contain at least one lowercase letter")
-    .regex(/[0-9]/, "Password must contain at least one number")
-    .regex(/[^A-Za-z0-9]/, "Password must contain at least one special character (!@#$%^&*)");
+    .min(8, "Password must be at least 8 characters"); // Simplified for now, backend will enforce
 const phoneSchema = z.string().regex(/^[6-9]\d{9}$/, "Please enter a valid 10-digit mobile number");
-const nameSchema = z.string().min(2, "Name must be at least 2 characters").regex(/^[a-zA-Z\s]+$/, "Name should only contain letters");
+const nameSchema = z.string().min(2, "Name must be at least 2 characters");
 
 export function AuthPage() {
     const navigate = useNavigate();
-    const { user, role, loading, suspensionError } = useAuth();
+    const { user, role, loading, login, register } = useAuth();
     const { toast } = useToast();
 
     const [isLogin, setIsLogin] = useState(true);
@@ -46,9 +38,9 @@ export function AuthPage() {
     // Auto-redirect based on role
     useEffect(() => {
         if (!loading && user && role) {
-            if (role === "admin") {
+            if (role === "ADMIN") {
                 navigate("/admin", { replace: true });
-            } else if (role === "seller") {
+            } else if (role === "DEALER") {
                 navigate("/seller", { replace: true });
             } else {
                 navigate("/", { replace: true });
@@ -101,95 +93,28 @@ export function AuthPage() {
         setIsLoading(true);
 
         try {
-
             if (isLogin) {
-                const { data, error } = await supabase.auth.signInWithPassword({
-                    email,
-                    password,
-                });
-
-                if (error) throw error;
-
-                if (data.user) {
-                    const userRole = await fetchUserRole(data.user.id);
-                    toast({ title: "Success", description: "Logged in successfully" });
-
-                    if (userRole === 'admin') {
-                        navigate("/admin");
-                    } else if (userRole === 'seller') {
-                        navigate("/seller");
-                    } else {
-                        navigate("/");
-                    }
-                }
+                await login(email, password);
+                toast({ title: "Success", description: "Logged in successfully" });
             } else {
-                // Signup
-                const { data: signUpData, error } = await supabase.auth.signUp({
+                await register({
                     email,
                     password,
-                    options: {
-                        data: {
-                            full_name: fullName,
-                        },
-                    },
+                    name: fullName,
+                    phone
                 });
-
-                if (error) throw error;
-
-                // Update profile with phone number
-                if (signUpData.user && phone) {
-                    await supabase
-                        .from("users")
-                        .update({ phone: phone })
-                        .eq('id', signUpData.user.id);
-                }
-
                 toast({
                     title: "Account created!",
-                    description: "Please check your email to verify your account.",
-                });
-
-                setEmail("");
-                setPassword("");
-                setFullName("");
-                setPhone("");
-                setIsLogin(true);
-            }
-        } catch (error: any) {
-            if (error instanceof z.ZodError) {
-                toast({
-                    title: "Validation Error",
-                    description: error.errors[0].message,
-                    variant: "destructive",
-                });
-            } else {
-                toast({
-                    title: "Error",
-                    description: error.message || "An error occurred",
-                    variant: "destructive",
+                    description: "You have been registered successfully.",
                 });
             }
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    const handleSocialLogin = async (provider: Provider) => {
-        setIsLoading(true);
-        try {
-            const { error } = await supabase.auth.signInWithOAuth({
-                provider,
-                options: {
-                    redirectTo: `${window.location.origin}/auth`,
-                },
-            });
-            if (error) throw error;
         } catch (error: any) {
             toast({
-                title: "Login Error",
-                description: error.message || `Failed to sign in with ${provider}`,
+                title: "Error",
+                description: error.message || "An error occurred",
                 variant: "destructive",
             });
+        } finally {
             setIsLoading(false);
         }
     };
@@ -201,15 +126,6 @@ export function AuthPage() {
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
                     <p className="text-muted-foreground">Loading...</p>
                 </div>
-            </div>
-        );
-    }
-
-    // Show suspension message if user is suspended
-    if (suspensionError) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 p-4">
-                <AccountSuspendedMessage userName={suspensionError.userName} />
             </div>
         );
     }
@@ -330,11 +246,6 @@ export function AuthPage() {
                                         {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                     </button>
                                 </div>
-                                {!isLogin && !passwordError && (
-                                    <p className="text-xs text-muted-foreground mt-1">
-                                        Must include uppercase, lowercase, number, and special character
-                                    </p>
-                                )}
                                 {passwordError && (
                                     <p className="text-sm text-destructive mt-1 flex items-center gap-1">
                                         <span className="text-destructive">⚠</span> {passwordError}
@@ -345,39 +256,6 @@ export function AuthPage() {
                             <Button type="submit" className="w-full" disabled={isLoading}>
                                 {isLoading ? "Processing..." : (isLogin ? "Sign In" : "Create Account")}
                             </Button>
-
-                            <div className="relative my-6">
-                                <div className="absolute inset-0 flex items-center">
-                                    <span className="w-full border-t border-slate-200 dark:border-slate-800" />
-                                </div>
-                                <div className="relative flex justify-center text-xs uppercase">
-                                    <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
-                                </div>
-                            </div>
-
-                            <div className="flex flex-col gap-3">
-                                <Button
-                                    variant="outline"
-                                    type="button"
-                                    disabled={isLoading}
-                                    onClick={() => handleSocialLogin('google')}
-                                    className="w-full h-12 border-slate-200 dark:border-slate-800 hover:bg-[#4285F4]/5 hover:text-[#4285F4] hover:border-[#4285F4]/30 transition-all duration-300 flex items-center justify-center gap-3 text-sm font-medium"
-                                >
-                                    <Chrome className="h-5 w-5" />
-                                    Sign in with Google
-                                </Button>
-
-                                <Button
-                                    variant="outline"
-                                    type="button"
-                                    disabled={isLoading}
-                                    onClick={() => handleSocialLogin('facebook')}
-                                    className="w-full h-12 border-slate-200 dark:border-slate-800 hover:bg-[#1877F2]/5 hover:text-[#1877F2] hover:border-[#1877F2]/30 transition-all duration-300 flex items-center justify-center gap-3 text-sm font-medium"
-                                >
-                                    <Facebook className="h-5 w-5 fill-current" />
-                                    Sign in with Facebook
-                                </Button>
-                            </div>
                         </form>
                     </Tabs>
                 </CardContent>

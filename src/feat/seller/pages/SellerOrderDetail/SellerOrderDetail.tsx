@@ -44,7 +44,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/shared/hook/use-toast";
-import { supabase } from "@/infra/api/supabase";
+import { apiClient } from "@/infra/api/apiClient";
 import { useAuth } from "@/core/context/AuthContext";
 import { generateInvoicePDF } from "@/shared/util/invoiceGenerator";
 import { cn } from "@/lib/utils";
@@ -106,8 +106,7 @@ export default function SellerOrderDetail() {
 
   const loadOrder = async () => {
     try {
-      const { data, error } = await supabase.from('orders').select('*').eq('id', orderId).single();
-      if (error) throw error;
+      const { data } = await apiClient.get(`/orders/${orderId}`);
 
       setOrder(data);
       setNotes(data.notes ? (typeof data.notes === 'string' ? data.notes : JSON.parse(data.notes).seller_notes || '') : '');
@@ -117,10 +116,21 @@ export default function SellerOrderDetail() {
       const hasSellerItems = items.some((item: any) => item.sellerId === user?.id);
       if (!isAdmin && !hasSellerItems) {
         setIsReadOnly(true);
+        // Note: Backend likely already checks permissions, but this UI check remains valid for display logic
       }
 
-      const { data: historyData } = await supabase.from('order_history' as any).select('*').eq('order_id', orderId).order('created_at', { ascending: true });
-      if (historyData) setOrderHistory(historyData);
+      // Fetch history if not included in order object (often separate relationship)
+      // Assuming separate endpoint or included.
+      if (data.history) {
+        setOrderHistory(data.history);
+      } else {
+        try {
+          const { data: historyData } = await apiClient.get(`/orders/${orderId}/history`);
+          setOrderHistory(historyData);
+        } catch (e) {
+          console.warn("Could not load history", e);
+        }
+      }
 
     } catch (error) {
       console.error('Error loading order:', error);
@@ -153,51 +163,18 @@ export default function SellerOrderDetail() {
     }
 
     try {
-      const { data, error: updateError } = await supabase
-        .from('orders')
-        .update({ order_status: newStatus, updated_at: new Date().toISOString() })
-        .eq('id', orderId)
-        .select();
-
-      if (updateError) throw updateError;
-
-      if (!data || data.length === 0) {
-        throw new Error("Update failed: You might not have permission to update this order.");
-      }
+      await apiClient.patch(`/orders/${orderId}/status`, {
+        status: newStatus
+      });
 
       setOrder({ ...order, order_status: newStatus });
-
-      // Add to Order History
-      const { error: historyError } = await supabase.from('order_history' as any).insert({
-        order_id: orderId,
-        new_status: newStatus,
-        description: `Order status updated to ${newStatus} by ${isAdmin ? 'Admin' : 'Seller'}.`,
-        created_at: new Date().toISOString()
-      });
-
-      if (historyError) {
-        console.error("Order history error:", historyError);
-        // Note: We don't throw here as the main order update succeeded
-      }
-
-      // Audit Logging
-      await supabase.from('audit_logs').insert({
-        actor_id: user?.id,
-        target_id: orderId,
-        target_type: 'order',
-        action_type: 'order_status_update',
-        severity: 'info',
-        description: `Order #${order?.order_number} status updated to "${newStatus}".`,
-        metadata: { status: newStatus, order_number: order?.order_number }
-      });
-
       toast({ title: "Status Updated", description: `Order marked as ${newStatus}` });
-      await loadOrder();
+      await loadOrder(); // Refresh to get updated history
     } catch (error: any) {
       console.error(error);
       toast({
         title: "Update Failed",
-        description: error.message || "Failed to update status. Check permissions.",
+        description: error.response?.data?.message || "Failed to update status. Check permissions.",
         variant: "destructive"
       });
     }
@@ -208,18 +185,9 @@ export default function SellerOrderDetail() {
     try {
       // Preserve existing notes structure if complex, or just string
       const noteObj = { seller_notes: notes, updated_at: new Date().toISOString() };
-      const { error } = await supabase.from('orders').update({ notes: JSON.stringify(noteObj) }).eq('id', orderId);
-      if (error) throw error;
 
-      // Audit Logging
-      await supabase.from('audit_logs').insert({
-        actor_id: user?.id,
-        target_id: orderId,
-        target_type: 'order',
-        action_type: 'order_notes_update',
-        severity: 'info',
-        description: `Notes updated for Order #${order?.order_number}.`,
-        metadata: { order_number: order?.order_number }
+      await apiClient.patch(`/orders/${orderId}`, {
+        notes: JSON.stringify(noteObj)
       });
 
       toast({ title: "Saved", description: "Seller notes updated." });
@@ -241,44 +209,17 @@ export default function SellerOrderDetail() {
     }
     if (!trackingNumber || !carrierName) return toast({ title: "Required", description: "Enter carrier and tracking number", variant: "destructive" });
     try {
-      const { data, error } = await supabase.from('orders').update({
-        order_status: 'shipped',
-        tracking_number: trackingNumber,
-        carrier_name: carrierName,
-        updated_at: new Date().toISOString()
-      }).eq('id', orderId).select();
-
-      if (error) throw error;
-      if (!data || data.length === 0) {
-        throw new Error("Shipment update failed: Check permissions.");
-      }
+      await apiClient.patch(`/orders/${orderId}/ship`, {
+        trackingNumber,
+        carrierName
+      });
 
       setOrder({ ...order, order_status: 'shipped', tracking_number: trackingNumber, carrier_name: carrierName });
-
-      // Add to Order History
-      await supabase.from('order_history' as any).insert({
-        order_id: orderId,
-        new_status: 'shipped',
-        description: `Order shipped via ${carrierName}. Tracking: ${trackingNumber}`,
-        created_at: new Date().toISOString()
-      });
-
-      // Audit Logging
-      await supabase.from('audit_logs').insert({
-        actor_id: user?.id,
-        target_id: orderId,
-        target_type: 'order',
-        action_type: 'order_shipment_start',
-        severity: 'info',
-        description: `Order #${order?.order_number} marked as shipped via ${carrierName}.`,
-        metadata: { carrier: carrierName, tracking: trackingNumber, order_number: order?.order_number }
-      });
-
       toast({ title: "Shipped", description: `Order shipped via ${carrierName} (${trackingNumber})` });
       loadOrder();
       setTrackingModalOpen(false);
     } catch (e: any) {
-      toast({ title: "Error", description: e.message || "Update failed", variant: "destructive" });
+      toast({ title: "Error", description: e.response?.data?.message || "Update failed", variant: "destructive" });
     }
   };
 

@@ -33,7 +33,6 @@ import { useAdmin } from "@/core/context/AdminContext";
 import { Badge } from "@/ui/Badge";
 import { categories } from "@/data/products";
 import { ThemeToggle } from "@/shared/ui/ThemeToggle";
-import { supabase } from "@/infra/api/supabase";
 import { toast } from "@/shared/hook/use-toast";
 import { useTheme } from "next-themes";
 import { debounce } from "@/shared/util/debounce";
@@ -91,29 +90,29 @@ export function Navbar() {
     const debouncedSearch = useCallback(
         debounce(async (query: string) => {
             if (query.trim()) {
-                const { data, error } = await supabase
-                    .from('products')
-                    .select('id, title, price, discount_price, category, product_variants(images)')
-                    .or(`title.ilike.%${query}%,description.ilike.%${query}%`)
-                    .eq('published', true)
-                    .limit(5);
+                try {
+                    const response = await apiClient.get('/products', {
+                        params: {
+                            search: query,
+                            limit: 5
+                        }
+                    });
 
-                if (error) {
-                    console.error('Search error:', error);
-                    return;
+                    if (response.data.success) {
+                        const formattedResults = response.data.products.map((p: any) => ({
+                            id: p.id,
+                            title: p.title,
+                            description: p.category,
+                            category: p.category,
+                            price: p.price,
+                            discountPrice: p.discount_price,
+                            images: p.variants?.[0]?.images || []
+                        }));
+                        setSearchResults(formattedResults);
+                    }
+                } catch (err) {
+                    console.error('Search error:', err);
                 }
-
-                const formattedResults = data.map((p: any) => ({
-                    id: p.id,
-                    title: p.title,
-                    description: p.category, // Using category as description for now
-                    category: p.category,
-                    price: p.price,
-                    discountPrice: p.discount_price,
-                    images: p.product_variants?.[0]?.images || [] // Get first variant's images
-                }));
-
-                setSearchResults(formattedResults as any);
             } else {
                 setSearchResults([]);
             }

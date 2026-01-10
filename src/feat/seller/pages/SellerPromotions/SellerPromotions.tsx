@@ -9,7 +9,7 @@ import { Badge } from "@/ui/Badge";
 import { Plus, Percent, Tag, Calendar, Eye, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/shared/hook/use-toast";
-import { supabase } from "@/infra/api/supabase";
+import { apiClient } from "@/infra/api/apiClient";
 import { useAuth } from "@/core/context/AuthContext";
 
 interface Coupon {
@@ -47,13 +47,9 @@ export default function SellerPromotions() {
     if (!user) return;
 
     try {
-      const { data, error } = await (supabase as any)
-        .from('coupons')
-        .select('*')
-        .eq('seller_id', user.id)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
+      const { data } = await apiClient.get('/coupons', {
+        params: { seller_id: user.id }
+      });
 
       const transformedCoupons: Coupon[] = (data || []).map((coupon: any) => ({
         id: coupon.id,
@@ -88,21 +84,15 @@ export default function SellerPromotions() {
     }
 
     try {
-      const { data, error } = await (supabase as any)
-        .from('coupons')
-        .insert({
-          seller_id: user.id,
-          code: newCoupon.code,
-          type: newCoupon.type,
-          value: newCoupon.value,
-          min_order: newCoupon.min_order,
-          max_uses: newCoupon.max_uses,
-          end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-        })
-        .select()
-        .maybeSingle(); // Changed from .single() to handle potential issues
-
-      if (error) throw error;
+      const { data } = await apiClient.post('/coupons', {
+        seller_id: user.id,
+        code: newCoupon.code,
+        type: newCoupon.type,
+        value: newCoupon.value,
+        min_order: newCoupon.min_order,
+        max_uses: newCoupon.max_uses,
+        end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      });
 
       if (data) {
         setCoupons([data, ...coupons]);
@@ -117,7 +107,7 @@ export default function SellerPromotions() {
       console.error('Error creating coupon:', error);
       toast({
         title: "Error",
-        description: error.message || "Failed to create coupon",
+        description: error.response?.data?.message || "Failed to create coupon",
         variant: "destructive",
       });
     }
@@ -125,12 +115,7 @@ export default function SellerPromotions() {
 
   const handleDeleteCoupon = async (id: string) => {
     try {
-      const { error } = await (supabase as any)
-        .from('coupons')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
+      await apiClient.delete(`/coupons/${id}`);
 
       setCoupons(coupons.filter(c => c.id !== id));
       toast({
@@ -140,7 +125,7 @@ export default function SellerPromotions() {
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message || "Failed to delete coupon",
+        description: error.response?.data?.message || "Failed to delete coupon",
         variant: "destructive",
       });
     }

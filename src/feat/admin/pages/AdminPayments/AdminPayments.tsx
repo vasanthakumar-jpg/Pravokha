@@ -47,7 +47,7 @@ import {
   Loader2,
   X
 } from "lucide-react";
-import { supabase } from "@/infra/api/supabase";
+import { apiClient } from "@/infra/api/apiClient";
 import { toast } from "@/shared/hook/use-toast";
 import { format, subDays } from "date-fns";
 import { generateInvoicePDF } from "@/shared/util/invoiceGenerator";
@@ -124,17 +124,13 @@ interface PayoutRequest {
   period_start: string;
   period_end: string;
   transaction_id?: string;
-  profiles?: {
-    full_name: string;
+  rejection_reason?: string;
+  seller?: {
+    name: string;
     email: string;
-    bank_account?: string;
+    bankAccount?: string;
     ifsc?: string;
-  };
-  seller_secrets?: {
-    payout_details: {
-      account_number: string;
-      ifsc: string;
-    }
+    beneficiaryName?: string;
   };
 }
 
@@ -179,34 +175,59 @@ export default function AdminPayments() {
     fetchData();
   }, [activeTab]);
 
+  const mapTransaction = (order: any): Transaction => ({
+    id: order.id,
+    order_number: order.orderNumber,
+    total: order.total,
+    payment_status: order.paymentStatus?.toLowerCase(),
+    order_status: order.status?.toLowerCase(),
+    created_at: order.createdAt,
+    customer_name: order.customerName,
+    customer_email: order.customerEmail,
+    customer_phone: order.customerPhone,
+    payment_method: order.paymentMethod,
+    payment_id: order.stripeIntentId,
+    shipping: 0, // Backend doesn't explicitly store shipping separately yet
+    shipping_address: {
+      address: order.shippingAddress,
+      city: order.shippingCity,
+      pincode: order.shippingPincode
+    },
+    items: order.items || []
+  });
+
+  const mapPayoutRequest = (payout: any): PayoutRequest => ({
+    id: payout.id,
+    seller_id: payout.sellerId,
+    amount: payout.amount,
+    status: payout.status.toLowerCase(),
+    created_at: payout.createdAt,
+    period_start: payout.periodStart,
+    period_end: payout.periodEnd,
+    transaction_id: payout.transactionId,
+    rejection_reason: payout.rejectionReason,
+    seller: payout.seller ? {
+      name: payout.seller.name,
+      email: payout.seller.email,
+      bankAccount: payout.seller.bankAccount,
+      ifsc: payout.seller.ifsc,
+      beneficiaryName: payout.seller.beneficiaryName
+    } : undefined
+  });
+
   const fetchData = async () => {
     try {
       setLoading(true);
       if (activeTab === "transactions") {
-        const { data, error } = await supabase
-          .from("orders")
-          .select("*")
-          .order("created_at", { ascending: false });
-        if (error) throw error;
-        setTransactions(data || []);
-        calculateTransactionStats(data || []);
+        const response = await apiClient.get("/orders");
+        const mappedData = response.data.data.map(mapTransaction);
+        setTransactions(mappedData);
+        calculateTransactionStats(mappedData);
       } else {
-        const { data, error } = await supabase
-          .from("payouts")
-          .select(`
-            *,
-            profiles:seller_id (
-              full_name,
-              email
-            ),
-            seller_secrets:seller_id (
-              payout_details
-            )
-          `)
-          .order("created_at", { ascending: false });
-        if (error) throw error;
-        setPayoutRequests(data as any || []);
-        calculatePayoutStats(data as any || []);
+        const response = await apiClient.get("/payouts");
+        const mappedData = response.data.data.map(mapPayoutRequest);
+        setPayoutRequests(mappedData);
+        calculatePayoutStats(mappedData);
       }
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -279,25 +300,9 @@ export default function AdminPayments() {
     }
 
     try {
-      const { error } = await supabase
-        .from("payouts")
-        .update({ status: newStatus })
-        .eq("id", payoutId);
-
-      if (error) throw error;
+      await apiClient.patch(`/payouts/${payoutId}/status`, { status: newStatus.toUpperCase() });
 
       toast({ title: "Status Updated", description: `Payout request marked as ${newStatus}.` });
-
-      // Log audit
-      await supabase.from('audit_logs').insert({
-        actor_id: (await supabase.auth.getUser()).data.user?.id,
-        target_id: payoutId,
-        target_type: 'payout',
-        action_type: 'payout_status_update',
-        severity: 'info',
-        description: `Payout request ${payoutId} updated to ${newStatus}.`
-      });
-
       fetchData();
     } catch (error) {
       console.error("Error updating payout status:", error);
@@ -309,28 +314,12 @@ export default function AdminPayments() {
     if (!payoutToReject || !rejectionReason.trim()) return;
 
     try {
-      const { error } = await supabase
-        .from("payouts")
-        .update({
-          status: 'failed',
-          rejection_reason: rejectionReason
-        })
-        .eq("id", payoutToReject);
-
-      if (error) throw error;
+      await apiClient.patch(`/payouts/${payoutToReject}/status`, {
+        status: 'FAILED',
+        rejectionReason: rejectionReason
+      });
 
       toast({ title: "Payout Rejected", description: "The seller will be notified of the rejection." });
-
-      // Log audit with reason
-      await supabase.from('audit_logs').insert({
-        actor_id: (await supabase.auth.getUser()).data.user?.id,
-        target_id: payoutToReject,
-        target_type: 'payout',
-        action_type: 'payout_rejected',
-        severity: 'warning',
-        description: `Payout ${payoutToReject} rejected. Reason: ${rejectionReason}`,
-        metadata: { rejection_reason: rejectionReason }
-      });
 
       setRejectionModalOpen(false);
       setRejectionReason("");
@@ -351,12 +340,7 @@ export default function AdminPayments() {
 
     try {
       if (confirmAction.type === 'refund') {
-        const { error } = await supabase
-          .from("orders")
-          .update({ payment_status: "refunded" })
-          .eq("id", confirmAction.id);
-
-        if (error) throw error;
+        await apiClient.patch(`/orders/${confirmAction.id}/refund`);
 
         toast({
           title: "Refund Issued",
@@ -367,24 +351,11 @@ export default function AdminPayments() {
           t.id === confirmAction.id ? { ...t, payment_status: "refunded" } : t
         ));
       } else if (confirmAction.type === 'payout_complete') {
-        const { error } = await supabase
-          .from("payouts")
-          .update({ status: 'completed', rejection_reason: null })
-          .eq("id", confirmAction.id);
-
-        if (error) throw error;
+        await apiClient.patch(`/payouts/${confirmAction.id}/status`, {
+          status: 'COMPLETED'
+        });
 
         toast({ title: "Payout Completed", description: "Funds have been marked as transferred." });
-
-        // Log audit
-        await supabase.from('audit_logs').insert({
-          actor_id: (await supabase.auth.getUser()).data.user?.id,
-          target_id: confirmAction.id,
-          target_type: 'payout',
-          action_type: 'payout_completed',
-          severity: 'info',
-          description: `Payout ${confirmAction.id} authorized and completed.`
-        });
       }
 
       setConfirmDialogOpen(false);

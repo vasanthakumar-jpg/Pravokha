@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/core/context/AuthContext";
 import { useCart } from "@/core/context/CartContext";
-import { supabase } from "@/infra/api/supabase";
+import { apiClient } from "@/infra/api/apiClient";
 import { Button } from "@/ui/Button";
 import { Input } from "@/ui/Input";
 import { Label } from "@/ui/Label";
@@ -57,8 +57,8 @@ export function CheckoutPage() {
     }, []);
 
     const checkUser = async () => {
-        const { data: { user: authDataUser } } = await supabase.auth.getUser();
-        if (!authDataUser) {
+        // User is already checked by AuthContext, just verify we have a user
+        if (!user) {
             toast({
                 title: "Login Required",
                 description: "Please login to continue with checkout",
@@ -184,27 +184,27 @@ export function CheckoutPage() {
                 sellerId: item.sellerId
             }));
 
-            const { error } = await supabase.from("orders").insert({
-                user_id: user.id,
-                order_number: orderId,
-                customer_name: formData.name,
-                customer_email: formData.email,
-                customer_phone: formData.phone,
-                shipping_address: formData.address,
-                shipping_city: formData.city,
-                shipping_pincode: formData.pincode,
-                items: sanitizedItems as any,
-                subtotal: cartTotal,
-                shipping_cost: shipping,
+            const orderData = {
+                orderNumber: orderId,
+                customerName: formData.name,
+                customerEmail: formData.email,
+                customerPhone: formData.phone,
+                shippingAddress: formData.address,
+                shippingCity: formData.city,
+                shippingPincode: formData.pincode,
+                items: sanitizedItems,
                 total: total,
-                payment_method: paymentDetails.method,
-                payment_id: paymentDetails.transactionId,
-                order_status: "confirmed",
-                payment_status: paymentDetails.method === 'cod' ? 'pending' : 'paid',
-                notes: `Payment verified via ${paymentDetails.method.toUpperCase()} - Transaction ID: ${paymentDetails.transactionId}`,
-            });
+                paymentMethod: paymentDetails.method,
+                stripeIntentId: paymentDetails.transactionId,
+                status: "CONFIRMED",
+                paymentStatus: paymentDetails.method === 'cod' ? 'PENDING' : 'PAID',
+            };
 
-            if (error) throw error;
+            const response = await apiClient.post("/orders", orderData);
+
+            if (!response.data.success) {
+                throw new Error(response.data.message || "Failed to create order");
+            }
 
             toast({
                 title: "Order placed successfully! 🎉",

@@ -31,7 +31,7 @@ export function ProductGridDisplay({ products, onTogglePublish, onDelete, basePa
                 return (
                     <Card key={product.id} className="overflow-hidden hover:shadow-lg transition-all group rounded-2xl">
                         <div className="relative aspect-square bg-muted">
-                            <ProductImage productId={product.id} title={product.title} size="grid" />
+                            <ProductImage productId={product.id} title={product.title} size="grid" src={product.main_image} />
                             <div className="absolute top-2 left-2 flex flex-col gap-1 z-10">
                                 {product.is_featured && <Badge className="bg-teal-600 text-white border-0 text-[10px]">Featured</Badge>}
                                 {product.is_new && <Badge className="bg-yellow-400 text-yellow-900 border-0 text-[10px]">New</Badge>}

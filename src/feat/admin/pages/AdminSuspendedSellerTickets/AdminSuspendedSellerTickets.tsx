@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/ui/Table";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/ui/Dialog";
 import { Textarea } from "@/ui/Textarea";
-import { supabase } from "@/infra/api/supabase";
+import { apiClient } from "@/infra/api/apiClient";
 import { useAuth } from "@/core/context/AuthContext";
 import { useAdmin } from "@/core/context/AdminContext";
 import { toast } from "@/shared/hook/use-toast";
@@ -85,16 +85,23 @@ export default function AdminSuspendedSellerTickets() {
 
     const fetchTickets = async () => {
         try {
-            const { data, error } = await (supabase as any)
-                .from('support_tickets')
-                .select(`
-          *,
-          user:profiles!support_tickets_user_id_fkey(id, full_name, email, status)
-        `)
-                .eq('suspended_seller', true)
-                .order('created_at', { ascending: false });
-
-            if (error) throw error;
+            setLoading(true);
+            const response = await apiClient.get('/support/admin/tickets?isSuspendedSeller=true');
+            const data = response.data.tickets.map((ticket: any) => ({
+                ...ticket,
+                ticket_number: ticket.ticketNumber,
+                suspended_seller: ticket.isSuspendedSeller,
+                is_high_priority: ticket.isHighPriority,
+                user_id: ticket.userId,
+                created_at: ticket.createdAt,
+                updated_at: ticket.updatedAt,
+                user: ticket.user ? {
+                    id: ticket.userId,
+                    full_name: ticket.user.name,
+                    email: ticket.user.email,
+                    status: ticket.user.status
+                } : undefined
+            }));
             setTickets(data || []);
         } catch (error: any) {
             console.error('Error fetching tickets:', error);
@@ -135,30 +142,18 @@ export default function AdminSuspendedSellerTickets() {
         setShowReplyDialog(true);
 
         try {
-            const { data, error } = await (supabase as any)
-                .from('ticket_messages')
-                .select(`
-                    id, 
-                    message, 
-                    sender_id, 
-                    is_read, 
-                    created_at,
-                    sender:profiles!ticket_messages_sender_id_fkey(full_name, avatar_url)
-                `)
-                .eq('ticket_id', ticket.id)
-                .order('created_at', { ascending: true });
-
-            if (error) throw error;
-            setMessages(data || []);
-
-            // Mark seller messages as read
-            const unreadSellerMessages = (data || []).filter((m: any) => m.sender_id !== user?.id && !m.is_read);
-            if (unreadSellerMessages.length > 0) {
-                await (supabase as any)
-                    .from('ticket_messages')
-                    .update({ is_read: true })
-                    .in('id', unreadSellerMessages.map((m: any) => m.id));
-            }
+            const response = await apiClient.get(`/support/tickets/${ticket.id}/messages`);
+            const mappedMessages = response.data.messages.map((msg: any) => ({
+                ...msg,
+                sender_id: msg.senderId,
+                is_read: msg.isRead,
+                created_at: msg.createdAt,
+                sender: msg.sender ? {
+                    full_name: msg.sender.name,
+                    avatar_url: msg.sender.avatarUrl
+                } : undefined
+            }));
+            setMessages(mappedMessages || []);
         } catch (error: any) {
             console.error('Error fetching messages:', error);
         }
@@ -170,42 +165,9 @@ export default function AdminSuspendedSellerTickets() {
         setSending(true);
 
         try {
-            // 1. Send message
-            const { data: messageData, error: messageError } = await (supabase as any)
-                .from('ticket_messages')
-                .insert({
-                    ticket_id: selectedTicket.id,
-                    sender_id: user.id,
-                    message: replyMessage,
-                    is_internal: false
-                })
-                .select()
-                .single();
-
-            if (messageError) throw messageError;
-
-            // 2. Update ticket status to awaiting_user
-            const { error: updateError } = await (supabase as any)
-                .from('support_tickets')
-                .update({
-                    status: 'awaiting_user',
-                    updated_at: new Date().toISOString()
-                })
-                .eq('id', selectedTicket.id);
-
-            if (updateError) throw updateError;
-
-            // 3. Insert professional notification for the user (High Risk specific)
-            await (supabase as any)
-                .from('notifications')
-                .insert({
-                    user_id: selectedTicket.user_id,
-                    title: "Action Required: Appeal Registry",
-                    message: `Official guidance has been issued regarding your appeal "${selectedTicket.subject}". Please review immediately.`,
-                    type: 'alert',
-                    link: `/tickets/${selectedTicket.id}`,
-                    metadata: { ticket_id: selectedTicket.id, sender_name: "Compliance Admin" }
-                });
+            await apiClient.post(`/support/tickets/${selectedTicket.id}/reply`, {
+                message: replyMessage
+            });
 
             toast({ title: "Guidance dispatched", description: "The compliance protocol has been registered." });
             setReplyMessage("");
@@ -222,12 +184,9 @@ export default function AdminSuspendedSellerTickets() {
 
     const updateTicketStatus = async (ticketId: string, newStatus: string) => {
         try {
-            const { error } = await (supabase as any)
-                .from('support_tickets')
-                .update({ status: newStatus })
-                .eq('id', ticketId);
-
-            if (error) throw error;
+            await apiClient.patch(`/support/tickets/${ticketId}/status`, {
+                status: newStatus
+            });
             toast({ title: "Success", description: `Ticket status updated to ${newStatus}` });
             fetchTickets();
         } catch (error: any) {

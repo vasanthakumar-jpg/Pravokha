@@ -1,14 +1,12 @@
-import { SupabaseClient } from '@supabase/supabase-js';
+import { AxiosInstance } from 'axios';
 
 /**
  * IApiContract
  * 
  * This interface defines the expected structure of the frontend API infrastructure.
- * It abstracts the concrete Supabase client to allow for easier testing or 
- * replacement in the future.
  */
 export interface IApiContract {
-    client: SupabaseClient;
+    client: AxiosInstance;
 }
 
 export interface IEmailContract {
@@ -19,4 +17,4 @@ export interface IEmailContract {
     sendSupportReply(to: string, ticketNumber: string, message: string): Promise<any>;
 }
 
-export type ApiClient = SupabaseClient;
+export type ApiClient = AxiosInstance;

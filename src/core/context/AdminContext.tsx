@@ -1,6 +1,5 @@
 import { createContext, useContext, ReactNode } from "react";
-import { User } from "@supabase/supabase-js";
-import { useAuth } from "./AuthContext";
+import { useAuth, User } from "./AuthContext";
 
 interface AdminContextType {
   isAdmin: boolean;

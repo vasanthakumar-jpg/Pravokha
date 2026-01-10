@@ -1,0 +1,39 @@
+import axios from 'axios';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
+export const apiClient = axios.create({
+    baseURL: API_URL,
+    headers: {
+        'Content-Type': 'application/json',
+    },
+});
+
+// Request interceptor for adding the bearer token
+apiClient.interceptors.request.use(
+    (config) => {
+        const token = localStorage.getItem('pravokha_auth_token');
+        if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
+        }
+        return config;
+    },
+    (error) => {
+        return Promise.reject(error);
+    }
+);
+
+// Response interceptor for handling 401s or common errors
+apiClient.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        if (error.response?.status === 401) {
+            // Handle unauthorized - maybe clear local storage and redirect
+            localStorage.removeItem('pravokha_auth_token');
+            localStorage.removeItem('pravokha_user_role');
+            localStorage.removeItem('pravokha_user_id');
+            // Avoid window.location.href here to let the app handle it via state
+        }
+        return Promise.reject(error);
+    }
+);

@@ -28,7 +28,7 @@ import {
 import { useToast } from "@/shared/hook/use-toast";
 import { Separator } from "@/ui/Separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/ui/Avatar";
-import { supabase } from "@/infra/api/supabase";
+import { apiClient } from "@/infra/api/apiClient";
 import { Badge } from "@/ui/Badge";
 
 // Validation Schema (Seller Store)
@@ -237,20 +237,17 @@ export default function SellerSettings() {
 
       setUpdatingProfile(true);
       try {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${user?.id}-${Date.now()}.${fileExt}`;
-        const filePath = `avatars/${fileName}`;
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('type', 'avatar');
 
-        // 1. Upload to 'profiles' bucket (not seller-assets)
-        const { error: uploadError } = await supabase.storage
-          .from("users")
-          .upload(filePath, file);
+        const response = await apiClient.post('/uploads/single', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
 
-        if (uploadError) throw uploadError;
-
-        const { data: { publicUrl } } = supabase.storage
-          .from("users")
-          .getPublicUrl(filePath);
+        const publicUrl = response.data.url;
 
         // 2. Update profile record
         await updateProfile({ avatar_url: publicUrl });

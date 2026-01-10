@@ -26,7 +26,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/ui/AlertDialog";
-import { supabase } from "@/infra/api/supabase";
+import { apiClient } from "@/infra/api/apiClient";
 import { useToast } from "@/shared/hook/use-toast";
 import { Badge } from "@/ui/Badge";
 
@@ -67,9 +67,10 @@ export function CategoryInput({
     const fetchCategories = async () => {
         try {
             setLoading(true);
-            const { data, error } = await supabase.from('categories').select('*').order('name');
-            if (error) throw error;
-            setCategories(data || []);
+            const response = await apiClient.get('/categories');
+            if (response.data.success) {
+                setCategories(response.data.categories || []);
+            }
         } catch (err) {
             console.error('Failed to fetch categories', err);
         } finally {
@@ -88,18 +89,19 @@ export function CategoryInput({
         const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 
         try {
-            const { data, error } = await supabase.from('categories').insert({ name, slug }).select().single();
-            if (error) {
-                if (error.code === '23505') { // Unique violation
+            const response = await apiClient.post('/categories', { name, slug });
+            if (!response.data.success) {
+                if (response.data.message?.includes('exists')) {
                     toast({ title: "Category exists", description: "This category already exists.", variant: "destructive" });
                 } else {
-                    throw error;
+                    throw new Error(response.data.message);
                 }
                 return;
             }
 
-            setCategories(prev => [...prev, data].sort((a, b) => a.name.localeCompare(b.name)));
-            onChange(data.slug);
+            const newCategory = response.data.category;
+            setCategories(prev => [...prev, newCategory].sort((a, b) => a.name.localeCompare(b.name)));
+            onChange(newCategory.slug);
             setOpen(false);
             setSearchValue("");
             toast({ title: "Category created", description: `"${name}" added successfully.` });
@@ -114,8 +116,8 @@ export function CategoryInput({
         const slug = editName.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 
         try {
-            const { error } = await supabase.from('categories').update({ name: editName.trim(), slug }).eq('id', editingCategory.id);
-            if (error) throw error;
+            const response = await apiClient.patch(`/categories/${editingCategory.id}`, { name: editName.trim(), slug });
+            if (!response.data.success) throw new Error(response.data.message);
 
             setCategories(prev => prev.map(c => c.id === editingCategory.id ? { ...c, name: editName.trim(), slug } : c).sort((a, b) => a.name.localeCompare(b.name)));
 
@@ -136,8 +138,8 @@ export function CategoryInput({
         if (!allowManagement) return; // Guard
         if (!deleteId) return;
         try {
-            const { error } = await supabase.from('categories').delete().eq('id', deleteId);
-            if (error) throw error;
+            const response = await apiClient.delete(`/categories/${deleteId}`);
+            if (!response.data.success) throw new Error(response.data.message);
 
             setCategories(prev => prev.filter(c => c.id !== deleteId));
             if (value === categories.find(c => c.id === deleteId)?.slug) {

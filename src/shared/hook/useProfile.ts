@@ -1,6 +1,5 @@
-
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/infra/api/supabase";
+import { apiClient } from "@/infra/api/apiClient";
 import { useAuth } from "@/core/context/AuthContext";
 
 interface Profile {
@@ -9,7 +8,7 @@ interface Profile {
   phone: string | null;
   address: string | null;
   avatar_url: string | null;
-  email: string | null; // Added email field
+  email: string | null;
   bio: string | null;
   date_of_birth: string | null;
   status: 'active' | 'suspended' | 'inactive';
@@ -19,26 +18,31 @@ interface Profile {
 
 export function useProfile(userId: string | undefined) {
   const queryClient = useQueryClient();
-  const { refreshProfile } = useAuth();
+  const { refreshProfile: refreshAuthProfile } = useAuth();
 
   const { data: profile, isLoading: loading, refetch } = useQuery({
     queryKey: ["profile", userId],
     queryFn: async () => {
       if (!userId) return null;
-      console.log('[useProfile] Fetching profile for userId:', userId);
+      console.log('[useProfile] Fetching profile from Node backend for userId:', userId);
 
-      const { data, error } = await supabase
-        .from("users")
-        .select("*")
-        .eq("id", userId)
-        .maybeSingle();
+      const response = await apiClient.get(`/users/${userId}`);
+      const data = response.data.user;
 
-      if (error) {
-        console.error('[useProfile] Error fetching profile:', error);
-        throw error;
-      }
-
-      return data as Profile;
+      // Map backend camelCase to frontend snake_case/legacy keys
+      return {
+        id: data.id,
+        full_name: data.name,
+        phone: data.phone,
+        address: data.address,
+        avatar_url: data.avatarUrl,
+        email: data.email,
+        bio: data.bio,
+        date_of_birth: data.dateOfBirth,
+        status: data.status,
+        verificationStatus: data.verificationStatus,
+        verificationComments: data.verificationComments
+      } as Profile;
     },
 
     enabled: !!userId,
@@ -46,21 +50,24 @@ export function useProfile(userId: string | undefined) {
     refetchOnWindowFocus: false,
   });
 
-
   const updateProfile = async (updates: Partial<Profile>) => {
     if (!userId) return;
 
     try {
-      const { error } = await supabase
-        .from("users")
-        .update({ ...updates, updated_at: new Date().toISOString() })
-        .eq("id", userId);
+      // Map frontend updates back to backend expected fields
+      const backendUpdates: any = {};
+      if (updates.full_name !== undefined) backendUpdates.name = updates.full_name;
+      if (updates.phone !== undefined) backendUpdates.phone = updates.phone;
+      if (updates.address !== undefined) backendUpdates.address = updates.address;
+      if (updates.avatar_url !== undefined) backendUpdates.avatarUrl = updates.avatar_url;
+      if (updates.bio !== undefined) backendUpdates.bio = updates.bio;
+      if (updates.date_of_birth !== undefined) backendUpdates.dateOfBirth = updates.date_of_birth;
 
-      if (error) throw error;
+      await apiClient.patch('/users/profile', backendUpdates);
 
       // Invalidate query to trigger re-fetch everywhere
       queryClient.invalidateQueries({ queryKey: ["profile", userId] });
-      await refreshProfile();
+      await refreshAuthProfile();
       return true;
     } catch (error) {
       console.error("Error updating profile:", error);

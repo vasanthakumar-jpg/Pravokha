@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/infra/api/supabase";
+import { apiClient } from "@/infra/api/apiClient";
 import { Button } from "@/ui/Button";
 import { Input } from "@/ui/Input";
 import { Label } from "@/ui/Label";
@@ -40,11 +40,13 @@ export function ResetPasswordPage() {
             }
 
             setLoading(true);
-            const { error } = await supabase.auth.updateUser({
+            const response = await apiClient.post('/auth/reset-password', {
                 password: password,
             });
 
-            if (error) throw error;
+            if (!response.data.success) {
+                throw new Error(response.data.message || 'Password reset failed');
+            }
 
             toast({
                 title: "Success!",

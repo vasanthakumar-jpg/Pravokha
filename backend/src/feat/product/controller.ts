@@ -19,8 +19,14 @@ export const createProduct = asyncHandler(async (req: Request, res: Response) =>
 });
 
 export const getProducts = asyncHandler(async (req: Request, res: Response) => {
-    const result = await ProductService.getProducts(req.user!);
-    res.status(200).json({ success: true, data: result });
+    const { search, category, page, limit } = req.query;
+    const result = await ProductService.getProducts(req.user!, {
+        search: search as string,
+        category: category as string,
+        page: page ? parseInt(page as string) : undefined,
+        limit: limit ? parseInt(limit as string) : undefined
+    });
+    res.status(200).json({ success: true, ...result });
 });
 
 export const getProductById = asyncHandler(async (req: Request, res: Response) => {

@@ -12,7 +12,7 @@ import { ImageViewer } from "@/feat/products/components/ImageViewer";
 import { RelatedProducts } from "@/feat/products/components/RelatedProducts";
 import { ProductReviews, ReviewStatistics } from "@/feat/products/components/ProductReviews";
 import { useGsapAnimations } from "@/shared/hook/useGsapAnimations";
-import { supabase } from "@/infra/api/supabase";
+import { apiClient } from "@/infra/api/apiClient";
 import { useRecentlyViewed } from "@/shared/hook/useRecentlyViewed";
 import { Product } from "@/data/products";
 
@@ -40,22 +40,13 @@ export function ProductDetailPage() {
         const checkWishlistStatus = async () => {
             if (!product) return;
 
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) {
-                setIsInWishlist(false);
-                return;
-            }
-
-            const { data, error } = await supabase
-                .from("wishlist")
-                .select("id")
-                .eq("user_id", user.id)
-                .eq("product_id", product.id)
-                .maybeSingle();
-
-            if (!error && data) {
-                setIsInWishlist(true);
-            } else {
+            try {
+                const response = await apiClient.get("/wishlist/status", { params: { productId: product.id } });
+                if (response.data.success) {
+                    setIsInWishlist(response.data.isInWishlist);
+                }
+            } catch (err) {
+                console.error("Wishlist status check failed:", err);
                 setIsInWishlist(false);
             }
         };
@@ -71,34 +62,13 @@ export function ProductDetailPage() {
             try {
                 setLoading(true);
 
-                // check for any valid UUID format (relaxed)
-                const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slug);
-
-                let query = supabase
-                    .from("products")
-                    .select(`
-            *,
-            product_variants (
-              *,
-              product_sizes (*)
-            )
-          `);
-
-                if (isUUID) {
-                    query = query.or(`id.eq.${slug},slug.eq.${slug}`);
-                } else {
-                    query = query.eq("slug", slug);
-                }
-
-                const { data: productData, error: productError } = await query.maybeSingle();
-
-                if (productError) throw productError;
-
-                if (!productData) {
-                    // Silently redirect to products page for invalid URLs (typos, old bookmarks, etc.)
+                const response = await apiClient.get(`/products/${slug}`);
+                if (!response.data.success) {
                     navigate("/products", { replace: true });
                     return;
                 }
+
+                const productData = response.data.data;
 
                 const transformedProduct: Product = {
                     id: productData.id,
@@ -106,23 +76,22 @@ export function ProductDetailPage() {
                     slug: productData.slug,
                     description: productData.description || 'No description available',
                     price: parseFloat(String(productData.price)) || 0,
-                    discountPrice: productData.discount_price ? (parseFloat(String(productData.discount_price)) || undefined) : undefined,
-                    category: productData.category,
+                    discountPrice: productData.discountPrice ? (parseFloat(String(productData.discountPrice)) || undefined) : undefined,
+                    category: productData.category?.name || productData.category,
                     rating: Math.min(5, Math.max(0, parseFloat(String(productData.rating || 4.5)))),
                     reviews: Math.max(0, parseInt(String(productData.reviews || 0))),
                     sku: productData.sku,
-                    featured: (productData as any).is_featured || false,
-                    newArrival: (productData as any).is_new || false,
-                    sellerId: (productData as any).seller_id,
-                    variants: (productData.product_variants || []).map((v: any) => ({
+                    featured: productData.isFeatured || false,
+                    newArrival: productData.isNew || false,
+                    sellerId: productData.dealerId,
+                    variants: (productData.variants || []).map((v: any) => ({
                         id: v.id,
-                        colorName: v.color_name,
-                        colorHex: v.color_hex,
-                        // Validate images and provide fallback
+                        colorName: v.colorName,
+                        colorHex: v.colorHex,
                         images: Array.isArray(v.images) && v.images.length > 0
                             ? v.images
                             : ['https://placehold.co/600x600/e2e8f0/64748b?text=No+Image'],
-                        sizes: (v.product_sizes || []).map((s: any) => ({
+                        sizes: (v.sizes || []).map((s: any) => ({
                             size: s.size,
                             stock: s.stock,
                         })),
@@ -133,22 +102,10 @@ export function ProductDetailPage() {
                 setSelectedVariant(transformedProduct.variants[0]);
                 addToRecentlyViewed(transformedProduct);
 
-                // Fetch random recommendations from ALL products
-                const { data: relatedData } = await supabase
-                    .from("products")
-                    .select(`
-            *,
-            product_variants (
-              *,
-              product_sizes (*)
-            )
-          `)
-                    .neq("id", productData.id)
-                    .eq("published", true)
-                    .limit(50); // Broad fetch for randomization
-
-                if (relatedData) {
-                    // Randomize and take 8 products for a fuller grid
+                // Related products
+                const relatedResponse = await apiClient.get('/products', { params: { limit: 50 } });
+                if (relatedResponse.data.success) {
+                    const relatedData = relatedResponse.data.products.filter((p: any) => p.id !== productData.id);
                     const shuffled = [...relatedData].sort(() => 0.5 - Math.random());
                     const selected = shuffled.slice(0, 8);
 
@@ -158,22 +115,21 @@ export function ProductDetailPage() {
                         slug: p.slug,
                         description: p.description || 'No description available',
                         price: parseFloat(String(p.price)) || 0,
-                        discountPrice: p.discount_price ? (parseFloat(String(p.discount_price)) || undefined) : undefined,
-                        category: p.category,
+                        discountPrice: p.discountPrice ? (parseFloat(String(p.discountPrice)) || undefined) : undefined,
+                        category: p.category?.name || p.category,
                         rating: Math.min(5, Math.max(0, parseFloat(String(p.rating || 4.5)))),
                         reviews: Math.max(0, parseInt(String(p.reviews || 0))),
                         sku: p.sku,
-                        featured: (p as any).is_featured || false,
-                        newArrival: (p as any).is_new || false,
-                        variants: (p.product_variants || []).map((v: any) => ({
+                        featured: p.isFeatured || false,
+                        newArrival: p.isNew || false,
+                        variants: (p.variants || []).map((v: any) => ({
                             id: v.id,
-                            colorName: v.color_name,
-                            colorHex: v.color_hex,
-                            // Validate images and provide fallback
+                            colorName: v.colorName,
+                            colorHex: v.colorHex,
                             images: Array.isArray(v.images) && v.images.length > 0
                                 ? v.images
                                 : ['https://placehold.co/600x600/e2e8f0/64748b?text=No+Image'],
-                            sizes: (v.product_sizes || []).map((s: any) => ({
+                            sizes: (v.sizes || []).map((s: any) => ({
                                 size: s.size,
                                 stock: s.stock,
                             })),
@@ -508,64 +464,47 @@ export function ProductDetailPage() {
                                 className={`gap-2 hover:scale-105 transition-transform group gsap-scale-in ${isInWishlist ? "bg-red-500 hover:bg-red-600 text-white border-red-500" : ""
                                     }`}
                                 onClick={async () => {
-                                    const { data: { user } } = await supabase.auth.getUser();
-                                    if (!user) {
-                                        toast({
-                                            title: "Please login",
-                                            description: "You need to be logged in to manage your wishlist",
-                                            variant: "destructive",
-                                        });
-                                        navigate("/auth");
-                                        return;
-                                    }
+                                    if (!product) return;
 
-                                    if (isInWishlist) {
-                                        const { error } = await supabase
-                                            .from("wishlist")
-                                            .delete()
-                                            .eq("user_id", user.id)
-                                            .eq("product_id", product.id);
-
-                                        if (!error) {
-                                            setIsInWishlist(false);
-                                            toast({
-                                                title: "Removed from wishlist",
-                                                description: `${product.title} removed from your wishlist`,
-                                            });
-                                        } else {
-                                            toast({
-                                                title: "Error",
-                                                description: "Failed to remove from wishlist",
-                                                variant: "destructive",
-                                            });
-                                        }
-                                    } else {
-                                        const { error } = await supabase
-                                            .from("wishlist")
-                                            .insert({
-                                                user_id: user.id,
-                                                product_id: product.id,
+                                    try {
+                                        if (isInWishlist) {
+                                            const response = await apiClient.delete(`/wishlist`, {
+                                                params: { productId: product.id }
                                             });
 
-                                        if (error) {
-                                            if (error.code === '23505') {
-                                                setIsInWishlist(true);
+                                            if (response.data.success) {
+                                                setIsInWishlist(false);
                                                 toast({
-                                                    title: "Already in wishlist",
-                                                    description: "This item is already in your wishlist",
-                                                });
-                                            } else {
-                                                toast({
-                                                    title: "Error",
-                                                    description: "Failed to add to wishlist",
-                                                    variant: "destructive",
+                                                    title: "Removed from wishlist",
+                                                    description: `${product.title} removed from your wishlist`,
                                                 });
                                             }
                                         } else {
-                                            setIsInWishlist(true);
+                                            const response = await apiClient.post(`/wishlist`, {
+                                                productId: product.id,
+                                            });
+
+                                            if (response.data.success) {
+                                                setIsInWishlist(true);
+                                                toast({
+                                                    title: "Added to wishlist",
+                                                    description: `${product.title} has been added to your wishlist`,
+                                                });
+                                            }
+                                        }
+                                    } catch (err: any) {
+                                        if (err.response?.status === 401) {
                                             toast({
-                                                title: "Added to wishlist",
-                                                description: `${product.title} has been added to your wishlist`,
+                                                title: "Please login",
+                                                description: "You need to be logged in to manage your wishlist",
+                                                variant: "destructive",
+                                            });
+                                            navigate("/auth");
+                                        } else {
+                                            toast({
+                                                title: "Error",
+                                                description: "Failed to update wishlist",
+                                                variant: "destructive",
                                             });
                                         }
                                     }

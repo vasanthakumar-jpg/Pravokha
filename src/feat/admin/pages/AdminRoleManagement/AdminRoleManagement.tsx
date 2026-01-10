@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { supabase } from "@/infra/api/supabase";
+import { apiClient } from "@/infra/api/apiClient";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/ui/Card";
 import { Button } from "@/ui/Button";
 import { Badge } from "@/ui/Badge";
@@ -20,8 +20,8 @@ import { motion, AnimatePresence } from "framer-motion";
 interface UserWithRole {
   id: string;
   email: string;
-  created_at: string;
-  role: "admin" | "seller" | "user" | null;
+  createdAt: string;
+  role: string | null;
 }
 
 export default function AdminRoleManagement() {
@@ -41,97 +41,39 @@ export default function AdminRoleManagement() {
     fetchUsers();
   }, []);
 
+  const mapRoleBackToFront = (role: string | null): string => {
+    if (!role) return "user";
+    const r = role.toLowerCase();
+    if (r === 'dealer') return 'seller';
+    return r;
+  };
+
+  const mapRoleFrontToBack = (role: string): string => {
+    if (role === 'seller') return 'DEALER';
+    return role.toUpperCase();
+  };
+
   const fetchUsers = async () => {
     try {
-      console.log("[AdminRoleManagement] Starting fetchUsers...");
+      setLoading(true);
+      const response = await apiClient.get('/users');
 
-      // Fetch user_roles with user metadata
-      // Since we can't use admin.listUsers() from client side, we'll work with user_roles table
-      console.log("[AdminRoleManagement] Fetching user_roles...");
-      const { data: rolesData, error: rolesError } = await supabase
-        .from("users")
-        .select("*");
-
-      if (rolesError) {
-        console.error("[AdminRoleManagement] Error fetching user_roles:", rolesError);
-        throw new Error(`Failed to fetch user roles: ${rolesError.message}`);
+      if (response.data.success) {
+        const usersWithRoles = (response.data.users as any[]).map(u => ({
+          id: u.id,
+          email: u.email,
+          createdAt: u.createdAt,
+          role: mapRoleBackToFront(u.role)
+        }));
+        setUsers(usersWithRoles);
       }
-
-      console.log("[AdminRoleManagement] Roles data:", rolesData);
-
-      // Fetch profiles to get email addresses
-      console.log("[AdminRoleManagement] Fetching profiles...");
-      const { data: profilesData, error: profilesError } = await supabase
-        .from("users")
-        .select("id, full_name, avatar_url");
-
-      if (profilesError) {
-        console.warn("[AdminRoleManagement] Error fetching profiles:", profilesError);
-        // Don't throw - profiles are optional
-      }
-
-      console.log("[AdminRoleManagement] Profiles data:", profilesData);
-
-      // Get current auth user to extract email
-      console.log("[AdminRoleManagement] Getting current user...");
-      const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
-
-      if (userError) {
-        console.error("[AdminRoleManagement] Error getting current user:", userError);
-      }
-
-      console.log("[AdminRoleManagement] Current user:", currentUser?.id);
-
-      // Combine data - since we can't access all users' emails from client,
-      // we'll show user IDs and fetch emails where available
-      const usersWithRoles: UserWithRole[] = (rolesData || []).map((roleEntry) => {
-        const profile = profilesData?.find((p) => p.id === roleEntry.user_id);
-
-        // For current user, we have the email
-        const isCurrentUser = roleEntry.user_id === currentUser?.id;
-        const displayName = profile?.full_name ||
-          (isCurrentUser ? currentUser.email : null) ||
-          `User ${roleEntry.user_id.slice(0, 8)}`;
-
-        return {
-          id: roleEntry.user_id,
-          email: displayName,
-          created_at: roleEntry.created_at || new Date().toISOString(),
-          role: roleEntry.role as "admin" | "seller" | "user" | null,
-        };
-      });
-
-      console.log("[AdminRoleManagement] Users with roles:", usersWithRoles.length);
-
-      // If no users with roles found, show a helpful message
-      if (usersWithRoles.length === 0) {
-        console.warn("[AdminRoleManagement] No users found with roles");
-        toast({
-          title: "No Role Assignments Yet",
-          description: "Create user roles by assigning roles to users below. New users will default to 'user' role.",
-          variant: "default",
-        });
-      }
-
-      setUsers(usersWithRoles);
     } catch (error: any) {
       console.error("[AdminRoleManagement] Error in fetchUsers:", error);
-
-      // Provide more specific error messages
-      let errorMessage = error.message || "Failed to fetch users";
-      if (error.code === "42501") {
-        errorMessage = "Database permission error. Please check Row Level Security policies for user_roles table.";
-      } else if (error.message?.includes("403") || error.message?.includes("not allowed")) {
-        errorMessage = "Access forbidden. This might be a database permission issue.";
-      }
-
       toast({
         title: "Error Loading Users",
-        description: errorMessage,
+        description: "Failed to fetch users from backend",
         variant: "destructive",
       });
-
-      // Set empty array so UI doesn't break
       setUsers([]);
     } finally {
       setLoading(false);
@@ -140,57 +82,21 @@ export default function AdminRoleManagement() {
 
   const updateUserRole = async (userId: string, newRole: string) => {
     try {
-      console.log(`[AdminRoleManagement] Updating role for user ${userId} to ${newRole}`);
+      const backendRole = mapRoleFrontToBack(newRole);
+      const response = await apiClient.patch(`/users/${userId}/role`, { role: backendRole });
 
-      // First, delete existing role(s) for this user
-      const { error: deleteError } = await supabase
-        .from("users")
-        .delete()
-        .eq("user_id", userId);
-
-      if (deleteError) {
-        console.error("[AdminRoleManagement] Error deleting old role:", deleteError);
-        throw deleteError;
-      }
-
-      // Then insert the new role with proper type casting
-      const { error: insertError } = await supabase
-        .from("users")
-        .insert({
-          user_id: userId,
-          role: newRole as "admin" | "seller" | "user" | "moderator"
+      if (response.data.success) {
+        toast({
+          title: "Success",
+          description: `User role updated to ${newRole}`,
         });
-
-      if (insertError) {
-        console.error("[AdminRoleManagement] Error inserting new role:", insertError);
-        throw insertError;
+        fetchUsers();
       }
-
-      console.log(`[AdminRoleManagement] Successfully updated role to ${newRole}`);
-
-      // Automated Audit Insertion
-      await supabase.from("audit_logs").insert({
-        actor_id: (await supabase.auth.getUser()).data.user?.id,
-        target_id: userId,
-        target_type: "user",
-        action_type: "role_change",
-        severity: "warning",
-        description: `User role updated to ${newRole}`,
-        metadata: { new_role: newRole }
-      });
-
-      toast({
-        title: "Success",
-        description: `User role updated to ${newRole}`,
-      });
-
-      // Refresh the list
-      fetchUsers();
     } catch (error: any) {
       console.error("[AdminRoleManagement] Error updating role:", error);
       toast({
         title: "Error",
-        description: error.message || "Failed to update user role",
+        description: error.response?.data?.message || "Failed to update user role",
         variant: "destructive",
       });
     }

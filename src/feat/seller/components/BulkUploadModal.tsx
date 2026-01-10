@@ -9,7 +9,7 @@ import {
 import { Button } from "@/ui/Button";
 import { Progress } from "@/ui/Progress";
 import { Alert, AlertDescription, AlertTitle } from "@/ui/Alert";
-import { supabase } from "@/infra/api/supabase";
+import { apiClient } from "@/infra/api/apiClient";
 import { toast } from "@/shared/hook/use-toast";
 import {
     Loader2,
@@ -119,47 +119,44 @@ export function BulkUploadModal({ isOpen, onClose, onSuccess, userId }: BulkUplo
                     for (let i = 0; i < validRows.length; i += batchSize) {
                         const batch = validRows.slice(i, i + batchSize);
 
-                        // Insert products
-                        const { data: insertedProducts, error: pError } = await supabase
-                            .from('products')
-                            .insert(batch.map(p => ({
+                        // Use parallel requests for the batch
+                        const batchPromises = batch.map(p => {
+                            const payload = {
                                 title: p.title,
                                 price: p.price,
-                                category: p.category,
+                                category_id: p.category, // Map 'category' col to 'category_id'
                                 description: p.description,
-                                seller_id: p.seller_id,
-                                published: p.published,
-                                slug: `${p.title.toLowerCase().replace(/ /g, '-')}-${Math.random().toString(36).substring(2, 7)}`
-                            })))
-                            .select();
+                                // published: p.published, // API defaulting to draft usually, or check API spec. User logic set false.
+                                published: false,
+                                variants: [
+                                    {
+                                        color_name: 'Primary',
+                                        sizes: [
+                                            { size: 'Standard', stock: p.stock_quantity }
+                                        ]
+                                    }
+                                ]
+                            };
+                            return apiClient.post('/products', payload)
+                                .then(() => ({ status: 'fulfilled' }))
+                                .catch(err => ({ status: 'rejected', reason: err, row: p }));
+                        });
 
-                        if (pError) {
-                            console.error("Batch insert error:", pError);
-                            validationErrors.push({ row: i, errors: ["Database error during batch insert"] });
-                        } else if (insertedProducts) {
-                            successCount += insertedProducts.length;
+                        const results = await Promise.all(batchPromises);
 
-                            // Create variants & sizes for each product to match DB requirements
-                            for (const product of insertedProducts) {
-                                // Find original row for stock
-                                const originalRow = validRows.find(r => r.title === product.title);
-                                const { data: variant } = await supabase
-                                    .from('product_variants')
-                                    .insert({ product_id: product.id, color_name: 'Primary' })
-                                    .select()
-                                    .single();
+                        const failed = results.filter(r => r.status === 'rejected');
+                        const succeeded = results.filter(r => r.status === 'fulfilled');
 
-                                if (variant) {
-                                    await supabase
-                                        .from('product_sizes')
-                                        .insert({
-                                            variant_id: variant.id,
-                                            size: 'Standard',
-                                            stock: originalRow?.stock_quantity || 0
-                                        });
-                                }
-                            }
-                        }
+                        successCount += succeeded.length;
+
+                        failed.forEach((f: any) => {
+                            // Find the index relative to the whole set (approximation for logging)
+                            // Actually f.row is the product object...
+                            // We don't have the original row index easily here unless we pass it.
+                            // But we can push a generic error or try to match title.
+                            console.error("Failed import:", f.reason);
+                            validationErrors.push({ row: i, errors: [`API Error: ${f.reason?.response?.data?.message || f.reason?.message}`] });
+                        });
 
                         setProgress(Math.round(((i + batchSize) / validRows.length) * 100));
                     }

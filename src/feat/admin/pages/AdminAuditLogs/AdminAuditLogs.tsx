@@ -60,7 +60,7 @@ import {
     SheetTitle,
     SheetDescription,
 } from "@/ui/Sheet";
-import { supabase } from "@/infra/api/supabase";
+import { apiClient } from "@/infra/api/apiClient";
 import { useToast } from "@/shared/hook/use-toast";
 import { AdminSkeleton } from "@/feat/admin/components/AdminSkeleton";
 import { useAuth } from "@/core/context/AuthContext";
@@ -131,49 +131,38 @@ export default function AdminAuditLogs() {
     useEffect(() => {
         if (!adminLoading && isAdmin) {
             fetchLogs();
-
-            // Real-time subscription
-            const channel = supabase
-                .channel('audit_logs_changes')
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'audit_logs' }, () => {
-                    fetchLogs();
-                })
-                .subscribe();
-
-            return () => {
-                supabase.removeChannel(channel);
-            };
         }
-    }, [adminLoading, isAdmin, currentPage]);
+    }, [adminLoading, isAdmin, currentPage, actionFilter, severityFilter, searchQuery, dateRange]);
 
     const fetchLogs = async () => {
         try {
             setLoading(true);
 
-            // Get total count
-            const { count } = await supabase
-                .from('audit_logs')
-                .select('*', { count: 'exact', head: true });
+            const params = {
+                limit: pageSize,
+                skip: (currentPage - 1) * pageSize,
+                actionType: actionFilter === 'all' ? undefined : actionFilter,
+                severity: severityFilter === 'all' ? undefined : severityFilter,
+                searchQuery: searchQuery || undefined,
+                fromDate: dateRange.from ? dateRange.from.toISOString() : undefined,
+                toDate: dateRange.to ? dateRange.to.toISOString() : undefined
+            };
 
-            setTotalCount(count || 0);
+            const response = await apiClient.get('/audit', { params });
+            const data = response.data.logs.map((log: any) => ({
+                ...log,
+                created_at: log.createdAt,
+                action_type: log.actionType,
+                target_type: log.targetType,
+                target_id: log.targetId,
+                actor_id: log.actorId,
+                profiles: log.actor ? {
+                    full_name: log.actor.name,
+                    email: log.actor.email
+                } : undefined
+            }));
 
-            // Get paginated data
-            const from = (currentPage - 1) * pageSize;
-            const to = from + pageSize - 1;
-
-            const { data, error } = await supabase
-                .from('audit_logs')
-                .select(`
-                    *,
-                    profiles:actor_id (
-                        full_name,
-                        email
-                    )
-                `)
-                .order('created_at', { ascending: false })
-                .range(from, to);
-
-            if (error) throw error;
+            setTotalCount(response.data.total || 0);
             setLogs(data || []);
         } catch (error: any) {
             toast({
@@ -197,27 +186,7 @@ export default function AdminAuditLogs() {
         }
     };
 
-    const filteredLogs = logs.filter(log => {
-        const matchesSearch =
-            log.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            log.action_type?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            log.profiles?.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            log.profiles?.email?.toLowerCase().includes(searchQuery.toLowerCase());
-
-        const matchesAction = actionFilter === 'all' || log.action_type === actionFilter;
-        const matchesSeverity = severityFilter === 'all' || log.severity === severityFilter;
-
-        let matchesDate = true;
-        if (dateRange.from) {
-            const logDate = new Date(log.created_at);
-            matchesDate = logDate >= dateRange.from;
-            if (dateRange.to) {
-                matchesDate = matchesDate && logDate <= dateRange.to;
-            }
-        }
-
-        return matchesSearch && matchesAction && matchesSeverity && matchesDate;
-    });
+    const filteredLogs = logs;
 
     const resetFilters = () => {
         setSearchQuery("");

@@ -13,7 +13,7 @@ This project is built with:
 - **React** - UI framework
 - **Tailwind CSS** - Utility-first CSS framework
 - **shadcn-ui** - High-quality UI components
-- **Supabase** - Backend and database
+- **MySQL & Node.js** - Backend and database
 - **React Router** - Client-side routing
 - **Framer Motion** - Animation library
 
@@ -60,7 +60,7 @@ src/
 ├── contexts/        # React context providers
 ├── hooks/           # Custom React hooks
 ├── styles/          # Global styles and CSS modules
-└── integrations/    # Third-party integrations (Supabase)
+└── integrations/    # Third-party integrations
 ```
 
 ## Features
@@ -88,8 +88,7 @@ src/
 Create a `.env` file in the root directory with the following variables:
 
 ```env
-VITE_SUPABASE_URL=your_supabase_url
-VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+
 ```
 
 ## Contributing

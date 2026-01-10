@@ -1,47 +1,37 @@
 # Pravokha Backend
 
-Secure, lightweight Node.js backend replacing Supabase auto-generated APIs.
+Secure, lightweight Node.js backend.
+
+## Features
+- **Express.js** REST API
+- **Prisma** ORM with MySQL
+- **JWT** Authentication (HttpOnly cookies + Bearer tokens)
+- **Role-Based Access Control** (Admin, Dealer, User)
+- **Stripe** Payment Integration
+- **File Uploads** (Local / S3 compatible)
 
 ## Setup
 
-1.  **Environment Variables**:
-    - A `.env` file has been created in this directory.
-    - **ACTION REQUIRED**: Open `.env` and replace `[YOUR-PASSWORD]` with your actual Supabase database password.
-    - The `DATABASE_URL` is pre-configured with your Project ID (`oxwwnuxzlqvcbxxayfis`).
+1.  **Install Dependencies**
+    ```bash
+    npm install
+    ```
 
-2.  **Database Migration**:
-    - Once `.env` is updated, run:
-      ```bash
-      npx prisma db push
-      ```
-    - This will sync the `User` and `Product` tables to your database.
+2.  **Environment Variables**
+    Copy `.env.example` to `.env` and configure your database URL.
 
-3.  **Run Server**:
-    - Development:
-      ```bash
-      npm run dev
-      ```
-    - Production Build:
-      ```bash
-      npm run build
-      npm start
-      ```
+3.  **Database Migration**
+    ```bash
+    npx prisma db push
+    ```
 
-## API Endpoints
+4.  **Run Server**
+    ```bash
+    npm run dev
+    ```
 
-### Auth
-- `POST /api/auth/register` - Create account
-- `POST /api/auth/login` - Get JWT
-
-### Products
-- `GET /api/products` - List products (as Dealer/Admin)
-- `POST /api/products` - Create product
-- `GET /api/products/:id` - Get details
-- `PUT /api/products/:id` - Update
-- `DELETE /api/products/:id` - Delete
-
-## Testing
-Run unit tests:
-```bash
-npm test
-```
+## API Structure
+- `/api/auth`: Login, Register, Profile
+- `/api/products`: CRUD for products
+- `/api/orders`: Order management
+- `/uploads`: Static file serving

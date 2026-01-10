@@ -31,7 +31,7 @@ import {
     User,
     Package,
 } from "lucide-react";
-import { supabase } from "@/infra/api/supabase";
+import { apiClient } from "@/infra/api/apiClient";
 import { toast } from "@/shared/hook/use-toast";
 import { Textarea } from "@/ui/Textarea";
 import {
@@ -54,33 +54,19 @@ export default function AdminProductUpdates() {
     const fetchRequests = async () => {
         setLoading(true);
         try {
-            const { data, error } = await supabase
-                .from("product_update_requests")
-                .select(`
-          *,
-          products (
-            title,
-            sku,
-            category,
-            description,
-            subcategory_id
-          ),
-          profiles (
-            full_name,
-            email
-          )
-        `)
-                .order('created_at', { ascending: false });
-
-            if (error) {
-                // Fallback if table not found
-                console.error("Requests fetch error:", error);
-                setRequests([]);
+            const response = await apiClient.get("/admin/product-updates");
+            if (response.data.success) {
+                setRequests(response.data.requests || []);
             } else {
-                setRequests(data || []);
+                setRequests([]);
             }
         } catch (err) {
             console.error("Error fetching requests:", err);
+            toast({
+                title: "Fetch Failed",
+                description: "Could not load product update requests.",
+                variant: "destructive"
+            });
         } finally {
             setLoading(false);
         }
@@ -97,49 +83,27 @@ export default function AdminProductUpdates() {
         setIsProcessing(true);
 
         try {
-            // 1. Update Request Status
-            const { error: updateError } = await supabase
-                .from("product_update_requests")
-                .update({
-                    status,
-                    admin_notes: adminNotes,
-                    updated_at: new Date().toISOString()
-                })
-                .eq("id", selectedRequest.id);
-
-            if (updateError) throw updateError;
-
-            // 2. If Approved, Apply Changes to Product
-            if (status === 'approved') {
-                const { reason, ...changes } = selectedRequest.requested_changes;
-
-                // Clean up undefined/null values
-                const cleanChanges = Object.fromEntries(
-                    Object.entries(changes).filter(([_, v]) => v !== undefined && v !== null)
-                );
-
-                if (Object.keys(cleanChanges).length > 0) {
-                    const { error: productError } = await supabase
-                        .from("products")
-                        .update(cleanChanges)
-                        .eq("id", selectedRequest.product_id);
-
-                    if (productError) throw productError;
-                }
-            }
-
-            toast({
-                title: status === 'approved' ? "Changes Approved" : "Request Rejected",
-                description: status === 'approved' ? "Product has been updated." : "Seller will be notified.",
+            const response = await apiClient.patch(`/admin/product-updates/${selectedRequest.id}`, {
+                status,
+                adminNotes
             });
 
-            setSelectedRequest(null);
-            setAdminNotes("");
-            fetchRequests();
+            if (response.data.success) {
+                toast({
+                    title: status === 'approved' ? "Changes Approved" : "Request Rejected",
+                    description: status === 'approved' ? "Product has been updated." : "Seller will be notified.",
+                });
+
+                setSelectedRequest(null);
+                setAdminNotes("");
+                fetchRequests();
+            } else {
+                throw new Error(response.data.message || "Failed to update request");
+            }
         } catch (err: any) {
             toast({
                 title: "Action Failed",
-                description: err.message,
+                description: err.response?.data?.message || err.message,
                 variant: "destructive"
             });
         } finally {
@@ -190,22 +154,22 @@ export default function AdminProductUpdates() {
                                 <TableRow key={request.id}>
                                     <TableCell>
                                         <div className="flex flex-col">
-                                            <span className="font-bold text-sm">{request.products?.title || 'Unknown Product'}</span>
-                                            <span className="text-[10px] text-muted-foreground font-mono">SKU: {request.products?.sku}</span>
+                                            <span className="font-bold text-sm">{request.product?.title || 'Unknown Product'}</span>
+                                            <span className="text-[10px] text-muted-foreground font-mono">SKU: {request.product?.sku}</span>
                                         </div>
                                     </TableCell>
                                     <TableCell>
                                         <div className="flex items-center gap-2">
                                             <User className="w-3 h-3 text-muted-foreground" />
                                             <div className="flex flex-col">
-                                                <span className="text-xs font-medium">{request.profiles?.full_name}</span>
-                                                <span className="text-[10px] text-muted-foreground">{request.profiles?.email}</span>
+                                                <span className="text-xs font-medium">{request.seller?.full_name || request.seller?.name}</span>
+                                                <span className="text-[10px] text-muted-foreground">{request.seller?.email}</span>
                                             </div>
                                         </div>
                                     </TableCell>
                                     <TableCell>
                                         <div className="flex flex-wrap gap-1">
-                                            {Object.keys(request.requested_changes)
+                                            {Object.keys(request.requestedChanges)
                                                 .filter(k => k !== 'reason')
                                                 .map(key => (
                                                     <Badge key={key} variant="outline" className="text-[9px] capitalize p-0 px-1.5 h-4">
@@ -217,7 +181,7 @@ export default function AdminProductUpdates() {
                                     <TableCell>
                                         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                                             <Clock className="w-3 h-3" />
-                                            {new Date(request.created_at).toLocaleDateString()}
+                                            {new Date(request.createdAt).toLocaleDateString()}
                                         </div>
                                     </TableCell>
                                     <TableCell>
@@ -258,7 +222,7 @@ export default function AdminProductUpdates() {
                     <DialogHeader>
                         <DialogTitle className="text-xl">Review Update Request</DialogTitle>
                         <DialogDescription>
-                            Comparing changes for product: <span className="font-bold text-foreground">{selectedRequest?.products?.title}</span>
+                            Comparing changes for product: <span className="font-bold text-foreground">{selectedRequest?.product?.title}</span>
                         </DialogDescription>
                     </DialogHeader>
 
@@ -279,13 +243,13 @@ export default function AdminProductUpdates() {
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {selectedRequest && Object.entries(selectedRequest.requested_changes)
+                                        {selectedRequest && Object.entries(selectedRequest.requestedChanges)
                                             .filter(([k]) => k !== 'reason')
                                             .map(([key, newValue]: [string, any]) => (
                                                 <TableRow key={key}>
                                                     <TableCell className="font-bold text-[11px] capitalize">{key.replace('_id', '')}</TableCell>
                                                     <TableCell className="text-[11px] text-muted-foreground bg-rose-50/20 max-w-[200px] break-words">
-                                                        {selectedRequest.products?.[key] || 'N/A'}
+                                                        {selectedRequest.product?.[key] || 'N/A'}
                                                     </TableCell>
                                                     <TableCell className="text-[11px] font-medium text-emerald-600 bg-emerald-50/20 max-w-[200px] break-words">
                                                         {newValue}
@@ -300,7 +264,7 @@ export default function AdminProductUpdates() {
                         {/* Seller Reason */}
                         <div className="bg-muted/30 p-4 rounded-2xl border border-dashed border-border/60">
                             <h4 className="text-[10px] font-bold tracking-widest text-muted-foreground mb-2">Seller's justification</h4>
-                            <p className="text-sm italic">"{selectedRequest?.requested_changes?.reason || 'No reason provided.'}"</p>
+                            <p className="text-sm italic">"{selectedRequest?.requestedChanges?.reason || 'No reason provided.'}"</p>
                         </div>
 
                         {/* Admin Notes */}
@@ -330,7 +294,7 @@ export default function AdminProductUpdates() {
                             onClick={() => handleAction('approved')}
                             disabled={isProcessing}
                         >
-                            {isProcessing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Check className="w-4 h-4 mr-2" />}
+                            {isProcessing ? <Clock className="w-4 h-4 mr-2 animate-spin" /> : <Check className="w-4 h-4 mr-2" />}
                             Approve & Publish
                         </Button>
                     </DialogFooter>
@@ -341,5 +305,5 @@ export default function AdminProductUpdates() {
 }
 
 function Loader2({ className }: { className?: string }) {
-    return <Clock className={className} /> // Just a placeholder if Lucide's Loader2 is same as Clock in this context, but I used Spinner icons before.
+    return <Clock className={className} />
 }

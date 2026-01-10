@@ -1,4 +1,4 @@
-import { supabase } from "@/infra/api/supabase";
+import { apiClient } from "@/infra/api/apiClient";
 
 // --- Types ---
 
@@ -23,29 +23,21 @@ class EmailClientService {
     private isDev = import.meta.env.DEV;
 
     /**
-     * Invokes the secure Edge Function to send an email.
-     * Client NEVER sees the API Key.
+     * Invokes the backend API to send an email.
      */
     private async invoke(type: EmailType, payload: EmailPayload) {
         try {
             console.log(`[EmailClient] Invoking 'send-email' for type: ${type}`);
 
-            const { data, error } = await supabase.functions.invoke("send-email", {
-                body: {
-                    type,
-                    to: payload.to,
-                    data: payload.data,
-                    dry_run: payload.dry_run ?? this.isDev, // Default to dry-run in Dev unless specified
-                },
+            const response = await apiClient.post("/email/send", {
+                type,
+                to: payload.to,
+                data: payload.data,
+                dry_run: payload.dry_run ?? this.isDev,
             });
 
-            if (error) {
-                console.error("[EmailClient] Function Invocation Error:", error);
-                return { success: false, error };
-            }
-
-            console.log("[EmailClient] Success:", data);
-            return { success: true, data };
+            console.log("[EmailClient] Success:", response.data);
+            return { success: true, data: response.data };
         } catch (err) {
             console.error("[EmailClient] Unexpected Error:", err);
             return { success: false, error: err };

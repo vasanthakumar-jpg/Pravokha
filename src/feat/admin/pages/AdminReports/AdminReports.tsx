@@ -29,7 +29,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/ui/Badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/ui/Table";
-import { supabase } from "@/infra/api/supabase";
+import { apiClient } from "@/infra/api/apiClient";
 import { format, subDays, startOfDay, endOfDay, eachDayOfInterval } from "date-fns";
 import { useAdmin } from "@/core/context/AdminContext";
 
@@ -81,25 +81,22 @@ export default function AdminReports() {
       if (dateRange === '1y') startDate = subDays(now, 365);
 
       // 2. Fetch Orders
-      const { data: orders, error: ordersError } = await supabase
-        .from('orders')
-        .select('*')
-        .gte('created_at', startDate.toISOString())
-        .order('created_at', { ascending: true });
-
-      if (ordersError) throw ordersError;
+      const { data: orders } = await apiClient.get('/orders', {
+        params: {
+          after: startDate.toISOString(),
+          limit: 1000 // Ensure we get significant data for analytics
+        }
+      });
 
       // 3. Calculate KPI Stats
-      const revenue = orders?.reduce((sum, order) => sum + (order.total || 0), 0) || 0;
+      const revenue = orders?.reduce((sum: number, order: any) => sum + (order.total || 0), 0) || 0;
       const orderCount = orders?.length || 0;
 
-      // 4. Fetch Active Sellers (Mock logic: count unique sellers from products)
-      // Since we don't have a direct link in orders to sellers easily without joins, 
-      // we'll fetch from profiles where role is seller
-      const { count: sellerCount } = await supabase
-        .from("users")
-        .select('*', { count: 'exact', head: true })
-        .eq('role', 'seller');
+      // 4. Fetch Active Sellers (via users endpoint with filter)
+      const { data: sellers } = await apiClient.get('/users/admin/search', {
+        params: { role: 'seller' }
+      });
+      const sellerCount = sellers?.length || 0;
 
       setStats(prev => ({
         ...prev,
@@ -109,13 +106,13 @@ export default function AdminReports() {
       }));
 
       // 5. Prepare Chart Data (Sales over time)
-      const days = eachDayOfInterval({ start: startDate, end: now });
+      const days = eachDayOfInterval({ start: startOfDay(startDate), end: endOfDay(now) });
       const chartData = days.map(day => {
         const dayStr = format(day, 'MMM dd');
-        const dayOrders = orders?.filter(o =>
+        const dayOrders = orders?.filter((o: any) =>
           format(new Date(o.created_at), 'MMM dd') === dayStr
         );
-        const dayRevenue = dayOrders?.reduce((sum, o) => sum + (o.total || 0), 0) || 0;
+        const dayRevenue = dayOrders?.reduce((sum: number, o: any) => sum + (o.total || 0), 0) || 0;
         return {
           name: dayStr,
           revenue: dayRevenue,
@@ -126,7 +123,7 @@ export default function AdminReports() {
 
       // 6. Calculate Category Data from real orders
       const categoryCounts: { [key: string]: number } = {};
-      orders?.forEach(order => {
+      orders?.forEach((order: any) => {
         if (Array.isArray(order.items)) {
           order.items.forEach((item: any) => {
             const category = item.category || "Uncategorized";
@@ -150,7 +147,7 @@ export default function AdminReports() {
         }
       } = {};
 
-      orders?.forEach(order => {
+      orders?.forEach((order: any) => {
         if (Array.isArray(order.items)) {
           order.items.forEach((item: any) => {
             const productName = item.title || "Unknown Product";

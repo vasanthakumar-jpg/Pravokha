@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { SIZES, COLORS } from "@/data/products";
 import { MARKETPLACE_FEE_PERCENTAGE, MAX_DISCOUNT_PERCENTAGE } from "@/lib/constants";
-import { supabase } from "@/infra/api/supabase";
+import { apiClient } from "@/infra/api/apiClient";
 import { useAuth } from "@/core/context/AuthContext";
 import { useAdmin } from "@/core/context/AdminContext";
 import { Badge } from "@/ui/Badge";
@@ -128,20 +128,10 @@ export default function AdminProductForm() {
     useEffect(() => {
         const fetchHierarchy = async () => {
             try {
-                const { data: cats } = await supabase
-                    .from("categories")
-                    .select("id, name, slug")
-                    .eq("status", "active")
-                    .order("display_order");
-
+                const { data: cats } = await apiClient.get('/categories');
                 setDbCategories(cats || []);
 
-                const { data: subs } = await supabase
-                    .from("subcategories")
-                    .select("id, name, slug, category_id")
-                    .eq("status", "active")
-                    .order("display_order");
-
+                const { data: subs } = await apiClient.get('/subcategories');
                 setDbSubcategories(subs || []);
             } catch (err) {
                 console.error("[AdminProductForm] Error fetching hierarchy:", err);
@@ -160,17 +150,7 @@ export default function AdminProductForm() {
 
             try {
                 console.log(`[AdminProductForm] Fetching product: ${id}`);
-                const { data: product, error } = await supabase
-                    .from("products")
-                    .select("*, product_variants(*, product_sizes(*))")
-                    .eq("id", id)
-                    .is("deleted_at", null)
-                    .single();
-
-                if (error) {
-                    console.error("[AdminProductForm] Error fetching product:", error);
-                    throw error;
-                }
+                const { data: product } = await apiClient.get(`/products/${id}`);
 
                 const colors: ColorOption[] = [];
                 const sizes: string[] = [];
@@ -211,7 +191,7 @@ export default function AdminProductForm() {
                     sku: product.sku || "",
                     description: product.description || "",
                     category: product.category || "",
-                    selectedCategoryId: "", // Will be set by separate effect
+                    selectedCategoryId: product.category_id || "",
                     selectedSubcategoryId: product.subcategory_id || "",
                     price: product.price?.toString() || "",
                     discountPrice: product.discount_price?.toString() || "",
@@ -369,9 +349,15 @@ export default function AdminProductForm() {
         if (!formData.selectedCategoryId) {
             newErrors.category = "Category selection is required for proper product taxonomy.";
         }
+        // Subcategory optional or required based on business rules, keeping as warning/error based on previous logic
+        // if (!formData.selectedSubcategoryId) {
+        //     newErrors.subcategory = "Subcategory is required for proper product organization.";
+        // }
+        // Changed to allow null subcategory if not strict, but user had it as required before. keeping consistent.
         if (!formData.selectedSubcategoryId) {
             newErrors.subcategory = "Subcategory is required for proper product organization.";
         }
+
         if (formData.selectedColors.length === 0) {
             newErrors.colors = "Variant Matrix Incomplete: At least one color must be selected.";
         }
@@ -409,12 +395,56 @@ export default function AdminProductForm() {
         setErrors({});
         setIsSaving(true);
         try {
+            // 1. Prepare Variants Data
+            const colors = formData.selectedColors.length > 0 ? formData.selectedColors : [];
+            const variantsData = [];
+
+            for (const color of colors) {
+                // Upload New Images for this Color
+                const colorFiles = formData.variantImages[color.id] || [];
+                const uploadedUrls: string[] = [];
+
+                if (colorFiles.length > 0) {
+                    const uploadFormData = new FormData();
+                    colorFiles.forEach(file => {
+                        uploadFormData.append('files', file);
+                    });
+
+                    // Use backend upload endpoint
+                    const { data: uploadResult } = await apiClient.post('/uploads/multiple', uploadFormData, {
+                        headers: { 'Content-Type': 'multipart/form-data' }
+                    });
+
+                    if (uploadResult && uploadResult.urls) {
+                        uploadedUrls.push(...uploadResult.urls);
+                    }
+                }
+
+                const existingUrls = formData.existingVariantImages[color.id] || [];
+                const finalImages = [...existingUrls, ...uploadedUrls];
+
+                const sizeEntries = formData.selectedSizes
+                    .filter(size => !formData.unavailableVariants?.includes(getStockKey(color.name, size)))
+                    .map(size => ({
+                        size: size,
+                        stock: formData.sizeStock[getStockKey(color.name, size)] || 0
+                    }));
+
+                variantsData.push({
+                    color_name: color.name,
+                    color_hex: color.hex,
+                    images: finalImages,
+                    sizes: sizeEntries
+                });
+            }
+
             const productPayload = {
                 title: formData.title,
                 slug: formData.slug || formData.title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
                 sku: formData.sku || `SKU-${Date.now()}`,
                 description: formData.description,
                 category: formData.category,
+                category_id: formData.selectedCategoryId, // Explicit ID
                 subcategory_id: formData.selectedSubcategoryId || null,
                 price: Number(formData.price),
                 discount_price: formData.discountPrice ? Number(formData.discountPrice) : null,
@@ -422,83 +452,22 @@ export default function AdminProductForm() {
                 is_new: formData.is_new,
                 is_featured: formData.is_featured,
                 is_verified: formData.is_verified,
-                seller_id: user?.id
+                seller_id: user?.id,
+                variants: variantsData
             };
 
-            let productId = id;
             if (id) {
-                await supabase.from('products').update(productPayload).eq('id', id);
-                const { data: vars } = await supabase.from('product_variants').select('id').eq('product_id', id);
-                if (vars?.length) {
-                    const vIds = vars.map(v => v.id);
-                    await supabase.from('product_sizes').delete().in('variant_id', vIds);
-                    await supabase.from('product_variants').delete().eq('product_id', id);
-                }
+                await apiClient.put(`/products/${id}`, productPayload);
             } else {
-                const { data, error } = await supabase.from('products').insert(productPayload).select().single();
-                if (error) throw error;
-                productId = data.id;
-            }
-
-            // Create Variants
-            const colors = formData.selectedColors.length ? formData.selectedColors : [];
-
-            for (const color of colors) {
-                // Upload New Images for this Color
-                const colorFiles = formData.variantImages[color.id] || [];
-                const uploadedUrls: string[] = [];
-
-                for (const file of colorFiles) {
-                    const fileExt = file.name.split('.').pop();
-                    const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-                    const { error: uploadError } = await supabase.storage.from('products').upload(`products/${fileName}`, file);
-                    if (uploadError) throw uploadError;
-                    const { data: { publicUrl } } = supabase.storage.from('products').getPublicUrl(`products/${fileName}`);
-                    uploadedUrls.push(publicUrl);
-                }
-
-                // Combine with existing preserved images
-                const existingUrls = formData.existingVariantImages[color.id] || [];
-                const finalImages = [...existingUrls, ...uploadedUrls];
-
-                const { data: variant } = await supabase.from('product_variants').insert({
-                    product_id: productId,
-                    color_name: color.name,
-                    color_hex: color.hex,
-                    images: finalImages
-                }).select().single();
-
-                if (variant && formData.selectedSizes.length) {
-                    const sizeEntries = formData.selectedSizes
-                        .filter(size => !formData.unavailableVariants?.includes(getStockKey(color.name, size)))
-                        .map(size => ({
-                            variant_id: variant.id,
-                            size: size,
-                            stock: formData.sizeStock[getStockKey(color.name, size)] || 0
-                        }));
-                    if (sizeEntries.length > 0) {
-                        await supabase.from('product_sizes').insert(sizeEntries);
-                    }
-                }
-            }
-
-            // Cleanup Deleted Images (Storage)
-            if (formData.imagesToDelete.length > 0) {
-                const pathsToDelete = formData.imagesToDelete.map(url => {
-                    const parts = url.split('/products/');
-                    return parts.length > 1 ? `products/${parts[parts.length - 1]}` : null;
-                }).filter(p => p !== null) as string[];
-
-                if (pathsToDelete.length > 0) {
-                    await supabase.storage.from('products').remove(pathsToDelete);
-                }
+                await apiClient.post('/products', productPayload);
             }
 
             toast({ title: "Success", description: "Product saved successfully." });
             navigate("/admin/products/manage");
         } catch (error: any) {
             console.error("Save Error:", error);
-            toast({ title: "Save Failed", description: error.message, variant: "destructive" });
+            const msg = error.response?.data?.message || error.message || "An error occurred";
+            toast({ title: "Save Failed", description: msg, variant: "destructive" });
         } finally {
             setIsSaving(false);
         }

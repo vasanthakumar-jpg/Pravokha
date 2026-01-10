@@ -1,5 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
-import { supabase } from "@/infra/api/supabase";
+import { apiClient } from "@/infra/api/apiClient";
 import { ProductDomain, ProductStatusFilter } from "../domain/types";
 import { useToast } from "@/shared/hook/use-toast";
 
@@ -20,57 +19,46 @@ export function useProductInventory({ sellerId, isAdmin }: UseProductInventoryPr
     const fetchProducts = useCallback(async () => {
         setLoading(true);
         try {
-            let query = (supabase as any)
-                .from("products")
-                .select(`
-          *,
-          product_variants (
-            id,
-            stock,
-            images,
-            product_sizes (
-              stock
-            )
-          )
-        `)
-                .is("deleted_at", null)
-                .order("created_at", { ascending: false });
+            const response = await apiClient.get('/products');
 
-            if (sellerId && !isAdmin) {
-                query = query.eq("seller_id", sellerId);
+            if (response.data.success) {
+                const transformed = (response.data.data || []).map((p: any) => {
+                    // Handle both simple and nested stock structures found in Admin/Seller pages
+                    const totalStock = p.variants?.reduce((sum: number, v: any) => {
+                        if (v.sizes && v.sizes.length > 0) {
+                            return sum + (v.sizes.reduce((s: number, sz: any) => s + (sz.stock || 0), 0) || 0);
+                        }
+                        return sum + (v.stock || 0);
+                    }, 0) || 0;
+
+                    return {
+                        ...p,
+                        id: p.id,
+                        title: p.title,
+                        description: p.description,
+                        price: p.price,
+                        category: p.category,
+                        published: p.published,
+                        seller_id: p.dealerId,
+                        created_at: p.createdAt,
+                        stock_quantity: totalStock,
+                        main_image: p.images && p.images.length > 0 ? p.images[0] : null
+                    };
+                });
+
+                setProducts(transformed);
             }
-
-            const { data, error } = await query;
-
-            if (error) throw error;
-
-            const transformed = (data || []).map((p: any) => {
-                // Handle both simple and nested stock structures found in Admin/Seller pages
-                const totalStock = p.product_variants?.reduce((sum: number, v: any) => {
-                    if (v.product_sizes) {
-                        return sum + (v.product_sizes.reduce((s: number, sz: any) => s + (sz.stock || 0), 0) || 0);
-                    }
-                    return sum + (v.stock || 0);
-                }, 0) || 0;
-
-                return {
-                    ...p,
-                    stock_quantity: totalStock,
-                };
-            });
-
-            setProducts(transformed);
-        } catch (error) {
+        } catch (error: any) {
             console.error("Error fetching products:", error);
             toast({
                 title: "Error",
-                description: "Failed to load products",
+                description: "Failed to load products from backend",
                 variant: "destructive",
             });
         } finally {
             setLoading(false);
         }
-    }, [sellerId, isAdmin, toast]);
+    }, [toast]);
 
     useEffect(() => {
         fetchProducts();

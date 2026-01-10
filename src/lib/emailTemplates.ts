@@ -4,20 +4,20 @@
 // ============================================================================
 
 export interface EmailTemplate {
-    subject: string;
-    html: string;
-    text: string;
+  subject: string;
+  html: string;
+  text: string;
 }
 
 export interface EmailVariables {
-    userName: string;
-    userEmail: string;
-    reason?: string;
-    ticketNumber?: string;
-    adminName?: string;
-    appealUrl?: string;
-    supportUrl?: string;
-    dashboardUrl?: string;
+  userName: string;
+  userEmail: string;
+  reason?: string;
+  ticketNumber?: string;
+  adminName?: string;
+  appealUrl?: string;
+  supportUrl?: string;
+  dashboardUrl?: string;
 }
 
 // ============================================================================
@@ -25,9 +25,9 @@ export interface EmailVariables {
 // ============================================================================
 
 export const suspensionNotice = (vars: EmailVariables): EmailTemplate => ({
-    subject: '⚠️ Your Account Has Been Suspended',
+  subject: '⚠️ Your Account Has Been Suspended',
 
-    html: `
+  html: `
     <!DOCTYPE html>
     <html>
     <head>
@@ -95,7 +95,7 @@ export const suspensionNotice = (vars: EmailVariables): EmailTemplate => ({
     </html>
   `,
 
-    text: `
+  text: `
 Account Suspended
 
 Hello ${vars.userName},
@@ -125,9 +125,9 @@ This is an automated message. Please do not reply.
 // ============================================================================
 
 export const reactivationNotice = (vars: EmailVariables): EmailTemplate => ({
-    subject: '✅ Your Account Has Been Reactivated',
+  subject: '✅ Your Account Has Been Reactivated',
 
-    html: `
+  html: `
     <!DOCTYPE html>
     <html>
     <head>
@@ -184,7 +184,7 @@ export const reactivationNotice = (vars: EmailVariables): EmailTemplate => ({
     </html>
   `,
 
-    text: `
+  text: `
 Account Reactivated!
 
 Hello ${vars.userName},
@@ -213,9 +213,9 @@ Welcome back!
 // ============================================================================
 
 export const ticketResponse = (vars: EmailVariables): EmailTemplate => ({
-    subject: `📬 Response to Your Ticket #${vars.ticketNumber}`,
+  subject: `📬 Response to Your Ticket #${vars.ticketNumber}`,
 
-    html: `
+  html: `
     <!DOCTYPE html>
     <html>
     <head>
@@ -263,7 +263,7 @@ export const ticketResponse = (vars: EmailVariables): EmailTemplate => ({
     </html>
   `,
 
-    text: `
+  text: `
 New Response to Your Ticket
 
 Hello ${vars.userName},
@@ -288,9 +288,9 @@ Thank you for your patience
 // ============================================================================
 
 export const appealStatusUpdate = (vars: EmailVariables & { status: string }): EmailTemplate => ({
-    subject: `${vars.status === 'approved' ? '✅' : '📋'} Appeal Update - Ticket #${vars.ticketNumber}`,
+  subject: `${vars.status === 'approved' ? '✅' : '📋'} Appeal Update - Ticket #${vars.ticketNumber}`,
 
-    html: `
+  html: `
     <!DOCTYPE html>
     <html>
     <head>
@@ -341,7 +341,7 @@ export const appealStatusUpdate = (vars: EmailVariables & { status: string }): E
     </html>
   `,
 
-    text: `
+  text: `
 Appeal Status Update
 
 Hello ${vars.userName},
@@ -365,20 +365,20 @@ Have questions? Contact our support team
 // ============================================================================
 
 export async function sendEmail(to: string, template: EmailTemplate) {
-    // This would integrate with your email service
-    // Examples:
+  // This would integrate with your email service
+  // Examples:
 
-    // Option 1: Supabase Edge Function
-    // await supabase.functions.invoke('send-email', { body: { to, ...template } });
+  // Option 1: Backend API Call
+  // await apiClient.post('/email/send', ...);
 
-    // Option 2: Resend
-    // await resend.emails.send({ from: 'noreply@yourapp.com', to, ...template });
+  // Option 2: Resend
+  // await resend.emails.send({ from: 'noreply@yourapp.com', to, ...template });
 
-    // Option 3: SendGrid
-    // await sgMail.send({ from: 'noreply@yourapp.com', to, ...template });
+  // Option 3: SendGrid
+  // await sgMail.send({ from: 'noreply@yourapp.com', to, ...template });
 
-    console.log('Email would be sent to:', to);
-    console.log('Subject:', template.subject);
+  console.log('Email would be sent to:', to);
+  console.log('Subject:', template.subject);
 
-    return { success: true };
+  return { success: true };
 }

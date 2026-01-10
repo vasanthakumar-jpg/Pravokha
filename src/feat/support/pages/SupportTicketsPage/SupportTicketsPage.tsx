@@ -5,7 +5,7 @@ import { Button } from "@/ui/Button";
 import { Badge } from "@/ui/Badge";
 import { Input } from "@/ui/Input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/Select";
-import { supabase } from "@/infra/api/supabase";
+import { apiClient } from "@/infra/api/apiClient";
 import { useAuth } from "@/core/context/AuthContext";
 import { toast } from "@/shared/hook/use-toast";
 import { Loader2, Plus, Search, MessageSquare, Clock, CheckCircle, XCircle, Lock, Shield } from "lucide-react";
@@ -47,13 +47,13 @@ export function SupportTicketsPage() {
         if (!user) return;
 
         try {
-            const { data, error } = await (supabase as any)
-                .from('support_tickets')
-                .select('*')
-                .eq('user_id', user.id)
-                .order('created_at', { ascending: false });
-
-            if (error) throw error;
+            const response = await apiClient.get('/support/tickets');
+            const data = response.data.tickets.map((t: any) => ({
+                ...t,
+                ticket_number: t.ticketNumber,
+                created_at: t.createdAt,
+                updated_at: t.updatedAt
+            }));
             setTickets(data || []);
         } catch (error: any) {
             console.error('Error fetching tickets:', error);

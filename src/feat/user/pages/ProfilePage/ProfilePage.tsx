@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/infra/api/supabase";
+import { apiClient } from "@/infra/api/apiClient";
 import { Card } from "@/ui/Card";
 import { Button } from "@/ui/Button";
 import { Input } from "@/ui/Input";
@@ -89,25 +89,26 @@ export function ProfilePage() {
             reader.onloadend = () => setAvatarPreview(reader.result as string);
             reader.readAsDataURL(file);
 
-            const fileExt = file.name.split('.').pop();
-            const fileName = `${user?.id}/${Date.now()}.${fileExt}`;
+            // Upload to backend
+            const formData = new FormData();
+            formData.append('files', file);
 
-            const { error: uploadError } = await supabase.storage
-                .from('profile-images')
-                .upload(fileName, file, { cacheControl: '3600', upsert: true });
+            const uploadResponse = await apiClient.post('/uploads/multiple', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
 
-            if (uploadError) throw uploadError;
+            if (!uploadResponse.data.success || !uploadResponse.data.urls?.[0]) {
+                throw new Error('Upload failed');
+            }
 
-            const { data: { publicUrl } } = supabase.storage
-                .from('profile-images')
-                .getPublicUrl(fileName);
+            const publicUrl = uploadResponse.data.urls[0];
 
-            const { error: updateError } = await supabase
-                .from("users")
-                .update({ avatar_url: publicUrl })
-                .eq('id', user?.id);
+            // Update profile with new avatar URL
+            const profileResponse = await apiClient.patch('/users/me', { avatarUrl: publicUrl });
 
-            if (updateError) throw updateError;
+            if (!profileResponse.data.success) {
+                throw new Error('Profile update failed');
+            }
 
             setProfile(prev => ({ ...prev, avatar_url: publicUrl }));
             refreshProfile();
@@ -118,7 +119,7 @@ export function ProfilePage() {
         } catch (error: any) {
             toast({
                 title: "Error",
-                description: error.message,
+                description: error.message || 'Failed to upload image',
                 variant: "destructive",
             });
         } finally {
@@ -128,15 +129,12 @@ export function ProfilePage() {
 
     const loadRecentOrders = async (userId: string) => {
         try {
-            const { data } = await supabase
-                .from("orders")
-                .select("*")
-                .eq("user_id", userId)
-                .order("created_at", { ascending: false })
-                .limit(5);
+            const response = await apiClient.get("/orders", {
+                params: { userId, limit: 5 }
+            });
 
-            if (data) {
-                setRecentOrders(data);
+            if (response.data.success) {
+                setRecentOrders(response.data.orders || []);
             }
         } catch (error) {
             console.error("Error loading orders:", error);
@@ -148,17 +146,15 @@ export function ProfilePage() {
 
         setSaving(true);
         try {
-            const { error } = await supabase
-                .from("users")
-                .update({
-                    full_name: profile.full_name,
-                    phone: profile.phone,
-                    address: profile.address,
-                    updated_at: new Date().toISOString(),
-                })
-                .eq("id", user.id);
+            const response = await apiClient.patch("/users/me", {
+                name: profile.full_name,
+                phone: profile.phone,
+                address: profile.address,
+            });
 
-            if (error) throw error;
+            if (!response.data.success) {
+                throw new Error(response.data.message || "Failed to update profile");
+            }
 
             await refreshProfile();
 
@@ -223,23 +219,27 @@ export function ProfilePage() {
             return;
         }
 
-        const { error } = await supabase.auth.updateUser({
-            password: password.new
-        });
-
-        if (error) {
-            toast({
-                title: "Error",
-                description: error.message,
-                variant: "destructive",
+        try {
+            const response = await apiClient.post('/auth/change-password', {
+                newPassword: password.new
             });
-        } else {
+
+            if (!response.data.success) {
+                throw new Error(response.data.message || 'Password change failed');
+            }
+
             toast({
                 title: "Success",
                 description: "Password updated successfully",
             });
             setPassword({ current: "", new: "", confirm: "" });
             setIsPasswordSectionOpen(false);
+        } catch (error: any) {
+            toast({
+                title: "Error",
+                description: error.message || 'Failed to change password',
+                variant: "destructive",
+            });
         }
     };
 

@@ -7,7 +7,7 @@ import { Badge } from "@/ui/Badge";
 import { Button } from "@/ui/Button";
 import { useCart } from "@/core/context/CartContext";
 import { Product } from "@/data/products";
-import { supabase } from "@/infra/api/supabase";
+import { apiClient } from "@/infra/api/apiClient";
 import { toast } from "@/shared/hook/use-toast";
 import styles from "./ProductCard.module.css";
 import { cn } from "@/lib/utils";
@@ -30,45 +30,25 @@ export function ProductCard({ product }: ProductCardProps) {
 
     useEffect(() => {
         checkWishlistStatus();
-
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-            setUser(session?.user ?? null);
-            checkWishlistStatus();
-        });
-
-        return () => subscription.unsubscribe();
+        // Note: Auth state management is now handled by AuthContext
+        // No need for onAuthStateChange subscription here
     }, [product.id]);
 
     const checkWishlistStatus = async () => {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
+        try {
+            const response = await apiClient.get(`/wishlist/check/${product.id}`);
+            if (response.data.success) {
+                setIsInWishlist(response.data.inWishlist);
+            }
+        } catch (error) {
+            // User not logged in or error occurred
             setIsInWishlist(false);
-            return;
         }
-
-        const { data, error } = await supabase
-            .from("wishlist")
-            .select("id")
-            .eq("user_id", user.id)
-            .eq("product_id", product.id)
-            .maybeSingle();
-
-        if (error && error.code !== 'PGRST116') {
-            console.warn("Error checking wishlist status:", error);
-        }
-
-        setIsInWishlist(!!data);
     };
 
     const handleToggleWishlist = async (e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
-
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-            navigate("/auth");
-            return;
-        }
 
         setShowBlinkAnimation(true);
         setTimeout(() => setShowBlinkAnimation(false), 600);
@@ -79,35 +59,33 @@ export function ProductCard({ product }: ProductCardProps) {
 
         try {
             if (previousState) {
-                const { error } = await supabase
-                    .from("wishlist")
-                    .delete()
-                    .eq("user_id", user.id)
-                    .eq("product_id", product.id);
-
-                if (error) throw error;
+                // Remove from wishlist
+                const response = await apiClient.delete(`/wishlist/${product.id}`);
+                if (!response.data.success) throw new Error('Failed to remove from wishlist');
 
                 toast({
                     title: "Removed from wishlist",
                     description: `${product.title} has been removed from your wishlist`,
                 });
             } else {
-                const { error } = await supabase
-                    .from("wishlist")
-                    .insert([{ user_id: user.id, product_id: product.id }]);
-
-                if (error) throw error;
+                // Add to wishlist
+                const response = await apiClient.post('/wishlist', { productId: product.id });
+                if (!response.data.success) throw new Error('Failed to add to wishlist');
 
                 toast({
                     title: "Added to wishlist",
                     description: `${product.title} has been added to your wishlist`,
                 });
             }
-        } catch (error) {
+        } catch (error: any) {
             setIsInWishlist(previousState);
+            if (error.response?.status === 401) {
+                navigate("/auth");
+                return;
+            }
             toast({
                 title: "Error",
-                description: "Failed to update wishlist. Please try again.",
+                description: error.message || "Failed to update wishlist. Please try again.",
                 variant: "destructive",
             });
         } finally {

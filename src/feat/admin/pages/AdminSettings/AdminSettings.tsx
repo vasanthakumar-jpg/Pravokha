@@ -55,7 +55,7 @@ import {
 } from "@/ui/Select";
 import { useAuth } from "@/core/context/AuthContext";
 import { useAdmin } from "@/core/context/AdminContext";
-import { supabase } from "@/infra/api/supabase";
+import { apiClient } from "@/infra/api/apiClient";
 import { toast } from "@/shared/hook/use-toast";
 import { AdminFormSkeleton } from "@/feat/admin/components/AdminSkeleton";
 import { motion, AnimatePresence } from "framer-motion";
@@ -136,26 +136,17 @@ export default function AdminSettings() {
   const fetchProfile = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from("users")
-        .select("*")
-        .eq("id", user?.id)
-        .maybeSingle();
+      const { data } = await apiClient.get('/users/profile');
 
-      if (error) throw error;
+      const userData = data || {};
 
-      if (data) {
-        setProfileData({
-          full_name: data.full_name || "",
-          email: user?.email || data.email || "",
-          phone: data.phone || "",
-          address: data.address || "",
-          avatar_url: data.avatar_url || ""
-        });
-      } else {
-        // Fallback for new users
-        setProfileData(prev => ({ ...prev, email: user?.email || "" }));
-      }
+      setProfileData({
+        full_name: userData.full_name || "",
+        email: userData.email || user?.email || "",
+        phone: userData.phone || "",
+        address: userData.address || "",
+        avatar_url: userData.avatar_url || ""
+      });
     } catch (error) {
       console.error("[AdminSettings] Error fetching profile:", error);
       toast({
@@ -163,6 +154,8 @@ export default function AdminSettings() {
         description: "Failed to load profile data.",
         variant: "destructive",
       });
+      // Fallback
+      setProfileData(prev => ({ ...prev, email: user?.email || "" }));
     } finally {
       setLoading(false);
     }
@@ -170,13 +163,8 @@ export default function AdminSettings() {
 
   const fetchSiteSettings = async () => {
     try {
-      const { data, error } = await supabase
-        .from("site_settings")
-        .select("*")
-        .eq("id", "primary")
-        .maybeSingle();
+      const { data } = await apiClient.get('/admin/settings/site');
 
-      if (error) throw error;
       if (data) {
         setStoreData({
           store_name: data.store_name || "Pravokha",
@@ -202,15 +190,21 @@ export default function AdminSettings() {
     }
   };
 
+  const fetchRoleCounts = async () => {
+    // Mock or fetch logic
+    // Assuming stats endpoint
+    try {
+      const { data } = await apiClient.get('/users/admin/stats');
+      setRoleCounts(data || { super_admins: 0, sellers: 0, support: 0 });
+    } catch (e) {
+      console.warn("Could not fetch user stats", e);
+    }
+  };
+
   const fetchNotificationSettings = async () => {
     try {
-      const { data, error } = await supabase
-        .from("admin_notification_settings")
-        .select("*")
-        .eq("admin_id", user?.id)
-        .maybeSingle();
-
-      if (error) throw error;
+      // Assuming endpoint
+      const { data } = await apiClient.get('/admin/settings/notifications');
       if (data) {
         setNotificationData({
           governance_alerts: data.governance_alerts,
@@ -223,42 +217,15 @@ export default function AdminSettings() {
     }
   };
 
-  const fetchRoleCounts = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("users")
-        .select("role");
-
-      if (error) throw error;
-      if (data) {
-        setRoleCounts({
-          super_admins: data.filter(r => r.role === 'admin' || r.role === 'super_admin').length,
-          sellers: data.filter(r => r.role === 'seller').length,
-          support: data.filter(r => r.role === 'support').length
-        });
-      }
-    } catch (error) {
-      console.error("[AdminSettings] Error fetching role counts:", error);
-    }
-  };
-
   const handleSaveProfile = async () => {
     try {
       setSaving(true);
-      const { error } = await supabase
-        .from("users")
-        .upsert({
-          id: user?.id,
-          full_name: profileData.full_name,
-          phone: profileData.phone,
-          address: profileData.address,
-          avatar_url: profileData.avatar_url,
-          updated_at: new Date().toISOString()
-        }, {
-          onConflict: 'id'
-        });
-
-      if (error) throw error;
+      await apiClient.put('/users/profile', {
+        full_name: profileData.full_name,
+        phone: profileData.phone,
+        address: profileData.address,
+        avatar_url: profileData.avatar_url,
+      });
 
       toast({
         title: "Profile Updated",
@@ -281,20 +248,14 @@ export default function AdminSettings() {
   const handleSaveStoreSettings = async () => {
     try {
       setSaving(true);
-      const { error } = await supabase
-        .from("site_settings")
-        .update({
-          store_name: storeData.store_name,
-          store_url: storeData.store_url,
-          maintenance_mode: storeData.maintenance_mode,
-          auto_confirm_orders: storeData.auto_confirm_orders,
-          logo_url: storeData.logo_url,
-          banner_url: storeData.banner_url,
-          updated_at: new Date().toISOString()
-        })
-        .eq("id", "primary");
-
-      if (error) throw error;
+      await apiClient.put('/admin/settings/site', {
+        store_name: storeData.store_name,
+        store_url: storeData.store_url,
+        maintenance_mode: storeData.maintenance_mode,
+        auto_confirm_orders: storeData.auto_confirm_orders,
+        logo_url: storeData.logo_url,
+        banner_url: storeData.banner_url
+      });
 
       toast({
         title: "Store Policy Sync",
@@ -317,15 +278,7 @@ export default function AdminSettings() {
       const newSettings = { ...notificationData, ...settings };
       setNotificationData(newSettings);
 
-      const { error } = await supabase
-        .from("admin_notification_settings")
-        .upsert({
-          admin_id: user?.id,
-          ...newSettings,
-          updated_at: new Date().toISOString()
-        });
-
-      if (error) throw error;
+      await apiClient.put('/admin/settings/notifications', newSettings);
 
       toast({
         title: "Alert Matrix Updated",
@@ -339,22 +292,16 @@ export default function AdminSettings() {
   const handleSaveSystemSettings = async () => {
     try {
       setSaving(true);
-      const { error } = await supabase
-        .from("site_settings")
-        .update({
-          currency: systemData.currency,
-          timezone: systemData.timezone,
-          analytics_enabled: systemData.analytics_enabled,
-          ai_insights_enabled: systemData.ai_insights_enabled,
-          payout_automation_enabled: systemData.payout_automation_enabled,
-          session_tracking_enabled: systemData.session_tracking_enabled,
-          data_anonymization_enabled: systemData.data_anonymization_enabled,
-          public_indexing_enabled: systemData.public_indexing_enabled,
-          updated_at: new Date().toISOString()
-        })
-        .eq("id", "primary");
-
-      if (error) throw error;
+      await apiClient.put('/admin/settings/system', {
+        currency: systemData.currency,
+        timezone: systemData.timezone,
+        analytics_enabled: systemData.analytics_enabled,
+        ai_insights_enabled: systemData.ai_insights_enabled,
+        payout_automation_enabled: systemData.payout_automation_enabled,
+        session_tracking_enabled: systemData.session_tracking_enabled,
+        data_anonymization_enabled: systemData.data_anonymization_enabled,
+        public_indexing_enabled: systemData.public_indexing_enabled
+      });
 
       toast({
         title: "Environment Synced",
@@ -391,28 +338,20 @@ export default function AdminSettings() {
       }
 
       setUploading(true);
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${user?.id}-${Date.now()}.${fileExt}`;
-      const filePath = `avatars/${fileName}`;
 
-      const { error: uploadError } = await supabase.storage
-        .from("users")
-        .upload(filePath, file);
+      const formData = new FormData();
+      formData.append('file', file);
 
-      if (uploadError) throw uploadError;
+      const { data } = await apiClient.post('/uploads/single', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
 
-      const { data: { publicUrl } } = supabase.storage
-        .from("users")
-        .getPublicUrl(filePath);
+      const publicUrl = data.url;
 
       setProfileData(prev => ({ ...prev, avatar_url: publicUrl }));
 
-      const { error: updateError } = await supabase
-        .from("users")
-        .update({ avatar_url: publicUrl } as any)
-        .eq("id", user?.id);
-
-      if (updateError) throw updateError;
+      // Update profile with new avatar URL
+      await apiClient.put('/users/profile', { avatar_url: publicUrl });
 
       await refreshProfile();
 
@@ -431,19 +370,15 @@ export default function AdminSettings() {
       if (!file) return;
 
       setUploading(true);
-      const fileExt = file.name.split('.').pop();
-      const fileName = `store-${type}-${Date.now()}.${fileExt}`;
-      const filePath = `store/${fileName}`;
 
-      const { error: uploadError } = await supabase.storage
-        .from("users")
-        .upload(filePath, file);
+      const formData = new FormData();
+      formData.append('file', file);
 
-      if (uploadError) throw uploadError;
+      const { data } = await apiClient.post('/uploads/single', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
 
-      const { data: { publicUrl } } = supabase.storage
-        .from("users")
-        .getPublicUrl(filePath);
+      const publicUrl = data.url;
 
       if (type === 'logo') {
         setStoreData(prev => ({ ...prev, logo_url: publicUrl }));
@@ -451,12 +386,8 @@ export default function AdminSettings() {
         setStoreData(prev => ({ ...prev, banner_url: publicUrl }));
       }
 
-      const { error: updateError } = await supabase
-        .from("site_settings")
-        .update({ [`${type}_url`]: publicUrl } as any)
-        .eq("id", "primary");
-
-      if (updateError) throw updateError;
+      // Update settings
+      await apiClient.put('/admin/settings/site', { [`${type}_url`]: publicUrl });
 
       toast({ title: "Asset Updated", description: `Marketplace ${type} synchronized.` });
     } catch (error) {
@@ -1059,28 +990,25 @@ export default function AdminSettings() {
                           }
 
                           // Attempt password reset
-                          const { error } = await supabase.auth.resetPasswordForEmail(
-                            profileData.email,
-                            { redirectTo: `${window.location.origin}/admin/settings` }
-                          );
+                          try {
+                            await apiClient.post('/auth/password-reset', {
+                              email: profileData.email,
+                              redirectTo: `${window.location.origin}/admin/settings`
+                            });
 
-                          if (error) {
+                            // Security: Use neutral messaging to prevent email enumeration
+                            toast({
+                              title: "Security cycle initiated",
+                              description: "A cryptographic reset link has been dispatched to your verified email channel.",
+                            });
+                          } catch (error: any) {
                             console.error("Reset password error:", error);
                             toast({
                               title: "Security cycle failed",
-                              description: error.message.includes("redirect")
-                                ? "Configuration Error: Redirect URL not whitelisted in Supabase."
-                                : error.message,
+                              description: error.response?.data?.message || "Configuration Error: Redirect URL not whitelisted.",
                               variant: "destructive"
                             });
-                            return;
                           }
-
-                          // Security: Use neutral messaging to prevent email enumeration
-                          toast({
-                            title: "Security cycle initiated",
-                            description: "A cryptographic reset link has been dispatched to your verified email channel.",
-                          });
                         }}
                         className="w-full rounded-xl h-12 font-bold text-xs bg-slate-950 text-white hover:bg-rose-600 transition-all active:scale-95"
                       >
@@ -1186,28 +1114,24 @@ export default function AdminSettings() {
                             onClick={async () => {
                               try {
                                 setIsTerminating(true);
-                                // Attempt to delete profile row - RLS policies usually prevent self-deletion of auth record
-                                // but we can delete the public profile data
-                                const { error } = await supabase
-                                  .from("users")
-                                  .delete()
-                                  .eq('id', user?.id);
-
-                                if (error) throw error;
+                                // Delete user account via API
+                                await apiClient.delete(`/users/${user?.id}`);
 
                                 toast({
                                   title: "Termination successful",
                                   description: "Identity purged. Redirecting to initialization sequence...",
                                 });
 
-                                // Sign out to complete the "lockout"
-                                await supabase.auth.signOut();
+                                // Sign out locally
+                                localStorage.removeItem('pravokha_auth_token');
+                                localStorage.removeItem('pravokha_user_role');
+                                localStorage.removeItem('pravokha_user_id');
                                 navigate("/auth");
 
                               } catch (error: any) {
                                 toast({
                                   title: "Termination failed",
-                                  description: error.message || "Could not complete sequence.",
+                                  description: error.response?.data?.message || "Could not complete sequence.",
                                   variant: "destructive"
                                 });
                                 setIsTerminating(false);

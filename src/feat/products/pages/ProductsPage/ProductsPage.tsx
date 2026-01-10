@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { ProductCard } from "@/feat/products/components/ProductCard";
 import { ProductGrid } from "@/feat/products/components/ProductGrid";
 import { useProducts } from "@/shared/hook/useProducts";
-import { supabase } from "@/infra/api/supabase";
+import { apiClient } from "@/infra/api/apiClient";
 import { Button } from "@/ui/Button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/Select";
 import { Filter, SlidersHorizontal } from "lucide-react";
@@ -29,14 +29,15 @@ export function ProductsPage() {
     // Fetch categories and subcategories
     useEffect(() => {
         const fetchCategories = async () => {
-            const { data } = await supabase
-                .from("categories")
-                .select("id, name, slug")
-                .eq("status", "active")
-                .order("display_order");
-
-            if (data) {
-                setDbCategories(data.map(c => ({ id: c.slug, name: c.name })));
+            try {
+                const response = await apiClient.get('/categories');
+                if (response.data.success) {
+                    setDbCategories(response.data.categories
+                        .filter((c: any) => c.status === 'active')
+                        .map((c: any) => ({ id: c.slug, name: c.name })));
+                }
+            } catch (err) {
+                console.error("Error fetching categories:", err);
             }
         };
         fetchCategories();
@@ -50,24 +51,22 @@ export function ProductsPage() {
                 return;
             }
 
-            const { data: categoryData } = await supabase
-                .from("categories")
-                .select("id")
-                .in("slug", selectedCategories);
+            try {
+                const response = await apiClient.get('/categories/subcategories', {
+                    params: { category: selectedCategories }
+                });
 
-            if (!categoryData) return;
-
-            const categoryIds = categoryData.map(c => c.id);
-
-            const { data } = await supabase
-                .from("subcategories")
-                .select("id, name, slug, category_id")
-                .in("category_id", categoryIds)
-                .eq("status", "active")
-                .order("display_order");
-
-            if (data) {
-                setDbSubcategories(data.map(s => ({ id: s.id, name: s.name, category_id: s.category_id })));
+                if (response.data.success) {
+                    setDbSubcategories(response.data.subcategories
+                        .filter((s: any) => s.status === 'active')
+                        .map((s: any) => ({
+                            id: s.slug,
+                            name: s.name,
+                            category_id: s.categoryId
+                        })));
+                }
+            } catch (err) {
+                console.error("Error fetching subcategories:", err);
             }
         };
         fetchSubcategories();

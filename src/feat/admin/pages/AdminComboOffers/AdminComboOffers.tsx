@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { supabase } from "@/infra/api/supabase";
+import { apiClient } from "@/infra/api/apiClient";
 import { Button } from "@/ui/Button";
 import { Input } from "@/ui/Input";
 import { Label } from "@/ui/Label";
@@ -68,29 +68,13 @@ export default function AdminComboOffers() {
   const fetchOffers = async () => {
     try {
       setLoading(true);
-      console.log("[AdminComboOffers] Fetching combo offers...");
-
-      const { data, error } = await supabase
-        .from("combo_offers")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (error) {
-        console.error("[AdminComboOffers] Error fetching combo offers:", error);
-        toast({
-          title: "Error",
-          description: error.message || "Failed to fetch combo offers",
-          variant: "destructive",
-        });
-      } else {
-        console.log("[AdminComboOffers] Fetched offers:", data?.length || 0);
-        setOffers(data || []);
-      }
+      const { data } = await apiClient.get('/combo-offers');
+      setOffers(data || []);
     } catch (err: any) {
-      console.error("[AdminComboOffers] Exception fetching offers:", err);
+      console.error("[AdminComboOffers] Error fetching offers:", err);
       toast({
         title: "Error",
-        description: "An unexpected error occurred",
+        description: "Failed to fetch combo offers",
         variant: "destructive",
       });
     } finally {
@@ -102,72 +86,33 @@ export default function AdminComboOffers() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
     if (!file.type.startsWith('image/')) {
-      toast({
-        title: "Invalid File",
-        description: "Please upload an image file.",
-        variant: "destructive"
-      });
-      e.target.value = ''; // Reset input
+      toast({ title: "Invalid File", description: "Please upload an image file.", variant: "destructive" });
       return;
     }
-
-    // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      toast({
-        title: "File Too Large",
-        description: "Please upload an image smaller than 5MB.",
-        variant: "destructive"
-      });
-      e.target.value = ''; // Reset input
+      toast({ title: "File Too Large", description: "Max 5MB.", variant: "destructive" });
       return;
     }
 
     try {
       setUploading(true);
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
-      const filePath = `combo-thumbnails/${fileName}`;
+      const formData = new FormData();
+      formData.append('files', file);
 
-      console.log('Starting upload:', filePath);
-
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('products')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: false
-        });
-
-      if (uploadError) {
-        console.error('Upload error:', uploadError);
-        throw new Error(uploadError.message || 'Failed to upload image');
-      }
-
-      console.log('Upload successful:', uploadData);
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('products')
-        .getPublicUrl(filePath);
-
-      console.log('Public URL:', publicUrl);
-
-      setFormData(prev => ({ ...prev, image_url: publicUrl }));
-      toast({
-        title: "✓ Asset Uploaded",
-        description: "Thumbnail successfully uploaded and ready."
+      const { data } = await apiClient.post('/uploads/multiple', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
       });
 
-      // Reset the input
+      if (data?.urls?.[0]) {
+        setFormData(prev => ({ ...prev, image_url: data.urls[0] }));
+        toast({ title: "✓ Asset Uploaded", description: "Thumbnail ready." });
+      }
+
       e.target.value = '';
     } catch (error: any) {
       console.error('Image upload error:', error);
-      toast({
-        title: "Upload Failed",
-        description: error.message || "Failed to upload image. Please try again.",
-        variant: "destructive"
-      });
-      // Reset the input on error
+      toast({ title: "Upload Failed", description: "Failed to upload image.", variant: "destructive" });
       e.target.value = '';
     } finally {
       setUploading(false);
@@ -207,9 +152,7 @@ export default function AdminComboOffers() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     if (!validateForm()) return;
-
     setLoading(true);
 
     try {
@@ -227,85 +170,41 @@ export default function AdminComboOffers() {
       };
 
       if (editingOffer) {
-        const { error } = await supabase
-          .from("combo_offers")
-          .update(offerData)
-          .eq("id", editingOffer.id);
-
-        if (error) throw error;
-
-        toast({
-          title: "Success!",
-          description: "Combo offer updated successfully",
-        });
+        await apiClient.put(`/combo-offers/${editingOffer.id}`, offerData);
+        toast({ title: "Success!", description: "Combo offer updated successfully" });
       } else {
-        const { error } = await supabase
-          .from("combo_offers")
-          .insert([offerData]);
-
-        if (error) throw error;
-
-        toast({
-          title: "Success!",
-          description: "Combo offer created successfully",
-        });
+        await apiClient.post('/combo-offers', offerData);
+        toast({ title: "Success!", description: "Combo offer created successfully" });
       }
 
       setDialogOpen(false);
       resetForm();
       fetchOffers();
     } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
   };
 
   const handleToggleActive = async (offer: ComboOffer) => {
-    const { error } = await supabase
-      .from("combo_offers")
-      .update({ active: !offer.active })
-      .eq("id", offer.id);
-
-    if (error) {
-      toast({
-        title: "Error",
-        description: "Failed to update offer status",
-        variant: "destructive",
-      });
-    } else {
-      toast({
-        title: "Success!",
-        description: `Offer ${!offer.active ? "activated" : "deactivated"}`,
-      });
+    try {
+      await apiClient.patch(`/combo-offers/${offer.id}/status`, { active: !offer.active });
+      toast({ title: "Success!", description: `Offer ${!offer.active ? "activated" : "deactivated"}` });
       fetchOffers();
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to update status", variant: "destructive" });
     }
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this combo offer?")) return;
-
-    const { error } = await supabase
-      .from("combo_offers")
-      .delete()
-      .eq("id", id);
-
-    if (error) {
-      toast({
-        title: "Error",
-        description: "Failed to delete offer",
-        variant: "destructive",
-      });
-    } else {
-      toast({
-        title: "Success!",
-        description: "Offer deleted successfully",
-      });
+    try {
+      await apiClient.delete(`/combo-offers/${id}`);
+      toast({ title: "Success!", description: "Offer deleted successfully" });
       fetchOffers();
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to delete offer", variant: "destructive" });
     }
   };
 

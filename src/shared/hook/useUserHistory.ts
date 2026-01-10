@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { supabase } from "@/infra/api/supabase";
+import { apiClient } from "@/infra/api/apiClient";
 import { useAuth } from "@/core/context/AuthContext";
 
 interface PaymentHistory {
@@ -36,56 +36,56 @@ export function useUserHistory() {
     const [loadingPayments, setLoadingPayments] = useState(true);
     const [loadingOrders, setLoadingOrders] = useState(true);
 
-    // Fetch payment history
-    const fetchPaymentHistory = async () => {
+    const fetchHistory = async () => {
         if (!user) return;
 
         setLoadingPayments(true);
-        try {
-            const { data, error } = await supabase
-                .from("user_payments")
-                .select(`
-          *,
-          order:orders(order_number)
-        `)
-                .eq("user_id", user.id)
-                .order("created_at", { ascending: false })
-                .limit(20);
-
-            if (error) throw error;
-            setPaymentHistory(data || []);
-        } catch (error) {
-            console.error("Error fetching payment history:", error);
-        } finally {
-            setLoadingPayments(false);
-        }
-    };
-
-    // Fetch order history
-    const fetchOrderHistory = async () => {
-        if (!user) return;
-
         setLoadingOrders(true);
         try {
-            const { data, error } = await supabase
-                .from("orders")
-                .select("*")
-                .eq("user_id", user.id)
-                .order("created_at", { ascending: false })
-                .limit(20);
+            const response = await apiClient.get("/orders");
+            const data = response.data;
 
-            if (error) throw error;
-            setOrderHistory(data || []);
+            // Map backend orders to OrderHistory
+            const mappedOrders: OrderHistory[] = data.map((o: any) => ({
+                id: o.id,
+                order_number: o.orderNumber,
+                user_id: o.userId,
+                total: o.total,
+                order_status: o.status,
+                payment_status: o.paymentStatus,
+                payment_method: o.paymentMethod || 'N/A',
+                created_at: o.createdAt,
+                items: o.items || []
+            }));
+
+            // Map backend orders to PaymentHistory (since we don't have a separate table for payments yet)
+            const mappedPayments: PaymentHistory[] = data.map((o: any) => ({
+                id: `pay-${o.id}`,
+                user_id: o.userId,
+                order_id: o.id,
+                amount: o.total,
+                payment_method: o.paymentMethod || 'Stripe',
+                payment_type: 'Order Payment',
+                status: o.paymentStatus,
+                transaction_id: o.stripeIntentId,
+                created_at: o.createdAt,
+                order: {
+                    order_number: o.orderNumber
+                }
+            }));
+
+            setOrderHistory(mappedOrders);
+            setPaymentHistory(mappedPayments);
         } catch (error) {
-            console.error("Error fetching order history:", error);
+            console.error("Error fetching history:", error);
         } finally {
+            setLoadingPayments(false);
             setLoadingOrders(false);
         }
     };
 
     useEffect(() => {
-        fetchPaymentHistory();
-        fetchOrderHistory();
+        fetchHistory();
     }, [user]);
 
     return {
@@ -93,7 +93,7 @@ export function useUserHistory() {
         orderHistory,
         loadingPayments,
         loadingOrders,
-        refetchPayments: fetchPaymentHistory,
-        refetchOrders: fetchOrderHistory,
+        refetchPayments: fetchHistory,
+        refetchOrders: fetchHistory,
     };
 }

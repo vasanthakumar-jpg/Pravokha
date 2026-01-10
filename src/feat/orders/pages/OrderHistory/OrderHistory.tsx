@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useOrderNotifications } from "@/shared/hook/useOrderNotifications";
-import { supabase } from "@/infra/api/supabase";
+import { apiClient } from "@/infra/api/apiClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/ui/Card";
 import { Button } from "@/ui/Button";
 import { Badge } from "@/ui/Badge";
@@ -66,37 +66,64 @@ export default function OrderHistory() {
   }, [currentPage]);
 
   const checkUserAndLoadOrders = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      toast({
-        title: "Login Required",
-        description: "Please login to view your orders",
-        variant: "destructive",
-      });
+    // User is already authenticated via AuthContext, but we can verify
+    // For this component, we'll rely on user from context if available
+    // Or check via API
+    try {
+      const response = await apiClient.get('/users/me');
+      if (!response.data.success || !response.data.user) {
+        toast({
+          title: "Login Required",
+          description: "Please login to view your orders",
+          variant: "destructive",
+        });
+        navigate("/auth");
+        return;
+      }
+      const user = response.data.user;
+      setUser(user);
+      setUserId(user.id);
+      await loadOrders(user.id);
+    } catch (error) {
       navigate("/auth");
-      return;
     }
-    setUser(user);
-    setUserId(user.id);
-    await loadOrders(user.id);
   };
 
   const loadOrders = async (userId: string) => {
     try {
       setLoading(true);
-      const from = (currentPage - 1) * pageSize;
-      const to = from + pageSize - 1;
 
-      const { data, error, count } = await supabase
-        .from("orders")
-        .select("*", { count: "exact" })
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false })
-        .range(from, to);
+      const response = await apiClient.get("/orders", {
+        params: {
+          userId,
+          page: currentPage,
+          limit: pageSize
+        }
+      });
 
-      if (error) throw error;
-      setOrders(data || []);
-      setTotalCount(count || 0);
+      if (response.data.success) {
+        const orders = response.data.orders || [];
+        // Transform data to match expected interface
+        const transformedOrders = orders.map((order: any) => ({
+          id: order.id,
+          order_number: order.orderNumber,
+          created_at: order.createdAt,
+          total: order.total,
+          order_status: order.status,
+          payment_status: order.paymentStatus,
+          payment_method: order.paymentMethod,
+          items: order.items,
+          shipping_address: order.shippingAddress,
+          shipping_city: order.shippingCity,
+          shipping_pincode: order.shippingPincode,
+          customer_name: order.customerName,
+          customer_phone: order.customerPhone,
+          tracking_updates: order.trackingUpdates,
+          tracking_number: order.trackingNumber,
+        }));
+        setOrders(transformedOrders);
+        setTotalCount(response.data.total || orders.length);
+      }
     } catch (error) {
       console.error("Error loading orders:", error);
       toast({
@@ -121,78 +148,16 @@ export default function OrderHistory() {
     if (!selectedOrderId || !user) return;
 
     try {
-      // First, get the order details to find seller IDs
-      const { data: orderData, error: fetchError } = await supabase
-        .from("orders")
-        .select("*")
-        .eq("id", selectedOrderId)
-        .single();
-
-      if (fetchError) throw fetchError;
-
       const fullReason = comments ? `${reason}: ${comments}` : reason;
 
-      const cancellationData = {
-        order_status: "cancelled",
-        payment_status: selectedOrderIsPrepaid ? "refunded" : "cancelled",
-        notes: JSON.stringify({
-          cancellation_reason: reason,
-          cancellation_comments: comments,
-          cancelled_at: new Date().toISOString()
-        })
-      };
-
-      const { error } = await supabase
-        .from("orders")
-        .update(cancellationData)
-        .eq("id", selectedOrderId)
-        .eq("order_status", "pending");
-
-      if (error) throw error;
-
-      // Create notification for the user (buyer)
-      await supabase.from("notifications" as any).insert({
-        user_id: user.id,
-        title: "Order Cancelled",
-        message: `Your order #${selectedOrderNumber} has been cancelled. Reason: ${fullReason}`,
-        type: "order_cancelled",
-        link: `/orders/${selectedOrderId}`,
-        is_read: false
+      // Cancel order via API
+      const response = await apiClient.post(`/orders/${selectedOrderId}/cancel`, {
+        reason: fullReason,
+        isPrepaid: selectedOrderIsPrepaid
       });
 
-      // Get unique seller IDs from items
-      const items = Array.isArray(orderData.items) ? orderData.items : [];
-      const sellerIds = [...new Set(items.map((item: any) => item.sellerId).filter(Boolean))] as string[];
-
-      // Create notifications for each seller
-      for (const sellerId of sellerIds) {
-        await supabase.from("notifications" as any).insert({
-          user_id: sellerId,
-          title: "Order Cancelled by Customer",
-          message: `Order #${selectedOrderNumber} has been cancelled by the customer. Reason: ${fullReason}`,
-          type: "order_cancelled",
-          link: `/seller/orders/${selectedOrderId}`,
-          is_read: false,
-          metadata: { order_id: selectedOrderId, reason, comments }
-        });
-      }
-
-      // Create notification for admin (get admin user IDs)
-      const { data: adminRoles } = await supabase
-        .from("users")
-        .select("user_id")
-        .eq("role", "admin");
-
-      for (const admin of (adminRoles || [])) {
-        await supabase.from("notifications" as any).insert({
-          user_id: admin.user_id,
-          title: "Order Cancelled",
-          message: `Order #${selectedOrderNumber} cancelled by customer. Reason: ${fullReason}`,
-          type: "order_cancelled",
-          link: `/admin/orders/${selectedOrderId}`,
-          is_read: false,
-          metadata: { order_id: selectedOrderId, reason, comments }
-        });
+      if (!response.data.success) {
+        throw new Error(response.data.message || 'Failed to cancel order');
       }
 
       toast({
@@ -206,11 +171,11 @@ export default function OrderHistory() {
       setSelectedOrderId(null);
 
       await loadOrders(user.id);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error cancelling order:", error);
       toast({
         title: "Error",
-        description: "Failed to cancel order. Please try again or contact support.",
+        description: error.message || "Failed to cancel order. Please try again or contact support.",
         variant: "destructive",
       });
     }

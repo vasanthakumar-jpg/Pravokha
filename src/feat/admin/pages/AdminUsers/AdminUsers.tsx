@@ -22,7 +22,7 @@ import {
   BadgeCheck,
   ShieldAlert,
 } from "lucide-react";
-import { supabase } from "@/infra/api/supabase";
+import { apiClient } from "@/infra/api/apiClient";
 import { toast } from "@/shared/hook/use-toast";
 import { useAuth } from "@/core/context/AuthContext";
 import { useAdmin } from "@/core/context/AdminContext";
@@ -89,10 +89,10 @@ import {
 interface User {
   id: string;
   email: string;
-  full_name: string | null;
-  avatar_url: string | null;
+  name: string | null;
+  avatarUrl: string | null;
   role: string;
-  created_at: string;
+  createdAt: string;
   status: string;
   verificationStatus: string;
   phone?: string | null;
@@ -128,49 +128,10 @@ export default function AdminUsers() {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const { data: profilesData, error: profileError } = await supabase
-        .from("users")
-        .select("id, email, full_name, avatar_url, created_at, status, verificationStatus, phone, address")
-        .order("created_at", { ascending: false });
-
-      if (profileError) throw profileError;
-
-      const { data: userRoles, error: roleError } = await supabase
-        .from("users")
-        .select("*");
-
-      if (roleError) throw roleError;
-
-      const rolePriority = { admin: 3, seller: 2, user: 1 };
-
-      const mergedUsers = (profilesData as any[]).map(profile => {
-        const userRoleRecords = userRoles.filter(ur => ur.user_id === profile.id);
-        let highestRole = "user";
-        let maxPriority = 0;
-
-        userRoleRecords.forEach(ur => {
-          const priority = rolePriority[ur.role as keyof typeof rolePriority] || 0;
-          if (priority > maxPriority) {
-            maxPriority = priority;
-            highestRole = ur.role;
-          }
-        });
-
-        return {
-          id: profile.id,
-          email: profile.email || "No Email",
-          full_name: profile.full_name,
-          avatar_url: profile.avatar_url,
-          role: highestRole,
-          created_at: profile.created_at,
-          status: profile.status || "active",
-          verificationStatus: profile.verificationStatus || "pending",
-          phone: profile.phone,
-          address: profile.address
-        };
-      });
-
-      setUsers(mergedUsers);
+      const response = await apiClient.get('/users');
+      if (response.data.success) {
+        setUsers(response.data.users);
+      }
     } catch (error) {
       console.error("Error fetching users:", error);
       toast({ title: "Error", description: "Failed to fetch user directory.", variant: "destructive" });
@@ -182,21 +143,12 @@ export default function AdminUsers() {
   const handleSuspendUser = async (user: User) => {
     try {
       const newStatus = user.status === "active" ? "suspended" : "active";
+      const response = await apiClient.patch(`/users/${user.id}/status`, { status: newStatus });
 
-      // Use the newly implemented Marketplace Governance RPC 
-      // This bypasses client-side RLS limitations while maintaining strict audit trails
-      const { error } = await supabase.rpc('admin_update_profile_status', {
-        p_user_id: user.id,
-        p_new_status: newStatus
-      });
-
-      if (error) throw error;
-
-      toast({ title: "Governance Action Complete", description: `User status set to ${newStatus}.` });
-
-      // Refresh local state and wait slightly for DB consistency before a full fetch
-      setUsers(prev => prev.map(u => u.id === user.id ? { ...u, status: newStatus } : u));
-      setTimeout(fetchUsers, 500);
+      if (response.data.success) {
+        toast({ title: "Governance Action Complete", description: `User status set to ${newStatus}.` });
+        setUsers(prev => prev.map(u => u.id === user.id ? { ...u, status: newStatus } : u));
+      }
     } catch (error) {
       console.error("[Governance Error]:", error);
       toast({ title: "Action Failed", description: "Identity server rejected the protocol update.", variant: "destructive" });
@@ -205,36 +157,19 @@ export default function AdminUsers() {
 
   const handleUpdateRole = async () => {
     if (!selectedUser || !newRole) return;
-    if (selectedUser.role === newRole) {
+    if (selectedUser.role.toLowerCase() === newRole.toLowerCase()) {
       setShowRoleDialog(false);
       return;
     }
 
     try {
-      await (supabase as any).from("users").delete().eq("user_id", selectedUser.id);
-      const { error: insertError } = await (supabase as any)
-        .from("users")
-        .insert({ user_id: selectedUser.id, role: newRole });
+      const response = await apiClient.patch(`/users/${selectedUser.id}/role`, { role: newRole.toUpperCase() });
 
-      if (insertError) throw insertError;
-      toast({ title: "Role Authorization Updated", description: `Access level changed to ${newRole}.` });
-
-      // Log audit
-      await supabase.from('audit_logs').insert({
-        actor_id: currentUser?.id,
-        target_id: selectedUser.id,
-        target_type: 'user',
-        action_type: 'user_role_update',
-        severity: 'critical',
-        description: `Access level for ${selectedUser.id} changed from ${selectedUser.role} to ${newRole}.`,
-        metadata: {
-          new_role: newRole,
-          old_role: selectedUser.role
-        }
-      });
-
-      setShowRoleDialog(false);
-      fetchUsers();
+      if (response.data.success) {
+        toast({ title: "Role Authorization Updated", description: `Access level changed to ${newRole}.` });
+        setShowRoleDialog(false);
+        fetchUsers();
+      }
     } catch (error) {
       toast({ title: "Update Failed", variant: "destructive" });
     }
@@ -385,13 +320,13 @@ export default function AdminUsers() {
                   <CardHeader className="p-3 bg-muted/20 border-b border-border/10 pb-2 flex flex-row items-center justify-between space-y-0">
                     <div className="flex items-center gap-3 w-[75%]">
                       <Avatar className="h-8 w-8 rounded-lg border border-border/40">
-                        <AvatarImage src={user.avatar_url || ""} aria-label={user.full_name || user.email} />
+                        <AvatarImage src={user.avatarUrl || ""} aria-label={user.name || user.email} />
                         <AvatarFallback className="bg-primary/5 text-primary font-bold text-[10px]">
                           {user.full_name?.charAt(0) || user.email.charAt(0)}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex flex-col min-w-0">
-                        <span className="font-semibold text-sm truncate">{user.full_name || 'Incognito Entity'}</span>
+                        <span className="font-semibold text-sm truncate">{user.name || 'Incognito Entity'}</span>
                         <span className="text-[10px] text-muted-foreground truncate">{user.email}</span>
                       </div>
                     </div>
@@ -417,7 +352,7 @@ export default function AdminUsers() {
 
                     <div className="flex items-center gap-2">
                       <span className="text-[10px] text-muted-foreground block text-right">
-                        {new Date(user.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: '2-digit' })}
+                        {new Date(user.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: '2-digit' })}
                       </span>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
@@ -479,13 +414,13 @@ export default function AdminUsers() {
                           <TableCell className="px-6 py-4">
                             <div className="flex items-center gap-4">
                               <Avatar className="h-10 w-10 rounded-xl border border-border/40 relative z-10">
-                                <AvatarImage src={user.avatar_url || ""} aria-label={user.full_name || user.email} />
+                                <AvatarImage src={user.avatarUrl || ""} aria-label={user.name || user.email} />
                                 <AvatarFallback className="bg-primary/5 text-primary font-bold text-xs">
                                   {user.full_name?.charAt(0) || user.email.charAt(0)}
                                 </AvatarFallback>
                               </Avatar>
                               <div className="flex flex-col min-w-0">
-                                <span className="font-semibold text-sm tracking-tight truncate max-w-[180px]">{user.full_name || 'Incognito Entity'}</span>
+                                <span className="font-semibold text-sm tracking-tight truncate max-w-[180px]">{user.name || 'Incognito Entity'}</span>
                                 <span className="text-[11px] text-muted-foreground truncate max-w-[180px]">{user.email}</span>
                               </div>
                             </div>
@@ -522,7 +457,7 @@ export default function AdminUsers() {
                           </TableCell>
                           <TableCell className="text-center">
                             <span className="text-[11px] font-medium text-muted-foreground font-mono">
-                              {new Date(user.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                              {new Date(user.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                             </span>
                           </TableCell>
                           <TableCell className="px-10 text-right">
@@ -599,15 +534,15 @@ export default function AdminUsers() {
             <DialogHeader className="p-6 bg-primary text-white">
               <div className="flex items-center gap-4">
                 <Avatar className="h-16 w-16 rounded-2xl border-2 border-white/20 shadow-lg" >
-                  <AvatarImage src={selectedUser?.avatar_url || ""} />
+                  <AvatarImage src={selectedUser?.avatarUrl || ""} />
                   <AvatarFallback className="bg-white/10 text-white font-bold text-xl" >
-                    {selectedUser?.full_name?.charAt(0) || selectedUser?.email.charAt(0)}
+                    {selectedUser?.name?.charAt(0) || selectedUser?.email.charAt(0)}
                   </AvatarFallback>
                 </Avatar>
                 <div className="space-y-0.5" >
                   <DialogTitle className="text-xl font-bold" > Identity dossier </DialogTitle>
                   <DialogDescription className="text-white/80 font-medium text-xs" >
-                    Reviewing: {selectedUser?.full_name || selectedUser?.email}
+                    Reviewing: {selectedUser?.name || selectedUser?.email}
                   </DialogDescription>
                 </div>
               </div>
@@ -671,7 +606,7 @@ export default function AdminUsers() {
                       <div className="flex items-center gap-2 mt-1" >
                         <Calendar className="h-3 w-3 text-muted-foreground" />
                         <p className="text-sm font-bold text-foreground" >
-                          {selectedUser?.created_at ? new Date(selectedUser.created_at).toLocaleDateString('en-GB', {
+                          {selectedUser?.createdAt ? new Date(selectedUser.createdAt).toLocaleDateString('en-GB', {
                             day: '2-digit', month: 'short', year: 'numeric'
                           }) : 'Unknown'}
                         </p>

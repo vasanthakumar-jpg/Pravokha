@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
-import { supabase } from "@/infra/api/supabase";
+import { apiClient } from "@/infra/api/apiClient";
+import { useAuth } from "@/core/context/AuthContext";
 import { Button } from "@/ui/Button";
 import { Input } from "@/ui/Input";
 import { Label } from "@/ui/Label";
@@ -34,6 +35,7 @@ export function AuthEnhancedPage() {
     const [searchParams] = useSearchParams();
     const { toast } = useToast();
     const { theme } = useTheme();
+    const { user } = useAuth();
     const [isLogin, setIsLogin] = useState(true);
     const [loading, setLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
@@ -48,11 +50,10 @@ export function AuthEnhancedPage() {
 
     useEffect(() => {
         checkUser();
-    }, []);
+    }, [user]);
 
     const checkUser = async () => {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
+        if (user) {
             const redirect = searchParams.get("redirect") || "/";
             navigate(redirect);
         }
@@ -86,34 +87,33 @@ export function AuthEnhancedPage() {
         }
 
         setLoading(true);
-        const { error } = await supabase.auth.signInWithPassword({
-            email: formData.email,
-            password: formData.password,
-        });
+        try {
+            await apiClient.post("/auth/login", {
+                email: formData.email,
+                password: formData.password,
+            });
 
-        setLoading(false);
+            setLoading(false);
 
-        if (error) {
-            if (error.message.includes("Invalid login credentials")) {
-                toast({
-                    title: "Login Failed",
-                    description: "Incorrect credentials. Please check your email/mobile and password.",
-                    variant: "destructive",
-                });
-            } else {
-                toast({
-                    title: "Error",
-                    description: error.message,
-                    variant: "destructive",
-                });
-            }
-        } else {
             toast({
                 title: "Welcome back!",
                 description: "You have successfully logged in.",
             });
+
+            // Force refresh auth state if available, or just navigate and let AuthContext catch up
+
+
             const redirect = searchParams.get("redirect") || "/";
             navigate(redirect);
+
+        } catch (error: any) {
+            setLoading(false);
+            const msg = error.response?.data?.message || error.message || "Invalid credentials";
+            toast({
+                title: "Login Failed",
+                description: msg,
+                variant: "destructive",
+            });
         }
     };
 
@@ -142,68 +142,36 @@ export function AuthEnhancedPage() {
         }
 
         setLoading(true);
-        const redirectUrl = `${window.location.origin}/`;
+        try {
+            await apiClient.post("/auth/register", {
+                email: formData.email,
+                password: formData.password,
+                fullName: formData.name,
+                phone: formData.mobile,
+            });
 
-        const { error } = await supabase.auth.signUp({
-            email: formData.email,
-            password: formData.password,
-            options: {
-                emailRedirectTo: redirectUrl,
-                data: {
-                    full_name: formData.name,
-                    phone: formData.mobile,
-                }
-            }
-        });
+            setLoading(false);
 
-        setLoading(false);
-
-        if (error) {
-            if (error.message.includes("already registered")) {
-                toast({
-                    title: "Account Exists",
-                    description: "This email is already registered. Please login instead.",
-                    variant: "destructive",
-                });
-                setIsLogin(true);
-            } else if (error.message.includes("Email not confirmed")) {
-                toast({
-                    title: "Email Not Verified",
-                    description: "Please verify your email to proceed. Check your inbox (and spam folder).",
-                    variant: "destructive",
-                });
-            } else {
-                toast({
-                    title: "Error",
-                    description: error.message,
-                    variant: "destructive",
-                });
-            }
-        } else {
             toast({
                 title: "Account Created!",
                 description: "Please check your email to verify your account before logging in.",
             });
             setIsLogin(true);
             setFormData({ ...formData, password: "", confirmPassword: "" });
+        } catch (error: any) {
+            setLoading(false);
+            const msg = error.response?.data?.message || error.message || "Registration failed";
+            toast({
+                title: "Registration Failed",
+                description: msg,
+                variant: "destructive",
+            });
         }
     };
 
     const handleGoogleSignIn = async () => {
-        const { error } = await supabase.auth.signInWithOAuth({
-            provider: "google",
-            options: {
-                redirectTo: `${window.location.origin}/`,
-            }
-        });
-
-        if (error) {
-            toast({
-                title: "Error",
-                description: "Failed to sign in with Google. Please try again.",
-                variant: "destructive",
-            });
-        }
+        // Redirect to backend Google Auth endpoint
+        window.location.href = `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/auth/google`;
     };
 
     return (

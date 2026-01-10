@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Facebook, Instagram, Twitter, Mail, Youtube } from "lucide-react";
 import { Button } from "@/ui/Button";
 import { Input } from "@/ui/Input";
-import { supabase } from "@/infra/api/supabase";
+import { apiClient } from "@/infra/api/apiClient";
 import { toast } from "@/shared/hook/use-toast";
 import { z } from "zod";
 import { useTheme } from "next-themes";
@@ -40,30 +40,21 @@ export function Footer() {
         setIsSubmitting(true);
 
         try {
-            const { error } = await supabase
-                .from("newsletter_subscriptions")
-                .insert([{ email: email.trim().toLowerCase() }]);
+            const response = await apiClient.post("/newsletter/subscribe", { email: email.trim().toLowerCase() });
 
-            if (error) {
-                if (error.code === "23505") {
-                    toast({
-                        title: "Already subscribed",
-                        description: "This email is already subscribed to our newsletter.",
-                    });
-                } else {
-                    throw error;
-                }
-            } else {
+            if (response.data.success) {
                 toast({
                     title: "Subscribed successfully!",
-                    description: "Thank you for subscribing to our newsletter.",
+                    description: response.data.message || "Thank you for subscribing to our newsletter.",
                 });
                 setEmail("");
+            } else {
+                throw new Error(response.data.message || "Subscription failed");
             }
         } catch (error: any) {
             toast({
                 title: "Subscription failed",
-                description: "Something went wrong. Please try again later.",
+                description: error.response?.data?.message || "Something went wrong. Please try again later.",
                 variant: "destructive",
             });
         } finally {

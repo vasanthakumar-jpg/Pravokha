@@ -52,54 +52,121 @@ import {
   AlertCircle,
   ShieldCheck
 } from "lucide-react";
-import { supabase } from "@/infra/api/supabase";
-import { toast } from "@/shared/hook/use-toast";
+import { apiClient } from "@/infra/api/apiClient";
 import { Skeleton } from "@/ui/Skeleton";
-import { ScrollArea } from "@/ui/ScrollArea";
-import { StatsCard } from "@/feat/admin/components/StatsCard";
+import { toast } from "@/shared/hook/use-toast";
+
+// ... (keep earlier imports)
+
+function StatsCard({ title, value, icon: Icon, color, description, trend }: any) {
+  return (
+    <Card className="border-border/60 bg-card shadow-sm">
+      <CardContent className="p-4 sm:p-6">
+        <div className="flex items-center justify-between space-y-0 pb-2">
+          <p className="text-sm font-medium text-muted-foreground">{title}</p>
+          <div className={cn("p-2 rounded-lg bg-opacity-10", color.replace("bg-", "bg-opacity-10 text-"))}>
+            <Icon className={cn("h-4 w-4", color.replace("bg-", "text-"))} />
+          </div>
+        </div>
+        <div className="flex flex-col gap-1 mt-2">
+          <h3 className="text-2xl font-bold tracking-tight">{value}</h3>
+          <p className="text-[10px] text-muted-foreground flex items-center gap-2">
+            {description}
+            {trend && (
+              <span className={cn(
+                "font-bold flex items-center gap-0.5",
+                typeof trend === 'object' && trend.isPositive ? "text-emerald-500" : "text-rose-500"
+              )}>
+                {typeof trend === 'object' ? (
+                  <>
+                    {trend.isPositive ? <TrendingUp className="h-3 w-3" /> : <TrendingUp className="h-3 w-3 rotate-180" />}
+                    {trend.value}%
+                  </>
+                ) : (
+                  <span className="text-amber-500">{trend}</span>
+                )}
+              </span>
+            )}
+          </p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function AdminProductsManagement() {
-  const { isAdmin, loading: adminLoading } = useAdmin();
   const navigate = useNavigate();
+  const { isAdmin, loading: adminLoading } = useAdmin();
+
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [viewMode, setViewMode] = useState<"table" | "grid">("grid");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize] = useState(10);
   const [totalCount, setTotalCount] = useState(0);
-  const [categoryFilter, setCategoryFilter] = useState<string>("all");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [sortBy, setSortBy] = useState<string>("newest");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(12);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [sortBy, setSortBy] = useState("newest");
+  const [viewMode, setViewMode] = useState<"table" | "grid">("table");
+
+  const [stats, setStats] = useState({
+    total: 0,
+    active: 0,
+    draft: 0,
+    totalStock: 0,
+    published: 0
+  });
+
+  useEffect(() => {
+    if (!adminLoading && !isAdmin) {
+      navigate("/");
+    }
+  }, [isAdmin, adminLoading, navigate]);
+
+  useEffect(() => {
+    if (isAdmin) {
+      fetchProducts();
+    }
+  }, [isAdmin, currentPage, pageSize]);
+
+  // Update stats based on products
+  useEffect(() => {
+    if (products.length > 0) {
+      const publishedCount = products.filter(p => p.published).length;
+      const stock = products.reduce((acc, p) => acc + (p.total_stock || 0), 0);
+      setStats({
+        total: totalCount || products.length,
+        active: publishedCount,
+        draft: products.length - publishedCount,
+        totalStock: stock,
+        published: publishedCount
+      });
+    }
+  }, [products, totalCount]);
 
   const fetchProducts = async () => {
     setLoading(true);
     try {
-      const from = (currentPage - 1) * pageSize;
-      const to = from + pageSize - 1;
+      // Calculate pagination for backend if supported, otherwise fetch and slice
+      // Current backend might return all products or support pagination params
+      const { data, headers } = await apiClient.get('/products', {
+        params: {
+          page: currentPage,
+          limit: pageSize,
+          role: 'admin' // Ensure admin view to see drafts
+        }
+      });
 
-      const { data, error, count } = await supabase
-        .from("products")
-        .select(`
-          *,
-          product_variants (
-            id,
-            color_name,
-            images,
-            product_sizes (
-              id,
-              size,
-              stock
-            )
-          )
-        `, { count: "exact" })
-        .order('created_at', { ascending: false })
-        .range(from, to);
-
-      if (!error && data) {
+      // If backend provides paginated response structure
+      if (data && Array.isArray(data.products)) {
+        setProducts(data.products);
+        setTotalCount(data.total || 0);
+      } else if (Array.isArray(data)) {
+        // Fallback if backend returns simple array
         setProducts(data);
-        setTotalCount(count || 0);
+        setTotalCount(parseInt(headers['x-total-count'] || data.length.toString()));
       }
+
     } catch (err) {
       console.error("Error fetching products:", err);
       toast({ title: "Error", description: "Failed to fetch products catalogue.", variant: "destructive" });
@@ -108,116 +175,87 @@ export default function AdminProductsManagement() {
     }
   };
 
-  const totalPages = Math.ceil(totalCount / pageSize);
-
-  const handlePageChange = (newPage: number) => {
-    setCurrentPage(newPage);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
-  useEffect(() => {
-    if (isAdmin && !adminLoading) {
-      fetchProducts();
-    }
-  }, [isAdmin, adminLoading, currentPage]);
+  const dynamicCategories = useMemo(() => {
+    const counts: Record<string, number> = {};
+    products.forEach(p => {
+      counts[p.category] = (counts[p.category] || 0) + 1;
+    });
+    return Object.entries(counts).map(([name, count]) => ({ name, count }));
+  }, [products]);
 
   const filteredProducts = useMemo(() => {
-    let result = products.filter(p =>
-      p.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.sku?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.category?.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    let filtered = [...products];
 
+    // Search
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      filtered = filtered.filter(p =>
+        p.title.toLowerCase().includes(q) ||
+        p.sku?.toLowerCase().includes(q) ||
+        p.category.toLowerCase().includes(q)
+      );
+    }
+
+    // Filters
     if (categoryFilter !== "all") {
-      result = result.filter(p => p.category === categoryFilter);
+      filtered = filtered.filter(p => p.category === categoryFilter);
+    }
+    if (statusFilter !== "all") {
+      filtered = filtered.filter(p => statusFilter === "published" ? p.published : !p.published);
     }
 
-    if (statusFilter === "published") {
-      result = result.filter(p => p.published);
-    } else if (statusFilter === "draft") {
-      result = result.filter(p => !p.published);
-    }
-
-    result.sort((a, b) => {
-      if (sortBy === "price-low") return a.price - b.price;
-      if (sortBy === "price-high") return b.price - a.price;
-      if (sortBy === "oldest") return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    // Sort
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case "newest": return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        case "oldest": return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+        case "price-low": return a.price - b.price;
+        case "price-high": return b.price - a.price;
+        default: return 0;
+      }
     });
 
-    return result;
+    return filtered;
   }, [products, searchQuery, categoryFilter, statusFilter, sortBy]);
 
-  const stats = useMemo(() => {
-    const total = products.length;
-    const published = products.filter(p => p.published).length;
-    let totalStock = 0;
-    products.forEach(p => {
-      p.product_variants?.forEach((v: any) => {
-        v.product_sizes?.forEach((s: any) => {
-          totalStock += (s.stock || 0);
-        });
-      });
-    });
-    return { total, published, totalStock };
-  }, [products]);
-
-  const dynamicCategories = useMemo(() => {
-    const counts: { [key: string]: number } = {};
-    products.forEach(p => {
-      const cat = p.category || "Uncategorized";
-      counts[cat] = (counts[cat] || 0) + 1;
-    });
-    return Object.entries(counts)
-      .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => a.name.localeCompare(b.name));
-  }, [products]);
-
   const handleExportCSV = () => {
-    if (filteredProducts.length === 0) {
-      toast({ title: "Export Failed", description: "No products available to export.", variant: "destructive" });
-      return;
-    }
+    const headers = ["ID", "SKU", "Name", "Category", "Price", "Stock", "Status", "Created"];
+    const rows = filteredProducts.map(p => [
+      p.id,
+      p.sku,
+      `"${p.title.replace(/"/g, '""')}"`,
+      p.category,
+      p.price,
+      p.total_stock,
+      p.published ? "Live" : "Draft",
+      new Date(p.created_at).toLocaleDateString()
+    ]);
 
-    const headers = ["Title", "SKU", "Category", "Price", "Discount Price", "Stock Status", "Visibility"];
-    const csvData = filteredProducts.map(p => {
-      let stock = 0;
-      p.product_variants?.forEach((v: any) => {
-        v.product_sizes?.forEach((s: any) => {
-          stock += (s.stock || 0);
-        });
-      });
+    const csvContent = "data:text/csv;charset=utf-8,"
+      + headers.join(",") + "\n"
+      + rows.map(e => e.join(",")).join("\n");
 
-      return [
-        `"${p.title.replace(/"/g, '""')}"`,
-        p.sku,
-        p.category,
-        p.price,
-        p.discount_price || 0,
-        stock <= 5 ? "Low Stock" : "In Stock",
-        p.published ? "Published" : "Draft"
-      ].join(",");
-    });
-
-    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...csvData].join("\n");
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `pravokha_admin_inventory_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute("download", `products_export_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-
-    toast({ title: "Export Initialized", description: `${filteredProducts.length} items formatted and downloaded.` });
   };
+
+  // ... rest of component
+
+  // ...
 
   const togglePublished = async (id: string, current: boolean) => {
     try {
-      const { error } = await supabase.from("products").update({ published: !current }).eq("id", id);
-      if (error) throw error;
+      await apiClient.patch(`/products/${id}/status`, { published: !current });
+      // product_variants update will be handled by backend if needed, or we just rely on product-level published flag
       setProducts(prev => prev.map(p => p.id === id ? { ...p, published: !current } : p));
       toast({ title: "Visibility Updated", description: "Product status shifted successfully." });
     } catch (err) {
+      console.error(err);
       toast({ title: "Update Failed", variant: "destructive" });
     }
   };
@@ -225,11 +263,11 @@ export default function AdminProductsManagement() {
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure? This will remove the entire product matrix.")) return;
     try {
-      const { error } = await supabase.from("products").delete().eq("id", id);
-      if (error) throw error;
+      await apiClient.delete(`/products/${id}`);
       setProducts(prev => prev.filter(p => p.id !== id));
       toast({ title: "Product Terminated", description: "Item removed from catalogue." });
     } catch (err) {
+      console.error(err);
       toast({ title: "Deletion Failed", variant: "destructive" });
     }
   };

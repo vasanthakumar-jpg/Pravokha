@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAdmin } from "@/core/context/AdminContext";
 import { cn } from "@/lib/utils";
-import { supabase } from "@/infra/api/supabase";
+import { apiClient } from "@/infra/api/apiClient";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/ui/Card";
 import { Button } from "@/ui/Button";
@@ -47,40 +47,12 @@ export default function AdminDashboard() {
   useEffect(() => {
     const fetchRecentLogs = async () => {
       try {
-        const timeoutMs = 15000;
-        const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Request timed out')), timeoutMs)
-        );
-
-        // Try fetching with profiles first
-        const fetchPromise = supabase
-          .from("audit_logs")
-          .select(`
-            *,
-            profiles!actor_id (
-              full_name,
-              email
-            )
-          `)
-          .order("created_at", { ascending: false })
-          .limit(8);
-
-        const { data, error } = await Promise.race([
-          fetchPromise,
-          timeoutPromise
-        ]) as any;
-
-        if (error) {
-          console.warn("[AdminDashboard] Join fetch failed, falling back to simple fetch:", error.message);
-          const { data: simpleData } = await supabase
-            .from("audit_logs")
-            .select("*")
-            .order("created_at", { ascending: false })
-            .limit(8);
-          if (simpleData) setRecentLogs(simpleData);
-        } else if (data) {
-          setRecentLogs(data);
-        }
+        const response = await apiClient.get('/audit?limit=8');
+        const logs = response.data.data.map((log: any) => ({
+          ...log,
+          created_at: log.createdAt // Map for UI compatibility
+        }));
+        setRecentLogs(logs);
       } catch (err) {
         console.error("[AdminDashboard] Error fetching recent logs:", err);
       }
@@ -88,15 +60,11 @@ export default function AdminDashboard() {
 
     const checkSystemHealth = async () => {
       try {
-        const { error } = await Promise.race([
-          supabase.from("users").select('id', { count: 'exact', head: true }).limit(1),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 10000))
-        ]) as any;
-
-        if (error) throw error;
+        // Use stats refetch as a health check
+        await refetchStats();
         setSystemHealth('optimal');
       } catch (e) {
-        console.warn("[AdminDashboard] System health check failed or timed out");
+        console.warn("[AdminDashboard] System health check failed");
         setSystemHealth('degraded');
       }
     };
@@ -104,19 +72,6 @@ export default function AdminDashboard() {
     if (isAdmin) {
       fetchRecentLogs();
       checkSystemHealth();
-
-      // Real-time Pulse subscription
-      const channel = supabase
-        .channel('dashboard_pulse')
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'audit_logs' }, (payload) => {
-          setRecentLogs(prev => [payload.new, ...prev.slice(0, 7)]);
-          refetchStats(); // Refresh stats on new activity
-        })
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
     }
   }, [isAdmin]);
 

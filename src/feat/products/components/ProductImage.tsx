@@ -1,32 +1,33 @@
 import { useEffect, useState } from "react";
 import { Package } from "lucide-react";
-import { supabase } from "@/infra/api/supabase";
+import { apiClient } from "@/infra/api/apiClient";
 import { cn } from "@/lib/utils";
 
 interface ProductImageProps {
     productId: string;
     title: string;
+    src?: string | null;
     size?: "list" | "grid";
     className?: string;
 }
 
-export function ProductImage({ productId, title, size = "list", className }: ProductImageProps) {
-    const [imageUrl, setImageUrl] = useState<string | null>(null);
-    const [loading, setLoading] = useState(true);
+export function ProductImage({ productId, title, src, size = "list", className }: ProductImageProps) {
+    const [imageUrl, setImageUrl] = useState<string | null>(src || null);
+    const [loading, setLoading] = useState(!src);
 
     useEffect(() => {
+        if (src) {
+            setImageUrl(src);
+            setLoading(false);
+            return;
+        }
+
         let isMounted = true;
         const loadImage = async () => {
             try {
-                const { data, error } = await supabase
-                    .from('product_variants')
-                    .select('images')
-                    .eq('product_id', productId)
-                    .limit(1)
-                    .maybeSingle();
-
-                if (isMounted && !error && data?.images?.[0]) {
-                    setImageUrl(data.images[0]);
+                const response = await apiClient.get(`/products/${productId}`);
+                if (isMounted && response.data.success && response.data.product?.variants?.[0]?.images?.[0]) {
+                    setImageUrl(response.data.product.variants[0].images[0]);
                 }
             } catch (err) {
                 console.error('Error loading image:', err);

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { supabase } from "@/infra/api/supabase";
+import { apiClient } from "@/infra/api/apiClient";
 import { useAuth } from "@/core/context/AuthContext";
 import { useToast } from "@/shared/hook/use-toast";
 
@@ -20,46 +20,38 @@ export function useUserPreferences() {
     const [preferences, setPreferences] = useState<UserPreferences | null>(null);
     const [loading, setLoading] = useState(true);
 
+    const mapPreferences = (data: any): UserPreferences => ({
+        user_id: data.userId,
+        email_notifications: data.emailNotifications,
+        order_updates: data.orderUpdates,
+        marketing_emails: data.marketingEmails,
+        sms_notifications: data.smsNotifications,
+        theme: data.theme,
+        language: data.language,
+        currency: data.currency
+    });
+
+    const mapPreferencesToBackend = (prefs: Partial<UserPreferences>) => {
+        const updates: any = {};
+        if (prefs.email_notifications !== undefined) updates.emailNotifications = prefs.email_notifications;
+        if (prefs.order_updates !== undefined) updates.orderUpdates = prefs.order_updates;
+        if (prefs.marketing_emails !== undefined) updates.marketingEmails = prefs.marketing_emails;
+        if (prefs.sms_notifications !== undefined) updates.smsNotifications = prefs.sms_notifications;
+        if (prefs.theme !== undefined) updates.theme = prefs.theme;
+        if (prefs.language !== undefined) updates.language = prefs.language;
+        if (prefs.currency !== undefined) updates.currency = prefs.currency;
+        return updates;
+    };
+
     // Fetch preferences
     const fetchPreferences = async () => {
         if (!user) return;
 
         setLoading(true);
         try {
-            const { data, error } = await supabase
-                .from("user_preferences" as any)
-                .select("*")
-                .eq("user_id", user.id)
-                .single();
-
-            if (error && error.code !== "PGRST116") {
-                throw error;
-            }
-
-            // If no preferences exist, create default ones
-            if (!data) {
-                const defaultPrefs = {
-                    user_id: user.id,
-                    email_notifications: true,
-                    order_updates: true,
-                    marketing_emails: false,
-                    sms_notifications: false,
-                    theme: "system",
-                    language: "en",
-                    currency: "INR",
-                };
-
-                const { data: newData, error: insertError } = await supabase
-                    .from("user_preferences" as any)
-                    .insert(defaultPrefs)
-                    .select()
-                    .single();
-
-                if (insertError) throw insertError;
-                setPreferences(newData as unknown as UserPreferences);
-            } else {
-                setPreferences(data as unknown as UserPreferences);
-            }
+            const response = await apiClient.get('/users/preferences');
+            const data = response.data.preferences;
+            setPreferences(mapPreferences(data));
         } catch (error: any) {
             console.error("Error fetching preferences:", error);
             toast({
@@ -77,20 +69,16 @@ export function useUserPreferences() {
         if (!user) return;
 
         try {
-            const { data, error } = await supabase
-                .from("user_preferences" as any)
-                .upsert({ user_id: user.id, ...updates, updated_at: new Date().toISOString() })
-                .select()
-                .single();
+            const backendUpdates = mapPreferencesToBackend(updates);
+            const response = await apiClient.patch('/users/preferences', backendUpdates);
+            const data = response.data.preferences;
 
-            if (error) throw error;
-
-            setPreferences(data as unknown as UserPreferences);
+            setPreferences(mapPreferences(data));
             toast({
                 title: "Success",
                 description: "Preferences updated successfully",
             });
-            return data as unknown as UserPreferences;
+            return mapPreferences(data);
         } catch (error: any) {
             console.error("Error updating preferences:", error);
             toast({

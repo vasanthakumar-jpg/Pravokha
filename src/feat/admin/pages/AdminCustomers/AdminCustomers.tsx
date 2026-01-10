@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAdmin } from "@/core/context/AdminContext";
-import { supabase } from "@/infra/api/supabase";
+import { apiClient } from "@/infra/api/apiClient";
 import { cn } from "@/lib/utils";
 import { AdminSkeleton } from "@/feat/admin/components/AdminSkeleton";
 
@@ -76,17 +76,19 @@ export default function AdminCustomers() {
     try {
       setLoading(true);
       const from = (currentPage - 1) * pageSize;
-      const to = from + pageSize - 1;
 
-      const { data, error, count } = await supabase
-        .from("users")
-        .select("*", { count: "exact" })
-        .order("created_at", { ascending: false })
-        .range(from, to);
+      const response = await apiClient.get('/users', {
+        params: {
+          skip: from,
+          take: pageSize,
+          searchQuery: searchQuery
+        }
+      });
 
-      if (error) throw error;
-      setProfiles(data || []);
-      setTotalCount(count || 0);
+      if (response.data.success) {
+        setProfiles(response.data.users || []);
+        setTotalCount(response.data.count || 0);
+      }
     } catch (error) {
       console.error("Error loading profiles:", error);
       toast({
@@ -101,22 +103,17 @@ export default function AdminCustomers() {
 
   const handleVerifyCustomer = async (customerId: string, status: 'verified' | 'rejected') => {
     try {
-      // Use the dedicated administrative RPC for verification
-      // This ensures SECURITY DEFINER context and atomic updates
-      const { error } = await supabase.rpc('admin_verify_seller', {
-        p_user_id: customerId,
-        p_new_status: status
+      const response = await apiClient.post(`/users/${customerId}/verify`, {
+        status: status === 'verified' ? 'approved' : 'rejected'
       });
 
-      if (error) throw error;
-
-      toast({
-        title: status === 'verified' ? "Account Verified" : "Account Restricted",
-        description: `Customer clearance has been updated to ${status}.`,
-      });
-
-      // Delay slightly for trigger propagation before refetch
-      setTimeout(loadProfiles, 500);
+      if (response.data.success) {
+        toast({
+          title: status === 'verified' ? "Account Verified" : "Account Restricted",
+          description: `Customer clearance has been updated to ${status}.`,
+        });
+        loadProfiles();
+      }
     } catch (error) {
       console.error("[Verification Error]:", error);
       toast({ title: "Action Failed", description: "Verification transmission failed.", variant: "destructive" });
@@ -125,21 +122,18 @@ export default function AdminCustomers() {
 
   const handleRestrictCustomer = async (customerId: string) => {
     try {
-      // Use the global governance kill-switch RPC
-      const { error } = await supabase.rpc('admin_update_profile_status', {
-        p_user_id: customerId,
-        p_new_status: 'suspended'
+      const response = await apiClient.patch(`/users/${customerId}/status`, {
+        status: 'suspended'
       });
 
-      if (error) throw error;
-
-      toast({
-        title: "Account Restricted",
-        description: "Global platform clearance has been revoked for this account.",
-        variant: "destructive",
-      });
-
-      setTimeout(loadProfiles, 500);
+      if (response.data.success) {
+        toast({
+          title: "Account Restricted",
+          description: "Global platform clearance has been revoked for this account.",
+          variant: "destructive",
+        });
+        loadProfiles();
+      }
     } catch (err) {
       console.error("[Restriction Error]:", err);
       toast({ title: "Action Failed", description: "Restriction transmission failed.", variant: "destructive" });

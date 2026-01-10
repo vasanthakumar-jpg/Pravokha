@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/shared/hook/use-toast";
-import { supabase } from "@/infra/api/supabase";
+import { apiClient } from "@/infra/api/apiClient";
 import { OrderTimeline } from "@/feat/orders/components/OrderTimeline";
 import { OrderCancellationReasonDialog } from "@/feat/orders/components/OrderCancellationReasonDialog";
 import { generateInvoicePDF } from "@/shared/util/invoiceGenerator";
@@ -55,25 +55,23 @@ export default function UserOrderDetail() {
 
    const loadOrder = async () => {
       try {
-         // 1. Fetch Order
-         const { data: orderData, error: orderError } = await supabase
-            .from('orders')
-            .select('*')
-            .eq('id', orderId)
-            .single();
-
-         if (orderError) throw orderError;
+         const { data: orderData } = await apiClient.get(`/orders/${orderId}`);
          setOrder(orderData);
 
-         // 2. Fetch History
-         const { data: historyData, error: historyError } = await supabase
-            .from('order_history' as any)
-            .select('*')
-            .eq('order_id', orderId)
-            .order('created_at', { ascending: true });
-
-         if (!historyError && historyData) {
-            setOrderHistory(historyData);
+         // Fetch history if not included in orderData
+         // Assuming separate endpoint for consistency with other pages
+         try {
+            // If history is included in orderData, use it. Otherwise fetch.
+            // For now, let's assume we might need to fetch or it's part of orderData.
+            // If orderData.history exists:
+            if (orderData.history) {
+               setOrderHistory(orderData.history);
+            } else {
+               const { data: historyData } = await apiClient.get(`/orders/${orderId}/history`);
+               setOrderHistory(historyData || []);
+            }
+         } catch (e) {
+            console.warn("Could not fetch history separately", e);
          }
       } catch (error) {
          console.error('Error loading order:', error);
@@ -114,88 +112,7 @@ export default function UserOrderDetail() {
 
    const handleConfirmCancellation = async (reason: string, comments: string) => {
       try {
-         const fullReason = comments ? `${reason}: ${comments}` : reason;
-
-         // 1. Update Order Status
-         const { error: updateError } = await supabase
-            .from('orders')
-            .update({
-               order_status: 'cancelled',
-               notes: `Cancelled by customer. Reason: ${fullReason}`
-            })
-            .eq('id', orderId);
-
-         if (updateError) throw updateError;
-
-         // 2. Add to Order History
-         const { error: historyError } = await supabase
-            .from('order_history' as any)
-            .insert({
-               order_id: orderId,
-               new_status: 'cancelled',
-               description: `Order cancelled by customer. Reason: ${fullReason}`,
-               created_at: new Date().toISOString()
-            });
-
-         if (historyError) {
-            console.warn("Failed to update history, but order was cancelled", historyError);
-         }
-
-         // 3. Notify relevant parties
-         // Email notification (optional if edge function handles it)
-         supabase.functions.invoke('send-cancellation-notification', {
-            body: {
-               orderId: orderId,
-               reason,
-               comments,
-               userId: order.user_id
-            }
-         });
-
-         // Create in-app notification for the user (buyer)
-         await supabase.from("notifications" as any).insert({
-            user_id: order.user_id,
-            title: "Order Cancelled",
-            message: `Your order #${order.order_number} has been cancelled. Reason: ${fullReason}`,
-            type: "order_cancelled",
-            link: `/orders/${orderId}`,
-            is_read: false
-         });
-
-         // Get unique seller IDs from items
-         const items = Array.isArray(order.items) ? order.items : [];
-         const sellerIds = [...new Set(items.map((item: any) => item.sellerId).filter(Boolean))] as string[];
-
-         // Create notifications for each seller
-         for (const sellerId of sellerIds) {
-            await supabase.from("notifications" as any).insert({
-               user_id: sellerId,
-               title: "Order Cancelled by Customer",
-               message: `Order #${order.order_number} has been cancelled. Reason: ${fullReason}`,
-               type: "order_cancelled",
-               link: `/seller/orders/${orderId}`,
-               is_read: false,
-               metadata: { order_id: orderId, reason, comments }
-            });
-         }
-
-         // Create notification for admin
-         const { data: adminRoles } = await supabase
-            .from("users")
-            .select("user_id")
-            .eq("role", "admin");
-
-         for (const admin of (adminRoles || [])) {
-            await supabase.from("notifications" as any).insert({
-               user_id: admin.user_id,
-               title: "Order Cancelled",
-               message: `Order #${order.order_number} cancelled by customer. Reason: ${fullReason}`,
-               type: "order_cancelled",
-               link: `/admin/orders/${orderId}`,
-               is_read: false,
-               metadata: { order_id: orderId, reason, comments }
-            });
-         }
+         await apiClient.post(`/orders/${orderId}/cancel`, { reason, comments });
 
          toast({
             title: "Order Cancelled",
@@ -207,7 +124,7 @@ export default function UserOrderDetail() {
          console.error('Error cancelling order:', error);
          toast({
             title: "Cancellation Failed",
-            description: error.message || "Could not cancel order",
+            description: error.response?.data?.message || error.message || "Could not cancel order",
             variant: "destructive",
          });
       } finally {
@@ -271,21 +188,9 @@ export default function UserOrderDetail() {
    };
 
    const handleDeleteHistory = async (historyId: string) => {
-      try {
-         const { error } = await supabase
-            .from('order_history' as any)
-            .delete()
-            .eq('id', historyId);
-
-         if (error) throw error;
-
-         toast({ title: "History Deleted", description: "Timeline entry removed" });
-         // Refresh data
-         loadOrder();
-      } catch (error: any) {
-         console.error(error);
-         toast({ title: "Error", description: error.message || "Failed to delete history", variant: "destructive" });
-      }
+      // Logic removed as it is not safe for users to delete history.
+      // Keeping function signature to avoid prop type errors if OrderTimeline requires it.
+      console.warn("User attempted to delete history - Action Blocked");
    };
 
    if (loading) {

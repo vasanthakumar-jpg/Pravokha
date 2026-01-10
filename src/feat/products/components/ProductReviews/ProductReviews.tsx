@@ -4,7 +4,8 @@ import { Button } from "@/ui/Button";
 import { Textarea } from "@/ui/Textarea";
 import { Input } from "@/ui/Input";
 import { Card } from "@/ui/Card";
-import { supabase } from "@/infra/api/supabase";
+import { apiClient } from "@/infra/api/apiClient";
+import { useAuth } from "@/core/context/AuthContext";
 import { toast } from "sonner";
 import { LoadingSpinner } from "@/shared/ui/LoadingSpinner";
 import styles from "./ProductReviews.module.css";
@@ -16,17 +17,21 @@ interface ProductReviewsProps {
 
 interface Review {
     id: string;
-    user_id: string;
+    userId: string;
     rating: number;
     title: string;
     comment: string;
     images?: string[];
-    created_at: string;
+    createdAt: string;
     status: string;
+    user?: {
+        name: string;
+        image?: string;
+    }
 }
 
 export const ProductReviews = ({ productId }: ProductReviewsProps) => {
-    const [user, setUser] = useState<any>(null);
+    const { user } = useAuth();
     const [rating, setRating] = useState(0);
     const [hoverRating, setHoverRating] = useState(0);
     const [title, setTitle] = useState("");
@@ -43,27 +48,16 @@ export const ProductReviews = ({ productId }: ProductReviewsProps) => {
     }>({});
 
     useEffect(() => {
-        checkUser();
         fetchReviews();
     }, [productId]);
-
-    const checkUser = async () => {
-        const { data: { user } } = await supabase.auth.getUser();
-        setUser(user);
-    };
 
     const fetchReviews = async () => {
         setIsLoading(true);
         try {
-            const { data, error } = await supabase
-                .from("reviews")
-                .select("*")
-                .eq("product_id", productId)
-                .eq("status", "approved")
-                .order("created_at", { ascending: false });
-
-            if (error) throw error;
-            setReviews(data || []);
+            const response = await apiClient.get(`/reviews/product/${productId}`);
+            if (response.data.success) {
+                setReviews(response.data.reviews || []);
+            }
         } catch (error) {
             console.error("Error fetching reviews:", error);
             toast.error("Failed to load reviews");
@@ -129,31 +123,6 @@ export const ProductReviews = ({ productId }: ProductReviewsProps) => {
         setSelectedImages(prev => prev.filter((_, i) => i !== index));
     };
 
-    const uploadImagesToStorage = async (files: File[]) => {
-        const uploadedUrls: string[] = [];
-
-        for (const file of files) {
-            const fileExt = file.name.split('.').pop();
-            const fileName = `${user.id}/${Date.now()}-${Math.random()}.${fileExt}`;
-
-            const { error: uploadError } = await supabase.storage
-                .from('review-images')
-                .upload(fileName, file);
-
-            if (uploadError) {
-                throw uploadError;
-            }
-
-            const { data: { publicUrl } } = supabase.storage
-                .from('review-images')
-                .getPublicUrl(fileName);
-
-            uploadedUrls.push(publicUrl);
-        }
-
-        return uploadedUrls;
-    };
-
     const handleSubmitReview = async () => {
         if (!user) {
             toast.error("Please sign in to leave a review");
@@ -171,33 +140,37 @@ export const ProductReviews = ({ productId }: ProductReviewsProps) => {
             let imageUrls: string[] = [];
 
             if (selectedImages.length > 0) {
-                imageUrls = await uploadImagesToStorage(selectedImages);
+                const formData = new FormData();
+                selectedImages.forEach(file => formData.append('files', file));
+
+                const uploadRes = await apiClient.post('/upload/multiple', formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+
+                if (uploadRes.data.success) {
+                    imageUrls = uploadRes.data.urls;
+                }
             }
 
             const reviewData = {
-                user_id: user.id,
-                product_id: productId,
+                productId: productId,
                 rating,
                 title: title.trim(),
                 comment: reviewText.trim(),
-                images: imageUrls.length > 0 ? imageUrls : null,
-                status: "approved",
+                images: imageUrls,
             };
 
             if (editingReview) {
-                const { error } = await supabase
-                    .from("reviews")
-                    .update(reviewData)
-                    .eq("id", editingReview);
-
-                if (error) throw error;
-                toast.success("Review updated successfully");
-                setEditingReview(null);
+                const response = await apiClient.patch(`/reviews/${editingReview}`, reviewData);
+                if (response.data.success) {
+                    toast.success("Review updated successfully");
+                    setEditingReview(null);
+                }
             } else {
-                const { error } = await supabase.from("reviews").insert([reviewData]);
-
-                if (error) throw error;
-                toast.success("Review submitted successfully");
+                const response = await apiClient.post("/reviews", reviewData);
+                if (response.data.success) {
+                    toast.success("Review submitted successfully");
+                }
             }
 
             setRating(0);
@@ -209,7 +182,7 @@ export const ProductReviews = ({ productId }: ProductReviewsProps) => {
             fetchReviews();
         } catch (error: any) {
             console.error("Error submitting review:", error);
-            toast.error(error.message || "Failed to submit review");
+            toast.error(error.response?.data?.message || "Failed to submit review");
         } finally {
             setIsSubmitting(false);
         }
@@ -227,18 +200,14 @@ export const ProductReviews = ({ productId }: ProductReviewsProps) => {
         if (!confirm("Are you sure you want to delete this review?")) return;
 
         try {
-            const { error } = await supabase
-                .from("reviews")
-                .delete()
-                .eq("id", reviewId);
-
-            if (error) throw error;
-
-            toast.success("Review deleted successfully");
-            fetchReviews();
-        } catch (error) {
+            const response = await apiClient.delete(`/reviews/${reviewId}`);
+            if (response.data.success) {
+                toast.success("Review deleted successfully");
+                fetchReviews();
+            }
+        } catch (error: any) {
             console.error("Error deleting review:", error);
-            toast.error("Failed to delete review");
+            toast.error(error.response?.data?.message || "Failed to delete review");
         }
     };
 
@@ -435,7 +404,7 @@ export const ProductReviews = ({ productId }: ProductReviewsProps) => {
                                         />
                                     ))}
                                 </div>
-                                {user && user.id === review.user_id && (
+                                {user && user.id === review.userId && (
                                     <div className="flex gap-2">
                                         <Button
                                             variant="ghost"
@@ -474,7 +443,7 @@ export const ProductReviews = ({ productId }: ProductReviewsProps) => {
                             )}
 
                             <p className={styles.reviewDate}>
-                                {new Date(review.created_at).toLocaleDateString()}
+                                {new Date(review.createdAt).toLocaleDateString()}
                             </p>
                         </Card>
                     ))

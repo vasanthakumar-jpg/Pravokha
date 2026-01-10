@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/core/context/AuthContext";
-import { supabase } from "@/infra/api/supabase";
+import { apiClient } from "@/infra/api/apiClient";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/ui/Card";
 import { Button } from "@/ui/Button";
@@ -150,12 +150,15 @@ export default function UnifiedOrdersPage() {
       setUserRole('admin');
       return;
     }
-    const { data: roleData } = await supabase
-      .from("users")
-      .select('role')
-      .eq('user_id', user.id)
-      .single();
-    setUserRole(roleData?.role === 'admin' ? 'admin' : 'seller');
+    // If the user object from AuthContext already has the role, use it.
+    // Otherwise fetch it. Assuming AuthContext user might be partial or just basic info.
+    // Ideally we should trust AuthContext, but let's fetch to be safe as per original logic.
+    try {
+      const { data } = await apiClient.get('/users/me');
+      setUserRole(data.role === 'admin' ? 'admin' : 'seller');
+    } catch (error) {
+      console.error("Failed to fetch user role", error);
+    }
   };
 
   const fetchOrders = async () => {
@@ -163,70 +166,48 @@ export default function UnifiedOrdersPage() {
 
     try {
       setLoading(true);
-      const from = (currentPage - 1) * pageSize;
-      const to = from + pageSize - 1;
 
-      // 1. Fetch Counts (Lite queries)
-      const buyerCountQuery = supabase
-        .from('orders')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id);
+      // Determine context based on tab
+      let type = 'buyer'; // default
+      if (mainTab === 'customer-orders') type = 'seller';
+      if (mainTab === 'platform-orders') type = 'admin';
 
-      // Business Count (items where sellerId = user.id)
-      const businessCountQuery = supabase.from('orders').select('items');
+      // Use the generic orders endpoint with type parameter
+      const params = {
+        page: currentPage,
+        limit: pageSize,
+        type: type
+      };
 
-      // Platform Count (Admin only - total)
-      const platformCountQuery = userRole === 'admin'
-        ? supabase.from('orders').select('*', { count: 'exact', head: true })
-        : Promise.resolve({ count: 0 });
+      const response = await apiClient.get('/orders', { params });
+      const { data, meta } = response.data;
 
-      const [buyerCountRes, businessCountRes, platformCountRes] = await Promise.all([
-        buyerCountQuery,
-        businessCountQuery,
-        platformCountQuery
-      ]);
+      const mappedData = mapOrders(data);
 
-      setMyOrdersCount(buyerCountRes.count || 0);
-
-      const bOrders = (businessCountRes.data || []).filter((order: any) =>
-        Array.isArray(order.items) && order.items.some((item: any) => item.sellerId === user.id)
-      );
-      setBusinessOrdersCount(bOrders.length);
-
-      if (userRole === 'admin') {
-        setPlatformOrdersCount(platformCountRes.count || 0);
+      if (mainTab === "my-orders") {
+        setMyOrders(mappedData);
+        setMyOrdersCount(meta.total); // Approximate logic, ideally separate stats endpoint
+      } else if (mainTab === "customer-orders") {
+        setCustomerOrders(mappedData);
+        setBusinessOrdersCount(meta.total);
+      } else {
+        setPlatformOrders(mappedData);
+        setPlatformOrdersCount(meta.total);
       }
 
-      // 2. Fetch Data for Active Tab
-      if (mainTab === "my-orders") {
-        const { data, error } = await supabase
-          .from('orders')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false })
-          .range(from, to);
+      setTotalCount(meta.total);
 
-        if (error) throw error;
-        setMyOrders(mapOrders(data));
-        setTotalCount(buyerCountRes.count || 0);
-      } else if (mainTab === "customer-orders") {
-        const { data, error } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
-        if (error) throw error;
-        const businessData = (data || []).filter((order: any) =>
-          Array.isArray(order.items) && order.items.some((item: any) => item.sellerId === user.id)
-        );
-        setCustomerOrders(mapOrders(businessData.slice(from, to + 1)));
-        setTotalCount(businessData.length);
-      } else {
-        // Platform Orders (Admin Only)
-        const { data, error } = await supabase
-          .from('orders')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .range(from, to);
-        if (error) throw error;
-        setPlatformOrders(mapOrders(data || []));
-        setTotalCount(platformCountRes.count || 0);
+      // Fetch counts separately if needed to keep badges updated (optional)
+      // For now, setting counts based on current fetch which is only for one tab might be inaccurate for other tabs badges.
+      // But preserving original logic structure where practical.
+      // Ideally call /orders/stats
+      try {
+        const stats = await apiClient.get('/orders/stats');
+        setMyOrdersCount(stats.data.buyerCount || 0);
+        setBusinessOrdersCount(stats.data.sellerCount || 0);
+        setPlatformOrdersCount(stats.data.adminCount || 0);
+      } catch (e) {
+        console.warn("Stats fetch failed", e);
       }
 
     } catch (error) {
@@ -240,7 +221,7 @@ export default function UnifiedOrdersPage() {
   const mapOrders = (data: any[]): Order[] => {
     return (data || []).map((order: any) => ({
       ...order,
-      status: order.order_status,
+      status: order.order_status || order.status, // Handle both snake_case from DB and potentially normalized response
       items_count: Array.isArray(order.items) ? order.items.length : 0,
     }));
   };
@@ -317,43 +298,18 @@ export default function UnifiedOrdersPage() {
   const handleConfirmCancellation = async (reason: string, comments: string) => {
     if (!cancellingOrder || !user) return;
     try {
-      const fullReason = comments ? `${reason} - ${comments}` : reason;
+      await apiClient.patch(`/orders/${cancellingOrder.id}/cancel`, {
+        reason,
+        comments
+      });
 
-      // Update DB
-      const { error } = await supabase
-        .from('orders')
-        .update({
-          order_status: 'cancelled',
-          cancellation_reason: fullReason,
-          notes: JSON.stringify({ cancellation_reason: reason, cancellation_comments: comments, cancelled_at: new Date().toISOString() })
-        })
-        .eq('id', cancellingOrder.id);
-      if (error) throw error;
+      // Update Local State with simple optimistic update or refetch
+      const updatedStatus = 'cancelled';
+      const updater = (prev: Order[]) => prev.map(o => o.id === cancellingOrder.id ? { ...o, status: updatedStatus as any } : o);
 
-      // Update Local State
-      const updater = (prev: Order[]) => prev.map(o => o.id === cancellingOrder.id ? { ...o, status: 'cancelled' as const, payment_status: o.payment_status === 'paid' ? 'refund_pending' : o.payment_status } : o);
       setMyOrders(updater);
       setCustomerOrders(updater);
       setPlatformOrders(updater);
-
-      // Add to Order History
-      await supabase.from('order_history' as any).insert({
-        order_id: cancellingOrder.id,
-        new_status: 'cancelled',
-        description: `Order cancelled by ${userRole}. Reason: ${reason}`,
-        created_at: new Date().toISOString()
-      });
-
-      // 3. Audit Logging
-      await supabase.from('audit_logs').insert({
-        actor_id: user.id,
-        target_id: cancellingOrder.id,
-        target_type: 'order',
-        action_type: 'order_cancellation',
-        severity: 'info',
-        description: `Order #${cancellingOrder.order_number} cancelled by ${userRole === 'admin' ? 'admin' : 'user'}. Reason: ${reason}`,
-        metadata: { reason, comments, role: userRole }
-      });
 
       toast({ title: "Cancelled", description: "Order cancelled successfully." });
     } catch (e) {

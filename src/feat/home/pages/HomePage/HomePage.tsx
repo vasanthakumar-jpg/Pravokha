@@ -13,7 +13,7 @@ import styles from "./HomePage.module.css";
 import typography from "@/styles/Typography.module.css";
 import layout from "@/styles/Layout.module.css";
 
-import { supabase } from "@/infra/api/supabase";
+import { apiClient } from "@/infra/api/apiClient";
 import { BottomBannerCarousel } from "@/shared/ui/BottomBannerCarousel";
 import { WhatsAppButton } from "@/shared/ui/WhatsAppButton";
 import { useGsapAnimations } from "@/shared/hook/useGsapAnimations";
@@ -69,13 +69,10 @@ export function HomePage() {
 
     const fetchCategories = async () => {
         try {
-            const { data, error } = await supabase
-                .from("categories")
-                .select("*")
-                .order("display_order", { ascending: true });
-
-            if (error) throw error;
-            setCategories(data || []);
+            const response = await apiClient.get('/categories');
+            if (response.data.success) {
+                setCategories(response.data.categories || []);
+            }
         } catch (error) {
             console.error("Error fetching categories:", error);
         } finally {
@@ -87,48 +84,29 @@ export function HomePage() {
         try {
             setLoadingProducts(true);
 
-            const { data, error } = await supabase
-                .from("products")
-                .select(`
-          *,
-          product_variants (
-            id,
-            color_name,
-            color_hex,
-            images,
-            product_sizes (
-              size,
-              stock
-            )
-          )
-        `)
-                .eq("published", true)
-                .order("created_at", { ascending: false });
+            const response = await apiClient.get('/products', { params: { limit: 100 } });
 
-            if (error) throw error;
-
-            if (data) {
+            if (response.data.success) {
+                const data = response.data.products;
                 const transformed: Product[] = data.map((p: any) => ({
                     id: p.id,
                     title: p.title,
                     slug: p.slug,
                     description: p.description,
-                    price: parseFloat(p.price),
-                    discountPrice: p.discount_price ? parseFloat(p.discount_price) : undefined,
-                    category: p.category,
-                    rating: parseFloat(p.rating || 4.5),
+                    price: parseFloat(String(p.price)),
+                    discountPrice: p.discountPrice ? parseFloat(String(p.discountPrice)) : undefined,
+                    category: p.category?.name || p.category,
+                    rating: parseFloat(String(p.rating || 4.5)),
                     reviews: p.reviews || 0,
                     sku: p.sku,
-                    is_featured: p.is_featured,
-                    is_new: p.is_new,
-                    featured: p.is_featured,     // Map for compatibility
-                    newArrival: p.is_new,        // Map for compatibility
-                    variants: (p.product_variants || []).map((v: any) => ({
+                    featured: p.isFeatured,
+                    newArrival: p.isNew,
+                    variants: (p.variants || []).map((v: any) => ({
                         id: v.id,
-                        colorName: v.color_name,
-                        colorHex: v.color_hex,
+                        colorName: v.colorName,
+                        colorHex: v.colorHex,
                         images: v.images,
-                        sizes: (v.product_sizes || []).map((s: any) => ({
+                        sizes: (v.sizes || []).map((s: any) => ({
                             size: s.size,
                             stock: s.stock,
                         })),

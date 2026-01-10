@@ -5,7 +5,7 @@ import { Button } from "@/ui/Button";
 import { Badge } from "@/ui/Badge";
 import { Textarea } from "@/ui/Textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/ui/Avatar";
-import { supabase } from "@/infra/api/supabase";
+import { apiClient } from "@/infra/api/apiClient";
 import { useAuth } from "@/core/context/AuthContext";
 import { toast } from "@/shared/hook/use-toast";
 import { cn } from "@/lib/utils";
@@ -42,7 +42,8 @@ interface Message {
 
 export function TicketDetailPage() {
     const { id } = useParams<{ id: string }>();
-    const { user, isSuspended } = useAuth();
+    const { user } = useAuth();
+    const isSuspended = user?.status === 'suspended';
     const navigate = useNavigate();
 
     const [ticket, setTicket] = useState<Ticket | null>(null);
@@ -61,25 +62,15 @@ export function TicketDetailPage() {
         if (messages.length > 0 && user) {
             const unreadAdminMessages = messages.filter(m => m.sender_id !== user.id && !m.is_read);
             if (unreadAdminMessages.length > 0) {
-                markMessagesAsRead(unreadAdminMessages.map(m => m.id));
+                // In the Node backend, marks are handled within fetchMessages mostly, 
+                // but we can still have a manual trigger if needed.
+                // For now, getTicketMessages already marks them.
             }
         }
     }, [messages, user]);
 
     const markMessagesAsRead = async (messageIds: string[]) => {
-        try {
-            const { error } = await (supabase as any)
-                .from('ticket_messages')
-                .update({ is_read: true })
-                .in('id', messageIds);
-
-            if (error) throw error;
-
-            // Update local state to reflect read status
-            setMessages(prev => prev.map(m => messageIds.includes(m.id) ? { ...m, is_read: true } : m));
-        } catch (error) {
-            console.error('Error marking messages as read:', error);
-        }
+        // Handled by the backend in getTicketMessages
     };
 
     useEffect(() => {
@@ -88,66 +79,43 @@ export function TicketDetailPage() {
             fetchTicketDetails();
             fetchMessages();
 
-            // Enable Realtime Sync
-            const channel = supabase
-                .channel(`ticket_messages_${id}`)
-                .on(
-                    'postgres_changes',
-                    {
-                        event: 'INSERT',
-                        schema: 'public',
-                        table: 'ticket_messages',
-                        filter: `ticket_id=eq.${id}`
-                    },
-                    (payload) => {
-                        fetchMessages(); // Refresh message list
-                        if (payload.new.sender_id !== user.id && !payload.new.is_internal) {
-                            toast({
-                                title: "New Message",
-                                description: "You have a new reply on your ticket.",
-                            });
-                        }
-                    }
-                )
-                .subscribe();
-
-            return () => {
-                supabase.removeChannel(channel);
-            };
+            // Real-time sync removed during backend migration.
+            // Consider implementing polling or WebSockets in the future.
         }
     }, [id, user]);
 
     const checkAdminStatus = async () => {
-        const { data } = await supabase
-            .from("users")
-            .select('role')
-            .eq('user_id', user?.id)
-            .maybeSingle();
-        setIsAdmin(data?.role === 'admin');
+        // Trust the user role from AuthContext/User object
+        setIsAdmin(user?.role === 'ADMIN');
     };
 
     const fetchTicketDetails = async () => {
         if (!id) return;
 
         try {
-            const { data, error } = await (supabase as any)
-                .from('support_tickets')
-                .select('*')
-                .eq('id', id)
-                .single();
+            const response = await apiClient.get(`/support/tickets/${id}`);
+            const data = response.data.ticket;
 
-            if (error) throw error;
+            // Map fields
+            const mappedTicket = {
+                ...data,
+                ticket_number: data.ticketNumber,
+                evidence_urls: data.evidenceUrls,
+                created_at: data.createdAt,
+                updated_at: data.updatedAt,
+                user_id: data.userId
+            };
 
-            // Check access
-            const { data: roleData } = await supabase
-                .from("users")
-                .select('role')
-                .eq('user_id', user?.id)
-                .maybeSingle();
+            setTicket(mappedTicket);
 
-            const isAdmin = roleData?.role === 'admin';
-
-            if (data.user_id !== user?.id && !isAdmin) {
+            if (mappedTicket.user_id) {
+                // Fetch user info for admin view if needed
+                const userResponse = await apiClient.get(`/users/profile/${mappedTicket.user_id}`);
+                setTicketUser(userResponse.data.profile);
+            }
+        } catch (error: any) {
+            console.error('Error fetching ticket:', error);
+            if (error.response?.status === 404 || error.response?.status === 403) {
                 toast({
                     title: "Access Denied",
                     description: "You don't have permission to view this ticket",
@@ -156,17 +124,6 @@ export function TicketDetailPage() {
                 navigate('/tickets');
                 return;
             }
-
-            setTicket(data);
-
-            const { data: profile } = await supabase
-                .from("users")
-                .select('*')
-                .eq('id', data.user_id)
-                .single();
-            setTicketUser(profile);
-        } catch (error: any) {
-            console.error('Error fetching ticket:', error);
             toast({
                 title: "Error",
                 description: "Failed to load ticket details",
@@ -181,17 +138,19 @@ export function TicketDetailPage() {
         if (!id) return;
 
         try {
-            const { data, error } = await (supabase as any)
-                .from('ticket_messages')
-                .select(`
-          *,
-          sender:profiles!ticket_messages_sender_id_fkey(full_name, avatar_url)
-        `)
-                .eq('ticket_id', id)
-                .eq('is_internal', false)
-                .order('created_at', { ascending: true });
-
-            if (error) throw error;
+            const response = await apiClient.get(`/support/tickets/${id}/messages`);
+            const data = response.data.messages.map((m: any) => ({
+                ...m,
+                sender_id: m.senderId,
+                is_internal: m.isInternal,
+                is_read: m.isRead,
+                created_at: m.createdAt,
+                sender: m.sender ? {
+                    full_name: m.sender.name,
+                    avatar_url: m.sender.avatarUrl,
+                    role: m.sender.role
+                } : undefined
+            }));
             setMessages(data || []);
         } catch (error: any) {
             console.error('Error fetching messages:', error);
@@ -204,61 +163,10 @@ export function TicketDetailPage() {
         setSending(true);
 
         try {
-            const { error: messageError } = await (supabase as any)
-                .from('ticket_messages')
-                .insert({
-                    ticket_id: id,
-                    sender_id: user.id,
-                    message: newMessage,
-                    is_internal: false
-                });
-
-            if (messageError) throw messageError;
-
-            if (ticket.status === 'awaiting_user') {
-                await (supabase as any)
-                    .from('support_tickets')
-                    .update({ status: 'under_review', updated_at: new Date().toISOString() })
-                    .eq('id', id);
-            } else {
-                await (supabase as any)
-                    .from('support_tickets')
-                    .update({ updated_at: new Date().toISOString() })
-                    .eq('id', id);
-            }
-
-            if (isAdmin) {
-                await (supabase as any)
-                    .from('notifications')
-                    .insert({
-                        user_id: ticket.user_id,
-                        title: "Support Response Received",
-                        message: `The Pravokha Support Team has replied to your request regarding "${ticket.subject}".`,
-                        type: 'message',
-                        link: `/tickets/${id}`,
-                        metadata: { ticket_id: id, sender_name: "Support Team" }
-                    });
-            } else {
-                const { data: admins } = await supabase
-                    .from("users")
-                    .select('user_id')
-                    .eq('role', 'admin');
-
-                if (admins && admins.length > 0) {
-                    const notifications = admins.map(admin => ({
-                        user_id: admin.user_id,
-                        title: "Urgent Registry Update",
-                        message: `User ${user.email} has provided an update on Ticket #${ticket.ticket_number}.`,
-                        type: 'alert',
-                        link: `/admin/tickets`,
-                        metadata: { ticket_id: id, sender_email: user.email }
-                    }));
-
-                    await (supabase as any)
-                        .from('notifications')
-                        .insert(notifications);
-                }
-            }
+            await apiClient.post(`/support/tickets/${id}/reply`, {
+                message: newMessage,
+                isInternal: false
+            });
 
             setNewMessage("");
             fetchMessages();

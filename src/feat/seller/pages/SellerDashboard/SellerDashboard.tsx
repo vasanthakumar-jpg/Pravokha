@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/core/context/AuthContext";
-import { supabase } from "@/infra/api/supabase";
+import { apiClient } from "@/infra/api/apiClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/ui/Card";
 import { Button } from "@/ui/Button";
 import { Badge } from "@/ui/Badge";
@@ -56,31 +56,25 @@ export default function SellerDashboard() {
       // Simulate a small delay to make the refresh perceptible and show the spinner
       await new Promise(resolve => setTimeout(resolve, 800));
 
-      // 1. Fetch Verification Status from Profiles
-      const { data: profile, error: profileError } = await supabase
-        .from("users")
-        .select('*')
-        .eq('id', user.id)
-        .single();
+      // 1. Fetch User Profile including Verification Status
+      const profileResponse = await apiClient.get('/users/me');
+      const profile = profileResponse.data.user;
 
-      if (!profileError && profile) {
+      if (profile) {
         setVerificationStatus(profile.verificationStatus || "pending");
-        setRejectionReason(profile.rejection_reason);
+        setRejectionReason(profile.verificationComments || null);
         setFullProfile(profile);
       }
 
-      // Fetch seller's products
-      const { data: products, error: productsError } = await (supabase as any)
-        .from('products')
-        .select('*, product_variants(product_sizes(stock))')
-        .eq('seller_id', user.id)
-        .is('deleted_at', null);
+      // 2. Fetch seller's products
+      const productsResponse = await apiClient.get('/products', {
+        params: { sellerId: user.id, includeDeleted: false }
+      });
 
-      if (productsError) throw productsError;
-
-      const transformedProducts = (products || []).map((product: any) => {
-        const totalStock = product.product_variants?.reduce((sum: number, variant: any) => {
-          const variantStock = variant.product_sizes?.reduce((s: number, size: any) => s + (size.stock || 0), 0) || 0;
+      const productsData = productsResponse.data.products || [];
+      const transformedProducts = productsData.map((product: any) => {
+        const totalStock = product.variants?.reduce((sum: number, variant: any) => {
+          const variantStock = variant.sizes?.reduce((s: number, size: any) => s + (size.stock || 0), 0) || 0;
           return sum + variantStock;
         }, 0) || 0;
         return {
@@ -89,23 +83,20 @@ export default function SellerDashboard() {
         };
       });
 
-      // 2. Fetch All Seller Orders for Stats
-      const { data: sellerOrders, error: ordersError } = await supabase
-        .from('orders')
-        .select('*')
-        .eq('seller_id', user.id)
-        .is('deleted_at', null)
-        .order('created_at', { ascending: false });
+      // 3. Fetch All Seller Orders for Stats
+      const ordersResponse = await apiClient.get('/orders', {
+        params: { sellerId: user.id, limit: 100 }
+      });
 
-      if (ordersError) throw ordersError;
+      const sellerOrders = ordersResponse.data.orders || [];
 
-      const transformedOrders = (sellerOrders || []).slice(0, 10).map((order: any) => ({
+      const transformedOrders = sellerOrders.slice(0, 10).map((order: any) => ({
         id: order.id,
-        order_number: order.order_number,
-        customer_name: order.customer_name,
+        order_number: order.orderNumber,
+        customer_name: order.customerName,
         total: order.total,
-        status: order.order_status,
-        created_at: order.created_at,
+        status: order.status,
+        created_at: order.createdAt,
         items_count: Array.isArray(order.items) ? order.items.length : 0,
       }));
 
@@ -127,12 +118,12 @@ export default function SellerDashboard() {
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-      (sellerOrders || []).forEach((order: any) => {
-        const orderDate = new Date(order.created_at);
+      sellerOrders.forEach((order: any) => {
+        const orderDate = new Date(order.createdAt || order.created_at);
         const orderRev = order.total || 0;
 
         totalRevenue += orderRev;
-        if (order.order_status === 'pending') pendingOrders++;
+        if (order.status === 'PENDING' || order.status === 'pending') pendingOrders++;
 
         const dayName = days[orderDate.getDay()];
         if (orderDate >= sevenDaysAgo && dailySales[dayName]) {
@@ -142,13 +133,12 @@ export default function SellerDashboard() {
 
         if (Array.isArray(order.items)) {
           order.items.forEach((item: any) => {
-            if (item.sellerId === user.id) {
-              if (!productStats[item.id]) {
-                productStats[item.id] = { id: item.id, title: item.name || item.info?.title || 'Product', sales: 0, revenue: 0 };
-              }
-              productStats[item.id].sales += (item.quantity || 1);
-              productStats[item.id].revenue += ((item.price || 0) * (item.quantity || 1));
+            const itemProductId = item.productId || item.product_id;
+            if (!productStats[itemProductId]) {
+              productStats[itemProductId] = { id: itemProductId, title: item.title || 'Product', sales: 0, revenue: 0 };
             }
+            productStats[itemProductId].sales += (item.quantity || 1);
+            productStats[itemProductId].revenue += (item.price || 0) * (item.quantity || 1);
           });
         }
       });
@@ -159,12 +149,12 @@ export default function SellerDashboard() {
       setRecentOrders(transformedOrders);
       setStats({
         totalProducts: transformedProducts.length || 0,
-        totalOrders: sellerOrders?.length || 0,
+        totalOrders: sellerOrders.length || 0,
         totalRevenue: totalRevenue,
         pendingOrders: pendingOrders,
       });
 
-      if (loading) { // Only show toast if user clicked refresh (loading was already true)
+      if (loading) {
         toast.success("Dashboard refreshed", {
           description: "Your store metrics are now up to date."
         });

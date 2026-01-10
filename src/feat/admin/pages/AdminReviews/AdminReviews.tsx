@@ -40,7 +40,7 @@ import {
   XCircle,
   ArrowLeft
 } from "lucide-react";
-import { supabase } from "@/infra/api/supabase";
+import { apiClient } from "@/infra/api/apiClient";
 import { toast } from "@/shared/hook/use-toast";
 import { format } from "date-fns";
 import {
@@ -95,32 +95,24 @@ export default function AdminReviews() {
     try {
       setLoading(true);
 
-      // Fetch reviews
-      const { data: reviewsData, error: reviewError } = await supabase
-        .from("reviews")
-        .select("*")
-        .order("created_at", { ascending: false });
+      const response = await apiClient.get('/reviews/admin', {
+        params: {
+          status: statusFilter !== 'all' ? statusFilter : undefined,
+          limit: 100
+        }
+      });
 
-      if (reviewError) throw reviewError;
-
-      // Fetch products for product names
-      const { data: productsData } = await supabase
-        .from("products")
-        .select("id, title");
-
-      // Fetch profiles for user names
-      const { data: profilesData } = await supabase
-        .from("users")
-        .select("id, full_name");
-
-      // Merge data
-      const enrichedReviews = (reviewsData || []).map((review: any) => ({
-        ...review,
-        product_title: productsData?.find(p => p.id === review.product_id)?.title || "Unknown Product",
-        user_name: profilesData?.find(p => p.id === review.user_id)?.full_name || "Unknown User"
-      }));
-
-      setReviews(enrichedReviews);
+      if (response.data.success) {
+        const enrichedReviews = response.data.reviews.map((review: any) => ({
+          ...review,
+          product_title: review.product?.title || "Unknown Product",
+          user_name: review.user?.name || "Unknown User",
+          product_id: review.productId,
+          user_id: review.userId,
+          created_at: review.createdAt
+        }));
+        setReviews(enrichedReviews);
+      }
     } catch (error) {
       console.error("Error fetching reviews:", error);
       toast({
@@ -137,19 +129,16 @@ export default function AdminReviews() {
     if (!reviewToDelete) return;
 
     try {
-      const { error } = await supabase
-        .from("reviews")
-        .delete()
-        .eq("id", reviewToDelete.id);
+      const response = await apiClient.delete(`/reviews/${reviewToDelete.id}`);
 
-      if (error) throw error;
+      if (response.data.success) {
+        toast({
+          title: "Review Deleted",
+          description: "The review has been permanently removed.",
+        });
 
-      toast({
-        title: "Review Deleted",
-        description: "The review has been permanently removed.",
-      });
-
-      setReviews(prev => prev.filter(r => r.id !== reviewToDelete.id));
+        setReviews(prev => prev.filter(r => r.id !== reviewToDelete.id));
+      }
     } catch (error) {
       console.error("Error deleting review:", error);
       toast({
@@ -165,19 +154,18 @@ export default function AdminReviews() {
 
   const handleApproveReview = async (reviewId: string) => {
     try {
-      const { error } = await supabase
-        .from("reviews")
-        .update({ status: "approved" })
-        .eq("id", reviewId);
-
-      if (error) throw error;
-
-      toast({
-        title: "Review Approved",
-        description: "The review is now visible to customers.",
+      const response = await apiClient.patch(`/reviews/${reviewId}/status`, {
+        status: "approved"
       });
 
-      setReviews(prev => prev.map(r => r.id === reviewId ? { ...r, status: "approved" } : r));
+      if (response.data.success) {
+        toast({
+          title: "Review Approved",
+          description: "The review is now visible to customers.",
+        });
+
+        setReviews(prev => prev.map(r => r.id === reviewId ? { ...r, status: "approved" } : r));
+      }
     } catch (error) {
       console.error("Error approving review:", error);
       toast({
@@ -190,19 +178,18 @@ export default function AdminReviews() {
 
   const handleRejectReview = async (reviewId: string) => {
     try {
-      const { error } = await supabase
-        .from("reviews")
-        .update({ status: "rejected" })
-        .eq("id", reviewId);
-
-      if (error) throw error;
-
-      toast({
-        title: "Review Rejected",
-        description: "The review has been hidden from customers.",
+      const response = await apiClient.patch(`/reviews/${reviewId}/status`, {
+        status: "rejected"
       });
 
-      setReviews(prev => prev.map(r => r.id === reviewId ? { ...r, status: "rejected" } : r));
+      if (response.data.success) {
+        toast({
+          title: "Review Rejected",
+          description: "The review has been hidden from customers.",
+        });
+
+        setReviews(prev => prev.map(r => r.id === reviewId ? { ...r, status: "rejected" } : r));
+      }
     } catch (error) {
       console.error("Error rejecting review:", error);
       toast({

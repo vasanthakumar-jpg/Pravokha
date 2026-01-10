@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/infra/api/supabase";
+import { apiClient } from "@/infra/api/apiClient";
+import { useAuth } from "@/core/context/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/ui/Card";
 import { Button } from "@/ui/Button";
 import { Input } from "@/ui/Input";
@@ -26,7 +27,7 @@ interface Conversation {
 }
 
 export function SupportChatPage() {
-    const navigate = useNavigate();
+    const { user } = useAuth();
     const [conversations, setConversations] = useState<Conversation[]>([]);
     const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
     const [messages, setMessages] = useState<Message[]>([]);
@@ -34,77 +35,51 @@ export function SupportChatPage() {
     const [newSubject, setNewSubject] = useState("");
     const [dialogOpen, setDialogOpen] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
-    const [userId, setUserId] = useState<string | null>(null);
 
     useEffect(() => {
-        checkAuth();
-    }, []);
-
-    const checkAuth = async () => {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-            navigate("/auth");
-            return;
+        if (user) {
+            fetchConversations();
         }
-        setUserId(user.id);
-        fetchConversations(user.id);
-    };
+    }, [user]);
 
-    const fetchConversations = async (uid: string) => {
-        const { data, error } = await supabase
-            .from("support_conversations")
-            .select("*")
-            .eq("user_id", uid)
-            .order("last_message_at", { ascending: false });
-
-        if (error) {
+    const fetchConversations = async () => {
+        try {
+            const response = await apiClient.get('/support/conversations');
+            // Map camelCase to snake_case
+            const data = response.data.conversations.map((c: any) => ({
+                ...c,
+                last_message_at: c.lastMessageAt,
+                created_at: c.createdAt
+            }));
+            setConversations(data || []);
+        } catch (error: any) {
             toast({ title: "Error", description: "Failed to load conversations", variant: "destructive" });
-            return;
         }
-        setConversations(data || []);
     };
 
     const fetchMessages = async (conversationId: string) => {
-        const { data, error } = await supabase
-            .from("support_messages")
-            .select("*")
-            .eq("conversation_id", conversationId)
-            .order("created_at", { ascending: true });
-
-        if (error) {
+        try {
+            const response = await apiClient.get(`/support/conversations/${conversationId}/messages`);
+            const data = response.data.messages.map((m: any) => ({
+                ...m,
+                is_admin: m.isAdmin,
+                created_at: m.createdAt
+            }));
+            setMessages(data || []);
+            scrollToBottom();
+        } catch (error: any) {
             toast({ title: "Error", description: "Failed to load messages", variant: "destructive" });
-            return;
         }
-        setMessages(data || []);
-        scrollToBottom();
     };
 
     useEffect(() => {
-        if (!selectedConversation || !userId) return;
+        if (!selectedConversation || !user) return;
 
         fetchMessages(selectedConversation);
 
-        const channel = supabase
-            .channel(`support:${selectedConversation}`)
-            .on(
-                "postgres_changes",
-                {
-                    event: "INSERT",
-                    schema: "public",
-                    table: "support_messages",
-                    filter: `conversation_id=eq.${selectedConversation}`,
-                },
-                (payload) => {
-                    setMessages((prev) => [...prev, payload.new as Message]);
-                    scrollToBottom();
-                }
-            )
-            .subscribe();
-
-        return () => {
-            supabase.removeChannel(channel);
-        };
-    }, [selectedConversation, userId]);
+        // Real-time sync removed during migration.
+        // Consider polling or socket.io update.
+    }, [selectedConversation, user]);
 
     const scrollToBottom = () => {
         setTimeout(() => {
@@ -113,49 +88,34 @@ export function SupportChatPage() {
     };
 
     const createConversation = async () => {
-        if (!userId || !newSubject.trim()) return;
+        if (!user || !newSubject.trim()) return;
 
-        const { data, error } = await supabase
-            .from("support_conversations")
-            .insert([{ user_id: userId, subject: newSubject }])
-            .select()
-            .single();
+        try {
+            const response = await apiClient.post('/support/conversations', { subject: newSubject });
+            const data = response.data.conversation;
 
-        if (error) {
+            toast({ title: "Success", description: "Conversation created" });
+            setDialogOpen(false);
+            setNewSubject("");
+            fetchConversations();
+            setSelectedConversation(data.id);
+        } catch (error: any) {
             toast({ title: "Error", description: "Failed to create conversation", variant: "destructive" });
-            return;
         }
-
-        toast({ title: "Success", description: "Conversation created" });
-        setDialogOpen(false);
-        setNewSubject("");
-        fetchConversations(userId);
-        setSelectedConversation(data.id);
     };
 
     const sendMessage = async () => {
-        if (!userId || !selectedConversation || !newMessage.trim()) return;
+        if (!user || !selectedConversation || !newMessage.trim()) return;
 
-        const { error } = await supabase
-            .from("support_messages")
-            .insert([{
-                conversation_id: selectedConversation,
-                user_id: userId,
-                message: newMessage,
-                is_admin: false,
-            }]);
-
-        if (error) {
+        try {
+            await apiClient.post(`/support/conversations/${selectedConversation}/messages`, {
+                message: newMessage
+            });
+            setNewMessage("");
+            fetchMessages(selectedConversation);
+        } catch (error: any) {
             toast({ title: "Error", description: "Failed to send message", variant: "destructive" });
-            return;
         }
-
-        await supabase
-            .from("support_conversations")
-            .update({ last_message_at: new Date().toISOString() })
-            .eq("id", selectedConversation);
-
-        setNewMessage("");
     };
 
     return (

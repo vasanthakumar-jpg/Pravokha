@@ -5,9 +5,9 @@ import { Input } from "@/ui/Input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/ui/Tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/ui/Collapsible";
 import { useNotifications, Notification } from "@/shared/hook/useNotifications";
-import { supabase } from "@/infra/api/supabase";
 import { Link, useNavigate } from "react-router-dom";
 import { formatDistanceToNow, format } from "date-fns";
+import { apiClient } from "@/infra/api/apiClient";
 import { cn } from "@/lib/utils";
 import {
   Search,
@@ -68,14 +68,7 @@ export default function SellerMessages() {
     setLoadingOrders(prev => new Set(prev).add(orderId));
 
     try {
-      const { data, error } = await supabase
-        .from('orders')
-        .select('*')
-        .eq('id', orderId)
-        .single();
-
-      if (error) throw error;
-
+      const { data } = await apiClient.get(`/orders/${orderId}`);
       setOrderDetails(prev => ({ ...prev, [orderId]: data }));
     } catch (error) {
       console.error('Error fetching order:', error);
@@ -89,7 +82,7 @@ export default function SellerMessages() {
   };
 
   const toggleOrderExpansion = async (notification: Notification) => {
-    const orderId = extractOrderIdFromLink(notification.link);
+    const orderId = extractOrderIdFromLink(notification.link || '');
     if (!orderId) return;
 
     const newExpanded = new Set(expandedOrders);
@@ -110,14 +103,14 @@ export default function SellerMessages() {
     if (!matchesSearch) return false;
 
     if (activeTab === "all") return true;
-    if (activeTab === "unread") return !notification.is_read;
+    if (activeTab === "unread") return !notification.isRead;
     if (activeTab === "orders") return notification.type === 'order' || notification.type === 'order_cancelled';
     if (activeTab === "system") return notification.type === 'system' || notification.type === 'alert';
 
     return true;
   });
 
-  const unreadCount = notifications.filter(n => !n.is_read).length;
+  const unreadCount = notifications.filter(n => !n.isRead).length;
 
   const renderOrderDetails = (notif: Notification, orderId: string) => {
     const order = orderDetails[orderId];
@@ -301,7 +294,7 @@ export default function SellerMessages() {
               </div>
             ) : (
               filteredNotifications.map((notification) => {
-                const orderId = extractOrderIdFromLink(notification.link);
+                const orderId = extractOrderIdFromLink(notification.link || null);
                 const isExpanded = orderId ? expandedOrders.has(orderId) : false;
                 const isLoading = orderId ? loadingOrders.has(orderId) : false;
 
@@ -310,12 +303,12 @@ export default function SellerMessages() {
                     key={notification.id}
                     className={cn(
                       "flex flex-col gap-2 p-4 rounded-lg transition-colors border cursor-pointer",
-                      !notification.is_read
+                      !notification.isRead
                         ? "bg-primary/5 border-primary/20 hover:bg-primary/10"
                         : "border-transparent hover:bg-muted/50 hover:border-muted"
                     )}
                     onClick={() => {
-                      if (!notification.is_read) {
+                      if (!notification.isRead) {
                         markAsRead(notification.id);
                       }
                     }}
@@ -326,11 +319,11 @@ export default function SellerMessages() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2 mb-1">
-                          <h4 className={cn("text-sm font-medium", !notification.is_read && "font-semibold text-foreground")}>
+                          <h4 className={cn("text-sm font-medium", !notification.isRead && "font-semibold text-foreground")}>
                             {notification.title}
                           </h4>
                           <span className="text-xs text-muted-foreground whitespace-nowrap flex-shrink-0">
-                            {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
+                            {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })}
                           </span>
                         </div>
                         <p className="text-sm text-muted-foreground leading-relaxed">
@@ -355,7 +348,7 @@ export default function SellerMessages() {
                         )}
                       </div>
                       <div className="flex flex-col gap-2">
-                        {!notification.is_read && (
+                        {!notification.isRead && (
                           <Button
                             variant="ghost"
                             size="icon"

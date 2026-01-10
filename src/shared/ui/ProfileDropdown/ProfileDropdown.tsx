@@ -2,9 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { User, Package, LogOut, Settings } from "lucide-react";
 import { Button } from "@/ui/Button";
-import { supabase } from "@/infra/api/supabase";
-import { toast } from "@/shared/hook/use-toast";
-import { useAdmin } from "@/core/context/AdminContext";
+import { useAuth } from "@/core/context/AuthContext";
 import styles from "./ProfileDropdown.module.css";
 import { cn } from "@/lib/utils";
 
@@ -17,6 +15,7 @@ export function ProfileDropdown({ user }: ProfileDropdownProps) {
     const dropdownRef = useRef<HTMLDivElement>(null);
     const navigate = useNavigate();
     const { isAdmin } = useAdmin();
+    const { signOut } = useAuth();
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -30,20 +29,19 @@ export function ProfileDropdown({ user }: ProfileDropdownProps) {
     }, []);
 
     const handleLogout = async () => {
-        const { error } = await supabase.auth.signOut();
-        if (error) {
+        try {
+            signOut();
+            toast({
+                title: "Logged out",
+                description: "You have been successfully logged out.",
+            });
+            setIsOpen(false);
+        } catch (error) {
             toast({
                 title: "Error",
                 description: "Failed to logout. Please try again.",
                 variant: "destructive",
             });
-        } else {
-            toast({
-                title: "Logged out",
-                description: "You have been successfully logged out.",
-            });
-            navigate("/");
-            setIsOpen(false);
         }
     };
 

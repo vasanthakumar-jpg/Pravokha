@@ -5,7 +5,7 @@ import {
 } from "lucide-react";
 
 import { useToast } from "@/shared/hook/use-toast";
-import { supabase } from "@/infra/api/supabase";
+import { apiClient } from "@/infra/api/apiClient";
 import { useAuth } from "@/core/context/AuthContext";
 import { useUserSettings } from "@/shared/hook/useUserSettings";
 import { cn } from "@/lib/utils";
@@ -49,29 +49,25 @@ export default function UserSettings() {
     }
 
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${user?.id}-${Date.now()}.${fileExt}`;
-      const filePath = `avatars/${fileName}`;
+      const formData = new FormData();
+      formData.append('file', file);
 
-      const { error: uploadError } = await supabase.storage
-        .from("users")
-        .upload(filePath, file);
+      // Verify endpoint: likely /users/profile/avatar or similar, or generic upload + profile update
+      // Based on previous patterns, we upload then update profile.
+      // Or maybe backend has a specific route.
+      // Let's use the generic upload then update profile URL.
 
-      if (uploadError) {
-        // If bucket doesn't exist or RLS issue
-        throw uploadError;
-      }
-
-      const { data: { publicUrl } } = supabase.storage
-        .from("users")
-        .getPublicUrl(filePath);
-
-      await updateProfile({ ...profile, avatar_url: publicUrl });
-
-      toast({
-        title: "Success",
-        description: "Profile photo updated successfully",
+      const { data } = await apiClient.post('/uploads/single', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
       });
+
+      if (data?.url) {
+        await updateProfile({ ...profile, avatar_url: data.url });
+        toast({
+          title: "Success",
+          description: "Profile photo updated successfully",
+        });
+      }
     } catch (error: any) {
       console.error("Error uploading avatar:", error);
       toast({

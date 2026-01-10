@@ -1,9 +1,8 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAdmin } from "@/core/context/AdminContext";
 import { useAuth } from "@/core/context/AuthContext";
-import { supabase } from "@/infra/api/supabase";
+import { apiClient } from "@/infra/api/apiClient";
 import { AdminSkeleton } from "@/feat/admin/components/AdminSkeleton";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/ui/Card";
@@ -76,28 +75,40 @@ export default function AdminOrders() {
     }
   }, [isAdmin, adminLoading, navigate]);
 
+  const mapOrderData = (apiOrder: any): Order => ({
+    id: apiOrder.id,
+    order_number: apiOrder.orderNumber,
+    created_at: apiOrder.createdAt,
+    total: apiOrder.total,
+    order_status: apiOrder.status.toLowerCase(),
+    payment_status: apiOrder.paymentStatus.toLowerCase(),
+    customer_name: apiOrder.customerName || "N/A",
+    customer_email: apiOrder.customerEmail || "N/A",
+    shipping_address: {
+      address_line1: apiOrder.shippingAddress || "",
+      city: apiOrder.shippingCity || "",
+      pincode: apiOrder.shippingPincode || "",
+      state: "",
+      country: "India"
+    },
+    items: apiOrder.items || [],
+    payment_method: apiOrder.paymentMethod || "Online"
+  });
+
   const loadOrders = async () => {
     try {
-      const { data, error } = await (supabase as any)
-        .from("orders")
-        .select("*")
-        .is("deleted_at", null) // Only fetch non-deleted orders
-        .order("created_at", { ascending: false });
+      setLoading(true);
+      const response = await apiClient.get("/orders");
 
-      if (error) throw error;
-
-      // Transform data to ensure items is an array
-      const transformedOrders = (data || []).map((order: any) => ({
-        ...order,
-        items: Array.isArray(order.items) ? order.items : []
-      }));
-
-      setOrders(transformedOrders);
+      if (response.data.success) {
+        const transformedOrders = (response.data.data || []).map(mapOrderData);
+        setOrders(transformedOrders);
+      }
     } catch (error) {
       console.error("Error loading orders:", error);
       toast({
         title: "Error",
-        description: "Failed to load orders",
+        description: "Failed to load orders from backend",
         variant: "destructive",
       });
     } finally {
@@ -113,51 +124,23 @@ export default function AdminOrders() {
         message: `Order ${newStatus}`,
       };
 
-      const { data: currentOrder } = await supabase
-        .from("orders")
-        .select("tracking_updates, order_status")
-        .eq("id", orderId)
-        .single();
-
-      const existingUpdates = Array.isArray(currentOrder?.tracking_updates)
-        ? currentOrder.tracking_updates
-        : [];
-      const newUpdates = [...existingUpdates, trackingUpdate];
-
-      const { error } = await supabase
-        .from("orders")
-        .update({
-          order_status: newStatus,
-          tracking_updates: newUpdates
-        })
-        .eq("id", orderId);
-
-      if (error) throw error;
-
-      toast({
-        title: "Success",
-        description: "Order status updated successfully",
+      const response = await apiClient.patch(`/orders/${orderId}/status`, {
+        status: newStatus.toUpperCase(),
+        trackingUpdates: [trackingUpdate]
       });
 
-      // Update local state
-      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, order_status: newStatus } : o));
-      if (selectedOrder?.id === orderId) {
-        setSelectedOrder(prev => prev ? { ...prev, order_status: newStatus } : null);
-      }
+      if (response.data.success) {
+        toast({
+          title: "Success",
+          description: "Order status updated successfully",
+        });
 
-      // Log audit
-      await supabase.from('audit_logs').insert({
-        actor_id: user?.id,
-        target_id: orderId,
-        target_type: 'order',
-        action_type: 'order_status_update',
-        severity: 'info',
-        description: `Order ${orderId} status updated to ${newStatus}.`,
-        metadata: {
-          new_status: newStatus,
-          old_status: currentOrder?.order_status // We need to fetch this or keep it in local state
+        // Update local state
+        setOrders(prev => prev.map(o => o.id === orderId ? { ...o, order_status: newStatus } : o));
+        if (selectedOrder?.id === orderId) {
+          setSelectedOrder(prev => prev ? { ...prev, order_status: newStatus } : null);
         }
-      });
+      }
     } catch (error) {
       console.error("Error updating order:", error);
       toast({
@@ -177,27 +160,18 @@ export default function AdminOrders() {
     if (!orderToCancel) return;
 
     try {
-      const { error } = await supabase
-        .from('orders')
-        .update({
-          order_status: 'cancelled',
-          notes: JSON.stringify({
-            cancellation_reason: 'Cancelled by admin',
-            cancelled_at: new Date().toISOString()
-          })
-        })
-        .eq('id', orderToCancel.id);
+      const response = await apiClient.post(`/orders/${orderToCancel.id}/cancel`);
 
-      if (error) throw error;
+      if (response.data.success) {
+        toast({
+          title: "Order Cancelled",
+          description: `Order #${orderToCancel.order_number} has been cancelled.`,
+        });
 
-      toast({
-        title: "Order Cancelled",
-        description: `Order #${orderToCancel.order_number} has been cancelled.`,
-      });
-
-      setOrders(prev => prev.map(o =>
-        o.id === orderToCancel.id ? { ...o, order_status: 'cancelled' } : o
-      ));
+        setOrders(prev => prev.map(o =>
+          o.id === orderToCancel.id ? { ...o, order_status: 'cancelled' } : o
+        ));
+      }
     } catch (error) {
       console.error('Error cancelling order:', error);
       toast({
@@ -222,32 +196,28 @@ export default function AdminOrders() {
     const deletedOrder = orderToDelete;
 
     try {
-      // Soft delete - set deleted_at timestamp
-      const { error } = await (supabase as any)
-        .from('orders')
-        .update({ deleted_at: new Date().toISOString() })
-        .eq('id', deletedOrder.id);
+      const response = await apiClient.delete(`/orders/${deletedOrder.id}`);
 
-      if (error) throw error;
+      if (response.data.success) {
+        // Remove from local state
+        setOrders(prev => prev.filter(o => o.id !== deletedOrder.id));
 
-      // Remove from local state
-      setOrders(prev => prev.filter(o => o.id !== deletedOrder.id));
-
-      // Show toast with undo option
-      toast({
-        title: "Order Deleted",
-        description: `Order #${deletedOrder.order_number} has been deleted. Click Undo to restore.`,
-        action: (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handleUndoDelete(deletedOrder.id)}
-          >
-            <RotateCcw className="h-3 w-3 mr-1" /> Undo
-          </Button>
-        ),
-        duration: 10000, // 10 seconds to undo
-      });
+        // Show toast with undo option
+        toast({
+          title: "Order Deleted",
+          description: `Order #${deletedOrder.order_number} has been deleted. Click Undo to restore.`,
+          action: (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleUndoDelete(deletedOrder.id)}
+            >
+              <RotateCcw className="h-3 w-3 mr-1" /> Undo
+            </Button>
+          ),
+          duration: 10000,
+        });
+      }
     } catch (error) {
       console.error('Error deleting order:', error);
       toast({
@@ -263,20 +233,16 @@ export default function AdminOrders() {
 
   const handleUndoDelete = async (orderId: string) => {
     try {
-      // Restore - remove deleted_at timestamp
-      const { error } = await (supabase as any)
-        .from('orders')
-        .update({ deleted_at: null })
-        .eq('id', orderId);
+      const response = await apiClient.post(`/orders/${orderId}/restore`);
 
-      if (error) throw error;
+      if (response.data.success) {
+        toast({
+          title: "Order Restored",
+          description: "The order has been restored successfully.",
+        });
 
-      toast({
-        title: "Order Restored",
-        description: "The order has been restored successfully.",
-      });
-
-      loadOrders(); // Refresh the list
+        loadOrders(); // Refresh the list
+      }
     } catch (error) {
       console.error('Error restoring order:', error);
       toast({

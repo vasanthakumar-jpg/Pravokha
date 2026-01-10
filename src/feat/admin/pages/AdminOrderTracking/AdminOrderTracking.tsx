@@ -2,90 +2,46 @@ import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { AdminSkeleton } from "@/feat/admin/components/AdminSkeleton";
 import { useAdmin } from "@/core/context/AdminContext";
-import { supabase } from "@/infra/api/supabase";
-import { cn } from "@/lib/utils";
-
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/ui/Card";
+import { apiClient } from "@/infra/api/apiClient";
+import { toast } from "@/shared/hook/use-toast";
+import { Card, CardContent, CardHeader, CardTitle } from "@/ui/Card";
 import { Button } from "@/ui/Button";
 import { Input } from "@/ui/Input";
-import { Label } from "@/ui/Label";
-import { Textarea } from "@/ui/Textarea";
 import { Badge } from "@/ui/Badge";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from "@/ui/Sheet";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/Select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/ui/Table";
 import { Separator } from "@/ui/Separator";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/ui/Select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/ui/Table";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-  SheetFooter,
-} from "@/ui/Sheet";
-import { toast } from "@/shared/hook/use-toast";
-import {
-  Package,
-  CheckCircle2,
-  Truck,
-  MapPin,
-  Search,
-  Filter,
-  ArrowLeft,
-  Clock,
-  Ban,
-  ChevronRight,
-  RefreshCw,
-  Eye,
-  Settings2
-} from "lucide-react";
+import { Textarea } from "@/ui/Textarea";
+import { Label } from "@/ui/Label";
+import { ArrowLeft, RefreshCw, Search, Filter, Package, Eye, Settings2, Clock } from "lucide-react";
 import { format } from "date-fns";
-
-interface Order {
-  id: string;
-  order_number: string;
-  customer_name: string;
-  customer_phone: string;
-  order_status: string;
-  total: number;
-  created_at: string;
-  shipping_address: string;
-  shipping_city: string;
-  tracking_updates?: any;
-}
+import { cn } from "@/lib/utils";
 
 export default function AdminOrderTracking() {
   const navigate = useNavigate();
-  const { isAdmin } = useAdmin();
+  const { isAdmin, loading: adminLoading } = useAdmin();
+
+  const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [showDetailSheet, setShowDetailSheet] = useState(false);
+  const [totalCount, setTotalCount] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(10);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
-  // Status Update State
+  const [selectedOrder, setSelectedOrder] = useState<any>(null);
+  const [showDetailSheet, setShowDetailSheet] = useState(false);
   const [newStatus, setNewStatus] = useState("");
   const [statusNote, setStatusNote] = useState("");
   const [otpCode, setOtpCode] = useState("");
   const [updating, setUpdating] = useState(false);
 
-  // Pagination State
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize] = useState(10);
-  const [totalCount, setTotalCount] = useState(0);
+  useEffect(() => {
+    if (!adminLoading && !isAdmin) {
+      navigate("/");
+    }
+  }, [isAdmin, adminLoading, navigate]);
 
   useEffect(() => {
     if (isAdmin) {
@@ -96,24 +52,23 @@ export default function AdminOrderTracking() {
   const loadOrders = async () => {
     try {
       setLoading(true);
-      const from = (currentPage - 1) * pageSize;
-      const to = from + pageSize - 1;
+      const { data, headers } = await apiClient.get('/orders', {
+        params: {
+          page: currentPage,
+          limit: pageSize,
+          status: statusFilter !== "all" ? statusFilter : undefined,
+          role: 'admin' // Ensure admin view
+        }
+      });
 
-      let query = supabase
-        .from("orders")
-        .select("*", { count: "exact" });
-
-      if (statusFilter !== "all") {
-        query = query.eq("order_status", statusFilter);
+      // Handle response structure (standardized)
+      if (data && Array.isArray(data.orders)) {
+        setOrders(data.orders);
+        setTotalCount(data.total || 0);
+      } else if (Array.isArray(data)) {
+        setOrders(data);
+        setTotalCount(parseInt(headers['x-total-count'] || data.length.toString()));
       }
-
-      const { data, error, count } = await query
-        .order("created_at", { ascending: false })
-        .range(from, to);
-
-      if (error) throw error;
-      setOrders(data || []);
-      setTotalCount(count || 0);
     } catch (error) {
       console.error("Error loading orders:", error);
       toast({
@@ -147,44 +102,14 @@ export default function AdminOrderTracking() {
 
     try {
       setUpdating(true);
-      const trackingUpdate = {
+
+      const payload = {
         status: newStatus,
-        timestamp: new Date().toISOString(),
         message: statusNote || `Lifecycle stage updated to ${newStatus}`,
-        ...(newStatus === "delivered" && { otp: otpCode }),
+        otp: otpCode
       };
 
-      const existingUpdates = Array.isArray(selectedOrder.tracking_updates) ? selectedOrder.tracking_updates : [];
-      const updatedTracking = [...existingUpdates, trackingUpdate];
-
-      const { error } = await supabase
-        .from("orders")
-        .update({
-          order_status: newStatus,
-          tracking_updates: updatedTracking,
-        })
-        .eq("id", selectedOrder.id);
-
-      if (error) throw error;
-
-      // Add to Order History
-      await supabase.from('order_history' as any).insert({
-        order_id: selectedOrder.id,
-        new_status: newStatus,
-        description: statusNote || `Lifecycle stage updated to ${newStatus} by Admin`,
-        created_at: new Date().toISOString()
-      });
-
-      // Audit Logging
-      await supabase.from('audit_logs').insert({
-        actor_id: (await supabase.auth.getUser()).data.user?.id,
-        target_id: selectedOrder.id,
-        target_type: 'order',
-        action_type: 'order_status_update',
-        severity: 'info',
-        description: `Order #${selectedOrder.order_number} status updated to "${newStatus}" by Admin.`,
-        metadata: { status: newStatus, order_number: selectedOrder.order_number, note: statusNote }
-      });
+      await apiClient.patch(`/orders/${selectedOrder.id}/status`, payload);
 
       toast({
         title: "Status Transmitted",
@@ -196,11 +121,12 @@ export default function AdminOrderTracking() {
       setOtpCode("");
       await loadOrders();
       setShowDetailSheet(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating order:", error);
+      const msg = error.response?.data?.message || error.message || "Governance override rejected by system.";
       toast({
         title: "Update Failed",
-        description: "Governance override rejected by system.",
+        description: msg,
         variant: "destructive",
       });
     } finally {
@@ -228,9 +154,9 @@ export default function AdminOrderTracking() {
 
   const totalPages = Math.ceil(totalCount / pageSize);
 
-  if (!isAdmin && !loading) return null;
+  if (!isAdmin && !adminLoading) return null;
 
-  if (loading) {
+  if (adminLoading || loading && orders.length === 0) {
     return <AdminSkeleton variant="table" />;
   }
 

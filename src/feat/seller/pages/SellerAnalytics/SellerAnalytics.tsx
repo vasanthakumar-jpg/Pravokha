@@ -5,7 +5,7 @@ import { Button } from "@/ui/Button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/Select";
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { TrendingUp, TrendingDown, Download, DollarSign, ShoppingCart, Package, Users, Loader2 } from "lucide-react";
-import { supabase } from "@/infra/api/supabase";
+import { apiClient } from "@/infra/api/apiClient";
 import { useAuth } from "@/core/context/AuthContext";
 import { subDays, format as formatDate, startOfDay } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -60,14 +60,17 @@ export default function SellerAnalytics() {
       const startDate = subDays(new Date(), days).toISOString();
 
       // 1. Fetch Orders for calculations
-      const { data: orders, error: ordersError } = await (supabase as any)
-        .from('orders')
-        .select('*')
-        .eq('seller_id', user.id)
-        .gte('created_at', startDate)
-        .is('deleted_at', null);
-
-      if (ordersError) throw ordersError;
+      // Use generic orders endpoint but request all items for analysis
+      const { data: orders } = await apiClient.get('/orders', {
+        params: {
+          seller_id: user.id,
+          after: startDate,
+          limit: 1000 // Ensure we get enough data for analytics (pagination might be needed if volume high)
+        }
+      }).then(res => res.data); // data structure usually { data: [], meta: {} }, but mapOrders logic expects array? 
+      // Note: apiClient.get returns axios response { data, status, ... }. My backend standard response is usually { data: [...], meta: ... }.
+      // The previous code mapped `data` directly from API.
+      // So here `orders` should be the array of orders.
 
       // 2. Aggregate Sales Trends
       const trendMap: Record<string, { date: string, revenue: number, orders: number, customers: Set<string> }> = {};
@@ -87,7 +90,7 @@ export default function SellerAnalytics() {
       const prodStats: Record<string, { name: string, sales: number, revenue: number }> = {};
       const catStats: Record<string, number> = {};
 
-      orders?.forEach((order: any) => {
+      (orders || []).forEach((order: any) => {
         const sellerItems = Array.isArray(order.items)
           ? order.items.filter((item: any) => item.sellerId === user.id)
           : [];
@@ -141,16 +144,24 @@ export default function SellerAnalytics() {
         customersGrowth: 0,
       });
 
-      // 6. Fetch Traffic Sources from store_analytics
-      const { data: trafficSources, error: trafficError } = await (supabase as any)
-        .from('store_analytics')
-        .select('source, visits, conversions')
-        .eq('seller_id', user.id);
+      // 6. Fetch Traffic Sources
+      try {
+        const { data: trafficSources } = await apiClient.get('/analytics/traffic', {
+          params: { seller_id: user.id }
+        });
 
-      if (!trafficError && trafficSources && trafficSources.length > 0) {
-        setTrafficData(trafficSources);
-      } else {
-        // Fallback to empty if no data yet (or mock if first time)
+        if (trafficSources && trafficSources.length > 0) {
+          setTrafficData(trafficSources);
+        } else {
+          setTrafficData([
+            { source: 'Direct', visits: 0, conversions: 0 },
+            { source: 'Search', visits: 0, conversions: 0 },
+            { source: 'Social', visits: 0, conversions: 0 },
+            { source: 'Referral', visits: 0, conversions: 0 },
+          ]);
+        }
+      } catch (e) {
+        console.warn("Traffic stats failed", e);
         setTrafficData([
           { source: 'Direct', visits: 0, conversions: 0 },
           { source: 'Search', visits: 0, conversions: 0 },

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/infra/api/supabase";
+import { apiClient } from "@/infra/api/apiClient";
+import { useAuth } from "@/core/context/AuthContext";
 import { Button } from "@/ui/Button";
 import { Card } from "@/ui/Card";
 import { Trash2, ShoppingCart, Heart, PackageX, Minus, Plus } from "lucide-react";
@@ -13,122 +14,60 @@ export function WishlistPage() {
     const [wishlistItems, setWishlistItems] = useState<{ id: string; product: Product }[]>([]);
     const [quantities, setQuantities] = useState<Record<string, number>>({});
     const [loading, setLoading] = useState(true);
-    const [user, setUser] = useState<any>(null);
+    const { user } = useAuth();
     const navigate = useNavigate();
     const { addToCart } = useCart();
 
     useEffect(() => {
-        checkUser();
-    }, []);
-
-    const checkUser = async () => {
-        setLoading(true);
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-            navigate("/auth");
-            return;
+        if (user) {
+            fetchWishlist();
         }
-        setUser(user);
-        await fetchWishlist(user.id);
-    };
+    }, [user]);
 
-    const fetchWishlist = async (userId: string) => {
+    const fetchWishlist = async () => {
+        setLoading(true);
         try {
-            // 1. Fetch Wishlist IDs
-            const { data: wishlistData, error: wishlistError } = await supabase
-                .from("wishlist")
-                .select("id, product_id") // Get wishlist ID and Product ID
-                .eq("user_id", userId);
-
-            if (wishlistError) throw wishlistError;
-
-            if (!wishlistData || wishlistData.length === 0) {
-                setWishlistItems([]);
-                return;
-            }
-
-            const productIds = wishlistData.map(w => w.product_id);
-
-            // 2. Fetch Product Details from DB (Dynamic)
-            const { data: productsData, error: productsError } = await supabase
-                .from("products")
-                .select(`
-                  id,
-                  seller_id,
-                  title,
-                  slug,
-                  description,
-                  price,
-                  discount_price,
-                  category,
-                  subcategory_id,
-                  rating,
-                  reviews,
-                  sku,
-                  is_featured,
-                  is_new,
-                  product_variants (
-                    id,
-                    color_name,
-                    color_hex,
-                    images,
-                    product_sizes (
-                      size,
-                      stock
-                    )
-                  )
-                `)
-                .in("id", productIds)
-                .is("deleted_at", null);
-
-            if (productsError) throw productsError;
-
-            // 3. Transform DB data to frontend Product shape
-            const transformedProducts: Product[] = (productsData || []).map((p: any) => ({
-                id: p.id,
-                title: p.title || 'Untitled Product',
-                slug: p.slug,
-                description: p.description || '',
-                price: parseFloat(p.price) || 0,
-                discountPrice: p.discount_price ? (parseFloat(p.discount_price) || undefined) : undefined,
-                category: p.category,
-                subcategory_id: p.subcategory_id,
-                rating: Math.min(5, Math.max(0, parseFloat(p.rating) || 0)),
-                reviews: Math.max(0, parseInt(p.reviews) || 0),
-                sku: p.sku,
-                sellerId: p.seller_id,
-                featured: p.is_featured || false,
-                newArrival: p.is_new || false,
-                variants: (p.product_variants || []).map((v: any) => ({
-                    id: v.id,
-                    colorName: v.color_name,
-                    colorHex: v.color_hex,
-                    images: Array.isArray(v.images) && v.images.length > 0
-                        ? v.images
-                        : ['https://placehold.co/600x600/e2e8f0/64748b?text=No+Image'],
-                    sizes: (v.product_sizes || []).map((s: any) => ({
-                        size: s.size,
-                        stock: s.stock,
+            const response = await apiClient.get('/api/wishlist');
+            const data = response.data.wishlist.map((item: any) => {
+                const p = item.product;
+                const transformedProduct: Product = {
+                    id: p.id,
+                    title: p.title || 'Untitled Product',
+                    slug: p.slug,
+                    description: p.description || '',
+                    price: parseFloat(p.price) || 0,
+                    discountPrice: p.discountPrice ? parseFloat(p.discountPrice) : undefined,
+                    category: p.category,
+                    subcategory_id: p.subcategory_id,
+                    rating: Math.min(5, Math.max(0, parseFloat(p.rating) || 0)),
+                    reviews: Math.max(0, parseInt(p.reviews) || 0),
+                    sku: p.sku,
+                    sellerId: p.seller_id,
+                    featured: p.isFeatured || false,
+                    newArrival: p.isNew || false,
+                    variants: (p.variants || []).map((v: any) => ({
+                        id: v.id,
+                        colorName: v.colorName,
+                        colorHex: v.colorHex,
+                        images: Array.isArray(v.images) && v.images.length > 0
+                            ? v.images
+                            : ['https://placehold.co/600x600/e2e8f0/64748b?text=No+Image'],
+                        sizes: (v.sizes || []).map((s: any) => ({
+                            size: s.size,
+                            stock: s.stock,
+                        })),
                     })),
-                })),
-            }));
+                };
+                return { id: item.id, product: transformedProduct };
+            });
 
-            // 4. Map back to wishlist items structure
-            const validItems = wishlistData.map(wItem => {
-                const product = transformedProducts.find(p => p.id === wItem.product_id);
-                if (!product) return null; // Product might be deleted
-                return { id: wItem.id, product };
-            }).filter((item): item is { id: string; product: Product } => item !== null);
+            setWishlistItems(data);
 
-            setWishlistItems(validItems);
-
-            // Initialize quantities for new items
             const initialQuantities: Record<string, number> = {};
-            validItems.forEach(item => {
+            data.forEach((item: any) => {
                 initialQuantities[item.id] = 1;
             });
             setQuantities(initialQuantities);
-
         } catch (error: any) {
             console.error("Error loading wishlist:", error);
             toast({
@@ -143,13 +82,7 @@ export function WishlistPage() {
 
     const removeFromWishlist = async (wishlistId: string) => {
         try {
-            const { error } = await supabase
-                .from("wishlist")
-                .delete()
-                .eq("id", wishlistId);
-
-            if (error) throw error;
-
+            await apiClient.delete(`/api/wishlist/${wishlistId}`);
             setWishlistItems(prev => prev.filter(item => item.id !== wishlistId));
             toast({
                 title: "Removed",
@@ -206,13 +139,7 @@ export function WishlistPage() {
     const clearAllWishlist = async () => {
         if (!user) return;
         try {
-            const { error } = await supabase
-                .from("wishlist")
-                .delete()
-                .eq("user_id", user.id);
-
-            if (error) throw error;
-
+            await apiClient.delete('/api/wishlist');
             setWishlistItems([]);
             toast({
                 title: "Cleared",
@@ -221,7 +148,7 @@ export function WishlistPage() {
         } catch (error: any) {
             toast({
                 title: "Error",
-                description: error.message,
+                description: error.response?.data?.message || "Failed to clear wishlist",
                 variant: "destructive",
             });
         }

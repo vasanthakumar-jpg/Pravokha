@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/ui/Card";
 import { Button } from "@/ui/Button";
 import { Plus, ArrowLeft, Download, Upload } from "lucide-react";
-import { supabase } from "@/infra/api/supabase";
+import { apiClient } from "@/infra/api/apiClient";
 import { useToast } from "@/shared/hook/use-toast";
 import { useAuth } from "@/core/context/AuthContext";
 import {
@@ -60,8 +60,7 @@ export default function SellerProducts() {
     }
 
     try {
-      const { error } = await supabase.from('products').update({ published: !currentStatus }).eq('id', productId);
-      if (error) throw error;
+      await apiClient.patch(`/products/${productId}`, { published: !currentStatus });
 
       toast({
         title: !currentStatus ? "Product Published" : "Product Unpublished",
@@ -83,8 +82,7 @@ export default function SellerProducts() {
     if (!productToDelete) return;
 
     try {
-      const { error } = await supabase.from("products").update({ deleted_at: new Date().toISOString() }).eq("id", productToDelete);
-      if (error) throw error;
+      await apiClient.delete(`/products/${productToDelete}`);
 
       toast({ title: "Product Deleted", description: "Product has been removed" });
       refresh();

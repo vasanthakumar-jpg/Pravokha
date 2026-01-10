@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/ui/Tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/Select";
 import { DollarSign, TrendingUp, Clock, CheckCircle, Download, Calendar, Loader2, Wallet, ArrowUpRight, Lock, ShieldAlert, Sparkles, Filter } from "lucide-react";
 import { format } from "date-fns";
-import { supabase } from "@/infra/api/supabase";
+import { apiClient } from "@/infra/api/apiClient";
 import { useAuth } from "@/core/context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { MARKETPLACE_FEE_PERCENTAGE } from "@/lib/constants";
@@ -69,45 +69,18 @@ export default function SellerPayouts() {
 
     try {
       setIsRequesting(true);
-      const { data: existingPayout } = await (supabase as any)
-        .from('payouts')
-        .select('id')
-        .eq('seller_id', user.id)
-        .in('status', ['pending', 'processing'])
-        .maybeSingle();
 
-      if (existingPayout) {
-        alert("You already have a payout request in progress.");
-        return;
-      }
-
-      const { error } = await (supabase as any)
-        .from('payouts')
-        .insert({
-          seller_id: user.id,
-          amount: payoutStats.pendingBalance,
-          status: 'pending',
-          period_start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-          period_end: new Date().toISOString(),
-        });
-
-      if (error) throw error;
-
-      // Audit Logging
-      await supabase.from('audit_logs').insert({
-        actor_id: user.id,
-        target_id: user.id, // Linking to seller as target
-        target_type: 'payout',
-        action_type: 'payout_request',
-        severity: 'info',
-        description: `Payout request of ₹${payoutStats.pendingBalance.toLocaleString()} submitted by seller.`,
-        metadata: { amount: payoutStats.pendingBalance, seller_id: user.id }
+      // Attempt to create a standard payout request
+      await apiClient.post('/payouts/request', {
+        amount: payoutStats.pendingBalance
       });
 
       alert("Payout request submitted successfully! 🎉");
       fetchPayoutData();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Payout failed:", error);
+      const msg = error.response?.data?.message || "Payout request failed";
+      toast({ title: "Error", description: msg, variant: "destructive" });
     } finally {
       setIsRequesting(false);
     }
@@ -117,13 +90,9 @@ export default function SellerPayouts() {
     if (!user) return;
     setLoading(true);
     try {
-      const { data: payoutsData, error: payoutsError } = await (supabase as any)
-        .from('payouts')
-        .select('*')
-        .eq('seller_id', user.id)
-        .order('created_at', { ascending: false });
-
-      if (payoutsError) throw payoutsError;
+      const { data: payoutsData } = await apiClient.get('/payouts', {
+        params: { seller_id: user.id }
+      });
 
       const transformedPayouts: Payout[] = (payoutsData || []).map((p: any) => ({
         id: p.id,
@@ -136,26 +105,15 @@ export default function SellerPayouts() {
 
       setPayouts(transformedPayouts);
 
-      const { data: transactionsData, error: transactionsError } = await (supabase as any)
-        .from('transactions')
-        .select(`
-          id,
-          order_id,
-          amount,
-          commission,
-          net_amount,
-          created_at,
-          status,
-          orders(order_number)
-        `)
-        .eq('seller_id', user.id)
-        .order('created_at', { ascending: false });
-
-      if (transactionsError) throw transactionsError;
+      const { data: transactionsData } = await apiClient.get('/transactions', {
+        params: { seller_id: user.id }
+      });
+      // Note: Backend endpoint /transactions should return similar structure including joined orders data
+      // If not, we might need a specific endpoint or mapped response. Assuming standard response structure here.
 
       const transformedTransactions: Transaction[] = (transactionsData || []).map((t: any) => ({
         id: t.id,
-        order_id: t.orders?.order_number || `ORD-${t.order_id.slice(0, 8)}`,
+        order_id: t.orders?.order_number || `ORD-${(t.order_id || '').slice(0, 8)}`,
         amount: t.amount,
         commission: t.commission,
         net_amount: t.net_amount,
@@ -182,11 +140,7 @@ export default function SellerPayouts() {
       });
 
       // Fetch Profile for Banking Section
-      const { data: profileData } = await supabase
-        .from("users")
-        .select('*')
-        .eq('id', user.id)
-        .single();
+      const { data: profileData } = await apiClient.get('/users/me');
 
       if (profileData) {
         setProfile(profileData);

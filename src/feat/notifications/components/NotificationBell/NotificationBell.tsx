@@ -7,7 +7,7 @@ import {
     PopoverTrigger,
 } from "@/ui/Popover";
 import { ScrollArea } from "@/ui/ScrollArea";
-import { supabase } from "@/infra/api/supabase";
+import { apiClient } from "@/infra/api/apiClient";
 import { useAuth } from "@/core/context/AuthContext";
 import { format } from "date-fns";
 import styles from "./NotificationBell.module.css";
@@ -22,53 +22,44 @@ export function NotificationBell() {
     useEffect(() => {
         if (user) {
             fetchNotifications();
-
-            const channel = supabase
-                .channel('schema-db-changes')
-                .on(
-                    'postgres_changes',
-                    {
-                        event: 'INSERT',
-                        schema: 'public',
-                        table: 'notifications',
-                        filter: `user_id=eq.${user.id}`,
-                    },
-                    (payload) => {
-                        setNotifications((prev) => [payload.new, ...prev]);
-                        setUnreadCount((prev) => prev + 1);
-                    }
-                )
-                .subscribe();
-
-            return () => {
-                supabase.removeChannel(channel);
-            };
+            // TODO: Implement WebSocket for real-time updates
+            // For now, poll every 30 seconds
+            const interval = setInterval(fetchNotifications, 30000);
+            return () => clearInterval(interval);
         }
     }, [user]);
 
     const fetchNotifications = async () => {
-        const { data } = await supabase
-            .from('notifications' as any)
-            .select('*')
-            .order('created_at', { ascending: false })
-            .limit(20);
-
-        if (data) {
-            setNotifications(data);
-            setUnreadCount(data.filter((n: any) => !n.is_read).length);
+        try {
+            const response = await apiClient.get('/notifications', { params: { limit: 20 } });
+            if (response.data.success) {
+                const data = response.data.notifications || [];
+                setNotifications(data);
+                setUnreadCount(data.filter((n: any) => !n.isRead).length);
+            }
+        } catch (error) {
+            console.error('Error fetching notifications:', error);
         }
     };
 
     const handleMarkAsRead = async (id: string) => {
-        await supabase.from('notifications' as any).update({ is_read: true }).eq('id', id);
-        setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
-        setUnreadCount(prev => Math.max(0, prev - 1));
+        try {
+            await apiClient.patch(`/notifications/${id}`, { isRead: true });
+            setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+            setUnreadCount(prev => Math.max(0, prev - 1));
+        } catch (error) {
+            console.error('Error marking notification as read:', error);
+        }
     };
 
     const handleMarkAllRead = async () => {
-        await supabase.from('notifications' as any).update({ is_read: true }).eq('user_id', user?.id) as any;
-        setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
-        setUnreadCount(0);
+        try {
+            await apiClient.post('/notifications/mark-all-read');
+            setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+            setUnreadCount(0);
+        } catch (error) {
+            console.error('Error marking all as read:', error);
+        }
     };
 
     return (
@@ -104,19 +95,19 @@ export function NotificationBell() {
                                     key={notification.id}
                                     className={cn(
                                         styles.notificationItem,
-                                        !notification.is_read && styles.unread
+                                        !notification.isRead && styles.unread
                                     )}
-                                    onClick={() => !notification.is_read && handleMarkAsRead(notification.id)}
+                                    onClick={() => !notification.isRead && handleMarkAsRead(notification.id)}
                                 >
                                     <div className={styles.itemHeader}>
                                         <p className={cn(
                                             styles.itemTitle,
-                                            !notification.is_read && styles.itemTitleUnread
+                                            !notification.isRead && styles.itemTitleUnread
                                         )}>
                                             {notification.title}
                                         </p>
                                         <span className={styles.itemTime}>
-                                            {format(new Date(notification.created_at), 'MMM d, HH:mm')}
+                                            {format(new Date(notification.createdAt), 'MMM d, HH:mm')}
                                         </span>
                                     </div>
                                     <p className={styles.itemMessage}>

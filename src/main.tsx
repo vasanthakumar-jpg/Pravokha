@@ -13,7 +13,7 @@ console.log(
   "font-family: sans-serif; font-size: 1.1em; color: #666;"
 );
 console.log(
-  "%c[System] Real-World Marketplace Engine: Connected to Supabase Core",
+  "%c[System] Real-World Marketplace Engine: Connected to Custom Backend",
   "color: #10b981; font-weight: bold;"
 );
 

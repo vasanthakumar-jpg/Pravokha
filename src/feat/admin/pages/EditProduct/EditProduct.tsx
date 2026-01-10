@@ -8,9 +8,9 @@ import { Textarea } from "@/ui/Textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/Select";
 import { Badge } from "@/ui/Badge";
 import { useToast } from "@/shared/hook/use-toast";
-import { ArrowLeft, Upload, X, Plus, Image as ImageIcon } from "lucide-react";
+import { ArrowLeft, Upload, X, Plus, Image as ImageIcon, Loader2 } from "lucide-react";
 import { categories, SIZES, COLORS } from "@/data/products";
-import { supabase } from "@/infra/api/supabase";
+import { apiClient } from "@/infra/api/apiClient";
 import { useAuth } from "@/core/context/AuthContext";
 import { AdminHeaderSkeleton, AdminFormSkeleton } from "@/feat/admin/components/AdminSkeleton";
 import { motion, AnimatePresence } from "framer-motion";
@@ -71,19 +71,10 @@ export default function EditProduct() {
 
       try {
         console.log(`[EditProduct] Fetching product: ${id}`);
-        const { data: productData, error: productError } = await supabase
-          .from("products")
-          .select(`
-            *,
-            product_variants (
-              *,
-              product_sizes (*)
-            )
-          `)
-          .eq("id", id)
-          .single();
+        const response = await apiClient.get(`/admin/products/${id}`);
+        const productData = response.data.product;
 
-        if (productError) throw productError;
+        if (!productData) throw new Error("Product data not found");
 
         // Extract colors and sizes from variants
         const colors: ColorOption[] = [];
@@ -421,152 +412,79 @@ export default function EditProduct() {
     return true;
   };
 
-  // Upload new images to Supabase Storage
+  // Upload new images to backend
   const uploadNewImages = async (): Promise<string[]> => {
+    if (formData.images.length === 0) return [];
+
     const uploadedUrls: string[] = [];
+    const uploadFormData = new FormData();
 
-    for (let i = 0; i < formData.images.length; i++) {
-      const file = formData.images[i];
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-      const filePath = `products/${fileName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('products')
-        .upload(filePath, file);
-
-      if (uploadError) {
-        console.error('Error uploading image:', uploadError);
-        if (uploadError.message?.includes('Bucket not found') || uploadError.message?.includes('bucket')) {
-          throw new Error('Storage bucket "products" not found. Please create it in Supabase Dashboard');
-        }
-        throw new Error(`Failed to upload image "${file.name}": ${uploadError.message}`);
-      }
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('products')
-        .getPublicUrl(filePath);
-
-      uploadedUrls.push(publicUrl);
-    }
-
-    return uploadedUrls;
-  };
-
-  // Save product
-  const handleSave = async () => {
-    if (!validateForm() || !id) return;
-
-    setIsSaving(true);
+    formData.images.forEach(image => {
+      uploadFormData.append('files', image);
+    });
 
     try {
-      // Upload new images if any
+      const response = await apiClient.post('/upload/multiple', uploadFormData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+
+      if (response.data.success) {
+        return response.data.urls;
+      }
+      throw new Error("Upload failed");
+    } catch (err) {
+      console.error("Upload error:", err);
+      throw new Error("Failed to upload product images.");
+    }
+  };
+
+  const handleSaveChanges = async () => {
+    if (!validateForm()) return;
+    if (isSaving) return;
+
+    setIsSaving(true);
+    try {
+      // 1. Upload new images if any
       const newImageUrls = await uploadNewImages();
       const allImageUrls = [...formData.existingImages, ...newImageUrls];
 
-      // Create slug from title
-      const slug = formData.title
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/(^-|-$)/g, '');
-
-      // Update product basic info
-      const productData = {
+      // 2. Update product via backend
+      const response = await apiClient.patch(`/admin/products/${id}`, {
         title: formData.title,
-        slug: slug,
         description: formData.description,
         category: formData.category,
         price: Number(formData.price),
-        discount_price: formData.discountPrice ? Number(formData.discountPrice) : null,
-        sku: `SKU-${Date.now()}`,
+        discountPrice: formData.discountPrice ? Number(formData.discountPrice) : null,
+        images: allImageUrls,
+        colors: formData.selectedColors,
+        sizes: formData.selectedSizes,
+        sizeStock: formData.sizeStock,
         published: true,
-      };
+      });
 
-      const { error: productError } = await supabase
-        .from('products')
-        .update(productData)
-        .eq('id', id);
-
-      if (productError) throw productError;
-
-      // Delete existing variants and sizes - fetch variant IDs first
-      const { data: existingVariants } = await supabase
-        .from('product_variants')
-        .select('id')
-        .eq('product_id', id);
-
-      if (existingVariants && existingVariants.length > 0) {
-        const variantIds = existingVariants.map(v => v.id);
-
-        // Delete sizes associated with these variants
-        await supabase
-          .from('product_sizes')
-          .delete()
-          .in('variant_id', variantIds);
-      }
-
-      // Delete all variants for this product
-      await supabase
-        .from('product_variants')
-        .delete()
-        .eq('product_id', id);
-
-      // Create new variants for each selected color
-      const colorsToProcess = formData.selectedColors.length > 0
-        ? formData.selectedColors
-        : [{ name: 'Default', hex: '#000000' }];
-
-      for (const color of colorsToProcess) {
-        const { data: variant, error: variantError } = await supabase
-          .from('product_variants')
-          .insert([{
-            product_id: id,
-            color_name: color.name,
-            color_hex: color.hex,
-            images: allImageUrls,
-          }])
-          .select()
-          .single();
-
-        if (variantError) throw variantError;
-
-        // Create size entries with stock
-        if (formData.selectedSizes.length > 0) {
-          const sizeEntries = formData.selectedSizes.map(size => ({
-            variant_id: variant.id,
-            size: size,
-            stock: formData.sizeStock[size] || 0,
-          }));
-
-          const { error: sizesError } = await supabase
-            .from('product_sizes')
-            .insert(sizeEntries);
-
-          if (sizesError) throw sizesError;
-        }
+      if (!response.data.success) {
+        throw new Error(response.data.message || "Failed to update product");
       }
 
       toast({
         title: "Product updated!",
-        description: "Your changes have been saved successfully",
+        description: "Your changes have been saved successfully.",
       });
 
-      // Force refresh and navigate
-      setTimeout(() => {
-        navigate("/admin/products");
-      }, 1000);
+      navigate("/admin/products");
 
     } catch (error: any) {
-      console.error('Error saving product:', error);
+      console.error("Save error:", error);
       toast({
-        title: "Failed to save",
-        description: error.message || "An error occurred while saving the product",
+        title: "Error",
+        description: error.message || "Failed to save product",
         variant: "destructive",
       });
     } finally {
       setIsSaving(false);
     }
   };
+
 
   if (isLoading) {
     return (

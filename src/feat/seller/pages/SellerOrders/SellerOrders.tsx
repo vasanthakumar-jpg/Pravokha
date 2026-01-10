@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/core/context/AuthContext";
-import { supabase } from "@/infra/api/supabase";
+import { apiClient } from "@/infra/api/apiClient";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/ui/Card";
 import { Button } from "@/ui/Button";
 import { Badge } from "@/ui/Badge";
@@ -78,29 +78,43 @@ export default function SellerOrders() {
   const loadSellerOrders = async () => {
     try {
       setLoading(true);
-      const from = (currentPage - 1) * pageSize;
-      const to = from + pageSize - 1;
 
-      let query = supabase
-        .from("orders")
-        .select("*", { count: "exact" })
-        .eq("seller_id", user?.id)
-        .order("created_at", { ascending: false });
+      const params: any = {
+        sellerId: user?.id,
+        page: currentPage,
+        limit: pageSize
+      };
 
       if (statusFilter !== "all") {
-        query = query.eq("order_status", statusFilter);
+        params.status = statusFilter.toUpperCase();
       }
 
       if (searchTerm) {
-        query = query.or(`order_number.ilike.%${searchTerm}%,customer_name.ilike.%${searchTerm}%`);
+        params.search = searchTerm;
       }
 
-      const { data, error, count } = await query.range(from, to);
+      const response = await apiClient.get("/orders", { params });
 
-      if (error) throw error;
-
-      setOrders(data || []);
-      setTotalCount(count || 0);
+      if (response.data.success) {
+        const orders = response.data.orders || [];
+        // Transform to match component's expected interface
+        const transformedOrders = orders.map((order: any) => ({
+          id: order.id,
+          order_number: order.orderNumber,
+          created_at: order.createdAt,
+          total: order.total,
+          order_status: order.status,
+          payment_status: order.paymentStatus,
+          payment_method: order.paymentMethod,
+          items: order.items || [],
+          shipping_address: order.shippingAddress,
+          customer_name: order.customerName,
+          customer_email: order.customerEmail,
+          customer_phone: order.customerPhone,
+        }));
+        setOrders(transformedOrders);
+        setTotalCount(response.data.total || orders.length);
+      }
     } catch (error) {
       console.error("Error loading orders:", error);
       toast({

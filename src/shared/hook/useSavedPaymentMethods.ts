@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { supabase } from "@/infra/api/supabase";
+import { apiClient } from "@/infra/api/apiClient";
 import { useAuth } from "@/core/context/AuthContext";
 import { useToast } from "@/shared/hook/use-toast";
 
@@ -15,7 +15,7 @@ export interface PaymentMethod {
     created_at: string;
     type: string;
     label?: string;
-    details?: any; // For storing gateway response or extra info
+    details?: any;
 }
 
 export function useSavedPaymentMethods() {
@@ -24,20 +24,29 @@ export function useSavedPaymentMethods() {
     const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
     const [loading, setLoading] = useState(true);
 
+    const mapPaymentMethod = (data: any): PaymentMethod => ({
+        id: data.id,
+        user_id: data.userId,
+        card_last4: data.cardLast4,
+        card_brand: data.cardBrand,
+        card_exp_month: data.cardExpMonth,
+        card_exp_year: data.cardExpYear,
+        card_holder_name: data.cardHolderName,
+        is_default: data.isDefault,
+        created_at: data.createdAt,
+        type: data.type,
+        label: data.label,
+        details: data.details
+    });
+
     const fetchPaymentMethods = async () => {
         if (!user) return;
 
         setLoading(true);
         try {
-            const { data, error } = await supabase
-                .from("saved_payment_methods" as any)
-                .select("*")
-                .eq("user_id", user.id)
-                .order("is_default", { ascending: false })
-                .order("created_at", { ascending: false });
-
-            if (error) throw error;
-            setPaymentMethods((data as unknown as PaymentMethod[]) || []);
+            const response = await apiClient.get('/payments/methods');
+            const data = response.data.paymentMethods;
+            setPaymentMethods(data.map(mapPaymentMethod));
         } catch (error: any) {
             console.error("Error fetching payment methods:", error);
             toast({
@@ -54,39 +63,27 @@ export function useSavedPaymentMethods() {
         if (!user) return;
 
         try {
-            if (method.is_default) {
-                // Unset other defaults
-                await supabase
-                    .from("saved_payment_methods" as any)
-                    .update({ is_default: false })
-                    .eq("user_id", user.id);
-            }
-
-            // Remove card_brand from insert payload if it doesn't exist in DB
-            const { card_brand, ...insertData } = method;
-
-            // Ensure label is present (default to 'Personal' if missing) to satisfy "Label" Not-Null constraint
-            const payload = {
-                ...insertData,
-                user_id: user.id,
+            const backendData = {
+                cardLast4: method.card_last4,
+                cardBrand: method.card_brand,
+                cardExpMonth: method.card_exp_month,
+                cardExpYear: method.card_exp_year,
+                cardHolderName: method.card_holder_name,
+                isDefault: method.is_default,
+                type: method.type,
                 label: method.label || 'Personal',
-                details: {}
+                details: method.details || {}
             };
 
-            const { data, error } = await supabase
-                .from("saved_payment_methods" as any)
-                .insert(payload)
-                .select()
-                .single();
+            const response = await apiClient.post('/payments/methods', backendData);
+            const data = response.data.paymentMethod;
 
-            if (error) throw error;
-
-            setPaymentMethods((prev) => [data as unknown as PaymentMethod, ...prev]);
+            setPaymentMethods((prev) => [mapPaymentMethod(data), ...prev]);
             toast({
                 title: "Success",
                 description: "Payment method added successfully",
             });
-            return data as unknown as PaymentMethod;
+            return mapPaymentMethod(data);
         } catch (error: any) {
             console.error("Error adding payment method:", error);
             toast({
@@ -102,14 +99,7 @@ export function useSavedPaymentMethods() {
         if (!user) return;
 
         try {
-            const { error } = await supabase
-                .from("saved_payment_methods" as any)
-                .delete()
-                .eq("id", id)
-                .eq("user_id", user.id);
-
-            if (error) throw error;
-
+            await apiClient.delete(`/payments/methods/${id}`);
             setPaymentMethods((prev) => prev.filter((pm) => pm.id !== id));
             toast({
                 title: "Success",

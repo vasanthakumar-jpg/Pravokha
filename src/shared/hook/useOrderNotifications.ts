@@ -1,34 +1,40 @@
-import { useEffect } from "react";
-import { supabase } from "@/infra/api/supabase";
+import { useEffect, useRef } from "react";
+import { apiClient } from "@/infra/api/apiClient";
 import { toast } from "@/shared/hook/use-toast";
 
 export function useOrderNotifications(userId: string | undefined) {
+  const lastStatuses = useRef<Record<string, string>>({});
+
   useEffect(() => {
     if (!userId) return;
 
-    const channel = supabase
-      .channel(`order-updates:${userId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "orders",
-          filter: `user_id=eq.${userId}`,
-        },
-        (payload: any) => {
-          const order = payload.new;
-          toast({
-            title: "Order Status Updated",
-            description: `Order #${order.order_number} is now ${order.order_status}`,
-            duration: 5000,
-          });
-        }
-      )
-      .subscribe();
+    const checkOrderUpdates = async () => {
+      try {
+        const response = await apiClient.get('/orders');
+        const orders = response.data;
 
-    return () => {
-      supabase.removeChannel(channel);
+        orders.forEach((order: any) => {
+          const prevStatus = lastStatuses.current[order.id];
+          if (prevStatus && prevStatus !== order.status) {
+            toast({
+              title: "Order Status Updated",
+              description: `Order #${order.orderNumber} is now ${order.status}`,
+              duration: 5000,
+            });
+          }
+          lastStatuses.current[order.id] = order.status;
+        });
+      } catch (error) {
+        console.error("Error polling order updates:", error);
+      }
     };
+
+    // Initial check
+    checkOrderUpdates();
+
+    // Poll every 60 seconds
+    const interval = setInterval(checkOrderUpdates, 60000);
+
+    return () => clearInterval(interval);
   }, [userId]);
 }
