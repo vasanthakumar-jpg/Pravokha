@@ -108,7 +108,7 @@ export default function SellerProductForm() {
     const { id } = useParams();
     const { toast } = useToast();
     const { user, role, verificationStatus, loading: authLoading } = useAuth();
-    const isAdmin = role === 'admin';
+    const isAdmin = role === 'ADMIN' || role === 'admin';
 
     const [currentStep, setCurrentStep] = useState(1);
     const [direction, setDirection] = useState(0); // 1 = forward, -1 = back
@@ -131,13 +131,13 @@ export default function SellerProductForm() {
             try {
                 // Fetch categories
                 const { data: cats } = await apiClient.get("/categories");
-                setDbCategories(cats || []);
+                setDbCategories(cats.categories || []);
 
                 // Fetch subcategories
                 // Assuming an endpoint exists or we extract from categories if nested
                 // For now, let's assume a separate endpoint or query
                 const { data: subs } = await apiClient.get("/categories/subcategories");
-                setDbSubcategories(subs || []);
+                setDbSubcategories(subs.subcategories || []);
             } catch (err) {
                 console.error("[SellerProductForm] Error fetching hierarchy:", err);
             }
@@ -230,7 +230,7 @@ export default function SellerProductForm() {
         };
 
         if (!authLoading) {
-            if (role === 'seller' || role === 'admin') {
+            if (role === 'DEALER' || role === 'seller' || role === 'ADMIN' || role === 'admin') {
                 fetchProduct();
             } else {
                 console.warn("[SellerProductForm] Unauthorized access attempt.");
@@ -1596,14 +1596,16 @@ export default function SellerProductForm() {
                                         reason: requestReason
                                     };
 
-                                    const { error: reqError } = await apiClient.post('/products/requests', {
+                                    const requestResponse = await apiClient.post('/products/requests', {
                                         product_id: id,
                                         seller_id: user?.id,
                                         requested_changes: requestedChanges,
                                         status: 'pending'
                                     });
 
-                                    if (reqError) throw reqError;
+                                    if (!requestResponse.data.success) {
+                                        throw new Error(requestResponse.data.message || 'Failed to submit update request');
+                                    }
 
                                     // 2. Perform safe update for Allowed fields (Price, Stock)
                                     const safePayload = {

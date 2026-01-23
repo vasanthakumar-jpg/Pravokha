@@ -1,11 +1,16 @@
 import { OrderController } from './controller';
 import { authenticate, authorize } from '../../shared/middleware/auth';
+import { requireDealerOrderAccess } from '../../shared/middleware/ownership';
 import { Role } from '@prisma/client';
+import { Router } from 'express';
 
 const router = Router();
 
 // Create Order (Protected)
 router.post('/', authenticate, OrderController.createOrder);
+
+// Get order stats (Protected)
+router.get('/stats', authenticate, OrderController.getStats);
 
 // Get specific order (Protected)
 router.get('/:id', authenticate, OrderController.getOrder);
@@ -15,6 +20,11 @@ router.get('/', authenticate, OrderController.listOrders);
 
 // Cancel order (Protected)
 router.post('/:id/cancel', authenticate, OrderController.cancelOrder);
+
+// Dealer Specific Order Routes (Multi-vendor isolation)
+router.get('/dealer/my-sales', authenticate, authorize([Role.DEALER]), OrderController.listOrders);
+router.get('/dealer/:id', authenticate, authorize([Role.DEALER]), requireDealerOrderAccess, OrderController.getOrder);
+
 
 // Admin Routes
 router.patch('/:id/status', authenticate, authorize([Role.ADMIN]), OrderController.updateStatus);

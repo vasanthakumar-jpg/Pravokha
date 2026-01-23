@@ -255,7 +255,7 @@ export default function App() {
 
                           {/* Admin Routes */}
                           <Route path="/admin" element={
-                            <ProtectedRoute allowedRoles={["admin"]}>
+                            <ProtectedRoute allowedRoles={["ADMIN"]}>
                               <AdminLayout />
                             </ProtectedRoute>
                           }>
@@ -388,7 +388,7 @@ export default function App() {
 
                           {/* Seller Routes */}
                           <Route path="/seller" element={
-                            <ProtectedRoute allowedRoles={["seller"]}>
+                            <ProtectedRoute allowedRoles={["DEALER"]}>
                               <SellerLayout />
                             </ProtectedRoute>
                           }>
@@ -457,7 +457,7 @@ export default function App() {
 
                           {/* User Routes */}
                           <Route path="/user/*" element={
-                            <ProtectedRoute allowedRoles={["user"]}>
+                            <ProtectedRoute allowedRoles={["USER"]}>
                               <Suspense fallback={<LoadingFallback />}>
                                 <Routes>
                                   <Route index element={

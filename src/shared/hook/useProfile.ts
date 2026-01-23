@@ -14,6 +14,15 @@ interface Profile {
   status: 'active' | 'suspended' | 'inactive';
   verificationStatus: 'pending' | 'verified' | 'rejected' | 'unverified';
   verificationComments: string | null;
+  bankAccount: string | null;
+  ifsc: string | null;
+  beneficiaryName: string | null;
+  gst: string | null;
+  pan: string | null;
+  storeName: string | null;
+  storeDescription: string | null;
+  storeLogoUrl: string | null;
+  storeBannerUrl: string | null;
 }
 
 export function useProfile(userId: string | undefined) {
@@ -41,7 +50,16 @@ export function useProfile(userId: string | undefined) {
         date_of_birth: data.dateOfBirth,
         status: data.status,
         verificationStatus: data.verificationStatus,
-        verificationComments: data.verificationComments
+        verificationComments: data.verificationComments,
+        bankAccount: data.bankAccount,
+        ifsc: data.ifsc,
+        beneficiaryName: data.beneficiaryName,
+        gst: data.gst,
+        pan: data.pan,
+        storeName: data.storeName,
+        storeDescription: data.storeDescription,
+        storeLogoUrl: data.storeLogoUrl,
+        storeBannerUrl: data.storeBannerUrl
       } as Profile;
     },
 

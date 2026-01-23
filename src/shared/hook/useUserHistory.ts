@@ -43,7 +43,8 @@ export function useUserHistory() {
         setLoadingOrders(true);
         try {
             const response = await apiClient.get("/orders");
-            const data = response.data;
+            const rawData = response.data;
+            const data = Array.isArray(rawData.data) ? rawData.data : [];
 
             // Map backend orders to OrderHistory
             const mappedOrders: OrderHistory[] = data.map((o: any) => ({

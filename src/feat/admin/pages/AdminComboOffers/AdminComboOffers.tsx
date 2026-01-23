@@ -60,7 +60,7 @@ export default function AdminComboOffers() {
 
   useEffect(() => {
     // Only fetch offers after auth is complete and user is an admin
-    if (!authLoading && user && role === 'admin') {
+    if (!authLoading && user && (role === 'ADMIN' || role === 'admin')) {
       fetchOffers();
     }
   }, [authLoading, user, role]);
@@ -69,7 +69,8 @@ export default function AdminComboOffers() {
     try {
       setLoading(true);
       const { data } = await apiClient.get('/combo-offers');
-      setOffers(data || []);
+      // Standardize response extraction: backend returns { success: true, comboOffers: [...] }
+      setOffers(data.comboOffers || data.data || data || []);
     } catch (err: any) {
       console.error("[AdminComboOffers] Error fetching offers:", err);
       toast({

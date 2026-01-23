@@ -30,6 +30,7 @@ import { Separator } from "@/ui/Separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/ui/Avatar";
 import { apiClient } from "@/infra/api/apiClient";
 import { Badge } from "@/ui/Badge";
+import { getMediaUrl } from "@/lib/utils";
 
 // Validation Schema (Seller Store)
 const formSchema = z.object({
@@ -629,7 +630,7 @@ export default function SellerSettings() {
                         {/* Avatar Upload */}
                         <div className="relative group shrink-0">
                           <Avatar className="w-24 h-24 sm:w-32 sm:h-32 border-2 border-border/60 shadow-inner">
-                            <AvatarImage src={profile?.avatar_url || ""} className="object-cover" />
+                            <AvatarImage src={getMediaUrl(profile?.avatar_url)} className="object-cover" />
                             <AvatarFallback className="text-2xl">{profileName?.[0]?.toUpperCase() || "U"}</AvatarFallback>
                           </Avatar>
                           <div

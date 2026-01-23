@@ -26,18 +26,21 @@ export function useNotifications() {
             const data = response.data;
             setNotifications(data);
             setUnreadCount(data.filter((n: any) => !n.isRead).length);
-        } catch (error) {
-            console.error('Error loading notifications:', error);
+        } catch (error: any) {
+            // Suppress 429 rate limit errors to avoid console spam
+            if (error?.response?.status !== 429) {
+                console.error('Error loading notifications:', error);
+            }
         } finally {
             setLoading(false);
         }
-    }, [user]);
+    }, [user?.id]);
 
     useEffect(() => {
         fetchNotifications();
 
         // Polling as a simpler alternative to Socket.io/Realtime
-        const interval = setInterval(fetchNotifications, 30000); // Poll every 30s
+        const interval = setInterval(fetchNotifications, 60000); // Poll every 60s (reduced from 30s to avoid rate limits)
         return () => clearInterval(interval);
     }, [fetchNotifications]);
 

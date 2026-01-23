@@ -1,3 +1,4 @@
+import { useState, useEffect, useCallback } from "react";
 import { apiClient } from "@/infra/api/apiClient";
 import { ProductDomain, ProductStatusFilter } from "../domain/types";
 import { useToast } from "@/shared/hook/use-toast";
@@ -19,7 +20,9 @@ export function useProductInventory({ sellerId, isAdmin }: UseProductInventoryPr
     const fetchProducts = useCallback(async () => {
         setLoading(true);
         try {
-            const response = await apiClient.get('/products');
+            const response = await apiClient.get('/products', {
+                params: { sellerId }
+            });
 
             if (response.data.success) {
                 const transformed = (response.data.data || []).map((p: any) => {

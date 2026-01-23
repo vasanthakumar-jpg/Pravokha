@@ -32,7 +32,9 @@ export class UserController {
 
         // Handle date transformation if dateOfBirth is provided
         if (safeUpdates.dateOfBirth) {
-            safeUpdates.dateOfBirth = new Date(safeUpdates.dateOfBirth);
+            const dob = new Date(safeUpdates.dateOfBirth);
+            // If date is invalid, set to null instead of throwing error
+            safeUpdates.dateOfBirth = isNaN(dob.getTime()) ? null : dob;
         }
 
         const updatedUser = await prisma.user.update({

@@ -16,6 +16,9 @@ declare module 'express-serve-static-core' {
         user?: {
             id: string;
             role: Role;
+            email: string;
+            name: string | null;
+            avatarUrl: string | null;
         };
     }
 }
@@ -35,7 +38,14 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
 
         const user = await prisma.user.findUnique({
             where: { id: decoded.id },
-            select: { id: true, role: true, status: true },
+            select: {
+                id: true,
+                role: true,
+                status: true,
+                email: true,
+                name: true,
+                avatarUrl: true
+            },
         });
 
         if (!user) {
@@ -46,7 +56,13 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
             return res.status(403).json({ success: false, message: 'Access denied: Your account has been suspended' });
         }
 
-        req.user = { id: user.id, role: user.role as Role };
+        req.user = {
+            id: user.id,
+            role: user.role as Role,
+            email: user.email,
+            name: user.name,
+            avatarUrl: user.avatarUrl
+        };
         next();
     } catch (error) {
         return res.status(401).json({ success: false, message: 'Authentication failed: Invalid or expired token' });
@@ -88,11 +104,24 @@ export const optionalAuthenticate = async (req: Request, res: Response, next: Ne
 
         const user = await prisma.user.findUnique({
             where: { id: decoded.id },
-            select: { id: true, role: true, status: true },
+            select: {
+                id: true,
+                role: true,
+                status: true,
+                email: true,
+                name: true,
+                avatarUrl: true
+            },
         });
 
         if (user && user.status !== 'suspended') {
-            req.user = { id: user.id, role: user.role as Role };
+            req.user = {
+                id: user.id,
+                role: user.role as Role,
+                email: user.email,
+                name: user.name,
+                avatarUrl: user.avatarUrl
+            };
         }
 
         next();

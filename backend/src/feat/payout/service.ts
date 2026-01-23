@@ -2,12 +2,17 @@ import { PayoutStatus, Role } from '@prisma/client';
 import { prisma } from '../../infra/database/client';
 
 export class PayoutService {
-    static async listPayouts(role: Role) {
-        if (role !== Role.ADMIN) {
+    static async listPayouts(role: Role, userId: string) {
+        let where = {};
+        
+        if (role === Role.DEALER) {
+            where = { sellerId: userId };
+        } else if (role !== Role.ADMIN) {
             throw new Error('Unauthorized');
         }
 
         return await prisma.payout.findMany({
+            where,
             orderBy: { createdAt: 'desc' },
             include: {
                 seller: {

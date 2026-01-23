@@ -73,7 +73,7 @@ export function useUserSettings() {
     return {
         loading,
         profile: profile ? { ...profile, email: user?.email || '' } : {
-            full_name: '', email: user?.email || '', phone: '', bio: '', date_of_birth: '', avatar_url: ''
+            full_name: '', email: user?.email || '', phone: '', bio: '', date_of_birth: '', avatar_url: user?.avatar_url || ''
         },
         addresses,
         payments: formattedPayments,

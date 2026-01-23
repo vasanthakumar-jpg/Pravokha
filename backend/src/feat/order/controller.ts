@@ -52,11 +52,42 @@ export class OrderController {
     static async listOrders(req: Request, res: Response, next: NextFunction) {
         try {
             const user = (req as any).user;
-            const orders = await OrderService.listOrders(user.id, user.role);
+            const page = parseInt(req.query.page as string) || 1;
+            const limit = parseInt(req.query.limit as string) || 20;
+            const { type, status, search, after } = req.query;
+
+            const { orders, total } = await OrderService.listOrders(user.id, user.role, {
+                page,
+                limit,
+                type: type as string,
+                status: status as string,
+                search: search as string,
+                after: after as string
+            });
 
             res.status(200).json({
                 success: true,
                 data: orders,
+                meta: {
+                    total,
+                    page,
+                    limit,
+                    totalPages: Math.ceil(total / limit)
+                }
+            });
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    static async getStats(req: Request, res: Response, next: NextFunction) {
+        try {
+            const user = (req as any).user;
+            const stats = await OrderService.getOrderStats(user.id, user.role);
+
+            res.status(200).json({
+                success: true,
+                data: stats,
             });
         } catch (error) {
             next(error);

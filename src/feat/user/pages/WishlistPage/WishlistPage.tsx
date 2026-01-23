@@ -27,7 +27,7 @@ export function WishlistPage() {
     const fetchWishlist = async () => {
         setLoading(true);
         try {
-            const response = await apiClient.get('/api/wishlist');
+            const response = await apiClient.get('/wishlist');
             const data = response.data.wishlist.map((item: any) => {
                 const p = item.product;
                 const transformedProduct: Product = {
@@ -82,7 +82,7 @@ export function WishlistPage() {
 
     const removeFromWishlist = async (wishlistId: string) => {
         try {
-            await apiClient.delete(`/api/wishlist/${wishlistId}`);
+            await apiClient.delete(`/wishlist/${wishlistId}`);
             setWishlistItems(prev => prev.filter(item => item.id !== wishlistId));
             toast({
                 title: "Removed",
@@ -139,7 +139,7 @@ export function WishlistPage() {
     const clearAllWishlist = async () => {
         if (!user) return;
         try {
-            await apiClient.delete('/api/wishlist');
+            await apiClient.delete('/wishlist');
             setWishlistItems([]);
             toast({
                 title: "Cleared",

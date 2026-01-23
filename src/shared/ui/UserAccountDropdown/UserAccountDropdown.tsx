@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/core/context/AuthContext";
+import { useProfile } from "@/shared/hook/useProfile";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -25,10 +26,11 @@ import {
     Package,
 } from "lucide-react";
 import styles from "./UserAccountDropdown.module.css";
-import { cn } from "@/lib/utils";
+import { cn, getMediaUrl } from "@/lib/utils";
 
 export function UserAccountDropdown() {
-    const { user, role, profile, signOut } = useAuth();
+    const { user, role, signOut } = useAuth();
+    const { profile } = useProfile(user?.id);
     const navigate = useNavigate();
     const [open, setOpen] = useState(false);
 
@@ -52,10 +54,12 @@ export function UserAccountDropdown() {
     };
 
     const getRoleBadgeClass = (userRole: string) => {
-        switch (userRole) {
+        const normalizedRole = userRole?.toLowerCase();
+        switch (normalizedRole) {
             case "admin":
                 return styles.roleBadgeAdmin;
             case "seller":
+            case "dealer":
                 return styles.roleBadgeSeller;
             default:
                 return styles.roleBadgeUser;
@@ -64,9 +68,9 @@ export function UserAccountDropdown() {
 
     // Menu items based on role
     const getUserMenuItems = () => [
-        { icon: User, label: "My Account", path: "/user" },
-        { icon: ShoppingBag, label: "My Orders", path: "/orders" },
-        { icon: CreditCard, label: "Payment History", path: "/payments" },
+        { icon: User, label: "My Account", path: "/settings" },
+        { icon: ShoppingBag, label: "My Orders", path: "/order-history" },
+        { icon: CreditCard, label: "Payment History", path: "/order-history" },
         { icon: Settings, label: "Settings", path: "/settings" },
     ];
 
@@ -75,8 +79,8 @@ export function UserAccountDropdown() {
         { icon: Store, label: "My Store", path: "/seller/products" },
         { icon: ShoppingBag, label: "Orders", path: "/seller/orders" },
         { icon: DollarSign, label: "Payouts", path: "/seller/payouts" },
-        { icon: BarChart3, label: "Reports", path: "/seller/reports" },
-        { icon: User, label: "My Account", path: "/account" },
+        { icon: BarChart3, label: "Reports", path: "/seller/analytics" },
+        { icon: User, label: "My Account", path: "/seller/settings" },
         { icon: Settings, label: "Store Settings", path: "/seller/settings" },
     ];
 
@@ -86,15 +90,17 @@ export function UserAccountDropdown() {
         { icon: Package, label: "All Products", path: "/admin/products" },
         { icon: ShoppingBag, label: "All Orders", path: "/admin/orders" },
         { icon: BarChart3, label: "Reports", path: "/admin/reports" },
-        { icon: User, label: "My Account", path: "/account" },
+        { icon: User, label: "My Account", path: "/settings" },
         { icon: Settings, label: "System Settings", path: "/admin/settings" },
     ];
 
     const getMenuItems = () => {
-        switch (role) {
+        const normalizedRole = role?.toLowerCase();
+        switch (normalizedRole) {
             case "admin":
                 return getAdminMenuItems();
             case "seller":
+            case "dealer":
                 return getSellerMenuItems();
             default:
                 return getUserMenuItems();
@@ -108,7 +114,7 @@ export function UserAccountDropdown() {
             <DropdownMenuTrigger className="focus:outline-none">
                 <div className={styles.triggerContainer}>
                     <Avatar className={cn(styles.triggerAvatar, "ring-2 ring-offset-2 ring-offset-background ring-primary/20 hover:ring-primary/40 transition-all")}>
-                        <AvatarImage src={profile?.avatar_url} alt={profile?.full_name || user?.email} />
+                        <AvatarImage src={getMediaUrl(profile?.avatar_url || user?.avatar_url)} alt={profile?.full_name || user?.email} />
                         <AvatarFallback className={styles.avatarFallback}>
                             {getInitials(profile?.full_name)}
                         </AvatarFallback>
@@ -125,7 +131,7 @@ export function UserAccountDropdown() {
                 <DropdownMenuLabel className="font-normal">
                     <div className={styles.userInfoContainer}>
                         <Avatar className={styles.avatar}>
-                            <AvatarImage src={profile?.avatar_url} />
+                            <AvatarImage src={getMediaUrl(profile?.avatar_url)} />
                             <AvatarFallback className={styles.avatarFallback}>
                                 {getInitials(profile?.full_name)}
                             </AvatarFallback>

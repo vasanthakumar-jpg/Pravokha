@@ -110,7 +110,7 @@ export function TicketDetailPage() {
 
             if (mappedTicket.user_id) {
                 // Fetch user info for admin view if needed
-                const userResponse = await apiClient.get(`/users/profile/${mappedTicket.user_id}`);
+                const userResponse = await apiClient.get(`/users/${mappedTicket.user_id}`);
                 setTicketUser(userResponse.data.profile);
             }
         } catch (error: any) {

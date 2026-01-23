@@ -35,18 +35,7 @@ export function AuthPage() {
     const [fullNameError, setFullNameError] = useState("");
     const [phoneError, setPhoneError] = useState("");
 
-    // Auto-redirect based on role
-    useEffect(() => {
-        if (!loading && user && role) {
-            if (role === "ADMIN") {
-                navigate("/admin", { replace: true });
-            } else if (role === "DEALER") {
-                navigate("/seller", { replace: true });
-            } else {
-                navigate("/", { replace: true });
-            }
-        }
-    }, [user, role, loading, navigate]);
+    // Redirection is handled globally by the RoleBasedRedirect component in App.tsx
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();

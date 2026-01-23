@@ -115,6 +115,7 @@ export class AdminController {
 
         const orders = await prisma.order.findMany({
             where: { createdAt: { gte: startDate } },
+            include: { items: true },
             orderBy: { createdAt: 'asc' }
         });
 

@@ -43,6 +43,7 @@ export class OrderService {
                 total += product.price * item.quantity;
                 orderItems.push({
                     productId: product.id,
+                    sellerId: product.dealerId,  // Track which seller owns this item
                     title: product.title,
                     price: product.price,
                     quantity: item.quantity,
@@ -96,32 +97,141 @@ export class OrderService {
     static async getOrderById(id: string, userId?: string, role?: string) {
         const order = await prisma.order.findUnique({
             where: { id },
-            include: { items: true }
+            include: {
+                items: {
+                    include: {
+                        product: {
+                            select: { title: true, dealerId: true }
+                        }
+                    }
+                }
+            }
         });
 
         if (!order) return null;
 
-        // Access Control
-        if (role !== 'ADMIN' && order.userId !== userId) {
+        // Access Control - Strict data isolation
+        if (role === Role.ADMIN) {
+            // Admin can view all orders
+            return order;
+        }
+
+        if (role === Role.DEALER) {
+            // DEALER can only view orders containing at least one of their products
+            const hasSellerItem = order.items.some(item => item.product.dealerId === userId);
+            if (!hasSellerItem) {
+                throw new Error('Forbidden: This order does not contain your products');
+            }
+            return order;
+        }
+
+        // Regular USER/CUSTOMER can only view their own orders
+        if (order.userId !== userId) {
             throw new Error('Unauthorized access to order');
         }
 
         return order;
     }
 
-    static async listOrders(userId?: string, role?: string) {
-        if (role === Role.ADMIN) {
-            return await prisma.order.findMany({
-                orderBy: { createdAt: 'desc' },
-                include: { items: true }
-            });
+    static async listOrders(userId?: string, role?: string, options: {
+        page?: number;
+        limit?: number;
+        type?: string;
+        status?: string;
+        search?: string;
+        after?: string;
+    } = {}) {
+        const page = options.page || 1;
+        const limit = options.limit || 20;
+        const skip = (page - 1) * limit;
+        const take = limit;
+
+        let where: any = {};
+
+        // 1. Role/Type Context Filtering
+        const contextType = options.type || (role === Role.ADMIN ? 'admin' : (role === Role.DEALER ? 'seller' : 'buyer'));
+
+        if (contextType === 'admin') {
+            if (role !== Role.ADMIN) throw new Error('Unauthorized context for admin');
+            // No base filter for admin
+        } else if (contextType === 'seller') {
+            // Filter orders containing items from this seller
+            where.items = {
+                some: {
+                    sellerId: role === Role.ADMIN && options.type === 'seller' ? undefined : userId
+                }
+            };
+        } else {
+            // Default to buyer context
+            where.userId = userId;
         }
 
-        return await prisma.order.findMany({
-            where: { userId },
-            orderBy: { createdAt: 'desc' },
-            include: { items: true }
-        });
+        // 2. Status Filtering
+        if (options.status && options.status !== 'all') {
+            where.status = options.status as any;
+        }
+
+        // 3. Search Filtering
+        if (options.search) {
+            where.OR = [
+                { orderNumber: { contains: options.search } },
+                { customerName: { contains: options.search } },
+                { customerEmail: { contains: options.search } }
+            ];
+        }
+
+        // 4. Date Filtering
+        if (options.after) {
+            where.createdAt = { gte: new Date(options.after) };
+        }
+
+        const [orders, total] = await Promise.all([
+            prisma.order.findMany({
+                where,
+                skip,
+                take,
+                orderBy: { createdAt: 'desc' },
+                include: {
+                    items: {
+                        include: {
+                            product: {
+                                select: { title: true, slug: true }
+                            }
+                        }
+                    }
+                }
+            }),
+            prisma.order.count({ where: where as any })
+        ]);
+
+        return { orders, total };
+    }
+
+    static async getOrderStats(userId: string, role: string) {
+        const stats: any = {
+            buyerCount: 0,
+            sellerCount: 0,
+            adminCount: 0
+        };
+
+        // 1. Buyer Stats
+        stats.buyerCount = await prisma.order.count({ where: { userId } });
+
+        // 2. Seller Stats (if applicable)
+        if (role === Role.DEALER || role === Role.ADMIN) {
+            const sellerOrders = await prisma.orderItem.groupBy({
+                by: ['orderId'],
+                where: { sellerId: userId }
+            });
+            stats.sellerCount = sellerOrders.length;
+        }
+
+        // 3. Admin Stats (if applicable)
+        if (role === Role.ADMIN) {
+            stats.adminCount = await prisma.order.count();
+        }
+
+        return stats;
     }
 
     static async cancelOrder(id: string, userId: string, role: string) {

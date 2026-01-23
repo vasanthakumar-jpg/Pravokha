@@ -7,7 +7,7 @@ interface ProductStatsProps {
     active: number;
     lowStock: number;
     revenue: number;
-    role: 'admin' | 'seller';
+    role: 'ADMIN' | 'DEALER' | 'USER' | 'admin' | 'seller';
 }
 
 export function ProductStats({ total, active, lowStock, revenue, role }: ProductStatsProps) {
@@ -18,9 +18,9 @@ export function ProductStats({ total, active, lowStock, revenue, role }: Product
         {
             label: "Total Revenue",
             value: `₹${revenue.toLocaleString()}`,
-            icon: role === 'admin' ? DollarSign : Database,
-            color: role === 'admin' ? "text-blue-600" : "text-white",
-            bg: role === 'admin' ? "bg-blue-100" : "bg-purple-500",
+            icon: (role === 'ADMIN' || role === 'admin') ? DollarSign : Database,
+            color: (role === 'ADMIN' || role === 'admin') ? "text-blue-600" : "text-white",
+            bg: (role === 'ADMIN' || role === 'admin') ? "bg-blue-100" : "bg-purple-500",
             role: 'all'
         }
     ];

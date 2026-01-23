@@ -36,14 +36,14 @@ export default function SellerDashboard() {
 
   // Authorization Guard
   useEffect(() => {
-    if (!authLoading && role !== 'seller' && role !== 'admin') {
+    if (!authLoading && role !== 'seller' && role !== 'admin' && role !== 'DEALER') {
       console.warn("[SellerDashboard] Unauthorized role access attempt:", role);
       navigate("/auth");
     }
   }, [role, authLoading, navigate]);
 
   useEffect(() => {
-    if (!authLoading && (role === 'seller' || role === 'admin')) {
+    if (!authLoading && (role === 'seller' || role === 'admin' || role === 'DEALER')) {
       fetchSellerData();
     }
   }, [user, authLoading, role]);
@@ -57,7 +57,7 @@ export default function SellerDashboard() {
       await new Promise(resolve => setTimeout(resolve, 800));
 
       // 1. Fetch User Profile including Verification Status
-      const profileResponse = await apiClient.get('/users/me');
+      const profileResponse = await apiClient.get('/auth/me');
       const profile = profileResponse.data.user;
 
       if (profile) {
@@ -71,7 +71,7 @@ export default function SellerDashboard() {
         params: { sellerId: user.id, includeDeleted: false }
       });
 
-      const productsData = productsResponse.data.products || [];
+      const productsData = productsResponse.data.data || [];
       const transformedProducts = productsData.map((product: any) => {
         const totalStock = product.variants?.reduce((sum: number, variant: any) => {
           const variantStock = variant.sizes?.reduce((s: number, size: any) => s + (size.stock || 0), 0) || 0;
@@ -88,7 +88,7 @@ export default function SellerDashboard() {
         params: { sellerId: user.id, limit: 100 }
       });
 
-      const sellerOrders = ordersResponse.data.orders || [];
+      const sellerOrders = ordersResponse.data.data || [];
 
       const transformedOrders = sellerOrders.slice(0, 10).map((order: any) => ({
         id: order.id,

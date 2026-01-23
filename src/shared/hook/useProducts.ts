@@ -35,14 +35,14 @@ export function useProducts() {
         newArrival: p.isNew || false,
         variants: (p.variants || []).map((v: any) => ({
           id: v.id,
-          colorName: v.colorName,
-          colorHex: v.colorHex,
+          colorName: v.colorName || 'Default',
+          colorHex: v.colorHex || '#000',
           images: v.images && Array.isArray(v.images) && v.images.length > 0
             ? v.images
             : ['https://placehold.co/600x600/e2e8f0/64748b?text=No+Image'],
           sizes: (v.sizes || []).map((s: any) => ({
-            size: s.size,
-            stock: s.stock,
+            size: s.size || 'One Size',
+            stock: parseInt(s.stock) || 0,
           })),
         })),
       }));

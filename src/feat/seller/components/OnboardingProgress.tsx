@@ -17,21 +17,21 @@ export function OnboardingProgress({ profile, productsCount }: OnboardingProgres
             id: "profile",
             title: "Profile",
             description: "Personal details",
-            isCompleted: !!(profile.full_name && (profile.avatar_url || profile.email)),
+            isCompleted: !!(profile.name && (profile.avatarUrl || profile.email)),
             link: "/seller/settings?tab=profile"
         },
         {
             id: "branding",
             title: "Identity",
             description: "Store name & logo",
-            isCompleted: !!(profile.store_name && (profile.store_logo_url || profile.store_description)),
+            isCompleted: !!(profile.storeName && (profile.storeLogoUrl || profile.storeDescription)),
             link: "/seller/settings?tab=general"
         },
         {
             id: "financial",
             title: "Payments",
             description: "Bank details for payout",
-            isCompleted: !!(profile.pan && profile.bank_account),
+            isCompleted: !!(profile.pan && profile.bankAccount),
             link: "/seller/settings?tab=payment"
         },
         {

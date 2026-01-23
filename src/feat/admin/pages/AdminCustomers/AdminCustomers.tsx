@@ -260,7 +260,7 @@ export default function AdminCustomers() {
                 )}
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-muted-foreground flex items-center gap-1.5"><Calendar className="w-3 h-3" /> Registered</span>
-                  <span className="font-medium text-foreground">{format(new Date(profile.created_at), "MMM d, yyyy")}</span>
+                  <span className="font-medium text-foreground">{profile.created_at ? format(new Date(profile.created_at), "MMM d, yyyy") : 'N/A'}</span>
                 </div>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -360,7 +360,7 @@ export default function AdminCustomers() {
                     </TableCell>
                     <TableCell className="text-[11px] font-medium text-muted-foreground">
                       <div className="flex items-center gap-2">
-                        <Calendar className="h-3 w-3" /> {format(new Date(profile.created_at), "MMM d, yyyy")}
+                        <Calendar className="h-3 w-3" /> {profile.created_at ? format(new Date(profile.created_at), "MMM d, yyyy") : 'N/A'}
                       </div>
                     </TableCell>
                     <TableCell className="text-right pr-6">

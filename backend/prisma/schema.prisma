@@ -71,6 +71,7 @@ model User {
 
   products             Product[]
   orders               Order[]   @relation("UserOrders")
+  orderItems           OrderItem[] @relation("SellerOrderItems")
   notifications        Notification[]
   tickets              SupportTicket[]
   addresses            Address[]
@@ -81,8 +82,10 @@ model User {
   supportConversations SupportConversation[]
   supportMessages      SupportMessage[]
   wishlist             Wishlist[]
+  productReviews       ProductReview[]
   adminNotificationSettings AdminNotificationSetting?
   productUpdateRequests ProductUpdateRequest[] @relation("SellerUpdateRequests")
+  payouts              Payout[]
 
   @@map("users")
 }
@@ -131,6 +134,7 @@ model Subcategory {
   categoryId  String
   category    Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   status      String    @default("active")
+  displayOrder Int      @default(0) @map("display_order")
   createdAt   DateTime  @default(now())
   
   products    Product[]
@@ -152,6 +156,7 @@ model Product {
   rating        Float       @default(4.5)
   reviews       Int         @default(0)
   sku           String?     @unique
+  isVerified    Boolean     @default(false)
   
   categoryId    String?
   category      Category?   @relation(fields: [categoryId], references: [id])
@@ -169,6 +174,7 @@ model Product {
   variants      ProductVariant[]
   orderItems    OrderItem[]
   wishlist      Wishlist[]
+  productReviews ProductReview[]
 
   @@map("products")
 }
@@ -232,6 +238,7 @@ model Order {
 model Payout {
   id              String       @id @default(uuid())
   sellerId        String       @map("seller_id")
+  seller          User         @relation(fields: [sellerId], references: [id])
   amount          Float
   status          PayoutStatus @default(PENDING)
   periodStart     DateTime     @map("period_start")
@@ -251,10 +258,16 @@ model OrderItem {
   order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
   productId String
   product   Product @relation(fields: [productId], references: [id])
+  
+  // Multi-vendor tracking: which seller owns this order item
+  sellerId  String  @map("seller_id")
+  seller    User    @relation("SellerOrderItems", fields: [sellerId], references: [id])
+  
   title     String
   price     Float
   quantity  Int
   
+  @@index([sellerId])
   @@map("order_items")
 }
 
@@ -453,14 +466,37 @@ model NewsletterSubscription {
 }
 
 model ComboOffer {
-  id          String   @id @default(uuid())
-  title       String
-  description String?  @db.Text
-  imageUrl    String?  @map("image_url")
-  comboPrice  Float    @map("combo_price")
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id                 String    @id @default(uuid())
+  title              String
+  description        String?   @db.Text
+  productIds        Json?     @map("product_ids") // Array of string product slugs/IDs
+  originalPrice     Float?    @map("original_price")
+  comboPrice        Float     @map("combo_price")
+  discountPercentage Int?     @map("discount_percentage")
+  active             Boolean   @default(true)
+  imageUrl           String?   @map("image_url")
+  startDate          DateTime? @map("start_date")
+  endDate            DateTime? @map("end_date")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
 
   @@map("combo_offers")
+}
+
+model ProductReview {
+  id        String   @id @default(uuid())
+  productId String   @map("product_id")
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rating    Float
+  title     String?
+  comment   String?  @db.Text
+  images    Json?    // Array of image URLs
+  status    String   @default("pending") // pending, approved, rejected
+  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("product_reviews")
 }

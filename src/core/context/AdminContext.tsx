@@ -17,7 +17,7 @@ export const useAdmin = () => useContext(AdminContext);
 
 export function AdminProvider({ children }: { children: ReactNode }) {
   const { user, role, loading } = useAuth();
-  const isAdmin = role === "admin";
+  const isAdmin = role?.toUpperCase() === "ADMIN";
 
   return (
     <AdminContext.Provider value={{ isAdmin, loading, user }}>

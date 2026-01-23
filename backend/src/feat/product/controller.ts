@@ -19,12 +19,13 @@ export const createProduct = asyncHandler(async (req: Request, res: Response) =>
 });
 
 export const getProducts = asyncHandler(async (req: Request, res: Response) => {
-    const { search, category, page, limit } = req.query;
+    const { search, category, page, limit, sellerId } = req.query;
     const result = await ProductService.getProducts(req.user!, {
         search: search as string,
         category: category as string,
         page: page ? parseInt(page as string) : undefined,
-        limit: limit ? parseInt(limit as string) : undefined
+        limit: limit ? parseInt(limit as string) : undefined,
+        sellerId: sellerId as string
     });
     res.status(200).json({ success: true, ...result });
 });
@@ -35,7 +36,8 @@ export const getProductById = asyncHandler(async (req: Request, res: Response) =
 });
 
 export const updateProduct = asyncHandler(async (req: Request, res: Response) => {
-    // Already validated by middleware
+    console.log("[ProductController] Update request for ID:", req.params.id);
+    console.log("[ProductController] Payload:", JSON.stringify(req.body, null, 2));
     const result = await ProductService.updateProduct(req.params.id, req.user!, req.body);
 
     await AuditService.log({

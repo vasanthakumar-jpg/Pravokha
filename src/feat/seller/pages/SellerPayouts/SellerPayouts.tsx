@@ -20,6 +20,7 @@ import {
   PopoverTrigger,
 } from "@/ui/Popover";
 import { ArrowRight, Calculator, FileCheck } from "lucide-react";
+import { useProfile } from "@/shared/hook/useProfile";
 
 interface Payout {
   id: string;
@@ -48,7 +49,7 @@ export default function SellerPayouts() {
   const [loading, setLoading] = useState(true);
   const [payouts, setPayouts] = useState<Payout[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [profile, setProfile] = useState<any>(null);
+  const { profile } = useProfile(user?.id);
 
   const [payoutStats, setPayoutStats] = useState({
     pendingBalance: 0,
@@ -139,12 +140,7 @@ export default function SellerPayouts() {
         nextPayoutDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       });
 
-      // Fetch Profile for Banking Section
-      const { data: profileData } = await apiClient.get('/users/me');
-
-      if (profileData) {
-        setProfile(profileData);
-      }
+      // Profile data is handled by useProfile hook
 
     } catch (error) {
       console.error('Error fetching payout data:', error);
@@ -625,11 +621,11 @@ export default function SellerPayouts() {
                     <div className="grid grid-cols-2 gap-4">
                       <div className="p-4 bg-muted/20 border border-border/40 rounded-xl">
                         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Bank</p>
-                        <p className="text-sm font-bold truncate">{profile?.payout_details?.bank_name || 'Linked Bank'}</p>
+                        <p className="text-sm font-bold truncate">{profile?.bankAccount ? 'Linked Bank' : 'No Bank Linked'}</p>
                       </div>
                       <div className="p-4 bg-muted/20 border border-border/40 rounded-xl">
                         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Identifier</p>
-                        <p className="text-sm font-bold">****{profile?.bank_account?.slice(-4) || 'XXXX'}</p>
+                        <p className="text-sm font-bold">****{profile?.bankAccount?.slice(-4) || 'XXXX'}</p>
                       </div>
                     </div>
                   </div>

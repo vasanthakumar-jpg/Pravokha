@@ -13,7 +13,7 @@ export class ReviewController {
             },
             include: {
                 user: {
-                    select: { name: true, image: true }
+                    select: { name: true, avatarUrl: true }
                 }
             },
             orderBy: { createdAt: 'desc' }
@@ -72,7 +72,16 @@ export class ReviewController {
     });
 
     static listAllReviews = asyncHandler(async (req: any, res: Response) => {
-        // ... (existing code, keeping for admin)
+        const reviews = await prisma.productReview.findMany({
+            include: {
+                user: {
+                    select: { name: true, avatarUrl: true }
+                }
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+        res.json({ success: true, reviews });
+    });
 
     static updateReviewStatus = asyncHandler(async (req: any, res: Response) => {
         const { id } = req.params;

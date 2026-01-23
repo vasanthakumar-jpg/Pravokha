@@ -1,8 +1,10 @@
 import { createProduct, getProducts, getProductById, updateProduct, deleteProduct } from './controller';
 import { authenticate, authorize, optionalAuthenticate } from '../../shared/middleware/auth';
+import { requireProductOwnership } from '../../shared/middleware/ownership';
 import { validate } from '../../shared/middleware/validation';
 import { createProductSchema, updateProductSchema } from '../../shared/validation/product.schema';
 import { Role } from '@prisma/client';
+import { Router } from 'express';
 
 const router = Router();
 
@@ -14,7 +16,7 @@ router.get('/:id', optionalAuthenticate, getProductById);
 router.use(authenticate);
 
 router.post('/', authorize([Role.DEALER, Role.ADMIN]), validate({ body: createProductSchema }), createProduct);
-router.put('/:id', authorize([Role.DEALER, Role.ADMIN]), validate({ body: updateProductSchema }), updateProduct);
-router.delete('/:id', authorize([Role.DEALER, Role.ADMIN]), deleteProduct);
+router.put('/:id', authorize([Role.DEALER, Role.ADMIN]), requireProductOwnership, validate({ body: updateProductSchema }), updateProduct);
+router.delete('/:id', authorize([Role.DEALER, Role.ADMIN]), requireProductOwnership, deleteProduct);
 
 export default router;

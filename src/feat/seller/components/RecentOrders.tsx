@@ -30,6 +30,16 @@ const statusColors: Record<string, string> = {
 export default function RecentOrders({ orders, isGhost }: RecentOrdersProps) {
   const navigate = useNavigate();
 
+  const getRelativeTime = (date: string) => {
+    const now = new Date();
+    const orderDate = new Date(date);
+    const diffInHours = Math.floor((now.getTime() - orderDate.getTime()) / (1000 * 60 * 60));
+
+    if (diffInHours < 1) return 'Just now';
+    if (diffInHours < 24) return `${diffInHours}h ago`;
+    return `${Math.floor(diffInHours / 24)}d ago`;
+  };
+
   const Content = (
     <div className="space-y-3">
       {orders.slice(0, 5).map((order) => (
@@ -100,15 +110,7 @@ export default function RecentOrders({ orders, isGhost }: RecentOrdersProps) {
     );
   }
 
-  const getRelativeTime = (date: string) => {
-    const now = new Date();
-    const orderDate = new Date(date);
-    const diffInHours = Math.floor((now.getTime() - orderDate.getTime()) / (1000 * 60 * 60));
 
-    if (diffInHours < 1) return 'Just now';
-    if (diffInHours < 24) return `${diffInHours}h ago`;
-    return `${Math.floor(diffInHours / 24)}d ago`;
-  };
 
   return (
     <Card>

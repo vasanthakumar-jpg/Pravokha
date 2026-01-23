@@ -249,7 +249,7 @@ export function Navbar() {
                                                 <Button variant="ghost" className="w-full justify-start">{category.name}</Button>
                                             </Link>
                                         ))}
-                                        {user && role === "admin" && (
+                                        {user && (role === "ADMIN" || role === "admin") && (
                                             <Link to="/admin" onClick={closeMobileMenu}>
                                                 <Button variant="ghost" className="w-full justify-start font-semibold text-primary">
                                                     <LayoutDashboard className="mr-2 h-4 w-4" />
@@ -257,7 +257,7 @@ export function Navbar() {
                                                 </Button>
                                             </Link>
                                         )}
-                                        {user && role === "seller" && !isSuspended && (
+                                        {user && (role === "DEALER" || role === "seller") && !isSuspended && (
                                             <Link to="/seller" onClick={closeMobileMenu}>
                                                 <Button variant="ghost" className="w-full justify-start font-semibold text-primary">
                                                     <Store className="mr-2 h-4 w-4" />
@@ -265,7 +265,7 @@ export function Navbar() {
                                                 </Button>
                                             </Link>
                                         )}
-                                        {user && (role === "user" || isSuspended) && (
+                                        {user && (role === "USER" || role === "user" || isSuspended) && (
                                             <>
                                                 <Link to="/user" onClick={closeMobileMenu}>
                                                     <Button variant="ghost" className="w-full justify-start">My Account</Button>
@@ -315,7 +315,7 @@ export function Navbar() {
                             </Button>
                         </Link>
 
-                        {(!user || role === "user" || isSuspended) ? (
+                        {(!user || role === "USER" || role === "user" || isSuspended) ? (
                             <Link to="/products">
                                 <Button
                                     variant="ghost"
@@ -353,13 +353,13 @@ export function Navbar() {
                                             All Products
                                         </DropdownMenuItem>
                                     </Link>
-                                    <Link to={role === 'admin' ? "/admin/products" : "/seller/products"}>
+                                    <Link to={(role === 'ADMIN' || role === 'admin') ? "/admin/products" : "/seller/products"}>
                                         <DropdownMenuItem className="cursor-pointer">
                                             <Store className="h-4 w-4 mr-2" />
                                             My Products
                                         </DropdownMenuItem>
                                     </Link>
-                                    <Link to={role === 'admin' ? "/admin/products/add" : "/seller/products/add"}>
+                                    <Link to={(role === 'ADMIN' || role === 'admin') ? "/admin/products/add" : "/seller/products/add"}>
                                         <DropdownMenuItem className="cursor-pointer">
                                             <Plus className="h-4 w-4 mr-2" />
                                             Add Product
@@ -495,7 +495,7 @@ export function Navbar() {
                             </DropdownMenuContent>
                         </DropdownMenu>
 
-                        {user && role === "admin" && (
+                        {user && (role === "ADMIN" || role === "admin") && (
                             <Link to="/admin">
                                 <Button variant="ghost" size="sm" className={styles.navButton}>
                                     <LayoutDashboard className={cn("h-4 w-4 mr-1.5", styles.navButtonIcon)} />
@@ -503,7 +503,7 @@ export function Navbar() {
                                 </Button>
                             </Link>
                         )}
-                        {user && role === "seller" && !isSuspended && (
+                        {user && (role === "DEALER" || role === "seller") && !isSuspended && (
                             <Link to="/seller/dashboard">
                                 <Button variant="ghost" size="sm" className={styles.navButton}>
                                     <Store className={cn("h-4 w-4 mr-1.5", styles.navButtonIcon)} />
@@ -511,7 +511,7 @@ export function Navbar() {
                                 </Button>
                             </Link>
                         )}
-                        {user && (role === "user" || isSuspended) && (
+                        {user && (role === "USER" || role === "user" || isSuspended) && (
                             <>
                                 <Link to={isSuspended ? "/tickets" : "/user/home"}>
                                     <Button

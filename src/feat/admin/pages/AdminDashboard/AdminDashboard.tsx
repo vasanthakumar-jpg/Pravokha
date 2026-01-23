@@ -48,9 +48,9 @@ export default function AdminDashboard() {
     const fetchRecentLogs = async () => {
       try {
         const response = await apiClient.get('/audit?limit=8');
-        const logs = response.data.data.map((log: any) => ({
+        const logs = (response.data.data || []).map((log: any) => ({
           ...log,
-          created_at: log.createdAt // Map for UI compatibility
+          created_at: log.createdAt || log.created_at || new Date().toISOString() // Map for UI compatibility
         }));
         setRecentLogs(logs);
       } catch (err) {

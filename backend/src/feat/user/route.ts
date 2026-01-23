@@ -1,10 +1,10 @@
 import { UserController } from './controller';
 import { PreferenceController } from './preferenceController';
 import { authenticate, authorize } from '../../shared/middleware/auth';
+import { Router } from 'express';
 
 const router = Router();
 
-router.get('/:id', authenticate, UserController.getProfile);
 router.patch('/profile', authenticate, UserController.updateProfile);
 router.get('/settings/dealer', authenticate, UserController.getDealerSettings);
 router.patch('/settings/dealer', authenticate, UserController.updateDealerSettings);
@@ -23,5 +23,8 @@ router.get('/', authenticate, authorize(['ADMIN']), UserController.listUsers);
 router.patch('/:id/status', authenticate, authorize(['ADMIN']), UserController.updateUserStatus);
 router.patch('/:id/role', authenticate, authorize(['ADMIN']), UserController.updateUserRole);
 router.post('/:id/verify', authenticate, authorize(['ADMIN']), UserController.verifySeller);
+
+// Profile by ID - MUST be last to avoid catching other routes
+router.get('/:id', authenticate, UserController.getProfile);
 
 export default router;

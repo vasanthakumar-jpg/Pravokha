@@ -178,7 +178,8 @@ export default function AdminProductsManagement() {
   const dynamicCategories = useMemo(() => {
     const counts: Record<string, number> = {};
     products.forEach(p => {
-      counts[p.category] = (counts[p.category] || 0) + 1;
+      const cat = typeof p.category === 'object' ? p.category?.name : (p.category || "Uncategorized");
+      counts[cat] = (counts[cat] || 0) + 1;
     });
     return Object.entries(counts).map(([name, count]) => ({ name, count }));
   }, [products]);
@@ -189,16 +190,20 @@ export default function AdminProductsManagement() {
     // Search
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
-      filtered = filtered.filter(p =>
-        p.title.toLowerCase().includes(q) ||
-        p.sku?.toLowerCase().includes(q) ||
-        p.category.toLowerCase().includes(q)
-      );
+      filtered = filtered.filter(p => {
+        const catName = typeof p.category === 'object' ? p.category?.name : (p.category || "");
+        return (p.title || "").toLowerCase().includes(q) ||
+          (p.sku || "").toLowerCase().includes(q) ||
+          (catName || "").toLowerCase().includes(q);
+      });
     }
 
     // Filters
     if (categoryFilter !== "all") {
-      filtered = filtered.filter(p => p.category === categoryFilter);
+      filtered = filtered.filter(p => {
+        const catName = typeof p.category === 'object' ? p.category?.name : (p.category || "");
+        return catName === categoryFilter;
+      });
     }
     if (statusFilter !== "all") {
       filtered = filtered.filter(p => statusFilter === "published" ? p.published : !p.published);
@@ -222,13 +227,13 @@ export default function AdminProductsManagement() {
     const headers = ["ID", "SKU", "Name", "Category", "Price", "Stock", "Status", "Created"];
     const rows = filteredProducts.map(p => [
       p.id,
-      p.sku,
-      `"${p.title.replace(/"/g, '""')}"`,
-      p.category,
-      p.price,
-      p.total_stock,
+      p.sku || "N/A",
+      `"${(p.title || "No Title").replace(/"/g, '""')}"`,
+      typeof p.category === 'object' ? p.category?.name : (p.category || "Uncategorized"),
+      p.price || 0,
+      p.total_stock || 0,
       p.published ? "Live" : "Draft",
-      new Date(p.created_at).toLocaleDateString()
+      p.created_at ? new Date(p.created_at).toLocaleDateString() : 'N/A'
     ]);
 
     const csvContent = "data:text/csv;charset=utf-8,"
@@ -456,7 +461,9 @@ export default function AdminProductsManagement() {
                         <TableRow key={product.id} className="border-border/50 hover:bg-muted/30 transition-colors group">
                           <TableCell>
                             <div className="w-12 h-12 rounded-xl bg-muted overflow-hidden border border-border/50 shadow-sm transition-transform group-hover:scale-105">
-                              {product.product_variants?.[0]?.images?.[0] ? (
+                              {product.variants?.[0]?.images?.[0] ? (
+                                <img src={product.variants[0].images[0]} className="w-full h-full object-cover" />
+                              ) : product.product_variants?.[0]?.images?.[0] ? (
                                 <img src={product.product_variants[0].images[0]} className="w-full h-full object-cover" />
                               ) : (
                                 <Package className="w-full h-full p-3 text-muted-foreground/50" />
@@ -468,12 +475,14 @@ export default function AdminProductsManagement() {
                               <div className="text-sm font-bold tracking-tight text-foreground/90">{product.title}</div>
                               <div className="text-[10px] font-mono text-muted-foreground flex items-center gap-1">
                                 SKU: {product.sku}
-                                {product.featured && <Badge className="h-3 px-1 text-[8px] bg-amber-500/10 text-amber-600 border-amber-500/20">FEATURED</Badge>}
+                                {(product.isFeatured || product.featured) && <Badge className="h-3 px-1 text-[8px] bg-amber-500/10 text-amber-600 border-amber-500/20">FEATURED</Badge>}
                               </div>
                             </div>
                           </TableCell>
                           <TableCell>
-                            <Badge variant="outline" className="text-[9px] font-bold rounded-lg border-border/50 bg-background/50">{product.category.toUpperCase()}</Badge>
+                            <Badge variant="outline" className="text-[9px] font-bold rounded-lg border-border/50 bg-background/50">
+                              {(typeof product.category === 'object' ? product.category?.name : (product.category || "N/A")).toUpperCase()}
+                            </Badge>
                           </TableCell>
                           <TableCell>
                             <div className="flex flex-col">
@@ -536,7 +545,9 @@ export default function AdminProductsManagement() {
                   {filteredProducts.map((product) => (
                     <div key={product.id} className="flex gap-3 bg-card border border-border/60 p-3 rounded-xl shadow-sm">
                       <div className="h-16 w-16 min-w-[4rem] rounded-lg bg-muted overflow-hidden border border-border/50">
-                        {product.product_variants?.[0]?.images?.[0] ? (
+                        {product.variants?.[0]?.images?.[0] ? (
+                          <img src={product.variants[0].images[0]} className="w-full h-full object-cover" />
+                        ) : product.product_variants?.[0]?.images?.[0] ? (
                           <img src={product.product_variants[0].images[0]} className="w-full h-full object-cover" />
                         ) : (
                           <div className="flex items-center justify-center h-full w-full bg-muted/50">
@@ -572,9 +583,11 @@ export default function AdminProductsManagement() {
                           <p className="text-[10px] text-muted-foreground font-mono truncate">{product.sku}</p>
                         </div>
                         <div className="flex items-center justify-between mt-2">
-                          <div className="flex items-center gap-1.5">
-                            <Badge variant="outline" className="text-[9px] h-4 px-1">{product.category}</Badge>
-                            <span className="font-bold text-sm">₹{product.price.toLocaleString()}</span>
+                          <div className="flex items-center gap-1.5 slice">
+                            <Badge variant="outline" className="text-[9px] h-4 px-1">
+                              {typeof product.category === 'object' ? product.category?.name : (product.category || "N/A")}
+                            </Badge>
+                            <span className="font-bold text-sm">₹{(product.price || 0).toLocaleString()}</span>
                           </div>
                           <Badge
                             variant={product.published ? "default" : "secondary"}
@@ -643,7 +656,9 @@ export default function AdminProductsManagement() {
                       </div>
                     </div>
                     <CardHeader className="p-4 space-y-1">
-                      <div className="text-[10px] font-semibold text-primary tracking-widest">{product.category}</div>
+                      <div className="text-[10px] font-semibold text-primary tracking-widest">
+                        {typeof product.category === 'object' ? product.category?.name : (product.category || "N/A")}
+                      </div>
                       <CardTitle className="text-sm font-heading font-semibold tracking-tight flex items-center justify-between">
                         {product.title}
                         <span className="font-mono text-[9px] text-muted-foreground opacity-50">{product.sku}</span>

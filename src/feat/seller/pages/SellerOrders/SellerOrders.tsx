@@ -96,7 +96,7 @@ export default function SellerOrders() {
       const response = await apiClient.get("/orders", { params });
 
       if (response.data.success) {
-        const orders = response.data.orders || [];
+        const orders = (response.data.data || response.data.orders || []);
         // Transform to match component's expected interface
         const transformedOrders = orders.map((order: any) => ({
           id: order.id,
@@ -113,7 +113,7 @@ export default function SellerOrders() {
           customer_phone: order.customerPhone,
         }));
         setOrders(transformedOrders);
-        setTotalCount(response.data.total || orders.length);
+        setTotalCount(response.data.meta?.total || response.data.total || orders.length);
       }
     } catch (error) {
       console.error("Error loading orders:", error);

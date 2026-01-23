@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
+import path from 'path';
 import rateLimit from 'express-rate-limit';
 import { errorHandler } from '../shared/middleware/error';
 import authRoutes from '../feat/auth/route';
@@ -17,9 +18,12 @@ import auditRoutes from '../feat/audit/route';
 import categoryRoutes from '../feat/category/route';
 import uploadRoutes from '../feat/upload/route';
 import wishlistRoutes from '../feat/wishlist/route';
-import reviewRoutes from '../feat/review/review.route';
+import reviewRoutes from '../feat/review/route';
 import newsletterRoutes from '../feat/newsletter/route';
 import homeRoutes from '../feat/home/route';
+import analyticsRoutes from '../feat/analytics/route';
+import reportRoutes from '../feat/report/route';
+import comboOfferRoutes from '../feat/combo-offer/route';
 import { WebhookController } from '../feat/webhook/controller';
 
 const app = express();
@@ -28,11 +32,12 @@ const app = express();
 app.use(helmet());
 app.use(cors());
 app.use(morgan('dev'));
+app.use('/uploads', express.static(path.join(__dirname, '../../../uploads')));
 
 // Rate Limiting
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    limit: 100, // Limit each IP to 100 requests per 15 minutes
+    limit: 500, // Increased limit for dev/staging
 });
 app.use(limiter);
 
@@ -63,6 +68,9 @@ app.use('/api/wishlist', wishlistRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/newsletter', newsletterRoutes);
 app.use('/api/home', homeRoutes);
+app.use('/api/analytics', analyticsRoutes);
+app.use('/api/reports', reportRoutes);
+app.use('/api/combo-offers', comboOfferRoutes);
 
 // Error Handling
 app.use(errorHandler);

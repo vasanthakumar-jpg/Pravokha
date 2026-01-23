@@ -1,15 +1,17 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, ReactNode, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiClient } from "@/infra/api/apiClient";
 
-export type UserRole = "ADMIN" | "DEALER" | "USER" | null;
+export type UserRole = "ADMIN" | "DEALER" | "USER" | "admin" | "seller" | "user" | null;
 
 interface User {
   id: string;
   email: string;
-  name: string;
+  name: string | null;
   role: UserRole;
   status?: string;
+  avatar_url?: string;
+  verificationStatus: string;
 }
 
 interface AuthContextType {
@@ -21,6 +23,8 @@ interface AuthContextType {
   signOut: () => void;
   refreshProfile: () => Promise<void>;
   authError: string | null;
+  isSuspended: boolean;
+  verificationStatus: string;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -46,13 +50,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      // We need a /me or /profile endpoint to verify token and get user info
-      const response = await apiClient.get('/auth/me'); // I should add this endpoint if it doesn't exist
-      setUser(response.data.user);
-      setRole(response.data.user.role);
-    } catch (error) {
+      const response = await apiClient.get('/auth/me');
+      const userData = response.data.user;
+      setUser({
+        ...userData,
+        avatar_url: userData.avatarUrl,
+        verificationStatus: userData.verificationStatus
+      });
+      setRole(userData.role);
+      setAuthError(null);
+    } catch (error: any) {
       console.error("Auth initialization failed:", error);
-      localStorage.removeItem('pravokha_auth_token');
+      if (error.code === 'ERR_NETWORK' || !error.response) {
+        setAuthError("Unable to connect to the server. Please ensure the backend is running on port 5000.");
+      } else {
+        localStorage.removeItem('pravokha_auth_token');
+        setUser(null);
+        setRole(null);
+      }
     } finally {
       setLoading(false);
     }
@@ -72,7 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem('pravokha_user_role', user.role);
       localStorage.setItem('pravokha_user_id', user.id);
 
-      setUser(user);
+      setUser({ ...user, avatar_url: user.avatarUrl, verificationStatus: user.verificationStatus });
       setRole(user.role);
       setAuthError(null);
     } catch (error: any) {
@@ -94,7 +109,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem('pravokha_user_role', user.role);
       localStorage.setItem('pravokha_user_id', user.id);
 
-      setUser(user);
+      setUser({ ...user, avatar_url: user.avatarUrl, verificationStatus: user.verificationStatus });
       setRole(user.role);
       setAuthError(null);
     } catch (error: any) {
@@ -115,21 +130,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     navigate('/auth');
   };
 
-  const refreshProfile = async () => {
+  const refreshProfile = useCallback(async () => {
     await initializeAuth();
-  };
+  }, []);
+
+  const contextValue = useMemo(() => ({
+    user,
+    role,
+    loading,
+    login,
+    register,
+    signOut,
+    refreshProfile,
+    authError,
+    isSuspended: user?.status === 'suspended',
+    verificationStatus: user?.verificationStatus || 'unverified'
+  }), [user, role, loading, authError, login, register, signOut, refreshProfile]);
 
   return (
-    <AuthContext.Provider value={{
-      user,
-      role,
-      loading,
-      login,
-      register,
-      signOut,
-      refreshProfile,
-      authError
-    }}>
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );

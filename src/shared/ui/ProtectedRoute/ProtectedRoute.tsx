@@ -5,7 +5,7 @@ import styles from "./ProtectedRoute.module.css";
 
 interface ProtectedRouteProps {
     children: React.ReactNode;
-    allowedRoles: ("admin" | "seller" | "user" | "moderator")[];
+    allowedRoles: ("ADMIN" | "DEALER" | "USER" | "MODERATOR" | "admin" | "seller" | "user")[];
     redirectTo?: string;
 }
 
@@ -20,9 +20,16 @@ export function ProtectedRoute({ children, allowedRoles, redirectTo = "/auth" }:
         return <Navigate to={redirectTo} state={{ from: location.pathname }} replace />;
     }
 
-    const effectiveRole = role || "user";
-    const isMerchantRoute = allowedRoles.includes("seller") && location.pathname.startsWith("/seller");
-    const hasAccess = (!allowedRoles || allowedRoles.includes(effectiveRole)) && !(isMerchantRoute && isSuspended);
+    const effectiveRole = (role || "USER").toUpperCase();
+    const uppercaseAllowedRoles = allowedRoles.map(r => {
+        if (r === "admin") return "ADMIN";
+        if (r === "seller") return "DEALER";
+        if (r === "user") return "USER";
+        return r.toUpperCase();
+    });
+
+    const isMerchantRoute = (uppercaseAllowedRoles.includes("DEALER") || allowedRoles.includes("seller")) && location.pathname.startsWith("/seller");
+    const hasAccess = (!allowedRoles || uppercaseAllowedRoles.includes(effectiveRole)) && !(isMerchantRoute && isSuspended);
 
     if (!hasAccess) {
         return <Navigate to={isSuspended ? "/tickets" : "/"} replace />;

@@ -20,14 +20,12 @@ export function NotificationBell() {
     const [open, setOpen] = useState(false);
 
     useEffect(() => {
-        if (user) {
+        if (user?.id) {
             fetchNotifications();
-            // TODO: Implement WebSocket for real-time updates
-            // For now, poll every 30 seconds
-            const interval = setInterval(fetchNotifications, 30000);
+            const interval = setInterval(fetchNotifications, 60000); // Increased to 60s
             return () => clearInterval(interval);
         }
-    }, [user]);
+    }, [user?.id]);
 
     const fetchNotifications = async () => {
         try {

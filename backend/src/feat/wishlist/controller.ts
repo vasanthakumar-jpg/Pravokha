@@ -1,5 +1,5 @@
 import { Response } from 'express';
-import { prisma } from '../../core/db';
+import { prisma } from '../../infra/database/client';
 import { asyncHandler } from '../../utils/asyncHandler';
 
 export class WishlistController {
@@ -58,7 +58,8 @@ export class WishlistController {
 
     static checkStatus = asyncHandler(async (req: any, res: Response) => {
         const userId = req.user.id;
-        const { productId } = req.query;
+        // Support productId from both query params and URL params
+        const productId = req.params.productId || req.query.productId;
 
         if (!productId) {
             return res.status(400).json({ success: false, message: 'Product ID is required' });

@@ -179,7 +179,7 @@ export default function AdminUsers() {
     return users.filter(user => {
       const matchesSearch =
         user.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        user.full_name?.toLowerCase().includes(searchQuery.toLowerCase());
+        user.name?.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesRole = roleFilter === "all" || user.role === roleFilter;
       return matchesSearch && matchesRole;
     });
@@ -188,8 +188,8 @@ export default function AdminUsers() {
   const stats = useMemo(() => {
     return {
       total: users.length,
-      admins: users.filter(u => u.role === 'admin').length,
-      sellers: users.filter(u => u.role === 'seller').length,
+      admins: users.filter(u => u.role === 'ADMIN' || u.role === 'admin').length,
+      sellers: users.filter(u => u.role === 'DEALER' || u.role === 'seller').length,
       suspended: users.filter(u => u.status === 'suspended').length
     };
   }, [users]);
@@ -322,7 +322,7 @@ export default function AdminUsers() {
                       <Avatar className="h-8 w-8 rounded-lg border border-border/40">
                         <AvatarImage src={user.avatarUrl || ""} aria-label={user.name || user.email} />
                         <AvatarFallback className="bg-primary/5 text-primary font-bold text-[10px]">
-                          {user.full_name?.charAt(0) || user.email.charAt(0)}
+                          {user.name?.charAt(0) || user.email.charAt(0)}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex flex-col min-w-0">
@@ -332,8 +332,8 @@ export default function AdminUsers() {
                     </div>
                     <Badge variant="outline" className={cn(
                       "px-2 py-0.5 rounded-full text-[9px] font-bold border-border/60 ml-2 shrink-0 self-start hover:bg-transparent shadow-none capitalize",
-                      user.role === 'admin' ? "bg-primary/10 text-primary border-primary/20" :
-                        user.role === 'seller' ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" :
+                      user.role === 'ADMIN' || user.role === 'admin' ? "bg-primary/10 text-primary border-primary/20" :
+                        user.role === 'DEALER' || user.role === 'seller' ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" :
                           "bg-muted/10 text-muted-foreground"
                     )}>
                       {user.role}
@@ -416,7 +416,7 @@ export default function AdminUsers() {
                               <Avatar className="h-10 w-10 rounded-xl border border-border/40 relative z-10">
                                 <AvatarImage src={user.avatarUrl || ""} aria-label={user.name || user.email} />
                                 <AvatarFallback className="bg-primary/5 text-primary font-bold text-xs">
-                                  {user.full_name?.charAt(0) || user.email.charAt(0)}
+                                  {user.name?.charAt(0) || user.email.charAt(0)}
                                 </AvatarFallback>
                               </Avatar>
                               <div className="flex flex-col min-w-0">
@@ -428,8 +428,8 @@ export default function AdminUsers() {
                           <TableCell className="text-center">
                             <Badge variant="outline" className={cn(
                               "px-3 py-0.5 rounded-full text-[10px] font-bold border-border/60 hover:bg-transparent shadow-none",
-                              user.role === 'admin' ? "bg-primary/10 text-primary border-primary/20" :
-                                user.role === 'seller' ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" :
+                              user.role === 'ADMIN' || user.role === 'admin' ? "bg-primary/10 text-primary border-primary/20" :
+                                user.role === 'DEALER' || user.role === 'seller' ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" :
                                   "bg-muted/10 text-muted-foreground"
                             )}>
                               {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
@@ -443,7 +443,7 @@ export default function AdminUsers() {
                               )}>
                                 {user.status}
                               </Badge>
-                              {user.role === 'seller' && (
+                              {(user.role === 'DEALER' || user.role === 'seller') && (
                                 <Badge variant="outline" className={cn(
                                   "text-[8px] font-bold px-1.5 py-0 h-4 border-none shadow-none hover:bg-transparent",
                                   user.verificationStatus === 'verified' ? "text-emerald-500/70" :

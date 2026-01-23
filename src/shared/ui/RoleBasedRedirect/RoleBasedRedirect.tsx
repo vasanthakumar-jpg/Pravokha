@@ -40,20 +40,20 @@ export function RoleBasedRedirect() {
             return;
         }
 
-        if (currentPath.startsWith('/admin') && role === 'admin') {
+        if (currentPath.startsWith('/admin') && (role === 'ADMIN' || role === 'admin')) {
             return;
         }
 
-        if (currentPath.startsWith('/seller') && role === 'seller') {
+        if (currentPath.startsWith('/seller') && (role === 'DEALER' || role === 'seller')) {
             return;
         }
 
-        if (currentPath.startsWith('/auth')) {
-            if (role === 'admin') {
-                navigate('/admin', { replace: true });
-            } else if (role === 'seller') {
-                navigate('/seller', { replace: true });
-            } else if (role === 'user') {
+        if (currentPath.startsWith('/auth') || currentPath === '/') {
+            if (role === 'ADMIN' || role === 'admin') {
+                if (currentPath !== '/admin') navigate('/admin', { replace: true });
+            } else if (role === 'DEALER' || role === 'seller') {
+                if (!currentPath.startsWith('/seller')) navigate('/seller', { replace: true });
+            } else if (currentPath.startsWith('/auth') && (role === 'USER' || role === 'user')) {
                 navigate('/', { replace: true });
             }
             return;

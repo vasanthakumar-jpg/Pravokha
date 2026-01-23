@@ -93,7 +93,7 @@ export function ProductCard({ product }: ProductCardProps) {
         }
     };
 
-    const firstVariant = product.variants[0];
+    const firstVariant = product.variants?.[0] || { id: 'none', colorName: 'None', colorHex: '#ccc', images: ['https://placehold.co/600x600/e2e8f0/64748b?text=No+Image'], sizes: [] };
     const [selectedVariant] = useState(firstVariant);
     const hasDiscount = product.discountPrice && product.discountPrice < product.price;
     const discountPercent = hasDiscount
@@ -103,8 +103,8 @@ export function ProductCard({ product }: ProductCardProps) {
     const handleQuickAdd = (e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        const firstAvailableSize = firstVariant.sizes.find((s) => s.stock > 0);
-        if (firstAvailableSize) {
+        const firstAvailableSize = firstVariant?.sizes?.find((s: any) => s.stock > 0);
+        if (firstAvailableSize && firstVariant.id !== 'none') {
             addToCart({
                 productId: product.id,
                 variantId: firstVariant.id,
@@ -120,6 +120,12 @@ export function ProductCard({ product }: ProductCardProps) {
             toast({
                 title: "Added to cart",
                 description: `${product.title} has been added to your cart`,
+            });
+        } else {
+            toast({
+                title: "Unavailable",
+                description: "This product variant is currently unavailable.",
+                variant: "destructive"
             });
         }
     };
@@ -240,7 +246,7 @@ export function ProductCard({ product }: ProductCardProps) {
                         </div>
 
                         {(() => {
-                            const totalStock = product.variants.reduce((acc, variant) => acc + variant.sizes.reduce((sAcc, size) => sAcc + size.stock, 0), 0);
+                            const totalStock = (product.variants || []).reduce((acc, variant) => acc + (variant.sizes || []).reduce((sAcc, size) => sAcc + (size.stock || 0), 0), 0);
 
                             if (totalStock === 0) {
                                 return (
@@ -266,7 +272,7 @@ export function ProductCard({ product }: ProductCardProps) {
                         size="icon"
                         className={styles.cartButton}
                         onClick={handleQuickAdd}
-                        disabled={product.variants.every(v => v.sizes.every(s => s.stock === 0))}
+                        disabled={!product.variants || product.variants.length === 0 || product.variants.every(v => !v.sizes || v.sizes.every(s => s.stock === 0))}
                     >
                         <ShoppingCart className="h-4 w-4 sm:h-5 sm:w-5" />
                     </Button>

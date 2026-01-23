@@ -128,11 +128,15 @@ export default function AdminProductForm() {
     useEffect(() => {
         const fetchHierarchy = async () => {
             try {
-                const { data: cats } = await apiClient.get('/categories');
-                setDbCategories(cats || []);
+                const response = await apiClient.get('/categories');
+                setDbCategories(response.data.categories || []);
 
-                const { data: subs } = await apiClient.get('/subcategories');
-                setDbSubcategories(subs || []);
+                const subResponse = await apiClient.get('/categories/subcategories');
+                const subData = (subResponse.data.subcategories || []).map((sub: any) => ({
+                    ...sub,
+                    category_id: sub.categoryId || sub.category_id // Ensure compatibility
+                }));
+                setDbSubcategories(subData);
             } catch (err) {
                 console.error("[AdminProductForm] Error fetching hierarchy:", err);
             }
@@ -150,7 +154,13 @@ export default function AdminProductForm() {
 
             try {
                 console.log(`[AdminProductForm] Fetching product: ${id}`);
-                const { data: product } = await apiClient.get(`/products/${id}`);
+                const { data: response } = await apiClient.get(`/products/${id}`);
+                const product = response.data; // Access the inner data containing product details
+
+                if (!product) {
+                    toast({ title: "Error", description: "Product data not found", variant: "destructive" });
+                    return;
+                }
 
                 const colors: ColorOption[] = [];
                 const sizes: string[] = [];
@@ -158,14 +168,21 @@ export default function AdminProductForm() {
                 const sizeStockMap: Record<string, number> = {};
                 let totalStock = 0;
 
-                if (product.product_variants) {
-                    product.product_variants.forEach((v: any) => {
-                        // Stable ID logic
+                // SUPPORT BOTH CAMELCASE (Backend) AND SNAKE_CASE (Possible future standard)
+                const variants = product.variants || product.product_variants || [];
+
+                if (variants.length > 0) {
+                    variants.forEach((v: any) => {
+                        // Stable ID logic - prefer existing database IDs
                         let colorId = v.id;
-                        const existingColor = colors.find(c => c.name === v.color_name);
+                        const existingColor = colors.find(c => c.name === v.color_name || c.name === v.colorName);
 
                         if (!existingColor) {
-                            colors.push({ id: colorId, name: v.color_name, hex: v.color_hex });
+                            colors.push({
+                                id: colorId,
+                                name: v.color_name || v.colorName,
+                                hex: v.color_hex || v.colorHex
+                            });
                             existingVariantImages[colorId] = v.images || [];
                         } else {
                             colorId = existingColor.id;
@@ -174,10 +191,11 @@ export default function AdminProductForm() {
                             });
                         }
 
-                        if (v.product_sizes) {
-                            v.product_sizes.forEach((s: any) => {
+                        const sizesData = v.sizes || v.product_sizes || [];
+                        if (sizesData.length > 0) {
+                            sizesData.forEach((s: any) => {
                                 if (!sizes.includes(s.size)) sizes.push(s.size);
-                                const sizeKey = getStockKey(v.color_name, s.size);
+                                const sizeKey = getStockKey(v.color_name || v.colorName, s.size);
                                 sizeStockMap[sizeKey] = (sizeStockMap[sizeKey] || 0) + s.stock;
                                 totalStock += s.stock;
                             });
@@ -190,16 +208,16 @@ export default function AdminProductForm() {
                     slug: product.slug || "",
                     sku: product.sku || "",
                     description: product.description || "",
-                    category: product.category || "",
-                    selectedCategoryId: product.category_id || "",
-                    selectedSubcategoryId: product.subcategory_id || "",
-                    price: product.price?.toString() || "",
-                    discountPrice: product.discount_price?.toString() || "",
+                    category: product.category?.slug || product.category || "",
+                    selectedCategoryId: product.categoryId || product.category_id || "",
+                    selectedSubcategoryId: product.subcategoryId || product.subcategory_id || "",
+                    price: (product.price !== undefined ? product.price : product.base_price)?.toString() || "",
+                    discountPrice: (product.discountPrice !== undefined ? product.discountPrice : product.discount_price)?.toString() || "",
                     stockQuantity: totalStock.toString(),
-                    published: product.published ?? false,
-                    is_new: product.is_new ?? false,
-                    is_featured: product.is_featured ?? false,
-                    is_verified: product.is_verified ?? false,
+                    published: product.published ?? product.is_published ?? false,
+                    is_new: product.isNew ?? product.is_new ?? false,
+                    is_featured: product.isFeatured ?? product.is_featured ?? false,
+                    is_verified: product.isVerified ?? product.is_verified ?? false,
                     selectedColors: colors,
                     selectedSizes: sizes,
                     sizeStock: sizeStockMap,
@@ -444,8 +462,8 @@ export default function AdminProductForm() {
                 sku: formData.sku || `SKU-${Date.now()}`,
                 description: formData.description,
                 category: formData.category,
-                category_id: formData.selectedCategoryId, // Explicit ID
-                subcategory_id: formData.selectedSubcategoryId || null,
+                categoryId: formData.selectedCategoryId, // Match backend property
+                subcategoryId: formData.selectedSubcategoryId || null, // Match backend property
                 price: Number(formData.price),
                 discount_price: formData.discountPrice ? Number(formData.discountPrice) : null,
                 published: formData.published,

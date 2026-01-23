@@ -15,6 +15,7 @@ import { useTheme } from "next-themes";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/ui/Collapsible";
 import { useProfile } from "@/shared/hook/useProfile";
 import { useAuth } from "@/core/context/AuthContext";
+import { getMediaUrl } from "@/lib/utils";
 
 export function ProfilePage() {
     const navigate = useNavigate();
@@ -28,7 +29,7 @@ export function ProfilePage() {
         full_name: "",
         phone: "",
         address: "",
-        avatar_url: "",
+        avatar_url: user?.avatar_url || "",
     });
     const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
     const [recentOrders, setRecentOrders] = useState<any[]>([]);
@@ -104,7 +105,7 @@ export function ProfilePage() {
             const publicUrl = uploadResponse.data.urls[0];
 
             // Update profile with new avatar URL
-            const profileResponse = await apiClient.patch('/users/me', { avatarUrl: publicUrl });
+            const profileResponse = await apiClient.patch('/users/profile', { avatarUrl: publicUrl });
 
             if (!profileResponse.data.success) {
                 throw new Error('Profile update failed');
@@ -146,10 +147,11 @@ export function ProfilePage() {
 
         setSaving(true);
         try {
-            const response = await apiClient.patch("/users/me", {
+            const response = await apiClient.patch("/users/profile", {
                 name: profile.full_name,
                 phone: profile.phone,
                 address: profile.address,
+                avatarUrl: profile.avatar_url,
             });
 
             if (!response.data.success) {
@@ -267,7 +269,7 @@ export function ProfilePage() {
                         <div className="flex items-center gap-3 sm:gap-4">
                             <div className="relative">
                                 <Avatar className="h-16 w-16 sm:h-20 sm:w-20 md:h-24 md:w-24">
-                                    <AvatarImage src={avatarPreview || profile.avatar_url} alt="Profile" />
+                                    <AvatarImage src={avatarPreview || getMediaUrl(profile.avatar_url || user?.avatar_url)} alt="Profile" />
                                     <AvatarFallback className="text-lg sm:text-xl md:text-2xl bg-primary text-primary-foreground">
                                         {initials}
                                     </AvatarFallback>

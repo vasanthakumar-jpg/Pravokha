@@ -5,7 +5,7 @@ export class PayoutController {
     static async listPayouts(req: Request, res: Response, next: NextFunction) {
         try {
             const user = (req as any).user;
-            const payouts = await PayoutService.listPayouts(user.role);
+            const payouts = await PayoutService.listPayouts(user.role, user.id);
 
             res.status(200).json({
                 success: true,

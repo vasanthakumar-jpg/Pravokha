@@ -81,22 +81,23 @@ export default function AdminReports() {
       if (dateRange === '1y') startDate = subDays(now, 365);
 
       // 2. Fetch Orders
-      const { data: orders } = await apiClient.get('/orders', {
+      const response = await apiClient.get('/orders', {
         params: {
           after: startDate.toISOString(),
           limit: 1000 // Ensure we get significant data for analytics
         }
       });
+      const orders = response.data.data || [];
 
       // 3. Calculate KPI Stats
       const revenue = orders?.reduce((sum: number, order: any) => sum + (order.total || 0), 0) || 0;
       const orderCount = orders?.length || 0;
 
       // 4. Fetch Active Sellers (via users endpoint with filter)
-      const { data: sellers } = await apiClient.get('/users/admin/search', {
-        params: { role: 'seller' }
+      const sellerResponse = await apiClient.get('/users', {
+        params: { role: 'DEALER' }
       });
-      const sellerCount = sellers?.length || 0;
+      const sellerCount = sellerResponse.data.count || 0;
 
       setStats(prev => ({
         ...prev,
