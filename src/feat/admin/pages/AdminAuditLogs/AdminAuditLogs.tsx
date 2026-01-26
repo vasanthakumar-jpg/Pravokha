@@ -69,16 +69,16 @@ import { cn } from "@/lib/utils";
 
 interface AuditLog {
     id: string;
-    created_at: string;
-    action_type: string;
-    target_type: string;
-    target_id: string;
-    actor_id: string;
+    createdAt: string;
+    actionType: string;
+    targetType: string;
+    targetId: string;
+    actorId: string;
     description: string;
     metadata: any;
     severity: 'info' | 'warning' | 'critical';
-    profiles?: {
-        full_name: string;
+    actor?: {
+        name: string;
         email: string;
     };
 }
@@ -149,21 +149,8 @@ export default function AdminAuditLogs() {
             };
 
             const response = await apiClient.get('/audit', { params });
-            const data = response.data.logs.map((log: any) => ({
-                ...log,
-                created_at: log.createdAt,
-                action_type: log.actionType,
-                target_type: log.targetType,
-                target_id: log.targetId,
-                actor_id: log.actorId,
-                profiles: log.actor ? {
-                    full_name: log.actor.name,
-                    email: log.actor.email
-                } : undefined
-            }));
-
             setTotalCount(response.data.total || 0);
-            setLogs(data || []);
+            setLogs(response.data.logs || []);
         } catch (error: any) {
             toast({
                 title: "Fetch failed",
@@ -198,11 +185,11 @@ export default function AdminAuditLogs() {
     const exportToCSV = () => {
         const headers = ["Timestamp", "Description", "Action", "Principal", "Email", "Severity"];
         const rows = filteredLogs.map(log => [
-            log.created_at,
+            log.createdAt,
             log.description,
-            log.action_type,
-            log.profiles?.full_name || 'System',
-            log.profiles?.email || 'N/A',
+            log.actionType,
+            log.actor?.name || 'System',
+            log.actor?.email || 'N/A',
             log.severity
         ]);
 
@@ -447,11 +434,11 @@ export default function AdminAuditLogs() {
                                             <CardHeader className="p-4 bg-muted/20 border-b border-border/10 flex flex-row items-center justify-between space-y-0">
                                                 <div className="flex items-center gap-3">
                                                     <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                                                        {log.profiles?.full_name?.charAt(0) || <Activity className="h-4 w-4" />}
+                                                        {log.actor?.name?.charAt(0) || <Activity className="h-4 w-4" />}
                                                     </div>
                                                     <div className="flex flex-col">
-                                                        <span className="text-sm font-bold truncate max-w-[120px]">{log.profiles?.full_name || 'System'}</span>
-                                                        <span className="text-[10px] text-muted-foreground">{format(new Date(log.created_at), "MMM d, HH:mm")}</span>
+                                                        <span className="text-sm font-bold truncate max-w-[120px]">{log.actor?.name || 'System'}</span>
+                                                        <span className="text-[10px] text-muted-foreground">{format(new Date(log.createdAt), "MMM d, HH:mm")}</span>
                                                     </div>
                                                 </div>
                                                 {getSeverityBadge(log.severity)}
@@ -463,7 +450,7 @@ export default function AdminAuditLogs() {
                                                         View <ChevronRight className="ml-0.5 h-3 w-3" />
                                                     </Button>
                                                     <Badge variant="outline" className="px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-wider bg-primary/10 border-primary/20 text-primary whitespace-nowrap">
-                                                        {log.action_type.replace(/_/g, ' ')}
+                                                        {log.actionType.replace(/_/g, ' ')}
                                                     </Badge>
                                                 </div>
                                             </CardContent>
@@ -511,8 +498,8 @@ export default function AdminAuditLogs() {
                                                     >
                                                         <TableCell className="pl-6 py-4">
                                                             <div className="flex flex-col min-w-[100px]">
-                                                                <span className="text-sm font-medium">{format(new Date(log.created_at), "MMM d, yyyy")}</span>
-                                                                <span className="text-[10px] text-muted-foreground font-mono transition-opacity opacity-0 group-hover:opacity-100">{format(new Date(log.created_at), "HH:mm:ss")}</span>
+                                                                <span className="text-sm font-medium">{format(new Date(log.createdAt), "MMM d, yyyy")}</span>
+                                                                <span className="text-[10px] text-muted-foreground font-mono transition-opacity opacity-0 group-hover:opacity-100">{format(new Date(log.createdAt), "HH:mm:ss")}</span>
                                                             </div>
                                                         </TableCell>
                                                         <TableCell>
@@ -520,20 +507,20 @@ export default function AdminAuditLogs() {
                                                                 <span className="text-sm font-semibold leading-tight group-hover:text-primary transition-colors">{log.description.replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, '...')}</span>
                                                                 <div className="flex items-center gap-2">
                                                                     <Badge variant="outline" className="px-1.5 py-0 rounded text-[9px] font-bold bg-muted/50 border-border/40 text-muted-foreground">
-                                                                        {log.action_type.replace(/_/g, ' ')}
+                                                                        {log.actionType.replace(/_/g, ' ')}
                                                                     </Badge>
-                                                                    <span className="text-[9px] font-medium text-primary/60">{log.target_type}</span>
+                                                                    <span className="text-[9px] font-medium text-primary/60">{log.targetType}</span>
                                                                 </div>
                                                             </div>
                                                         </TableCell>
                                                         <TableCell>
                                                             <div className="flex items-center gap-3">
                                                                 <div className="h-8 w-8 rounded-lg bg-primary/5 border border-primary/10 flex items-center justify-center text-primary text-[10px] font-bold shadow-inner">
-                                                                    {log.profiles?.full_name?.charAt(0) || <Activity className="h-3 w-3" />}
+                                                                    {log.actor?.name?.charAt(0) || <Activity className="h-3 w-3" />}
                                                                 </div>
                                                                 <div className="flex flex-col min-w-0">
-                                                                    <span className="text-sm font-medium truncate max-w-[120px]">{log.profiles?.full_name || 'System'}</span>
-                                                                    <span className="text-[11px] text-muted-foreground/70 truncate max-w-[120px] opacity-60">{log.profiles?.email || 'automated'}</span>
+                                                                    <span className="text-sm font-medium truncate max-w-[120px]">{log.actor?.name || 'System'}</span>
+                                                                    <span className="text-[11px] text-muted-foreground/70 truncate max-w-[120px] opacity-60">{log.actor?.email || 'automated'}</span>
                                                                 </div>
                                                             </div>
                                                         </TableCell>
@@ -614,11 +601,11 @@ export default function AdminAuditLogs() {
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="space-y-1 p-3 rounded-2xl bg-muted/30 border border-border/40">
                                                 <span className="text-xs font-medium text-muted-foreground">Category</span>
-                                                <p className="text-xs font-bold text-primary truncate">{selectedLog.action_type.replace(/_/g, ' ')}</p>
+                                                <p className="text-xs font-bold text-primary truncate">{selectedLog.actionType.replace(/_/g, ' ')}</p>
                                             </div>
                                             <div className="space-y-1 p-3 rounded-2xl bg-muted/30 border border-border/40">
                                                 <span className="text-xs font-medium text-muted-foreground">Target</span>
-                                                <p className="text-xs font-bold text-emerald-600 truncate">{selectedLog.target_type}</p>
+                                                <p className="text-xs font-bold text-emerald-600 truncate">{selectedLog.targetType}</p>
                                             </div>
                                         </div>
                                     </div>
@@ -631,18 +618,18 @@ export default function AdminAuditLogs() {
                                                 </div>
                                                 <div className="flex flex-col">
                                                     <span className="text-xs font-medium text-muted-foreground">Principal actor</span>
-                                                    <span className="text-sm font-black truncate">{selectedLog.profiles?.full_name || 'System Principal'}</span>
+                                                    <span className="text-sm font-black truncate">{selectedLog.actor?.name || 'System Principal'}</span>
                                                 </div>
                                             </div>
                                         </div>
                                         <div className="p-6 space-y-4">
                                             <div className="flex items-center gap-2">
                                                 <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                                <span className="text-[10px] font-bold text-muted-foreground truncate">{selectedLog.profiles?.email || 'Automated Daemon'}</span>
+                                                <span className="text-[10px] font-bold text-muted-foreground truncate">{selectedLog.actor?.email || 'Automated Daemon'}</span>
                                             </div>
                                             <div className="pt-4 border-t border-border/20">
                                                 <span className="text-xs font-medium text-muted-foreground block mb-2">Actor ID hash</span>
-                                                <code className="text-[10px] font-bold bg-muted p-2 rounded-lg block truncate">{selectedLog.actor_id}</code>
+                                                <code className="text-[10px] font-bold bg-muted p-2 rounded-lg block truncate">{selectedLog.actorId}</code>
                                             </div>
                                         </div>
                                     </Card>
@@ -662,7 +649,7 @@ export default function AdminAuditLogs() {
                                             <Clock className="h-5 w-5 text-primary" />
                                             <div className="flex flex-col">
                                                 <span className="text-xs font-medium text-primary/60">Registry timestamp</span>
-                                                <span className="text-sm font-black italic">{format(new Date(selectedLog.created_at), "MMMM dd, yyyy • HH:mm:ss.SSS")}</span>
+                                                <span className="text-sm font-black italic">{format(new Date(selectedLog.createdAt), "MMMM dd, yyyy • HH:mm:ss.SSS")}</span>
                                             </div>
                                         </div>
                                         <ChevronRight className="h-5 w-5 text-primary opacity-20" />

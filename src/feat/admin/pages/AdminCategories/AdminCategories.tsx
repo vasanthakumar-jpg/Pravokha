@@ -35,6 +35,12 @@ export default function AdminCategories() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredCategories = categories.filter(cat =>
+    cat.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    cat.slug.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const [formData, setFormData] = useState({
     name: "",
@@ -216,8 +222,8 @@ export default function AdminCategories() {
             </Button>
             <div className="min-w-0">
               <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2">
-                Category Management
-                <span className="text-xs font-medium bg-primary/5 text-primary rounded-lg border border-primary/20 px-2 py-0.5">{categories.length} Total</span>
+                Categories
+                <span className="text-xs font-medium bg-primary/5 text-primary rounded-lg border border-primary/20 px-2 py-0.5">{filteredCategories.length} Total</span>
               </h1>
               <p className="text-xs sm:text-base text-muted-foreground mt-1">Organize product categories</p>
             </div>
@@ -411,8 +417,18 @@ export default function AdminCategories() {
         </div>
       </div>
 
+      {/* Search Bar */}
+      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 py-2">
+        <Input
+          placeholder="Search categories..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="max-w-md bg-card border-border/60 shadow-sm"
+        />
+      </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3 sm:gap-6">
-        {categories.map((category) => (
+        {filteredCategories.map((category) => (
           <Card key={category.id} className="group hover:border-primary/50 transition-all duration-300 bg-card borderFONborder/60 shadow-sm hover:shadow-md rounded-xl overflow-hidden">
             <CardHeader className="p-4 sm:p-5 pb-2">
               <CardTitle className="flex items-start justify-between gap-2">

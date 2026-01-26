@@ -52,7 +52,7 @@ export const requireOwnership = (options: OwnershipCheckOptions) => {
 
             // Fetch the resource to check ownership
             let resource: any;
-            
+
             switch (options.resourceType) {
                 case 'product':
                     resource = await prisma.product.findUnique({
@@ -60,7 +60,7 @@ export const requireOwnership = (options: OwnershipCheckOptions) => {
                         select: { id: true, dealerId: true }
                     });
                     break;
-                
+
                 case 'order':
                     resource = await prisma.order.findUnique({
                         where: { id: resourceId },
@@ -91,7 +91,7 @@ export const requireOwnership = (options: OwnershipCheckOptions) => {
 
             // Check ownership
             const ownerId = resource[options.ownerField];
-            
+
             // Special case for orders: DEALER can access if ANY item belongs to them
             if (options.resourceType === 'order' && req.user.role === Role.DEALER) {
                 const hasSellerItem = resource.items?.some((item: any) => item.sellerId === req.user!.id);
@@ -189,5 +189,43 @@ export const requireDealerOrderAccess = async (req: Request, res: Response, next
             success: false,
             message: 'Internal server error'
         });
+    }
+};
+
+/**
+ * Validates that the authenticated seller owns at least one item in the order.
+ */
+export const requireOrderOwnership = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        if (!req.user) {
+            return res.status(401).json({ success: false, message: 'Authentication required' });
+        }
+
+        // ADMIN bypasses all ownership checks
+        if (req.user.role === Role.ADMIN) {
+            return next();
+        }
+
+        const orderId = req.params.id || req.params.orderId;
+        if (!orderId) {
+            return res.status(400).json({ success: false, message: 'Order ID required for ownership check' });
+        }
+
+        // Import OrderService dynamically or at top. Using dynamic for clean separation if needed, but OrderService is already a static class.
+        // We need to import it at the top of the file ideally.
+        const { OrderService } = await import('../../feat/order/service');
+        const ownsOrder = await OrderService.verifySellerOwnsOrder(req.user.id, orderId);
+
+        if (!ownsOrder) {
+            return res.status(403).json({
+                success: false,
+                message: 'Forbidden: You do not have permission to modify this order as you do not own any items in it.'
+            });
+        }
+
+        next();
+    } catch (error) {
+        console.error('Order ownership error:', error);
+        return res.status(500).json({ success: false, message: 'Internal server error during authorization' });
     }
 };

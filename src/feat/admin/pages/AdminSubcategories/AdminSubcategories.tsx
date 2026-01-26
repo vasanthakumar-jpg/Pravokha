@@ -41,6 +41,13 @@ export default function AdminSubcategories() {
     const [dialogOpen, setDialogOpen] = useState(false);
     const [editingSubcategory, setEditingSubcategory] = useState<Subcategory | null>(null);
     const [errors, setErrors] = useState<Record<string, string>>({});
+    const [searchQuery, setSearchQuery] = useState("");
+
+    const filteredSubcategories = subcategories.filter(sub =>
+        sub.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        sub.slug.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (sub.categories?.name || "").toLowerCase().includes(searchQuery.toLowerCase())
+    );
 
     const [formData, setFormData] = useState({
         name: "",
@@ -52,16 +59,18 @@ export default function AdminSubcategories() {
         display_order: 0,
     });
 
+    const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
+
     // Auto-generate slug from name
     useEffect(() => {
-        if (formData.name && !editingSubcategory) {
+        if (formData.name && !editingSubcategory && !slugManuallyEdited) {
             const slug = formData.name
                 .toLowerCase()
                 .replace(/[^a-z0-9]+/g, "-")
                 .replace(/(^-|-$)+/g, "");
             setFormData(prev => ({ ...prev, slug }));
         }
-    }, [formData.name, editingSubcategory]);
+    }, [formData.name, editingSubcategory, slugManuallyEdited]);
 
     useEffect(() => {
         if (!adminLoading && !isAdmin) {
@@ -190,6 +199,7 @@ export default function AdminSubcategories() {
             display_order: 0,
         });
         setErrors({});
+        setSlugManuallyEdited(false);
     };
 
     if (adminLoading || loading) {
@@ -210,10 +220,10 @@ export default function AdminSubcategories() {
                     </Button>
                     <div>
                         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2">
-                            Subcategory Management
-                            <Badge variant="outline" className="text-xs font-medium bg-primary/5 rounded-lg border-primary/20">{subcategories.length} Total</Badge>
+                            Subcategories
+                            <Badge variant="outline" className="text-xs font-medium bg-primary/5 rounded-lg border-primary/20">{filteredSubcategories.length} Total</Badge>
                         </h1>
-                        <p className="text-xs sm:text-base text-muted-foreground mt-1">Manage product subcategories within categories</p>
+                        <p className="text-xs sm:text-base text-muted-foreground mt-1">Manage product subcategories</p>
                     </div>
                 </div>
                 <Dialog open={dialogOpen} onOpenChange={(open) => {
@@ -279,6 +289,7 @@ export default function AdminSubcategories() {
                                         setFormData({ ...formData, slug: e.target.value });
                                         if (errors.slug) setErrors({ ...errors, slug: "" });
                                     }}
+                                    onBlur={() => setSlugManuallyEdited(true)}
                                     className={errors.slug ? "border-destructive" : ""}
                                 />
                                 {errors.slug && <p className="text-xs text-destructive">{errors.slug}</p>}
@@ -335,8 +346,20 @@ export default function AdminSubcategories() {
                 </Dialog>
             </div>
 
+
+
+            {/* Search Bar */}
+            <div className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 py-2">
+                <Input
+                    placeholder="Search subcategories..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="max-w-md bg-card border-border/60 shadow-sm"
+                />
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {subcategories.map((subcategory) => (
+                {filteredSubcategories.map((subcategory) => (
                     <Card key={subcategory.id} className="hover:border-primary/50 transition-all">
                         <CardHeader className="pb-3">
                             <CardTitle className="flex items-start justify-between gap-2">
@@ -389,6 +412,6 @@ export default function AdminSubcategories() {
                     </Card>
                 ))}
             </div>
-        </div>
+        </div >
     );
 }

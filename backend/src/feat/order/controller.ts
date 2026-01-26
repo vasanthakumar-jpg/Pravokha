@@ -114,17 +114,59 @@ export class OrderController {
     static async updateStatus(req: Request, res: Response, next: NextFunction) {
         try {
             const { id } = req.params;
-            const { status, trackingUpdates } = req.body;
+            const { status, trackingNumber, trackingCarrier, trackingUpdates, version } = req.body;
             const user = (req as any).user;
 
-            const order = await OrderService.updateOrderStatus(id, status, trackingUpdates, user.role);
+            const order = await OrderService.updateOrderStatus(id, status, {
+                userId: user.id,
+                role: user.role,
+                trackingNumber,
+                trackingCarrier,
+                trackingUpdates,
+                version: version !== undefined ? parseInt(version.toString()) : undefined
+            });
 
             res.status(200).json({
                 success: true,
                 message: 'Order status updated successfully',
                 data: order,
             });
-        } catch (error) {
+        } catch (error: any) {
+            if (error.message.includes('Concurrency conflict')) {
+                return res.status(409).json({ success: false, message: error.message });
+            }
+            if (error.message.includes('Unauthorized') || error.message.includes('Forbidden')) {
+                return res.status(403).json({ success: false, message: error.message });
+            }
+            if (error.message.includes('Invalid status transition') || error.message.includes('Required field missing')) {
+                return res.status(400).json({ success: false, message: error.message });
+            }
+            next(error);
+        }
+    }
+
+    static async ship(req: Request, res: Response, next: NextFunction) {
+        try {
+            const { id } = req.params;
+            const { trackingNumber, trackingCarrier, version } = req.body;
+            const user = (req as any).user;
+
+            const order = await OrderService.markOrderAsShipped(id, {
+                sellerId: user.id,
+                trackingNumber,
+                trackingCarrier,
+                version: version !== undefined ? parseInt(version.toString()) : undefined
+            });
+
+            res.status(200).json({
+                success: true,
+                message: 'Order marked as shipped successfully',
+                data: order,
+            });
+        } catch (error: any) {
+            if (error.message.includes('Concurrency conflict')) {
+                return res.status(409).json({ success: false, message: error.message });
+            }
             next(error);
         }
     }

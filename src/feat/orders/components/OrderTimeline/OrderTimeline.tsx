@@ -23,8 +23,9 @@ export function OrderTimeline({ status, trackingUpdates = [], createdAt, onDelet
     const statuses = [
         { key: "pending", label: "Order Placed", icon: Clock },
         { key: "confirmed", label: "Confirmed", icon: CheckCircle2 },
+        { key: "packed", label: "Packed", icon: Package },
         { key: "shipped", label: "Shipped", icon: Truck },
-        { key: "delivered", label: "Delivered", icon: Package },
+        { key: "delivered", label: "Delivered", icon: CheckCircle2 },
     ];
 
     const getStatusIndex = (statusKey: string) => {

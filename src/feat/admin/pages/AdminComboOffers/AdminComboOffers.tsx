@@ -24,15 +24,15 @@ interface ComboOffer {
   id: string;
   title: string;
   description: string;
-  product_ids: string[];
-  original_price: number;
-  combo_price: number;
-  discount_percentage: number;
+  productIds: string[];
+  originalPrice: number;
+  comboPrice: number;
+  discountPercentage: number;
   active: boolean;
-  start_date: string | null;
-  end_date: string | null;
-  image_url: string | null;
-  created_at: string;
+  startDate: string | null;
+  endDate: string | null;
+  imageUrl: string | null;
+  createdAt: string;
 }
 
 export default function AdminComboOffers() {
@@ -46,13 +46,13 @@ export default function AdminComboOffers() {
   const [formData, setFormData] = useState({
     title: "",
     description: "",
-    product_ids: "",
-    original_price: "",
-    combo_price: "",
-    discount_percentage: "",
-    start_date: "",
-    end_date: "",
-    image_url: "",
+    productIds: "",
+    originalPrice: "",
+    comboPrice: "",
+    discountPercentage: "",
+    startDate: "",
+    endDate: "",
+    imageUrl: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -69,8 +69,19 @@ export default function AdminComboOffers() {
     try {
       setLoading(true);
       const { data } = await apiClient.get('/combo-offers');
-      // Standardize response extraction: backend returns { success: true, comboOffers: [...] }
-      setOffers(data.comboOffers || data.data || data || []);
+      // Standardize response extraction and map fields to ensure non-null values
+      const rawOffers = data.comboOffers || data.data || data || [];
+      const mappedOffers = rawOffers.map((offer: any) => ({
+        ...offer,
+        productIds: Array.isArray(offer.productIds) ? offer.productIds : [],
+        originalPrice: offer.originalPrice || 0,
+        comboPrice: offer.comboPrice || 0,
+        discountPercentage: offer.discountPercentage || 0,
+        startDate: offer.startDate || null,
+        endDate: offer.endDate || null,
+        imageUrl: offer.imageUrl || null
+      }));
+      setOffers(mappedOffers);
     } catch (err: any) {
       console.error("[AdminComboOffers] Error fetching offers:", err);
       toast({
@@ -106,7 +117,7 @@ export default function AdminComboOffers() {
       });
 
       if (data?.urls?.[0]) {
-        setFormData(prev => ({ ...prev, image_url: data.urls[0] }));
+        setFormData(prev => ({ ...prev, imageUrl: data.urls[0] }));
         toast({ title: "✓ Asset Uploaded", description: "Thumbnail ready." });
       }
 
@@ -126,25 +137,25 @@ export default function AdminComboOffers() {
     if (!formData.title.trim()) newErrors.title = "Title is required.";
     if (!formData.description.trim()) newErrors.description = "Description is required.";
 
-    if (!formData.product_ids.trim()) {
-      newErrors.product_ids = "At least one Product ID is required.";
+    if (!formData.productIds.trim()) {
+      newErrors.productIds = "At least one Product ID is required.";
     } else {
-      const ids = formData.product_ids.split(",").map(s => s.trim());
-      if (ids.some(id => !id)) newErrors.product_ids = "Invalid Product ID format.";
+      const ids = formData.productIds.split(",").map(s => s.trim());
+      if (ids.some(id => !id)) newErrors.productIds = "Invalid Product ID format.";
     }
 
-    if (!formData.original_price || parseFloat(formData.original_price) <= 0) {
-      newErrors.original_price = "Original price must be greater than 0.";
+    if (!formData.originalPrice || parseFloat(formData.originalPrice) <= 0) {
+      newErrors.originalPrice = "Original price must be greater than 0.";
     }
-    if (!formData.combo_price || parseFloat(formData.combo_price) <= 0) {
-      newErrors.combo_price = "Combo price must be greater than 0.";
+    if (!formData.comboPrice || parseFloat(formData.comboPrice) <= 0) {
+      newErrors.comboPrice = "Combo price must be greater than 0.";
     }
-    if (parseFloat(formData.combo_price) >= parseFloat(formData.original_price)) {
-      newErrors.combo_price = "Combo price must be less than original price.";
+    if (parseFloat(formData.comboPrice) >= parseFloat(formData.originalPrice)) {
+      newErrors.comboPrice = "Combo price must be less than original price.";
     }
 
-    if (!formData.discount_percentage || parseInt(formData.discount_percentage) <= 0 || parseInt(formData.discount_percentage) >= 100) {
-      newErrors.discount_percentage = "Discount must be between 1 and 99.";
+    if (!formData.discountPercentage || parseInt(formData.discountPercentage) <= 0 || parseInt(formData.discountPercentage) >= 100) {
+      newErrors.discountPercentage = "Discount must be between 1 and 99.";
     }
 
     setErrors(newErrors);
@@ -160,13 +171,13 @@ export default function AdminComboOffers() {
       const offerData = {
         title: formData.title,
         description: formData.description,
-        product_ids: formData.product_ids.split(",").map(id => id.trim()),
-        original_price: parseFloat(formData.original_price),
-        combo_price: parseFloat(formData.combo_price),
-        discount_percentage: parseInt(formData.discount_percentage),
-        start_date: formData.start_date || null,
-        end_date: formData.end_date || null,
-        image_url: formData.image_url || null,
+        productIds: formData.productIds.split(",").map(id => id.trim()),
+        originalPrice: parseFloat(formData.originalPrice),
+        comboPrice: parseFloat(formData.comboPrice),
+        discountPercentage: parseInt(formData.discountPercentage),
+        startDate: formData.startDate || null,
+        endDate: formData.endDate || null,
+        imageUrl: formData.imageUrl || null,
         active: true,
       };
 
@@ -189,11 +200,19 @@ export default function AdminComboOffers() {
   };
 
   const handleToggleActive = async (offer: ComboOffer) => {
+    // Optimistic update
+    const previousOffers = [...offers];
+    setOffers(offers.map(o =>
+      o.id === offer.id ? { ...o, active: !o.active } : o
+    ));
+
     try {
       await apiClient.patch(`/combo-offers/${offer.id}/status`, { active: !offer.active });
       toast({ title: "Success!", description: `Offer ${!offer.active ? "activated" : "deactivated"}` });
-      fetchOffers();
+      // No fetch needed if successful
     } catch (error) {
+      // Revert on error
+      setOffers(previousOffers);
       toast({ title: "Error", description: "Failed to update status", variant: "destructive" });
     }
   };
@@ -214,13 +233,13 @@ export default function AdminComboOffers() {
     setFormData({
       title: offer.title,
       description: offer.description,
-      product_ids: offer.product_ids.join(", "),
-      original_price: offer.original_price.toString(),
-      combo_price: offer.combo_price.toString(),
-      discount_percentage: offer.discount_percentage.toString(),
-      start_date: offer.start_date ? offer.start_date.split('T')[0] : "",
-      end_date: offer.end_date ? offer.end_date.split('T')[0] : "",
-      image_url: offer.image_url || "",
+      productIds: offer.productIds.join(", "),
+      originalPrice: offer.originalPrice.toString(),
+      comboPrice: offer.comboPrice.toString(),
+      discountPercentage: offer.discountPercentage.toString(),
+      startDate: offer.startDate ? offer.startDate.split('T')[0] : "",
+      endDate: offer.endDate ? offer.endDate.split('T')[0] : "",
+      imageUrl: offer.imageUrl || "",
     });
     setDialogOpen(true);
   };
@@ -230,13 +249,13 @@ export default function AdminComboOffers() {
     setFormData({
       title: "",
       description: "",
-      product_ids: "",
-      original_price: "",
-      combo_price: "",
-      discount_percentage: "",
-      start_date: "",
-      end_date: "",
-      image_url: "",
+      productIds: "",
+      originalPrice: "",
+      comboPrice: "",
+      discountPercentage: "",
+      startDate: "",
+      endDate: "",
+      imageUrl: "",
     });
     setErrors({});
   };
@@ -320,87 +339,87 @@ export default function AdminComboOffers() {
                   </div>
 
                   <div>
-                    <Label htmlFor="product_ids">Product IDs (comma-separated) *</Label>
+                    <Label htmlFor="productIds">Product IDs (comma-separated) *</Label>
                     <Input
-                      id="product_ids"
-                      value={formData.product_ids}
+                      id="productIds"
+                      value={formData.productIds}
                       onChange={(e) => {
-                        setFormData({ ...formData, product_ids: e.target.value });
-                        if (errors.product_ids) setErrors({ ...errors, product_ids: "" });
+                        setFormData({ ...formData, productIds: e.target.value });
+                        if (errors.productIds) setErrors({ ...errors, productIds: "" });
                       }}
                       placeholder="e.g., tshirt-black, tshirt-white, tshirt-navy"
-                      className={errors.product_ids ? "border-destructive focus-visible:ring-destructive" : ""}
+                      className={errors.productIds ? "border-destructive focus-visible:ring-destructive" : ""}
                     />
-                    {errors.product_ids && <p className="text-[10px] font-medium text-destructive mt-1">{errors.product_ids}</p>}
+                    {errors.productIds && <p className="text-[10px] font-medium text-destructive mt-1">{errors.productIds}</p>}
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="original_price">Original Price *</Label>
+                      <Label htmlFor="originalPrice">Original Price *</Label>
                       <Input
-                        id="original_price"
+                        id="originalPrice"
                         type="number"
                         step="0.01"
-                        value={formData.original_price}
+                        value={formData.originalPrice}
                         onChange={(e) => {
-                          setFormData({ ...formData, original_price: e.target.value });
-                          if (errors.original_price) setErrors({ ...errors, original_price: "" });
+                          setFormData({ ...formData, originalPrice: e.target.value });
+                          if (errors.originalPrice) setErrors({ ...errors, originalPrice: "" });
                         }}
-                        className={errors.original_price ? "border-destructive focus-visible:ring-destructive" : ""}
+                        className={errors.originalPrice ? "border-destructive focus-visible:ring-destructive" : ""}
                       />
-                      {errors.original_price && <p className="text-[10px] font-medium text-destructive mt-1">{errors.original_price}</p>}
+                      {errors.originalPrice && <p className="text-[10px] font-medium text-destructive mt-1">{errors.originalPrice}</p>}
                     </div>
 
                     <div>
-                      <Label htmlFor="combo_price">Combo Price *</Label>
+                      <Label htmlFor="comboPrice">Combo Price *</Label>
                       <Input
-                        id="combo_price"
+                        id="comboPrice"
                         type="number"
                         step="0.01"
-                        value={formData.combo_price}
+                        value={formData.comboPrice}
                         onChange={(e) => {
-                          setFormData({ ...formData, combo_price: e.target.value });
-                          if (errors.combo_price) setErrors({ ...errors, combo_price: "" });
+                          setFormData({ ...formData, comboPrice: e.target.value });
+                          if (errors.comboPrice) setErrors({ ...errors, comboPrice: "" });
                         }}
-                        className={errors.combo_price ? "border-destructive focus-visible:ring-destructive" : ""}
+                        className={errors.comboPrice ? "border-destructive focus-visible:ring-destructive" : ""}
                       />
-                      {errors.combo_price && <p className="text-[10px] font-medium text-destructive mt-1">{errors.combo_price}</p>}
+                      {errors.comboPrice && <p className="text-[10px] font-medium text-destructive mt-1">{errors.comboPrice}</p>}
                     </div>
                   </div>
 
                   <div>
-                    <Label htmlFor="discount_percentage">Discount % *</Label>
+                    <Label htmlFor="discountPercentage">Discount % *</Label>
                     <Input
-                      id="discount_percentage"
+                      id="discountPercentage"
                       type="number"
-                      value={formData.discount_percentage}
+                      value={formData.discountPercentage}
                       onChange={(e) => {
-                        setFormData({ ...formData, discount_percentage: e.target.value });
-                        if (errors.discount_percentage) setErrors({ ...errors, discount_percentage: "" });
+                        setFormData({ ...formData, discountPercentage: e.target.value });
+                        if (errors.discountPercentage) setErrors({ ...errors, discountPercentage: "" });
                       }}
-                      className={errors.discount_percentage ? "border-destructive focus-visible:ring-destructive" : ""}
+                      className={errors.discountPercentage ? "border-destructive focus-visible:ring-destructive" : ""}
                     />
-                    {errors.discount_percentage && <p className="text-[10px] font-medium text-destructive mt-1">{errors.discount_percentage}</p>}
+                    {errors.discountPercentage && <p className="text-[10px] font-medium text-destructive mt-1">{errors.discountPercentage}</p>}
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="start_date">Start Date</Label>
+                      <Label htmlFor="startDate">Start Date</Label>
                       <Input
-                        id="start_date"
+                        id="startDate"
                         type="date"
-                        value={formData.start_date}
-                        onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
+                        value={formData.startDate}
+                        onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
                       />
                     </div>
 
                     <div>
-                      <Label htmlFor="end_date">End Date</Label>
+                      <Label htmlFor="endDate">End Date</Label>
                       <Input
-                        id="end_date"
+                        id="endDate"
                         type="date"
-                        value={formData.end_date}
-                        onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
+                        value={formData.endDate}
+                        onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
                       />
                     </div>
                   </div>
@@ -408,12 +427,12 @@ export default function AdminComboOffers() {
                   <div className="space-y-4">
                     <Label>Hero Visual Asset</Label>
                     <div className="flex items-center gap-4">
-                      {formData.image_url ? (
+                      {formData.imageUrl ? (
                         <div className="relative h-24 w-24 rounded-2xl overflow-hidden border-2 border-primary/20 shadow-lg group">
-                          <img src={formData.image_url} alt="Combo Preview" className="h-full w-full object-cover transition-transform group-hover:scale-110" />
+                          <img src={formData.imageUrl} alt="Combo Preview" className="h-full w-full object-cover transition-transform group-hover:scale-110" />
                           <button
                             type="button"
-                            onClick={() => setFormData(p => ({ ...p, image_url: "" }))}
+                            onClick={() => setFormData(p => ({ ...p, imageUrl: "" }))}
                             className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                           >
                             <Trash2 className="h-5 w-5 text-white" />
@@ -427,13 +446,13 @@ export default function AdminComboOffers() {
                         </Label>
                       )}
                       <div className="flex-1 space-y-2">
-                        <Label htmlFor="image_url" className="text-xs font-medium text-muted-foreground">Manual URL override</Label>
+                        <Label htmlFor="imageUrl" className="text-xs font-medium text-muted-foreground">Manual URL override</Label>
                         <Input
-                          id="image_url"
-                          type="url"
-                          value={formData.image_url}
-                          onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
-                          placeholder="https://..."
+                          id="imageUrl"
+                          type="text"
+                          value={formData.imageUrl}
+                          onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
+                          placeholder="https://... or /uploads/..."
                           className="h-10 rounded-xl bg-muted/30 border-border/50"
                         />
                       </div>
@@ -483,9 +502,9 @@ export default function AdminComboOffers() {
               <Card key={offer.id} className="group flex flex-col overflow-hidden bg-card border-border/60 hover:shadow-lg transition-all duration-300 rounded-xl">
                 {/* Image Section */}
                 <div className="relative h-48 bg-muted/30 overflow-hidden border-b border-border/40">
-                  {offer.image_url ? (
+                  {offer.imageUrl ? (
                     <img
-                      src={offer.image_url}
+                      src={offer.imageUrl}
                       alt={offer.title}
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                     />
@@ -502,7 +521,7 @@ export default function AdminComboOffers() {
                   </div>
                   <div className="absolute bottom-3 left-3">
                     <Badge variant="secondary" className="bg-background text-foreground font-bold shadow-sm border border-border/40">
-                      {offer.discount_percentage}% OFF
+                      {offer.discountPercentage}% OFF
                     </Badge>
                   </div>
                 </div>
@@ -522,11 +541,11 @@ export default function AdminComboOffers() {
                   <div className="grid grid-cols-2 gap-2 mt-2 bg-muted/20 p-3 rounded-xl border border-border/50">
                     <div>
                       <p className="text-xs text-muted-foreground font-medium">Bundle price</p>
-                      <p className="text-sm font-bold text-emerald-600">₹{offer.combo_price}</p>
+                      <p className="text-sm font-bold text-emerald-600">₹{offer.comboPrice}</p>
                     </div>
                     <div className="text-right">
                       <p className="text-xs text-muted-foreground font-medium">Items</p>
-                      <p className="text-sm font-medium">{offer.product_ids.length}</p>
+                      <p className="text-sm font-medium">{offer.productIds.length}</p>
                     </div>
                   </div>
 

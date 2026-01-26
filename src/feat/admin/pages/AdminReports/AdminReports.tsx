@@ -111,7 +111,7 @@ export default function AdminReports() {
       const chartData = days.map(day => {
         const dayStr = format(day, 'MMM dd');
         const dayOrders = orders?.filter((o: any) =>
-          format(new Date(o.created_at), 'MMM dd') === dayStr
+          format(new Date(o.createdAt || o.created_at), 'MMM dd') === dayStr
         );
         const dayRevenue = dayOrders?.reduce((sum: number, o: any) => sum + (o.total || 0), 0) || 0;
         return {

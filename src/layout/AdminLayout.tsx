@@ -122,7 +122,7 @@ export default function AdminLayout() {
   const [commandOpen, setCommandOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
-  const { user, signOut, profile } = useAuth();
+  const { user, signOut } = useAuth();
   const { resolvedTheme } = useTheme();
 
   useEffect(() => {
@@ -220,37 +220,18 @@ export default function AdminLayout() {
       {/* FIXED Navbar */}
       <header className="fixed top-0 left-0 right-0 h-20 border-b bg-card/60 backdrop-blur-xl flex items-center justify-between z-40 px-0">
         <div
-          className="flex-1 flex items-center justify-between h-full transition-all duration-300 ease-in-out"
-          style={{ marginLeft: sidebarCollapsed ? "80px" : "280px" }}
+          className={cn(
+            "flex-1 flex items-center justify-between h-full transition-all duration-300 ease-in-out",
+            sidebarCollapsed ? "lg:ml-[80px]" : "lg:ml-[280px]"
+          )}
         >
-          {/* Left Section: Logo & Search */}
-          <div className="flex items-center gap-4 px-6 h-full">
-            {/* Brand Logo */}
-            <Link to="/admin" className="hidden sm:block transition-all hover:opacity-80">
-              <img
-                src={resolvedTheme === "dark" ? logoDark : logoLight}
-                alt="Logo"
-                className="h-8 w-auto object-contain"
-              />
-            </Link>
-
-            {/* Deep-Search Trigger */}
-            <div
-              onClick={() => setCommandOpen(true)}
-              className="flex items-center gap-3 px-4 py-2 rounded-xl border border-border/50 bg-muted/30 cursor-pointer hover:bg-muted/50 transition-all shadow-sm"
-            >
-              <Search className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-semibold text-muted-foreground hidden md:block">Search...</span>
-              <kbd className="hidden lg:inline-flex h-5 select-none items-center gap-1 rounded border bg-background px-1.5 font-mono text-[9px] font-bold opacity-70">
-                <span className="text-xs">⌘</span>K
-              </kbd>
-            </div>
-
-            {/* Mobile Menu Trigger */}
-            <div className="lg:hidden ml-2">
+          {/* Left Section: Mobile Menu, Logo, Search */}
+          <div className="flex items-center gap-3 sm:gap-4 px-4 sm:px-6 h-full">
+            {/* Mobile Menu Trigger (Hamburger) - Visible only on mobile */}
+            <div className="lg:hidden">
               <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
                 <SheetTrigger asChild>
-                  <Button variant="ghost" size="icon">
+                  <Button variant="ghost" size="icon" className="-ml-2">
                     <Menu className="h-6 w-6" />
                   </Button>
                 </SheetTrigger>
@@ -294,18 +275,68 @@ export default function AdminLayout() {
                 </SheetContent>
               </Sheet>
             </div>
+
+            {/* Brand Logo */}
+            <Link to="/admin" className="hidden sm:block transition-all hover:opacity-80">
+              <img
+                src={resolvedTheme === "dark" ? logoDark : logoLight}
+                alt="Logo"
+                className="h-8 w-auto object-contain"
+              />
+            </Link>
+            {/* Mobile Logo (Icon only if needed, or just same logo) */}
+            <Link to="/admin" className="sm:hidden transition-all hover:opacity-80">
+              <img
+                src={resolvedTheme === "dark" ? logoDark : logoLight}
+                alt="Logo"
+                className="h-8 w-auto object-contain"
+              />
+            </Link>
+
+
+            {/* Deep-Search Trigger */}
+            <div
+              onClick={() => setCommandOpen(true)}
+              className="flex items-center gap-3 px-3 py-2 rounded-xl border border-border/50 bg-muted/30 cursor-pointer hover:bg-muted/50 transition-all shadow-sm ml-auto sm:ml-0"
+            >
+              <Search className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-semibold text-muted-foreground hidden md:block">Search...</span>
+              <kbd className="hidden lg:inline-flex h-5 select-none items-center gap-1 rounded border bg-background px-1.5 font-mono text-[9px] font-bold opacity-70">
+                <span className="text-xs">⌘</span>K
+              </kbd>
+            </div>
           </div>
 
           {/* Right Section: Controls */}
-          <div className="flex items-center gap-6 pr-6 h-full text-right">
-            <div className="flex items-center gap-4">
-              <ThemeToggle />
-              <NotificationBell />
-              <div className="hidden sm:block">
-                <p className="text-xs font-bold leading-none mb-0.5 whitespace-nowrap">{profile?.full_name || "Admin"}</p>
-                <p className="text-[10px] text-muted-foreground font-medium opacity-60">Platform Governance</p>
-              </div>
-            </div>
+          <div className="flex items-center gap-2 sm:gap-4 pr-4 sm:pr-6 h-full text-right">
+            <ThemeToggle />
+            <NotificationBell />
+
+            {/* User Avatar - Visible on Mobile too now */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="h-9 w-9 p-0 rounded-full border border-border/40 ml-1">
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={user?.avatar_url} />
+                    <AvatarFallback className="text-[10px] font-bold bg-primary/10 text-primary">
+                      {user?.name?.[0] || 'A'}
+                    </AvatarFallback>
+                  </Avatar>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56 rounded-2xl border-border/50 shadow-xl">
+                <div className="flex items-center justify-start gap-2 p-2">
+                  <div className="flex flex-col space-y-0.5 leading-none">
+                    <p className="font-medium text-sm">{user?.name || 'Admin'}</p>
+                    <p className="w-[200px] truncate text-xs text-muted-foreground">{user?.email}</p>
+                  </div>
+                </div>
+                <DropdownMenuItem onClick={() => handleLogout()} className="text-destructive cursor-pointer font-bold focus:bg-destructive/10">
+                  <LogOutIcon className="h-4 w-4 mr-2" />
+                  Logout
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </header>
@@ -364,14 +395,14 @@ export default function AdminLayout() {
                   )}
                 >
                   <Avatar className={cn("ring-2 ring-primary/10 transition-all", sidebarCollapsed ? "h-9 w-9" : "h-10 w-10")}>
-                    <AvatarImage src={profile?.avatar_url || undefined} />
+                    <AvatarImage src={user?.avatar_url || undefined} />
                     <AvatarFallback className="bg-primary text-primary-foreground text-xs font-bold">
-                      {profile?.full_name?.[0] || user?.email?.[0]}
+                      {user?.name?.[0] || user?.email?.[0] || 'A'}
                     </AvatarFallback>
                   </Avatar>
                   {!sidebarCollapsed && (
                     <div className="flex flex-col items-start overflow-hidden">
-                      <p className="text-xs font-bold leading-none mb-1 truncate w-full">{profile?.full_name || "Admin"}</p>
+                      <p className="text-xs font-bold leading-none mb-1 truncate w-full">{user?.name || "Admin"}</p>
                       <p className="text-[10px] text-muted-foreground font-medium opacity-60 truncate w-full">Account Settings</p>
                     </div>
                   )}
@@ -389,8 +420,10 @@ export default function AdminLayout() {
 
         {/* Main Content Area (Independent Scroll) */}
         <main
-          className="flex-1 overflow-y-auto bg-muted/10 h-full transition-all duration-300 ease-in-out"
-          style={{ marginLeft: sidebarCollapsed ? "80px" : "280px" }}
+          className={cn(
+            "flex-1 overflow-y-auto bg-muted/10 h-full transition-all duration-300 ease-in-out font-sans",
+            sidebarCollapsed ? "lg:ml-[80px]" : "lg:ml-[280px]"
+          )}
         >
           <div className="container mx-auto py-8 px-4 sm:px-6 lg:px-8 max-w-7xl animate-in fade-in duration-500">
             <Outlet />

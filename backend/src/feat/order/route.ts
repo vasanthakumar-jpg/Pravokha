@@ -1,6 +1,6 @@
 import { OrderController } from './controller';
 import { authenticate, authorize } from '../../shared/middleware/auth';
-import { requireDealerOrderAccess } from '../../shared/middleware/ownership';
+import { requireDealerOrderAccess, requireOrderOwnership } from '../../shared/middleware/ownership';
 import { Role } from '@prisma/client';
 import { Router } from 'express';
 
@@ -26,8 +26,11 @@ router.get('/dealer/my-sales', authenticate, authorize([Role.DEALER]), OrderCont
 router.get('/dealer/:id', authenticate, authorize([Role.DEALER]), requireDealerOrderAccess, OrderController.getOrder);
 
 
-// Admin Routes
-router.patch('/:id/status', authenticate, authorize([Role.ADMIN]), OrderController.updateStatus);
+// Admin & Dealer Status Management
+router.patch('/:id/status', authenticate, authorize([Role.ADMIN, Role.DEALER]), requireOrderOwnership, OrderController.updateStatus);
+router.post('/:id/ship', authenticate, authorize([Role.DEALER]), requireOrderOwnership, OrderController.ship);
+
+// Admin Specific Routes
 router.patch('/:id/refund', authenticate, authorize([Role.ADMIN]), OrderController.refundOrder);
 router.delete('/:id', authenticate, authorize([Role.ADMIN]), OrderController.deleteOrder);
 router.post('/:id/restore', authenticate, authorize([Role.ADMIN]), OrderController.restoreOrder);

@@ -4,6 +4,42 @@ import { asyncHandler } from '../../utils/asyncHandler';
 
 export class UserController {
     // 1. Profile Management
+    // 1. Profile Management
+    // 1. Profile Management
+    static getMyProfile = asyncHandler(async (req: any, res: Response) => {
+        const userId = req.user.id;
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+        });
+
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        const { password, ...safeUser } = user;
+
+        res.json({
+            success: true,
+            ...safeUser, // Spread first to avoid overwriting warnings for id, email, etc.
+            full_name: safeUser.name,
+            avatar_url: safeUser.avatarUrl || safeUser.storeLogoUrl,
+        });
+    });
+
+    // Admin Stats
+    static getAdminStats = asyncHandler(async (req: Request, res: Response) => {
+        const [superAdmins, sellers] = await Promise.all([
+            prisma.user.count({ where: { role: 'ADMIN' } }),
+            prisma.user.count({ where: { role: 'DEALER' } })
+        ]);
+
+        res.json({
+            super_admins: superAdmins,
+            sellers: sellers,
+            support: 0 // Support role not defined in schema
+        });
+    });
+
     static getProfile = asyncHandler(async (req: Request, res: Response) => {
         const { id } = req.params;
         const user = await prisma.user.findUnique({

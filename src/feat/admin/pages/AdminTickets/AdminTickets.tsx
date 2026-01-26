@@ -391,53 +391,46 @@ export default function AdminTickets() {
         </div>
 
         <Card className="border-border/60 bg-card transition-all duration-500 rounded-xl shadow-sm overflow-hidden mb-8">
-          <CardHeader className="bg-muted/10 border-b border-border/40 p-4 sm:p-6">
-            <div className="flex flex-col gap-4">
-              <div className="flex items-center gap-3">
-                <MessageSquare className="h-5 w-5 text-primary opacity-70" />
-                <CardTitle className="text-sm font-medium">Ticket directory</CardTitle>
+          <CardContent className="p-4 sm:p-6">
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex-1 relative group">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                <Input
+                  placeholder="Search ticket subject, user or number..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-11 h-11 bg-background rounded-xl border-border/60 focus-visible:ring-primary/20 transition-all font-medium text-sm"
+                />
               </div>
-
-              <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-3">
-                <div className="relative flex-1 min-w-0">
-                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder={placeholder}
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-11 h-11 bg-card border-border/60 focus:ring-primary/20 rounded-xl text-sm w-full"
-                  />
-                </div>
-                <div className="flex gap-2 flex-wrap sm:flex-nowrap">
-                  <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="flex-1 sm:flex-none sm:w-[140px] md:w-[150px] h-11 rounded-xl border-border/60 bg-card px-4 text-sm font-medium">
-                      <SelectValue placeholder="Status" />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-xl border-border/40">
-                      <SelectItem value="all">All statuses</SelectItem>
-                      <SelectItem value="pending">Pending</SelectItem>
-                      <SelectItem value="under_review">Under review</SelectItem>
-                      <SelectItem value="awaiting_user">Awaiting user</SelectItem>
-                      <SelectItem value="resolved">Resolved</SelectItem>
-                      <SelectItem value="rejected">Rejected</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Select value={typeFilter} onValueChange={setTypeFilter}>
-                    <SelectTrigger className="flex-1 sm:flex-none sm:w-[140px] md:w-[150px] h-11 rounded-xl border-border/60 bg-card px-4 text-sm font-medium">
-                      <SelectValue placeholder="Type" />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-xl border-border/40">
-                      <SelectItem value="all">All types</SelectItem>
-                      <SelectItem value="suspension_appeal">Suspension appeal</SelectItem>
-                      <SelectItem value="general_support">General support</SelectItem>
-                      <SelectItem value="technical_issue">Technical issue</SelectItem>
-                      <SelectItem value="billing">Billing</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="grid grid-cols-2 md:flex gap-3">
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="h-11 rounded-xl border-border/60 bg-background font-semibold text-xs hover:bg-muted/50 transition-colors focus:ring-primary/20 min-w-[140px]">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl border-border/40 shadow-xl">
+                    <SelectItem value="all">All statuses</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="under_review">Under review</SelectItem>
+                    <SelectItem value="awaiting_user">Awaiting user</SelectItem>
+                    <SelectItem value="resolved">Resolved</SelectItem>
+                    <SelectItem value="rejected">Rejected</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={typeFilter} onValueChange={setTypeFilter}>
+                  <SelectTrigger className="h-11 rounded-xl border-border/60 bg-background font-semibold text-xs hover:bg-muted/50 transition-colors focus:ring-primary/20 min-w-[140px]">
+                    <SelectValue placeholder="Type" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl border-border/40 shadow-xl">
+                    <SelectItem value="all">All types</SelectItem>
+                    <SelectItem value="suspension_appeal">Suspension appeal</SelectItem>
+                    <SelectItem value="general_support">General support</SelectItem>
+                    <SelectItem value="technical_issue">Technical issue</SelectItem>
+                    <SelectItem value="billing">Billing</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
-          </CardHeader>
+          </CardContent>
         </Card>
         <AnimatePresence mode="wait">
           {loading ? (

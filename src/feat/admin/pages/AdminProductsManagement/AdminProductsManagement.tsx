@@ -545,15 +545,17 @@ export default function AdminProductsManagement() {
                   {filteredProducts.map((product) => (
                     <div key={product.id} className="flex gap-3 bg-card border border-border/60 p-3 rounded-xl shadow-sm">
                       <div className="h-16 w-16 min-w-[4rem] rounded-lg bg-muted overflow-hidden border border-border/50">
-                        {product.variants?.[0]?.images?.[0] ? (
-                          <img src={product.variants[0].images[0]} className="w-full h-full object-cover" />
-                        ) : product.product_variants?.[0]?.images?.[0] ? (
-                          <img src={product.product_variants[0].images[0]} className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="flex items-center justify-center h-full w-full bg-muted/50">
-                            <Package className="h-6 w-6 text-muted-foreground/30" />
-                          </div>
-                        )}
+                        {(() => {
+                          // Robust image extraction
+                          const image = product.variants?.[0]?.images?.[0] || product.product_variants?.[0]?.images?.[0];
+                          return image ? (
+                            <img src={image} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="flex items-center justify-center h-full w-full bg-muted/50">
+                              <Package className="h-6 w-6 text-muted-foreground/30" />
+                            </div>
+                          );
+                        })()}
                       </div>
                       <div className="flex-1 min-w-0 flex flex-col justify-between">
                         <div>
@@ -616,13 +618,16 @@ export default function AdminProductsManagement() {
                     onClick={() => navigate(`/admin/products/edit/${product.id}`)}
                   >
                     <div className="aspect-[4/5] bg-muted relative overflow-hidden">
-                      {product.product_variants?.[0]?.images?.[0] ? (
-                        <img src={product.product_variants[0].images[0]} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center grayscale opacity-20">
-                          <Package className="h-12 w-12" />
-                        </div>
-                      )}
+                      {(() => {
+                        const image = product.variants?.[0]?.images?.[0] || product.product_variants?.[0]?.images?.[0];
+                        return image ? (
+                          <img src={image} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center grayscale opacity-20">
+                            <Package className="h-12 w-12" />
+                          </div>
+                        );
+                      })()}
 
                       {/* Top Right: Edit Action (Permanently Visible) */}
                       <div className="absolute top-3 right-3 z-20">

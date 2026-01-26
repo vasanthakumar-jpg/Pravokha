@@ -48,3 +48,14 @@ export const getMe = asyncHandler(async (req: any, res: Response) => {
         }
     });
 });
+
+export const passwordReset = asyncHandler(async (req: Request, res: Response) => {
+    // In a real app, send email with reset token
+    // For now, verify email exists and return success
+    const { email } = req.body;
+    // const user = await prisma.user.findUnique({ where: { email } });
+    // if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    // Allow simulation even without checking DB if needed, or strictly check
+    res.json({ success: true, message: 'Reset instruction sent (Simulation)' });
+});

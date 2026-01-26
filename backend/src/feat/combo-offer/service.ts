@@ -6,14 +6,15 @@ export class ComboOfferService {
             data: {
                 title: data.title,
                 description: data.description,
-                productIds: data.product_ids || [], // Standardize for Prisma Json
-                originalPrice: data.original_price,
-                comboPrice: data.combo_price,
-                discountPercentage: data.discount_percentage,
+                // Handle both frontend (camelCase) and raw API (snake_case)
+                productIds: data.productIds || data.product_ids || [],
+                originalPrice: data.originalPrice ?? data.original_price,
+                comboPrice: data.comboPrice ?? data.combo_price,
+                discountPercentage: data.discountPercentage ?? data.discount_percentage,
                 active: data.active ?? true,
-                imageUrl: data.image_url,
-                startDate: data.start_date ? new Date(data.start_date) : null,
-                endDate: data.end_date ? new Date(data.end_date) : null
+                imageUrl: data.imageUrl || data.image_url,
+                startDate: (data.startDate || data.start_date) ? new Date(data.startDate || data.start_date) : null,
+                endDate: (data.endDate || data.end_date) ? new Date(data.endDate || data.end_date) : null
             }
         });
     }
@@ -33,16 +34,16 @@ export class ComboOfferService {
     static async updateOffer(id: string, data: any) {
         const updateData: any = { ...data };
 
-        // Map frontend keys to backend camelCase if necessary
-        if (data.product_ids) updateData.productIds = data.product_ids;
-        if (data.original_price) updateData.originalPrice = data.original_price;
-        if (data.combo_price) updateData.comboPrice = data.combo_price;
-        if (data.discount_percentage) updateData.discountPercentage = data.discount_percentage;
-        if (data.image_url) updateData.imageUrl = data.image_url;
-        if (data.start_date) updateData.startDate = new Date(data.start_date);
-        if (data.end_date) updateData.endDate = new Date(data.end_date);
+        // Standardize input fields (support both camelCase and snake_case)
+        if (data.productIds || data.product_ids) updateData.productIds = data.productIds || data.product_ids;
+        if (data.originalPrice || data.original_price) updateData.originalPrice = data.originalPrice ?? data.original_price;
+        if (data.comboPrice || data.combo_price) updateData.comboPrice = data.comboPrice ?? data.combo_price;
+        if (data.discountPercentage || data.discount_percentage) updateData.discountPercentage = data.discountPercentage ?? data.discount_percentage;
+        if (data.imageUrl || data.image_url) updateData.imageUrl = data.imageUrl || data.image_url;
+        if (data.startDate || data.start_date) updateData.startDate = new Date(data.startDate || data.start_date);
+        if (data.endDate || data.end_date) updateData.endDate = new Date(data.endDate || data.end_date);
 
-        // Remove snake_case keys before passing to Prisma
+        // Remove redundant snake_case keys to keep Prisma clean
         ['product_ids', 'original_price', 'combo_price', 'discount_percentage', 'image_url', 'start_date', 'end_date'].forEach(k => delete updateData[k]);
 
         return await prisma.comboOffer.update({

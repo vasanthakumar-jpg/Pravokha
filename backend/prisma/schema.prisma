@@ -86,6 +86,7 @@ model User {
   adminNotificationSettings AdminNotificationSetting?
   productUpdateRequests ProductUpdateRequest[] @relation("SellerUpdateRequests")
   payouts              Payout[]
+  shippedOrders        Order[]   @relation("SellerShippedOrders")
 
   @@map("users")
 }
@@ -227,6 +228,16 @@ model Order {
   
   items         OrderItem[]
   
+  // Operational fields for 10/10 flow
+  trackingNumber    String?   @map("tracking_number")
+  trackingCarrier   String?   @map("tracking_carrier")
+  shippedAt         DateTime? @map("shipped_at")
+  deliveredAt       DateTime? @map("delivered_at")
+  version           Int       @default(0)
+  packingNotes      String?   @map("packing_notes") @db.Text
+  shippedBySellerId String?   @map("shipped_by_seller_id")
+  shippedBySeller   User?     @relation("SellerShippedOrders", fields: [shippedBySellerId], references: [id])
+
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
   deletedAt     DateTime?   @map("deleted_at")

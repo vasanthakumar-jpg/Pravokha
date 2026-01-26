@@ -164,17 +164,18 @@ export default function SellerOrderDetail() {
 
     try {
       await apiClient.patch(`/orders/${orderId}/status`, {
-        status: newStatus
+        status: newStatus.toUpperCase(), // Ensure uppercase for enum matching
+        version: order.version
       });
 
-      setOrder({ ...order, order_status: newStatus });
       toast({ title: "Status Updated", description: `Order marked as ${newStatus}` });
-      await loadOrder(); // Refresh to get updated history
+      await loadOrder(); // Refresh to get updated history and version
     } catch (error: any) {
       console.error(error);
+      const msg = error.response?.data?.message || "Failed to update status. Check permissions.";
       toast({
         title: "Update Failed",
-        description: error.response?.data?.message || "Failed to update status. Check permissions.",
+        description: msg,
         variant: "destructive"
       });
     }
@@ -186,13 +187,15 @@ export default function SellerOrderDetail() {
       // Preserve existing notes structure if complex, or just string
       const noteObj = { seller_notes: notes, updated_at: new Date().toISOString() };
 
-      await apiClient.patch(`/orders/${orderId}`, {
-        notes: JSON.stringify(noteObj)
+      await apiClient.patch(`/orders/${orderId}/status`, {
+        packingNotes: notes,
+        version: order.version
       });
 
       toast({ title: "Saved", description: "Seller notes updated." });
-    } catch (error) {
-      toast({ title: "Error", description: "Failed to save notes", variant: "destructive" });
+      loadOrder();
+    } catch (error: any) {
+      toast({ title: "Error", description: error.response?.data?.message || "Failed to save notes", variant: "destructive" });
     } finally {
       setSavingNotes(false);
     }
@@ -209,15 +212,15 @@ export default function SellerOrderDetail() {
     }
     if (!trackingNumber || !carrierName) return toast({ title: "Required", description: "Enter carrier and tracking number", variant: "destructive" });
     try {
-      await apiClient.patch(`/orders/${orderId}/ship`, {
+      await apiClient.post(`/orders/${orderId}/ship`, {
         trackingNumber,
-        carrierName
+        trackingCarrier: carrierName,
+        version: order.version
       });
 
-      setOrder({ ...order, order_status: 'shipped', tracking_number: trackingNumber, carrier_name: carrierName });
       toast({ title: "Shipped", description: `Order shipped via ${carrierName} (${trackingNumber})` });
-      loadOrder();
       setTrackingModalOpen(false);
+      loadOrder();
     } catch (e: any) {
       toast({ title: "Error", description: e.response?.data?.message || "Update failed", variant: "destructive" });
     }

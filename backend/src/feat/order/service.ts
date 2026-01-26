@@ -87,6 +87,13 @@ export class OrderService {
                 data: { stripeIntentId: paymentIntent.id } as any
             });
 
+            // 5. Notify Sellers
+            const sellerIds = Array.from(new Set(orderItems.map(item => item.sellerId)));
+            const { NotificationService } = await import('../notification/service');
+            for (const sellerId of sellerIds) {
+                await NotificationService.notifyNewOrder(sellerId, orderNumber).catch(e => console.error("Notification failed:", e));
+            }
+
             return {
                 order,
                 clientSecret: paymentIntent.client_secret,
@@ -288,18 +295,103 @@ export class OrderService {
         });
     }
 
-    static async updateOrderStatus(id: string, status: OrderStatus, trackingUpdates: any, role: Role) {
-        if (role !== Role.ADMIN) {
-            throw new Error('Unauthorized');
-        }
+    static async updateOrderStatus(id: string, newStatus: OrderStatus, options: {
+        userId: string;
+        role: Role;
+        trackingNumber?: string;
+        trackingCarrier?: string;
+        trackingUpdates?: any;
+        version?: number;
+    }) {
+        const { isValidTransition, getRequiredFieldsForTransition } = await import('./stateMachine');
 
-        return await prisma.order.update({
-            where: { id },
-            data: {
-                status,
-                trackingUpdates: trackingUpdates || undefined
-            },
-            include: { items: true }
+        return await prisma.$transaction(async (tx) => {
+            const currentOrder = await tx.order.findUnique({
+                where: { id },
+                include: { items: { select: { sellerId: true } } }
+            });
+
+            if (!currentOrder) throw new Error('Order not found');
+
+            // 1. Authorization: ADMIN (All), DEALER (Owned items)
+            if (options.role === Role.DEALER) {
+                const ownsOrder = currentOrder.items.some(item => item.sellerId === options.userId);
+                if (!ownsOrder) throw new Error('Unauthorized: You do not own any products in this order');
+            } else if (options.role !== Role.ADMIN) {
+                throw new Error('Unauthorized');
+            }
+
+            // 2. Concurrency Control: Optimistic Locking
+            if (options.version !== undefined && currentOrder.version !== options.version) {
+                throw new Error('Concurrency conflict: The order has been updated by another user. Please refresh and try again.');
+            }
+
+            // 3. State Machine Validation
+            if (!isValidTransition(currentOrder.status, newStatus, options.role)) {
+                throw new Error(`Invalid status transition from ${currentOrder.status} to ${newStatus} for role ${options.role}`);
+            }
+
+            // 4. Missing Field Validation
+            const requiredFields = getRequiredFieldsForTransition(currentOrder.status, newStatus);
+            for (const field of requiredFields) {
+                if (!(options as any)[field]) {
+                    throw new Error(`Required field missing for transition to ${newStatus}: ${field}`);
+                }
+            }
+
+            // 5. Build Update Data
+            const updateData: any = {
+                status: newStatus,
+                version: { increment: 1 },
+                trackingUpdates: options.trackingUpdates || (currentOrder.trackingUpdates as any || []),
+            };
+
+            if (options.trackingNumber) updateData.trackingNumber = options.trackingNumber;
+            if (options.trackingCarrier) updateData.trackingCarrier = options.trackingCarrier;
+
+            // Set timestamps for milestones
+            if (newStatus === OrderStatus.SHIPPED) {
+                updateData.shippedAt = new Date();
+                updateData.shippedBySellerId = options.role === Role.DEALER ? options.userId : null;
+            } else if (newStatus === OrderStatus.DELIVERED) {
+                updateData.deliveredAt = new Date();
+            }
+
+            // Add new tracking marker if not present
+            const marker = {
+                status: newStatus,
+                timestamp: new Date().toISOString(),
+                actorId: options.userId,
+                actorRole: options.role
+            };
+
+            if (Array.isArray(updateData.trackingUpdates)) {
+                updateData.trackingUpdates.push(marker);
+            } else {
+                updateData.trackingUpdates = [marker];
+            }
+
+            // 6. Execute Update
+            const updatedOrder = await tx.order.update({
+                where: {
+                    id,
+                    version: options.version // Triple safety
+                },
+                data: updateData,
+                include: { items: true }
+            });
+
+            // 7. Trigger Notification
+            const { NotificationService } = await import('../notification/service');
+            if (updatedOrder.userId) {
+                let additionalInfo = '';
+                if (newStatus === OrderStatus.SHIPPED && options.trackingNumber) {
+                    additionalInfo = `Tracking Number: ${options.trackingNumber}`;
+                }
+                await NotificationService.notifyOrderUpdate(updatedOrder.userId, updatedOrder.orderNumber, newStatus, additionalInfo).catch(e => console.error("Notification failed:", e));
+            }
+
+            return updatedOrder;
         });
     }
 
@@ -351,5 +443,30 @@ export class OrderService {
             where: { id },
             data: { paymentStatus: PaymentStatus.REFUNDED }
         });
+    }
+
+    static async markOrderAsShipped(id: string, data: {
+        sellerId: string;
+        trackingNumber: string;
+        trackingCarrier?: string;
+        version?: number;
+    }) {
+        return await this.updateOrderStatus(id, OrderStatus.SHIPPED, {
+            userId: data.sellerId,
+            role: Role.DEALER,
+            trackingNumber: data.trackingNumber,
+            trackingCarrier: data.trackingCarrier,
+            version: data.version
+        });
+    }
+
+    static async verifySellerOwnsOrder(sellerId: string, orderId: string): Promise<boolean> {
+        const count = await prisma.orderItem.count({
+            where: {
+                orderId,
+                sellerId,
+            }
+        });
+        return count > 0;
     }
 }

@@ -5,7 +5,16 @@ import { Router } from 'express';
 
 const router = Router();
 
+// Order matters! Specific routes before parameterized routes
+
+// Profile Routes
+router.get('/profile', authenticate, UserController.getMyProfile);
 router.patch('/profile', authenticate, UserController.updateProfile);
+router.put('/profile', authenticate, UserController.updateProfile); // Support PUT for frontend compatibility
+
+// Admin Stats
+router.get('/admin/stats', authenticate, authorize(['ADMIN']), UserController.getAdminStats);
+
 router.get('/settings/dealer', authenticate, UserController.getDealerSettings);
 router.patch('/settings/dealer', authenticate, UserController.updateDealerSettings);
 

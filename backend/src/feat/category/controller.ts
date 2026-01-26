@@ -16,16 +16,16 @@ export class CategoryController {
     });
 
     static createCategory = asyncHandler(async (req: any, res: Response) => {
-        const { name, slug, description, image_url, status, display_order } = req.body;
+        const { name, slug, description, image_url, imageUrl, status, display_order, displayOrder } = req.body;
 
         const category = await prisma.category.create({
             data: {
                 name,
                 slug,
                 description,
-                imageUrl: image_url,
+                imageUrl: imageUrl || image_url,
                 status: status || 'active',
-                displayOrder: display_order || 0
+                displayOrder: displayOrder ?? display_order ?? 0
             }
         });
 
@@ -37,7 +37,7 @@ export class CategoryController {
 
     static updateCategory = asyncHandler(async (req: any, res: Response) => {
         const { id } = req.params;
-        const { name, slug, description, image_url, status, display_order } = req.body;
+        const { name, slug, description, image_url, imageUrl, status, display_order, displayOrder } = req.body;
 
         const category = await prisma.category.update({
             where: { id },
@@ -45,9 +45,9 @@ export class CategoryController {
                 name,
                 slug,
                 description,
-                imageUrl: image_url,
+                imageUrl: imageUrl || image_url,
                 status,
-                displayOrder: display_order
+                displayOrder: displayOrder ?? display_order
             }
         });
 
@@ -101,16 +101,16 @@ export class CategoryController {
     });
 
     static createSubcategory = asyncHandler(async (req: any, res: Response) => {
-        const { name, slug, description, category_id, status, display_order } = req.body;
+        const { name, slug, description, category_id, categoryId, status, display_order, displayOrder } = req.body;
 
         const subcategory = await prisma.subcategory.create({
             data: {
                 name,
                 slug,
                 description,
-                categoryId: category_id,
+                categoryId: categoryId || category_id,
                 status: status || 'active',
-                displayOrder: display_order || 0
+                displayOrder: displayOrder ?? display_order ?? 0
             }
         });
 
@@ -122,7 +122,7 @@ export class CategoryController {
 
     static updateSubcategory = asyncHandler(async (req: any, res: Response) => {
         const { id } = req.params;
-        const { name, slug, description, category_id, status, display_order } = req.body;
+        const { name, slug, description, category_id, categoryId, status, display_order, displayOrder } = req.body;
 
         const subcategory = await prisma.subcategory.update({
             where: { id },
@@ -130,9 +130,9 @@ export class CategoryController {
                 name,
                 slug,
                 description,
-                categoryId: category_id,
+                categoryId: categoryId || category_id,
                 status,
-                displayOrder: display_order
+                displayOrder: displayOrder ?? display_order
             }
         });
 

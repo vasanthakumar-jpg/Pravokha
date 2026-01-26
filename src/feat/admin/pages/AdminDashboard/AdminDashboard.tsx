@@ -50,7 +50,7 @@ export default function AdminDashboard() {
         const response = await apiClient.get('/audit?limit=8');
         const logs = (response.data.data || []).map((log: any) => ({
           ...log,
-          created_at: log.createdAt || log.created_at || new Date().toISOString() // Map for UI compatibility
+          createdAt: log.createdAt || log.created_at || new Date().toISOString()
         }));
         setRecentLogs(logs);
       } catch (err) {
@@ -79,7 +79,7 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (recentLogs.length > 0) {
       const recentCount = recentLogs.filter(l => {
-        const logDate = new Date(l.created_at);
+        const logDate = new Date(l.createdAt);
         const now = new Date();
         return (now.getTime() - logDate.getTime()) < 1000 * 60 * 5; // Last 5 mins
       }).length;
@@ -89,7 +89,7 @@ export default function AdminDashboard() {
         newAlerts.push({ type: 'info', message: 'High administrative activity detected' });
       }
 
-      const failedPayouts = recentLogs.filter(l => l.action_type === 'payout_rejected').length;
+      const failedPayouts = recentLogs.filter(l => (l.actionType || l.action_type) === 'payout_rejected').length;
       if (failedPayouts > 1) {
         newAlerts.push({ type: 'warning', message: 'Spike in payout rejections detected' });
       }
@@ -275,14 +275,14 @@ export default function AdminDashboard() {
                   <div key={log.id} className="relative pl-6 before:absolute before:left-0 before:top-1.5 before:bottom-0 before:w-[2px] before:bg-muted">
                     <div className="absolute left-[-4px] top-1.5 h-2 w-2 rounded-full border-2 border-background bg-primary" />
                     <p className="text-xs font-medium text-muted-foreground">
-                      {format(new Date(log.created_at), "h:mm a · MMM d")}
+                      {format(new Date(log.createdAt), "h:mm a · MMM d")}
                     </p>
                     <p className="text-sm font-medium mt-1 line-clamp-2">
                       {log.description.replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, 'User')}
                     </p>
                     <div className="flex items-center gap-2 mt-2">
                       <Badge variant="outline" className="text-[9px] font-medium h-4 px-1 rounded-sm">
-                        {log.action_type.replace(/_/g, ' ')}
+                        {(log.actionType || log.action_type || "").replace(/_/g, ' ')}
                       </Badge>
                     </div>
                   </div>

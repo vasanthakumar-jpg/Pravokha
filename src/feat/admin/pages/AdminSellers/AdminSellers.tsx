@@ -59,15 +59,15 @@ import { StatsCard } from "@/feat/admin/components/StatsCard";
 
 interface Seller {
   id: string;
-  user_id: string;
-  full_name: string;
+  userId: string;
+  fullName: string;
   verificationStatus: string;
-  rejection_reason?: string;
-  total_sales: number;
-  created_at: string;
+  rejectionReason?: string;
+  totalSales: number;
+  createdAt: string;
   email?: string;
   pan?: string;
-  bank_account?: string;
+  bankAccount?: string;
 }
 
 export default function AdminSellers() {
@@ -101,15 +101,15 @@ export default function AdminSellers() {
       if (response.data.success) {
         const mappedSellers: Seller[] = (response.data.users as any[]).map(profile => ({
           id: profile.id,
-          user_id: profile.id,
-          full_name: profile.storeName || profile.name || "Unnamed Store",
+          userId: profile.id,
+          fullName: profile.storeName || profile.name || "Unnamed Store",
           verificationStatus: profile.verificationStatus || "pending",
-          rejection_reason: profile.verificationComments,
-          total_sales: 0,
-          created_at: profile.createdAt || new Date().toISOString(),
+          rejectionReason: profile.verificationComments,
+          totalSales: 0,
+          createdAt: profile.createdAt || new Date().toISOString(),
           email: profile.email,
           pan: profile.pan,
-          bank_account: profile.bankAccount
+          bankAccount: profile.bankAccount
         }));
         setSellers(mappedSellers);
       }
@@ -134,11 +134,11 @@ export default function AdminSellers() {
       if (response.data.success) {
         toast({
           title: newStatus === 'approved' ? "Verification Approved" : "Verification Rejected",
-          description: `${selectedSeller.full_name}'s status has been updated.`,
+          description: `${selectedSeller.fullName}'s status has been updated.`,
         });
 
         setSellers(prev => prev.map(s =>
-          s.id === selectedSeller.id ? { ...s, verificationStatus: newStatus === 'approved' ? 'verified' : 'rejected', rejection_reason: reason } : s
+          s.id === selectedSeller.id ? { ...s, verificationStatus: newStatus === 'approved' ? 'verified' : 'rejected', rejectionReason: reason } : s
         ));
         setShowVerifyDialog(false);
         setSelectedSeller(null);
@@ -175,7 +175,7 @@ export default function AdminSellers() {
   };
 
   const filteredSellers = sellers.filter(seller => {
-    const matchesSearch = (seller.full_name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+    const matchesSearch = (seller.fullName || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
       (seller.email || "").toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === "all" || seller.verificationStatus === statusFilter;
     return matchesSearch && matchesStatus;
@@ -260,7 +260,7 @@ export default function AdminSellers() {
               <CardHeader className="p-2.5 bg-muted/20 border-b border-border/10 pb-2">
                 <div className="flex justify-between items-start">
                   <div className="flex flex-col max-w-[70%]">
-                    <span className="font-semibold text-foreground truncate">{seller.full_name || 'Unnamed Shop'}</span>
+                    <span className="font-semibold text-foreground truncate">{seller.fullName || 'Unnamed Shop'}</span>
                   </div>
                   <Badge variant="outline" className={cn(
                     "rounded-full text-[9px] font-semibold px-2 py-0 h-5",
@@ -279,7 +279,7 @@ export default function AdminSellers() {
                 </div>
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-muted-foreground flex items-center gap-1.5"><Calendar className="w-3 h-3" /> Joined</span>
-                  <span className="font-medium text-foreground">{new Date(seller.created_at).toLocaleDateString()}</span>
+                  <span className="font-medium text-foreground">{new Date(seller.createdAt).toLocaleDateString()}</span>
                 </div>
                 <Button
                   size="sm"
@@ -349,7 +349,7 @@ export default function AdminSellers() {
                     <TableRow key={seller.id} className="group hover:bg-muted/30 transition-all border-b-border/20">
                       <TableCell className="px-4 py-4 sm:px-6 sm:py-5">
                         <div className="flex flex-col min-w-0">
-                          <span className="font-semibold text-sm tracking-tight">{seller.full_name || 'Unnamed Shop'}</span>
+                          <span className="font-semibold text-sm tracking-tight">{seller.fullName || 'Unnamed Shop'}</span>
                         </div>
                       </TableCell>
                       <TableCell className="px-4 py-4 sm:px-6 sm:py-5">
@@ -357,7 +357,7 @@ export default function AdminSellers() {
                           <span className="text-sm font-medium">{seller.email}</span>
                           <span className="text-[11px] text-muted-foreground font-medium flex items-center gap-1.5 mt-0.5">
                             <Calendar className="h-3 w-3 sm:h-3.5 sm:w-3.5 opacity-60" />
-                            Joined: {new Date(seller.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                            Joined: {new Date(seller.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                           </span>
                         </div>
                       </TableCell>
@@ -405,7 +405,7 @@ export default function AdminSellers() {
               <div className="space-y-0.5">
                 <DialogTitle className="text-xl font-bold">Identity Review</DialogTitle>
                 <DialogDescription className="text-white/80 font-medium text-xs">
-                  Governing Action: {selectedSeller?.full_name}
+                  Governing Action: {selectedSeller?.fullName}
                 </DialogDescription>
               </div>
             </div>

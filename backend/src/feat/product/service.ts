@@ -91,9 +91,11 @@ export class ProductService {
         });
     }
 
-    static async getProducts(user?: { id: string; role: Role }, filters: { search?: string; category?: string; page?: number; limit?: number; sellerId?: string } = {}) {
-        const { search, category, page = 1, limit = 10, sellerId } = filters;
-        const skip = (page - 1) * limit;
+    static async getProducts(user?: { id: string; role: Role }, filters: { search?: string; category?: string; page?: number | string; limit?: number | string; sellerId?: string } = {}) {
+        const { search, category, sellerId } = filters;
+        const pageNum = typeof filters.page === 'string' ? parseInt(filters.page) : (Number(filters.page) || 1);
+        const limitNum = typeof filters.limit === 'string' ? parseInt(filters.limit) : (Number(filters.limit) || 10);
+        const skip = (pageNum - 1) * limitNum;
 
         const where: any = { deletedAt: null };
 
@@ -146,13 +148,13 @@ export class ProductService {
                 where,
                 include,
                 skip,
-                take: limit,
+                take: limitNum,
                 orderBy: { createdAt: 'desc' }
             }),
             prisma.product.count({ where })
         ]);
 
-        return { products, total, page, limit, totalPages: Math.ceil(total / limit) };
+        return { products, total, page: pageNum, limit: limitNum, totalPages: Math.ceil(total / limitNum) };
     }
 
     static async getProductById(idOrSlug: string, user?: { id: string; role: Role }) {

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   AlertDialog,
@@ -60,6 +60,7 @@ import { toast } from "@/shared/hook/use-toast";
 import { AdminFormSkeleton } from "@/feat/admin/components/AdminSkeleton";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import type { AdminRoleCounts, ApiResponse } from "@/feat/admin/types/settings";
 
 export default function AdminSettings() {
   const { user, refreshProfile } = useAuth();
@@ -82,37 +83,37 @@ export default function AdminSettings() {
   const logoInputRef = useRef<HTMLInputElement>(null);
 
   const [profileData, setProfileData] = useState({
-    full_name: "",
+    fullName: "",
     email: "",
     phone: "",
     address: "",
-    avatar_url: ""
+    avatarUrl: ""
   });
 
   const [storeData, setStoreData] = useState({
-    store_name: "Pravokha",
-    store_url: "https://pravokha.com",
-    maintenance_mode: false,
-    auto_confirm_orders: true,
-    logo_url: "",
-    banner_url: ""
+    storeName: "Pravokha",
+    storeUrl: "https://pravokha.com",
+    maintenanceMode: false,
+    autoConfirmOrders: true,
+    logoUrl: "",
+    bannerUrl: ""
   });
 
   const [notificationData, setNotificationData] = useState({
-    governance_alerts: true,
-    revenue_telemetry: true,
-    inventory_criticality: false
+    governanceAlerts: true,
+    revenueTelemetry: true,
+    inventoryCriticality: false
   });
 
   const [systemData, setSystemData] = useState({
     currency: "INR",
     timezone: "IST",
-    analytics_enabled: true,
-    ai_insights_enabled: false,
-    payout_automation_enabled: true,
-    session_tracking_enabled: true,
-    data_anonymization_enabled: false,
-    public_indexing_enabled: false
+    analyticsEnabled: true,
+    aiInsightsEnabled: false,
+    payoutAutomationEnabled: true,
+    sessionTrackingEnabled: true,
+    dataAnonymizationEnabled: false,
+    publicIndexingEnabled: false
   });
 
   const { isAdmin, loading: adminLoading } = useAdmin();
@@ -133,19 +134,20 @@ export default function AdminSettings() {
     }
   }, [user]);
 
-  const fetchProfile = async () => {
+  const fetchProfile = useCallback(async () => {
     try {
       setLoading(true);
       const { data } = await apiClient.get('/users/profile');
 
       const userData = data || {};
 
+      // Backend returns camelCase from Prisma, map directly
       setProfileData({
-        full_name: userData.full_name || "",
+        fullName: userData.name || userData.fullName || "",
         email: userData.email || user?.email || "",
         phone: userData.phone || "",
         address: userData.address || "",
-        avatar_url: userData.avatar_url || ""
+        avatarUrl: userData.avatarUrl || ""
       });
     } catch (error) {
       console.error("[AdminSettings] Error fetching profile:", error);
@@ -159,72 +161,75 @@ export default function AdminSettings() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
-  const fetchSiteSettings = async () => {
+  const fetchSiteSettings = useCallback(async () => {
     try {
       const { data } = await apiClient.get('/admin/settings/site');
 
       if (data) {
+        // Backend returns camelCase from Prisma
+        const settings = data.settings || data.data || data;
         setStoreData({
-          store_name: data.store_name || "Pravokha",
-          store_url: data.store_url || "https://pravokha.com",
-          maintenance_mode: data.maintenance_mode || false,
-          auto_confirm_orders: data.auto_confirm_orders || true,
-          logo_url: data.logo_url || "",
-          banner_url: data.banner_url || ""
+          storeName: settings.storeName || "Pravokha",
+          storeUrl: settings.storeUrl || "https://pravokha.com",
+          maintenanceMode: settings.maintenanceMode || false,
+          autoConfirmOrders: settings.autoConfirmOrders !== undefined ? settings.autoConfirmOrders : true,
+          logoUrl: settings.logoUrl || "",
+          bannerUrl: settings.bannerUrl || ""
         });
         setSystemData({
-          currency: data.currency || "INR",
-          timezone: data.timezone || "IST",
-          analytics_enabled: data.analytics_enabled !== undefined ? data.analytics_enabled : true,
-          ai_insights_enabled: data.ai_insights_enabled || false,
-          payout_automation_enabled: data.payout_automation_enabled !== undefined ? data.payout_automation_enabled : true,
-          session_tracking_enabled: data.session_tracking_enabled !== undefined ? data.session_tracking_enabled : true,
-          data_anonymization_enabled: data.data_anonymization_enabled || false,
-          public_indexing_enabled: data.public_indexing_enabled || false
+          currency: settings.currency || "INR",
+          timezone: settings.timezone || "IST",
+          analyticsEnabled: settings.analyticsEnabled !== undefined ? settings.analyticsEnabled : true,
+          aiInsightsEnabled: settings.aiInsightsEnabled || false,
+          payoutAutomationEnabled: settings.payoutAutomationEnabled !== undefined ? settings.payoutAutomationEnabled : true,
+          sessionTrackingEnabled: settings.sessionTrackingEnabled !== undefined ? settings.sessionTrackingEnabled : true,
+          dataAnonymizationEnabled: settings.dataAnonymizationEnabled || false,
+          publicIndexingEnabled: settings.publicIndexingEnabled || false
         });
       }
     } catch (error) {
       console.error("[AdminSettings] Error fetching site settings:", error);
     }
-  };
+  }, []);
 
-  const fetchRoleCounts = async () => {
-    // Mock or fetch logic
-    // Assuming stats endpoint
+  const fetchRoleCounts = useCallback(async () => {
     try {
+      // Use existing endpoint that's already in backend
       const { data } = await apiClient.get('/users/admin/stats');
       setRoleCounts(data || { super_admins: 0, sellers: 0, support: 0 });
     } catch (e) {
       console.warn("Could not fetch user stats", e);
     }
-  };
+  }, []);
 
-  const fetchNotificationSettings = async () => {
+  const fetchNotificationSettings = useCallback(async () => {
     try {
-      // Assuming endpoint
       const { data } = await apiClient.get('/admin/settings/notifications');
       if (data) {
+        // Backend returns camelCase from Prisma
+        const settings = data.settings || data.data || data;
         setNotificationData({
-          governance_alerts: data.governance_alerts,
-          revenue_telemetry: data.revenue_telemetry,
-          inventory_criticality: data.inventory_criticality
+          governanceAlerts: settings.governanceAlerts || false,
+          revenueTelemetry: settings.revenueTelemetry || false,
+          inventoryCriticality: settings.inventoryCriticality || false
         });
       }
     } catch (error) {
       console.error("[AdminSettings] Error fetching notifications:", error);
     }
-  };
+  }, []);
 
   const handleSaveProfile = async () => {
     try {
       setSaving(true);
+      // Backend expects camelCase (Prisma model uses name, not fullName)
       await apiClient.put('/users/profile', {
-        full_name: profileData.full_name,
+        name: profileData.fullName,
         phone: profileData.phone,
         address: profileData.address,
-        avatar_url: profileData.avatar_url,
+        avatarUrl: profileData.avatarUrl,
       });
 
       toast({
@@ -248,13 +253,14 @@ export default function AdminSettings() {
   const handleSaveStoreSettings = async () => {
     try {
       setSaving(true);
+      // Backend expects camelCase (Prisma SiteSetting model)
       await apiClient.put('/admin/settings/site', {
-        store_name: storeData.store_name,
-        store_url: storeData.store_url,
-        maintenance_mode: storeData.maintenance_mode,
-        auto_confirm_orders: storeData.auto_confirm_orders,
-        logo_url: storeData.logo_url,
-        banner_url: storeData.banner_url
+        storeName: storeData.storeName,
+        storeUrl: storeData.storeUrl,
+        maintenanceMode: storeData.maintenanceMode,
+        autoConfirmOrders: storeData.autoConfirmOrders,
+        logoUrl: storeData.logoUrl,
+        bannerUrl: storeData.bannerUrl
       });
 
       toast({
@@ -292,26 +298,27 @@ export default function AdminSettings() {
   const handleSaveSystemSettings = async () => {
     try {
       setSaving(true);
+      // Backend expects camelCase (Prisma SiteSetting model)
       await apiClient.put('/admin/settings/system', {
         currency: systemData.currency,
         timezone: systemData.timezone,
-        analytics_enabled: systemData.analytics_enabled,
-        ai_insights_enabled: systemData.ai_insights_enabled,
-        payout_automation_enabled: systemData.payout_automation_enabled,
-        session_tracking_enabled: systemData.session_tracking_enabled,
-        data_anonymization_enabled: systemData.data_anonymization_enabled,
-        public_indexing_enabled: systemData.public_indexing_enabled
+        analyticsEnabled: systemData.analyticsEnabled,
+        aiInsightsEnabled: systemData.aiInsightsEnabled,
+        payoutAutomationEnabled: systemData.payoutAutomationEnabled,
+        sessionTrackingEnabled: systemData.sessionTrackingEnabled,
+        dataAnonymizationEnabled: systemData.dataAnonymizationEnabled,
+        publicIndexingEnabled: systemData.publicIndexingEnabled
       });
 
       toast({
-        title: "Environment Synced",
-        description: "Platform-wide system defaults have been updated.",
+        title: "System Config Updated",
+        description: "Infrastructure settings have been applied.",
       });
     } catch (error) {
       console.error("[AdminSettings] Error saving system settings:", error);
       toast({
-        title: "Sync Failed",
-        description: "Failed to synchronize system environment.",
+        title: "Update Failed",
+        description: "System configuration could not be saved.",
         variant: "destructive",
       });
     } finally {
@@ -348,10 +355,11 @@ export default function AdminSettings() {
 
       const publicUrl = data.url;
 
-      setProfileData(prev => ({ ...prev, avatar_url: publicUrl }));
+      // Update using camelCase property
+      setProfileData(prev => ({ ...prev, avatarUrl: publicUrl }));
 
-      // Update profile with new avatar URL
-      await apiClient.put('/users/profile', { avatar_url: publicUrl });
+      // Update profile with new avatar URL - backend expects camelCase
+      await apiClient.put('/users/profile', { avatarUrl: publicUrl });
 
       await refreshProfile();
 
@@ -380,14 +388,16 @@ export default function AdminSettings() {
 
       const publicUrl = data.url;
 
+      // Update using camelCase properties
       if (type === 'logo') {
-        setStoreData(prev => ({ ...prev, logo_url: publicUrl }));
+        setStoreData(prev => ({ ...prev, logoUrl: publicUrl }));
       } else {
-        setStoreData(prev => ({ ...prev, banner_url: publicUrl }));
+        setStoreData(prev => ({ ...prev, bannerUrl: publicUrl }));
       }
 
-      // Update settings
-      await apiClient.put('/admin/settings/site', { [`${type}_url`]: publicUrl });
+      // Update settings - backend expects camelCase
+      const payload = type === 'logo' ? { logoUrl: publicUrl } : { bannerUrl: publicUrl };
+      await apiClient.put('/admin/settings/site', payload);
 
       toast({ title: "Asset Updated", description: `Marketplace ${type} synchronized.` });
     } catch (error) {
@@ -397,6 +407,38 @@ export default function AdminSettings() {
       setUploading(false);
     }
   };
+
+  const tabs = useMemo(() => [
+    { id: "profile", label: "Profile settings", description: "Identity & contact", icon: User },
+    { id: "store", label: "Store configuration", description: "Branding & logic", icon: Store },
+    { id: "roles", label: "Roles & permissions", description: "Access matrix", icon: Shield },
+    { id: "notifications", label: "Notifications", description: "Alert protocols", icon: Bell },
+    { id: "security", label: "Security & privacy", description: "Protection ops", icon: Lock },
+    { id: "system", label: "System settings", description: "Global defaults", icon: Globe },
+  ], []);
+
+  // Mobile Navigation Dropdown (Visible < XL)
+  const mobileNav = useMemo(() => (
+    <div className="xl:hidden w-full">
+      <Select value={activeTab} onValueChange={setActiveTab}>
+        <SelectTrigger className="w-full h-12 bg-card border-border/60 rounded-xl font-bold px-4 shadow-sm">
+          <SelectValue placeholder="Select settings section" />
+        </SelectTrigger>
+        <SelectContent className="rounded-xl border-border/60">
+          {tabs.map((tab) => (
+            <SelectItem key={tab.id} value={tab.id} className="font-medium py-3">
+              <div className="flex items-center gap-3">
+                <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                  <tab.icon className="h-4 w-4" />
+                </div>
+                {tab.label}
+              </div>
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  ), [activeTab, tabs]);
 
   return (
     <div className="w-full mx-auto py-8 px-4 sm:px-6 lg:px-8 flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20">
@@ -416,9 +458,6 @@ export default function AdminSettings() {
             <div className="min-w-0">
               <h1 className="text-xl sm:text-2xl font-bold flex items-center flex-wrap gap-3">
                 System settings
-                {/* <Badge variant="outline" className="text-[10px] font-bold tracking-tight bg-primary/5 rounded-lg border-primary/20 shrink-0">
-                  v12.4
-                </Badge> */}
               </h1>
             </div>
           </div>
@@ -437,36 +476,10 @@ export default function AdminSettings() {
         </div>
       </div>
 
-      {/* Mobile Navigation Dropdown (Visible < XL) */}
-      <div className="xl:hidden w-full">
-        <Select value={activeTab} onValueChange={setActiveTab}>
-          <SelectTrigger className="w-full h-12 bg-card border-border/60 rounded-xl font-bold px-4 shadow-sm">
-            <SelectValue placeholder="Select settings section" />
-          </SelectTrigger>
-          <SelectContent className="rounded-xl border-border/60">
-            {[
-              { id: "profile", label: "Profile settings", icon: User },
-              { id: "store", label: "Store configuration", icon: Store },
-              { id: "roles", label: "Roles & permissions", icon: Shield },
-              { id: "notifications", label: "Notifications", icon: Bell },
-              { id: "security", label: "Security & privacy", icon: Lock },
-              { id: "system", label: "System settings", icon: Globe },
-            ].map((tab) => (
-              <SelectItem key={tab.id} value={tab.id} className="font-medium py-3">
-                <div className="flex items-center gap-3">
-                  <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                    <tab.icon className="h-4 w-4" />
-                  </div>
-                  {tab.label}
-                </div>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      {mobileNav}
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col xl:flex-row gap-8">
-        {/* Sidebar Navigation (Manual List to bypass Radix ghost box) */}
+        {/* Sidebar Navigation */}
         <aside className="hidden xl:block xl:w-64 shrink-0 h-full">
           <div className="flex flex-col w-full bg-transparent p-0 border-none gap-2 items-stretch h-full">
             {[
@@ -524,9 +537,9 @@ export default function AdminSettings() {
                       <div className="relative group/avatar">
                         <div className="relative p-1 rounded-full bg-primary/10 transition-transform duration-500">
                           <Avatar className="h-40 w-40 border-4 border-background">
-                            <AvatarImage src={profileData.avatar_url} className="object-cover" />
+                            <AvatarImage src={profileData.avatarUrl} className="object-cover" />
                             <AvatarFallback className="bg-slate-100 dark:bg-slate-900 text-5xl font-black text-primary/40">
-                              {profileData.full_name?.charAt(0) || "A"}
+                              {profileData.fullName?.charAt(0) || "A"}
                             </AvatarFallback>
                           </Avatar>
                         </div>
@@ -583,8 +596,8 @@ export default function AdminSettings() {
                             <User className="h-3 w-3 text-primary" /> Signature identity
                           </Label>
                           <Input
-                            value={profileData.full_name}
-                            onChange={(e) => setProfileData({ ...profileData, full_name: e.target.value })}
+                            value={profileData.fullName}
+                            onChange={(e) => setProfileData({ ...profileData, fullName: e.target.value })}
                             className="rounded-xl border-border/60 h-11 text-sm font-bold bg-muted/20 focus:ring-primary/20 transition-all placeholder:text-[10px] sm:placeholder:text-sm placeholder:text-muted-foreground/30 px-4"
                             placeholder="Enter full name"
                           />
@@ -712,8 +725,8 @@ export default function AdminSettings() {
                         <div className="relative group rounded-2xl border border-border/40 bg-muted/10 p-6 flex flex-col items-center gap-6 transition-all hover:bg-muted/20">
                           <div className="relative w-full">
                             <div className="h-28 w-full rounded-2xl bg-white dark:bg-slate-900 border border-border/40 flex items-center justify-center overflow-hidden group-hover:scale-[1.01] transition-transform duration-500">
-                              {storeData.banner_url ? (
-                                <img src={storeData.banner_url} className="w-full h-full object-cover" />
+                              {storeData.bannerUrl ? (
+                                <img src={storeData.bannerUrl} className="w-full h-full object-cover" />
                               ) : (
                                 <div className="flex flex-col items-center gap-1 opacity-20">
                                   <Globe className="h-8 w-8 text-primary" />
@@ -746,12 +759,12 @@ export default function AdminSettings() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                       <div className="space-y-2">
                         <Label className="text-xs font-bold text-muted-foreground opacity-70 ml-1">Universal site alias</Label>
-                        <Input value={storeData.store_name} className="rounded-xl border-border/60 h-11 text-sm font-bold bg-muted/10 focus:ring-primary/20 px-4" onChange={(e) => setStoreData({ ...storeData, store_name: e.target.value })} />
+                        <Input value={storeData.storeName} className="rounded-xl border-border/60 h-11 text-sm font-bold bg-muted/10 focus:ring-primary/20 px-4" onChange={(e) => setStoreData({ ...storeData, storeName: e.target.value })} />
                       </div>
                       <div className="space-y-2">
                         <Label className="text-xs font-bold text-muted-foreground opacity-70 ml-1">Network endpoint</Label>
                         <div className="relative">
-                          <Input value={storeData.store_url} className="rounded-xl border-border/60 h-11 text-sm font-bold bg-muted/10 focus:ring-primary/20 px-4 pr-12" onChange={(e) => setStoreData({ ...storeData, store_url: e.target.value })} />
+                          <Input value={storeData.storeUrl} className="rounded-xl border-border/60 h-11 text-sm font-bold bg-muted/10 focus:ring-primary/20 px-4 pr-12" onChange={(e) => setStoreData({ ...storeData, storeUrl: e.target.value })} />
                           <div className="absolute right-3 top-1/2 -translate-y-1/2 h-6 w-6 rounded-lg bg-slate-100 dark:bg-slate-900 border border-border/40 flex items-center justify-center text-primary/60">
                             <ExternalLink className="h-3 w-3" />
                           </div>
@@ -775,8 +788,8 @@ export default function AdminSettings() {
                             <p className="text-[11px] text-muted-foreground font-medium leading-relaxed max-w-[240px]">Decouple public gateways and initiate hard maintenance protocol.</p>
                           </div>
                           <Switch
-                            checked={storeData.maintenance_mode}
-                            onCheckedChange={(checked) => setStoreData({ ...storeData, maintenance_mode: checked })}
+                            checked={storeData.maintenanceMode}
+                            onCheckedChange={(checked) => setStoreData({ ...storeData, maintenanceMode: checked })}
                             className="data-[state=checked]:bg-rose-500"
                           />
                         </div>
@@ -789,8 +802,8 @@ export default function AdminSettings() {
                             <p className="text-[11px] text-muted-foreground font-medium leading-relaxed max-w-[240px]">Enable background telemetry for automated order synchronization.</p>
                           </div>
                           <Switch
-                            checked={storeData.auto_confirm_orders}
-                            onCheckedChange={(checked) => setStoreData({ ...storeData, auto_confirm_orders: checked })}
+                            checked={storeData.autoConfirmOrders}
+                            onCheckedChange={(checked) => setStoreData({ ...storeData, autoConfirmOrders: checked })}
                             className="data-[state=checked]:bg-emerald-500"
                           />
                         </div>
@@ -896,9 +909,9 @@ export default function AdminSettings() {
                   </CardHeader>
                   <CardContent className="p-6 space-y-4">
                     {[
-                      { id: "governance_alerts", title: "Governance protocol", desc: "Identity verification and role escalation alerts.", checked: notificationData.governance_alerts, icon: Shield },
-                      { id: "revenue_telemetry", title: "Revenue velocity", desc: "Real-time settlement pulses and financial transitions.", checked: notificationData.revenue_telemetry, icon: Activity },
-                      { id: "inventory_criticality", title: "Supply chain vitals", desc: "Inventory depletion alerts and warehouse status.", checked: notificationData.inventory_criticality, icon: Database },
+                      { id: "governanceAlerts", title: "Governance protocol", desc: "Identity verification and role escalation alerts.", checked: notificationData.governanceAlerts, icon: Shield },
+                      { id: "revenueTelemetry", title: "Revenue velocity", desc: "Real-time settlement pulses and financial transitions.", checked: notificationData.revenueTelemetry, icon: Activity },
+                      { id: "inventoryCriticality", title: "Supply chain vitals", desc: "Inventory depletion alerts and warehouse status.", checked: notificationData.inventoryCriticality, icon: Database },
                     ].map((n, i) => (
                       <div key={i} className="flex items-center justify-between p-6 rounded-2xl bg-muted/10 border border-border/40 hover:bg-white/40 dark:hover:bg-white/5 transition-all group">
                         <div className="flex items-center gap-4">
@@ -1028,9 +1041,9 @@ export default function AdminSettings() {
                     </CardHeader>
                     <CardContent className="p-6 space-y-4">
                       {[
-                        { id: "public_indexing_enabled", title: "Public identity indexing", desc: "Allow global search clusters to index administrative credentials.", checked: systemData.public_indexing_enabled },
-                        { id: "session_tracking_enabled", title: "Audit trail persistence", desc: "Immutable logging of every administrative operational sequence.", checked: systemData.session_tracking_enabled },
-                        { id: "data_anonymization_enabled", title: "PII redaction engine", desc: "Automatically redact sensitive data from analytics exports.", checked: systemData.data_anonymization_enabled },
+                        { id: "publicIndexingEnabled", title: "Public identity indexing", desc: "Allow global search clusters to index administrative credentials.", checked: systemData.publicIndexingEnabled },
+                        { id: "sessionTrackingEnabled", title: "Audit trail persistence", desc: "Immutable logging of every administrative operational sequence.", checked: systemData.sessionTrackingEnabled },
+                        { id: "dataAnonymizationEnabled", title: "PII redaction engine", desc: "Automatically redact sensitive data from analytics exports.", checked: systemData.dataAnonymizationEnabled },
                       ].map((p, i) => (
                         <div key={i} className="flex items-center justify-between p-5 rounded-xl bg-muted/10 border border-border/40 hover:bg-white/40 dark:hover:bg-white/5 transition-all group">
                           <div className="space-y-0.5">
@@ -1205,9 +1218,9 @@ export default function AdminSettings() {
                       </div>
                       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
                         {[
-                          { id: "analytics_enabled", title: "Analytics engine", desc: "High-velocity data processing.", icon: BarChart3, color: "text-blue-500", bg: "bg-blue-500/5", border: "border-blue-500/10" },
-                          { id: "ai_insights_enabled", title: "AI intelligence", desc: "ML-driven recommendations (BETA).", icon: Zap, color: "text-violet-500", bg: "bg-violet-500/5", border: "border-violet-500/10" },
-                          { id: "payout_automation_enabled", title: "Auto-settlement", desc: "Automated seller disbursements.", icon: CreditCard, color: "text-emerald-500", bg: "bg-emerald-500/5", border: "border-emerald-500/10" },
+                          { id: "analyticsEnabled", title: "Analytics engine", desc: "High-velocity data processing.", icon: BarChart3, color: "text-blue-500", bg: "bg-blue-500/5", border: "border-blue-500/10" },
+                          { id: "aiInsightsEnabled", title: "AI intelligence", desc: "ML-driven recommendations (BETA).", icon: Zap, color: "text-violet-500", bg: "bg-violet-500/5", border: "border-violet-500/10" },
+                          { id: "payoutAutomationEnabled", title: "Auto-settlement", desc: "Automated seller disbursements.", icon: CreditCard, color: "text-emerald-500", bg: "bg-emerald-500/5", border: "border-emerald-500/10" },
                         ].map((f, i) => (
                           <div key={i} className={cn("p-6 rounded-2xl border flex flex-col gap-6 transition-all hover:bg-muted/10", f.bg, f.border)}>
                             <div className="flex items-center justify-between">
@@ -1215,7 +1228,7 @@ export default function AdminSettings() {
                                 <f.icon className="h-5 w-5" />
                               </div>
                               <Switch
-                                checked={systemData[f.id]}
+                                checked={systemData[f.id as keyof typeof systemData]}
                                 onCheckedChange={(checked) => setSystemData({ ...systemData, [f.id]: checked })}
                                 className="scale-90 data-[state=checked]:bg-emerald-500"
                               />
@@ -1259,7 +1272,7 @@ export default function AdminSettings() {
                         <Input
                           placeholder="https://your-api.com/webhook"
                           className="rounded-xl h-12 bg-muted/20 border-border/60 font-mono text-xs font-bold px-11"
-                          defaultValue={storeData.store_url + "/api/v1/webhook"}
+                          defaultValue={storeData.storeUrl + "/api/v1/webhook"}
                         />
                         <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground/40">
                           <Globe className="h-4 w-4" />

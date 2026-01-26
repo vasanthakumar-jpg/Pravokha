@@ -246,7 +246,8 @@ export default function UserOrderDetail() {
                   <Badge className={cn("text-white h-5 sm:h-7 px-2 sm:px-3 text-[10px] sm:text-sm font-medium whitespace-nowrap",
                      order.order_status === 'delivered' ? "bg-green-600" :
                         order.order_status === 'cancelled' ? "bg-red-600" :
-                           "bg-primary"
+                           order.order_status === 'packed' ? "bg-purple-600" :
+                              "bg-primary"
                   )}>
                      {order.order_status?.toUpperCase()}
                   </Badge>

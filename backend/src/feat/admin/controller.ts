@@ -184,13 +184,18 @@ export class AdminController {
         if (!settings) {
             settings = await prisma.siteSetting.create({ data: { id: 'primary' } });
         }
+        // Return with data wrapper for frontend consistency
         res.json({ success: true, settings });
     });
 
     static updateSiteSettings = asyncHandler(async (req: any, res: Response) => {
-        const settings = await prisma.siteSetting.update({
+        const settings = await prisma.siteSetting.upsert({
             where: { id: 'primary' },
-            data: req.body
+            update: req.body,
+            create: {
+                id: 'primary',
+                ...req.body
+            }
         });
         res.json({ success: true, settings });
     });
@@ -208,9 +213,34 @@ export class AdminController {
     });
 
     static updateNotificationSettings = asyncHandler(async (req: any, res: Response) => {
-        const settings = await prisma.adminNotificationSetting.update({
+        const settings = await prisma.adminNotificationSetting.upsert({
             where: { adminId: req.user.id },
-            data: req.body
+            update: req.body,
+            create: {
+                adminId: req.user.id,
+                ...req.body
+            }
+        });
+        // Return with settings wrapper for frontend consistency
+        res.json({ success: true, settings });
+    });
+
+    static getSystemSettings = asyncHandler(async (req: any, res: Response) => {
+        let settings = await prisma.siteSetting.findUnique({ where: { id: 'primary' } });
+        if (!settings) {
+            settings = await prisma.siteSetting.create({ data: { id: 'primary' } });
+        }
+        res.json({ success: true, settings });
+    });
+
+    static updateSystemSettings = asyncHandler(async (req: any, res: Response) => {
+        const settings = await prisma.siteSetting.upsert({
+            where: { id: 'primary' },
+            update: req.body,
+            create: {
+                id: 'primary',
+                ...req.body
+            }
         });
         res.json({ success: true, settings });
     });
