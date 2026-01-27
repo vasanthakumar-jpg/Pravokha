@@ -29,7 +29,8 @@ import { ProductViewMode } from "@/feat/products/domain/types";
 import { BulkUploadModal } from "@/feat/seller/components/BulkUploadModal";
 
 export default function SellerProducts() {
-  const { user, verificationStatus } = useAuth();
+  const { user, role, verificationStatus } = useAuth();
+  const isAdmin = role === 'ADMIN' || role === 'admin';
   const navigate = useNavigate();
   const { toast } = useToast();
   const [viewMode, setViewMode] = useState<ProductViewMode>("grid");
@@ -54,7 +55,7 @@ export default function SellerProducts() {
   const [bulkUploadOpen, setBulkUploadOpen] = useState(false);
 
   const handleTogglePublish = async (productId: string, currentStatus: boolean) => {
-    if (verificationStatus !== 'verified' && !currentStatus) {
+    if (!isAdmin && verificationStatus !== 'verified' && !currentStatus) {
       toast({ title: "Verification Required", description: "You must be verified to publish products.", variant: "destructive" });
       return;
     }
@@ -151,7 +152,7 @@ export default function SellerProducts() {
             <Button
               onClick={() => navigate("/seller/products/add")}
               className="flex-1 sm:flex-none h-10 rounded-xl bg-primary shadow-lg shadow-primary/20 font-bold text-xs"
-              disabled={verificationStatus !== 'verified'}
+              disabled={!isAdmin && verificationStatus !== 'verified'}
             >
               <Plus className="h-4 w-4 mr-2" /> Add Product
             </Button>

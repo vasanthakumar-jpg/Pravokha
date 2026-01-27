@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/core/context/AuthContext";
-import { useProfile } from "@/shared/hook/useProfile";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -30,9 +29,15 @@ import { cn, getMediaUrl } from "@/lib/utils";
 
 export function UserAccountDropdown() {
     const { user, role, signOut } = useAuth();
-    const { profile } = useProfile(user?.id);
     const navigate = useNavigate();
     const [open, setOpen] = useState(false);
+
+    // ✅ NEW: Read ALL data from AuthContext user object only
+    const currentAvatarUrl = user?.avatar_url;
+    const currentName = user?.full_name || user?.name || user?.email?.split('@')[0] || "User";
+    const userKey = user?._lastFetchedAt || user?.id || 'guest';
+
+    console.log('[UserAccountDropdown] Rendering - avatar_url:', currentAvatarUrl, 'key:', userKey);
 
     const handleNavigate = (path: string) => {
         navigate(path);
@@ -113,10 +118,13 @@ export function UserAccountDropdown() {
         <DropdownMenu open={open} onOpenChange={setOpen}>
             <DropdownMenuTrigger className="focus:outline-none">
                 <div className={styles.triggerContainer}>
-                    <Avatar className={cn(styles.triggerAvatar, "ring-2 ring-offset-2 ring-offset-background ring-primary/20 hover:ring-primary/40 transition-all")}>
-                        <AvatarImage src={getMediaUrl(profile?.avatar_url || user?.avatar_url)} alt={profile?.full_name || user?.email} />
+                    <Avatar
+                        key={userKey}
+                        className={cn(styles.triggerAvatar, "ring-2 ring-offset-2 ring-offset-background ring-primary/20 hover:ring-primary/40 transition-all")}
+                    >
+                        <AvatarImage src={getMediaUrl(currentAvatarUrl)} alt={currentName} />
                         <AvatarFallback className={styles.avatarFallback}>
-                            {getInitials(profile?.full_name)}
+                            {getInitials(currentName)}
                         </AvatarFallback>
                     </Avatar>
                     {role === "admin" && (
@@ -130,15 +138,15 @@ export function UserAccountDropdown() {
                 {/* User Info Header */}
                 <DropdownMenuLabel className="font-normal">
                     <div className={styles.userInfoContainer}>
-                        <Avatar className={styles.avatar}>
-                            <AvatarImage src={getMediaUrl(profile?.avatar_url)} />
+                        <Avatar key={`${userKey}-dropdown`} className={styles.avatar}>
+                            <AvatarImage src={getMediaUrl(currentAvatarUrl)} />
                             <AvatarFallback className={styles.avatarFallback}>
-                                {getInitials(profile?.full_name)}
+                                {getInitials(currentName)}
                             </AvatarFallback>
                         </Avatar>
                         <div className={styles.userDetails}>
                             <p className={styles.userName}>
-                                {profile?.full_name || user?.email?.split('@')[0] || "User"}
+                                {currentName}
                             </p>
                             <p className={styles.userEmail}>
                                 {user?.email}

@@ -9,6 +9,7 @@ const router = Router();
 
 // Profile Routes
 router.get('/profile', authenticate, UserController.getMyProfile);
+router.get('/me', authenticate, UserController.getMyProfile); // Alias for frontend compatibility
 router.patch('/profile', authenticate, UserController.updateProfile);
 router.put('/profile', authenticate, UserController.updateProfile); // Support PUT for frontend compatibility
 

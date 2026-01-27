@@ -20,9 +20,12 @@ export class UserController {
 
         res.json({
             success: true,
-            ...safeUser, // Spread first to avoid overwriting warnings for id, email, etc.
-            full_name: safeUser.name,
-            avatar_url: safeUser.avatarUrl || safeUser.storeLogoUrl,
+            user: {
+                ...safeUser,
+                full_name: safeUser.name,
+                avatar_url: safeUser.avatarUrl || safeUser.storeLogoUrl,
+                date_of_birth: safeUser.dateOfBirth,
+            }
         });
     });
 
@@ -64,19 +67,56 @@ export class UserController {
         const updates = req.body;
 
         // Strip sensitive fields
-        const { password, role, email, status, verificationStatus, ...safeUpdates } = updates;
+        let { password, role, email, status, verificationStatus, ...safeUpdates } = updates;
 
-        // Handle date transformation if dateOfBirth is provided
-        if (safeUpdates.dateOfBirth) {
-            const dob = new Date(safeUpdates.dateOfBirth);
-            // If date is invalid, set to null instead of throwing error
-            safeUpdates.dateOfBirth = isNaN(dob.getTime()) ? null : dob;
+        // Map snake_case to camelCase for Prisma
+        if (updates.full_name !== undefined) {
+            safeUpdates.name = updates.full_name;
         }
+        if (updates.avatar_url !== undefined) {
+            safeUpdates.avatarUrl = updates.avatar_url;
+        }
+        if (updates.date_of_birth !== undefined) {
+            safeUpdates.dateOfBirth = updates.date_of_birth;
+        }
+
+        // CRITICAL: Strict dateOfBirth transformation with validation
+        const dobValue = safeUpdates.dateOfBirth;
+        if (dobValue !== undefined) {
+            console.log('[UserController] Processing DOB - Received value:', dobValue, 'Type:', typeof dobValue);
+
+            // Handle null or empty string
+            if (dobValue === "" || dobValue === null) {
+                safeUpdates.dateOfBirth = null;
+                console.log('[UserController] DOB set to null (empty/null input)');
+            } else {
+                // Validate and transform
+                const dob = new Date(dobValue);
+
+                // Check if date is valid
+                if (isNaN(dob.getTime())) {
+                    console.error('[UserController] INVALID DOB FORMAT:', dobValue);
+                    throw new Error(`Invalid date format for date_of_birth: ${dobValue}`);
+                }
+
+                safeUpdates.dateOfBirth = dob;
+                console.log('[UserController] DOB validated and transformed to:', safeUpdates.dateOfBirth.toISOString());
+            }
+        }
+
+        // Remove legacy snake_case keys from safeUpdates if they were added via spread
+        delete safeUpdates.full_name;
+        delete safeUpdates.avatar_url;
+        delete safeUpdates.date_of_birth;
+
+        console.log('[UserController] Final update payload:', JSON.stringify(safeUpdates, null, 2));
 
         const updatedUser = await prisma.user.update({
             where: { id: userId },
             data: safeUpdates,
         });
+
+        console.log('[UserController] User updated successfully - New DOB:', updatedUser.dateOfBirth, 'New avatarUrl:', updatedUser.avatarUrl);
 
         const { password: _, ...userResponse } = updatedUser;
 

@@ -13,6 +13,11 @@ export class ProductService {
             is_verified,
             seller_id,
             stock,
+            category_id,
+            subcategory_id,
+            categoryId,
+            subcategoryId,
+            dealerId,
             ...rest
         } = data;
 
@@ -22,7 +27,9 @@ export class ProductService {
             isFeatured: is_featured !== undefined ? is_featured : data.isFeatured,
             isNew: is_new !== undefined ? is_new : data.isNew,
             isVerified: is_verified !== undefined ? is_verified : (data.isVerified !== undefined ? data.isVerified : data.is_verified),
-            dealerId: seller_id !== undefined ? seller_id : data.dealerId,
+            dealerId: seller_id !== undefined ? seller_id : (data.dealerId || rest.dealerId),
+            categoryId: category_id !== undefined ? category_id : (categoryId || rest.categoryId),
+            subcategoryId: subcategory_id !== undefined ? subcategory_id : (subcategoryId || rest.subcategoryId),
         };
 
         // CRITICAL: Strip primary keys and metadata that shouldn't be updated or could cause Prisma errors
@@ -36,13 +43,11 @@ export class ProductService {
         delete mappedData.product_sizes;
         delete mappedData.category_id;
         delete mappedData.subcategory_id;
-
-        // Also strip the fields we explicitly mapped to avoid duplicates
+        delete mappedData.seller_id;
+        delete mappedData.is_verified;
         delete mappedData.discount_price;
         delete mappedData.is_featured;
         delete mappedData.is_new;
-        delete mappedData.seller_id;
-        delete mappedData.is_verified;
 
         if (variants && Array.isArray(variants)) {
             console.log("[ProductService] Mapping variants:", variants.length);
@@ -74,6 +79,20 @@ export class ProductService {
 
     static async createProduct(dealerId: string, data: any) {
         const mappedData = this.mapProductData(data);
+
+        // Security: Ensure dealer is verified (Admins bypass)
+        // Only enforce if attempting to publish
+        if (mappedData.published === true) {
+            const user = await prisma.user.findUnique({ where: { id: dealerId } });
+            if (!user) throw { statusCode: 404, message: "User not found" };
+
+            if (user.role !== Role.ADMIN && user.verificationStatus !== 'verified') {
+                throw {
+                    statusCode: 403,
+                    message: "Verification Required: Your account must be verified to publish products live. You can still save drafts."
+                };
+            }
+        }
         return await prisma.product.create({
             data: {
                 ...mappedData,
@@ -107,7 +126,7 @@ export class ProductService {
         }
 
         if (category) {
-            where.category = category;
+            where.category = { slug: category };
         }
 
         if (sellerId) {
@@ -223,6 +242,20 @@ export class ProductService {
 
         const mappedData = this.mapProductData(data);
 
+        // Security: Ensure dealer is verified (Admins bypass)
+        // Only enforce if attempting to publish
+        if (mappedData.published === true) {
+            const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
+            if (!dbUser) throw { statusCode: 404, message: "User not found" };
+
+            if (dbUser.role !== Role.ADMIN && dbUser.verificationStatus !== 'verified') {
+                throw {
+                    statusCode: 403,
+                    message: "Verification Required: Your account must be verified to publish products live. You can still save drafts."
+                };
+            }
+        }
+
         return await prisma.$transaction(async (tx) => {
             if (mappedData.variants) {
                 console.log("[ProductService] Replacing variants for:", id);
@@ -275,5 +308,14 @@ export class ProductService {
             where: { id },
             data: { deletedAt: new Date() } as any
         });
+    }
+
+    static async checkSkuAvailable(sku: string, excludeId?: string) {
+        const where: any = { sku, deletedAt: null };
+        if (excludeId) {
+            where.id = { not: excludeId };
+        }
+        const count = await prisma.product.count({ where });
+        return count === 0;
     }
 }

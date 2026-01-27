@@ -10,5 +10,12 @@ export const createOrderSchema = z.object({
     items: z.array(z.object({
         productId: z.string().uuid(),
         quantity: z.number().int().positive(),
+        variantId: z.string().optional(),
+        color: z.string().optional(),
+        size: z.string().optional(),
     })).min(1),
+    paymentMethod: z.string().optional(),
+    status: z.string().optional(),
+    paymentStatus: z.string().optional(),
+    stripeIntentId: z.string().optional(),
 });

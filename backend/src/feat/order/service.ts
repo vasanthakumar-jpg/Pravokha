@@ -11,28 +11,33 @@ export class OrderService {
         shippingAddress: string;
         shippingCity: string;
         shippingPincode: string;
-        items: { productId: string; quantity: number }[];
+        items: {
+            productId: string;
+            quantity: number;
+            variantId?: string;
+            color?: string;
+            size?: string;
+        }[];
+        paymentMethod?: string;
+        status?: string;
+        paymentStatus?: string;
+        stripeIntentId?: string;
     }) {
-        // 1. Generate Order Number
         const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substring(2, 5).toUpperCase()}`;
 
         return await prisma.$transaction(async (tx) => {
-            let total = 0;
+            let subtotal = 0;
             const orderItems = [];
+            let tshirtCount = 0;
 
-            // 2. Validate Stock and Calculate Total
+            // 1. Validate Stock and Calculate Subtotal
             for (const item of data.items) {
                 const product = await tx.product.findUnique({
                     where: { id: item.productId },
                 });
 
-                if (!product) {
-                    throw new Error(`Product with ID ${item.productId} not found`);
-                }
-
-                if (product.stock < item.quantity) {
-                    throw new Error(`Insufficient stock for product: ${product.title}`);
-                }
+                if (!product) throw new Error(`Product with ID ${item.productId} not found`);
+                if (product.stock < item.quantity) throw new Error(`Insufficient stock for ${product.title}`);
 
                 // Atomic stock decrement
                 await tx.product.update({
@@ -40,23 +45,48 @@ export class OrderService {
                     data: { stock: { decrement: item.quantity } },
                 });
 
-                total += product.price * item.quantity;
+                if (product.price === 325) {
+                    tshirtCount += item.quantity;
+                }
+
+                subtotal += product.price * item.quantity;
                 orderItems.push({
                     productId: product.id,
-                    sellerId: product.dealerId,  // Track which seller owns this item
+                    sellerId: product.dealerId,
                     title: product.title,
                     price: product.price,
                     quantity: item.quantity,
+                    variantId: item.variantId,
+                    color: item.color,
+                    size: item.size,
                 });
             }
 
-            // 3. Create Order in Database
+            // 2. Apply Combo Offer (3 T-shirts for 949)
+            const comboSets = Math.floor(tshirtCount / 3);
+            const comboSavings = comboSets * (3 * 325 - 949);
+
+            const shipping = 99;
+            const discountedSubtotal = subtotal - comboSavings;
+            const tax = Math.round(discountedSubtotal * 0.18);
+            const totalTotal = discountedSubtotal + shipping + tax;
+
+            // 3. Map Statuses (Handle FE's "CONFIRMED")
+            let orderStatus: OrderStatus = OrderStatus.PENDING;
+            if (data.status === 'CONFIRMED') orderStatus = OrderStatus.PENDING; // Map to PENDING until reviewed or automated
+
+            let paymentStatus: PaymentStatus = PaymentStatus.PENDING;
+            if (data.paymentStatus === 'PAID') paymentStatus = PaymentStatus.PAID;
+
+            // 4. Create Order
             const order = await tx.order.create({
                 data: {
                     orderNumber,
-                    total: total,
-                    status: OrderStatus.PENDING,
-                    paymentStatus: PaymentStatus.PENDING,
+                    total: totalTotal,
+                    status: orderStatus,
+                    paymentStatus: paymentStatus,
+                    paymentMethod: data.paymentMethod || 'stripe',
+                    stripeIntentId: data.stripeIntentId,
                     customerName: data.customerName,
                     customerEmail: data.customerEmail,
                     customerPhone: data.customerPhone,
@@ -64,40 +94,36 @@ export class OrderService {
                     shippingCity: data.shippingCity,
                     shippingPincode: data.shippingPincode,
                     userId: data.userId,
-                    items: {
-                        create: orderItems
-                    }
+                    items: { create: orderItems }
                 },
-                include: {
-                    items: true
-                }
+                include: { items: true }
             });
 
-            // 4. Create Stripe PaymentIntent
-            const paymentIntent = await stripe.paymentIntents.create({
-                amount: Math.round(total * 100), // Stripe expects cents
-                currency: 'inr',
-                metadata: { orderId: order.id, orderNumber: order.orderNumber },
-                receipt_email: data.customerEmail,
-            });
+            // 5. Stripe Integration (Optional if not COD/already paid)
+            let clientSecret = null;
+            if (data.paymentMethod === 'stripe' && !data.stripeIntentId) {
+                const paymentIntent = await stripe.paymentIntents.create({
+                    amount: Math.round(totalTotal * 100),
+                    currency: 'inr',
+                    metadata: { orderId: order.id, orderNumber: order.orderNumber },
+                    receipt_email: data.customerEmail,
+                });
 
-            // Update order with payment intent ID
-            await tx.order.update({
-                where: { id: order.id },
-                data: { stripeIntentId: paymentIntent.id } as any
-            });
+                await tx.order.update({
+                    where: { id: order.id },
+                    data: { stripeIntentId: paymentIntent.id }
+                });
+                clientSecret = paymentIntent.client_secret;
+            }
 
-            // 5. Notify Sellers
+            // 6. Notify Sellers
             const sellerIds = Array.from(new Set(orderItems.map(item => item.sellerId)));
             const { NotificationService } = await import('../notification/service');
             for (const sellerId of sellerIds) {
                 await NotificationService.notifyNewOrder(sellerId, orderNumber).catch(e => console.error("Notification failed:", e));
             }
 
-            return {
-                order,
-                clientSecret: paymentIntent.client_secret,
-            };
+            return { order, clientSecret };
         });
     }
 

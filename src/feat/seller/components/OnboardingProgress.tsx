@@ -17,7 +17,7 @@ export function OnboardingProgress({ profile, productsCount }: OnboardingProgres
             id: "profile",
             title: "Profile",
             description: "Personal details",
-            isCompleted: !!(profile.name && (profile.avatarUrl || profile.email)),
+            isCompleted: !!(profile.full_name && (profile.avatar_url || profile.email)),
             link: "/seller/settings?tab=profile"
         },
         {

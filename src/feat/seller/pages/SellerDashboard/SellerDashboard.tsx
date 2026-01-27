@@ -14,6 +14,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/ui/Alert";
 import { OnboardingProgress } from "@/feat/seller/components/OnboardingProgress";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { useProfile } from "@/shared/hook/useProfile";
 
 export default function SellerDashboard() {
   const { user, loading: authLoading, role } = useAuth();
@@ -32,7 +33,15 @@ export default function SellerDashboard() {
 
   const [salesData, setSalesData] = useState<any[]>([]);
   const [topProducts, setTopProducts] = useState<any[]>([]);
-  const [fullProfile, setFullProfile] = useState<any>(null);
+  const { profile: fullProfile } = useProfile(user?.id);
+
+  // Sync verification status from fullProfile
+  useEffect(() => {
+    if (fullProfile) {
+      setVerificationStatus((fullProfile as any).verificationStatus || "pending");
+      setRejectionReason((fullProfile as any).verificationComments || null);
+    }
+  }, [fullProfile]);
 
   // Authorization Guard
   useEffect(() => {
@@ -55,16 +64,6 @@ export default function SellerDashboard() {
       setLoading(true);
       // Simulate a small delay to make the refresh perceptible and show the spinner
       await new Promise(resolve => setTimeout(resolve, 800));
-
-      // 1. Fetch User Profile including Verification Status
-      const profileResponse = await apiClient.get('/auth/me');
-      const profile = profileResponse.data.user;
-
-      if (profile) {
-        setVerificationStatus(profile.verificationStatus || "pending");
-        setRejectionReason(profile.verificationComments || null);
-        setFullProfile(profile);
-      }
 
       // 2. Fetch seller's products
       const productsResponse = await apiClient.get('/products', {

@@ -276,6 +276,9 @@ model OrderItem {
   
   title     String
   price     Float
+  variantId String? @map("variant_id")
+  color     String?
+  size      String?
   quantity  Int
   
   @@index([sellerId])
@@ -376,6 +379,7 @@ model UserPreference {
   theme              String   @default("system")
   language           String   @default("en")
   currency           String   @default("INR")
+  twoFactorAuth      Boolean  @default(false)
   
   updatedAt          DateTime @updatedAt
 
@@ -510,4 +514,16 @@ model ProductReview {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("product_reviews")
+}
+
+model MigrationAudit {
+  id          String   @id @default(uuid())
+  entityType  String   // e.g., 'Subcategory'
+  entityId    String
+  oldData     Json
+  newData     Json
+  migrationId String   // identifier for the migration run
+  createdAt   DateTime @default(now())
+
+  @@map("migration_audit")
 }

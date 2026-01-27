@@ -63,7 +63,7 @@ export function ProfileDropdown({ user }: ProfileDropdownProps) {
                     </div>
                     <div className={styles.menuList}>
                         <Link
-                            to="/profile"
+                            to="/settings"
                             onClick={() => setIsOpen(false)}
                             className={styles.menuItem}
                         >

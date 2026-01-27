@@ -143,7 +143,7 @@ export const ProductReviews = ({ productId }: ProductReviewsProps) => {
                 const formData = new FormData();
                 selectedImages.forEach(file => formData.append('files', file));
 
-                const uploadRes = await apiClient.post('/upload/multiple', formData, {
+                const uploadRes = await apiClient.post('/uploads/multiple', formData, {
                     headers: { 'Content-Type': 'multipart/form-data' }
                 });
 

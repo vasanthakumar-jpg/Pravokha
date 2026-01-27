@@ -19,10 +19,14 @@ export function useProductInventory({ sellerId, isAdmin }: UseProductInventoryPr
 
     const fetchProducts = useCallback(async () => {
         setLoading(true);
+        console.log(`[useProductInventory] Fetching products for sellerId:`, sellerId, `(isAdmin: ${isAdmin})`);
+
         try {
             const response = await apiClient.get('/products', {
                 params: { sellerId }
             });
+
+            console.log(`[useProductInventory] API Response:`, response.data);
 
             if (response.data.success) {
                 const transformed = (response.data.data || []).map((p: any) => {
@@ -61,7 +65,7 @@ export function useProductInventory({ sellerId, isAdmin }: UseProductInventoryPr
         } finally {
             setLoading(false);
         }
-    }, [toast]);
+    }, [sellerId, isAdmin, toast]);
 
     useEffect(() => {
         fetchProducts();
@@ -80,7 +84,10 @@ export function useProductInventory({ sellerId, isAdmin }: UseProductInventoryPr
         }
 
         if (categoryFilter !== "all") {
-            filtered = filtered.filter((p) => p.category === categoryFilter);
+            filtered = filtered.filter((p) => {
+                const pCategory = p.category as any;
+                return pCategory?.slug === categoryFilter || pCategory?.name === categoryFilter || p.category === categoryFilter;
+            });
         }
 
         if (statusFilter !== "all") {

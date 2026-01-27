@@ -101,14 +101,34 @@ export class CategoryController {
     });
 
     static createSubcategory = asyncHandler(async (req: any, res: Response) => {
-        const { name, slug, description, category_id, categoryId, status, display_order, displayOrder } = req.body;
+        const { name, categoryId, category_id, description, status, displayOrder, display_order } = req.body;
+        const targetCategoryId = categoryId || category_id;
+
+        const category = await prisma.category.findUnique({
+            where: { id: targetCategoryId }
+        });
+
+        if (!category) {
+            return res.status(404).json({ success: false, message: 'Category not found' });
+        }
+
+        // Generate scoped slug
+        const parentSlug = category.slug;
+        const subNameSlug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+        let slug = `${parentSlug}-${subNameSlug}`;
+
+        // Ensure uniqueness
+        const existing = await prisma.subcategory.findUnique({ where: { slug } });
+        if (existing) {
+            slug = `${slug}-${Date.now().toString().slice(-4)}`;
+        }
 
         const subcategory = await prisma.subcategory.create({
             data: {
                 name,
                 slug,
                 description,
-                categoryId: categoryId || category_id,
+                categoryId: targetCategoryId,
                 status: status || 'active',
                 displayOrder: displayOrder ?? display_order ?? 0
             }

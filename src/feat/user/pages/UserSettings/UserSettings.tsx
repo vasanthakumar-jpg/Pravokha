@@ -8,7 +8,7 @@ import { useToast } from "@/shared/hook/use-toast";
 import { apiClient } from "@/infra/api/apiClient";
 import { useAuth } from "@/core/context/AuthContext";
 import { useUserSettings } from "@/shared/hook/useUserSettings";
-import { cn } from "@/lib/utils";
+import { cn, getMediaUrl } from "@/lib/utils";
 
 // UI Components
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/ui/Tabs";
@@ -113,7 +113,7 @@ export default function UserSettings() {
             <div className="relative group shrink-0">
               <div className="absolute -inset-0.5 bg-gradient-to-r from-primary to-accent rounded-full opacity-75 group-hover:opacity-100 transition duration-500 blur"></div>
               <Avatar className="relative h-24 w-24 md:h-32 md:w-32 border-4 border-background shadow-xl">
-                <AvatarImage src={profile.avatar_url || ""} className="object-cover" />
+                <AvatarImage src={getMediaUrl(profile.avatar_url)} className="object-cover" />
                 <AvatarFallback className="text-3xl md:text-4xl font-bold bg-primary/10 text-primary">
                   {profile.full_name?.charAt(0) || "U"}
                 </AvatarFallback>

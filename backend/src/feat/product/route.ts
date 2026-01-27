@@ -1,4 +1,4 @@
-import { createProduct, getProducts, getProductById, updateProduct, deleteProduct } from './controller';
+import { createProduct, getProducts, getProductById, updateProduct, deleteProduct, checkSku } from './controller';
 import { authenticate, authorize, optionalAuthenticate } from '../../shared/middleware/auth';
 import { requireProductOwnership } from '../../shared/middleware/ownership';
 import { validate } from '../../shared/middleware/validation';
@@ -15,6 +15,7 @@ router.get('/:id', optionalAuthenticate, getProductById);
 // Protected routes
 router.use(authenticate);
 
+router.post('/check-sku', checkSku);
 router.post('/', authorize([Role.DEALER, Role.ADMIN]), validate({ body: createProductSchema }), createProduct);
 router.put('/:id', authorize([Role.DEALER, Role.ADMIN]), requireProductOwnership, validate({ body: updateProductSchema }), updateProduct);
 router.delete('/:id', authorize([Role.DEALER, Role.ADMIN]), requireProductOwnership, deleteProduct);

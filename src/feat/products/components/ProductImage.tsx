@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Package } from "lucide-react";
 import { apiClient } from "@/infra/api/apiClient";
-import { cn } from "@/lib/utils";
+import { cn, getMediaUrl } from "@/lib/utils";
 
 interface ProductImageProps {
     productId: string;
@@ -51,7 +51,7 @@ export function ProductImage({ productId, title, src, size = "list", className }
 
     return (
         <img
-            src={imageUrl}
+            src={getMediaUrl(imageUrl)}
             alt={title}
             className={cn(containerClass, "object-cover rounded-lg border border-border/20", className)}
         />

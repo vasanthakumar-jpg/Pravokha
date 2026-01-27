@@ -43,8 +43,10 @@ export class UploadController {
                 return res.status(400).json({ success: false, message: 'No file uploaded' });
             }
 
-            // Create public URL (assuming the backend serves static files from /uploads)
+            // CRITICAL: Must match the static route in app.ts which is /uploads
             const publicUrl = `/uploads/${req.file.filename}`;
+
+            console.log('[UploadController] File uploaded successfully:', publicUrl);
 
             res.json({
                 success: true,

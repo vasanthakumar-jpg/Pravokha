@@ -59,12 +59,11 @@ export function useUserSettings() {
     // Helper to match mock's updateProfile signature which accepts a full profile object
     // Real updateProfile accepts Partial<Profile>
     const handleUpdateProfile = async (data: any) => {
-        // Ensure email is not sent if it's not in the profiles table (it's in auth)
-        // AND sanitize date_of_birth to avoid "invalid input syntax" error
         const { email, ...updates } = data;
 
-        if (updates.date_of_birth === "") {
-            updates.date_of_birth = null;
+        if (updates.date_of_birth !== undefined) {
+            updates.dateOfBirth = updates.date_of_birth === "" ? null : updates.date_of_birth;
+            delete updates.date_of_birth;
         }
 
         await updateProfile(updates);

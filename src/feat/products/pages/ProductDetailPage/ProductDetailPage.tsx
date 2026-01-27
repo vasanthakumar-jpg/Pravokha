@@ -15,6 +15,7 @@ import { useGsapAnimations } from "@/shared/hook/useGsapAnimations";
 import { apiClient } from "@/infra/api/apiClient";
 import { useRecentlyViewed } from "@/shared/hook/useRecentlyViewed";
 import { Product } from "@/data/products";
+import { getMediaUrl } from "@/lib/utils";
 
 export function ProductDetailPage() {
     const { slug } = useParams();
@@ -245,7 +246,7 @@ export function ProductDetailPage() {
                                 className="cursor-pointer w-full h-full overflow-hidden"
                             >
                                 <img
-                                    src={selectedVariant.images[mainImage]}
+                                    src={getMediaUrl(selectedVariant.images[mainImage])}
                                     alt={product.title}
                                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                                     loading="eager"
@@ -272,7 +273,7 @@ export function ProductDetailPage() {
                                     className={`aspect-square overflow-hidden rounded-lg border-2 transition-all gsap-scale-in ${mainImage === idx ? "border-primary" : "border-border hover:border-primary/50"
                                         }`}
                                 >
-                                    <img src={image} alt={`${product.title} ${idx + 1}`} className="w-full h-full object-cover" loading="lazy" />
+                                    <img src={getMediaUrl(image)} alt={`${product.title} ${idx + 1}`} className="w-full h-full object-cover" loading="lazy" />
                                 </button>
                             ))}
                         </div>

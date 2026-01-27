@@ -13,6 +13,12 @@ export function useOrderNotifications(userId: string | undefined) {
         const response = await apiClient.get('/orders');
         const orders = response.data;
 
+        // Safety check: ensure orders is an array before calling forEach
+        if (!Array.isArray(orders)) {
+          console.warn('[useOrderNotifications] Orders response is not an array:', orders);
+          return;
+        }
+
         orders.forEach((order: any) => {
           const prevStatus = lastStatuses.current[order.id];
           if (prevStatus && prevStatus !== order.status) {

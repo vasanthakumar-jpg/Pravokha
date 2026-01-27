@@ -10,7 +10,7 @@ import { Product } from "@/data/products";
 import { apiClient } from "@/infra/api/apiClient";
 import { toast } from "@/shared/hook/use-toast";
 import styles from "./ProductCard.module.css";
-import { cn } from "@/lib/utils";
+import { cn, getMediaUrl } from "@/lib/utils";
 import { useRecentlyViewed } from "@/shared/hook/useRecentlyViewed";
 import { Eye } from "lucide-react";
 
@@ -153,7 +153,7 @@ export function ProductCard({ product }: ProductCardProps) {
         >
             <div className={styles.imageContainer}>
                 <img
-                    src={selectedVariant.images[0]}
+                    src={getMediaUrl(selectedVariant.images[0])}
                     alt={product.title}
                     className={styles.image}
                     loading="lazy"

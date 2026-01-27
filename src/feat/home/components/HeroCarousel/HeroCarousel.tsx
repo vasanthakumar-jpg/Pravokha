@@ -146,16 +146,18 @@ export function HeroCarousel() {
                 ))}
             </div>
 
-            <div className={styles.dots}>
-                {slides.map((_, index) => (
-                    <button
-                        key={index}
-                        onClick={() => goToSlide(index)}
-                        className={cn(styles.dot, index === currentSlide && styles.dotActive)}
-                        aria-label={`Go to slide ${index + 1}`}
-                    />
-                ))}
-            </div>
+            {slides.length >= 2 && (
+                <div className={styles.dots}>
+                    {slides.map((_, index) => (
+                        <button
+                            key={index}
+                            onClick={() => goToSlide(index)}
+                            className={cn(styles.dot, index === currentSlide && styles.dotActive)}
+                            aria-label={`Go to slide ${index + 1}`}
+                        />
+                    ))}
+                </div>
+            )}
         </section>
     );
 }

@@ -1,5 +1,5 @@
 import { createContext, useContext, ReactNode } from "react";
-import { useAuth, User } from "./AuthContext";
+import { useAuth, User } from "@/core/context/AuthContext";
 
 interface AdminContextType {
   isAdmin: boolean;

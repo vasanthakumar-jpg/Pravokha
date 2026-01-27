@@ -64,3 +64,9 @@ export const deleteProduct = asyncHandler(async (req: Request, res: Response) =>
 
     res.status(200).json({ success: true, message: 'Product deleted' });
 });
+
+export const checkSku = asyncHandler(async (req: Request, res: Response) => {
+    const { sku, excludeId } = req.body;
+    const available = await ProductService.checkSkuAvailable(sku, excludeId);
+    res.status(200).json({ success: true, available });
+});

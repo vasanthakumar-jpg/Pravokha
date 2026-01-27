@@ -152,31 +152,16 @@ export default function SellerAnalytics() {
                 customersGrowth: 0,
             });
 
-            // 6. Fetch Traffic Sources
-            try {
-                const { data: trafficSources } = await apiClient.get('/analytics/traffic', {
-                    params: { seller_id: user.id }
-                });
-
-                if (trafficSources && trafficSources.length > 0) {
-                    setTrafficData(trafficSources);
-                } else {
-                    setTrafficData([
-                        { source: 'Direct', visits: 0, conversions: 0 },
-                        { source: 'Search', visits: 0, conversions: 0 },
-                        { source: 'Social', visits: 0, conversions: 0 },
-                        { source: 'Referral', visits: 0, conversions: 0 },
-                    ]);
-                }
-            } catch (e) {
-                console.warn("Traffic stats failed", e);
-                setTrafficData([
-                    { source: 'Direct', visits: 0, conversions: 0 },
-                    { source: 'Search', visits: 0, conversions: 0 },
-                    { source: 'Social', visits: 0, conversions: 0 },
-                    { source: 'Referral', visits: 0, conversions: 0 },
-                ]);
-            }
+            // 6. Traffic Sources
+            // NOTE: Backend does not yet track traffic analytics.
+            // This is a placeholder for future implementation when we add web analytics tracking.
+            // For now, we show an empty state on the Traffic tab.
+            setTrafficData([
+                { source: 'Direct', visits: 0, conversions: 0 },
+                { source: 'Search', visits: 0, conversions: 0 },
+                { source: 'Social', visits: 0, conversions: 0 },
+                { source: 'Referral', visits: 0, conversions: 0 },
+            ]);
 
         } catch (error) {
             console.error('Error fetching analytics data:', error);

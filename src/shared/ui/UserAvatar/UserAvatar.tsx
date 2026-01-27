@@ -6,7 +6,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/Tooltip";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "react-router-dom";
 import styles from "./UserAvatar.module.css";
-import { cn } from "@/lib/utils";
+import { cn, getMediaUrl } from "@/lib/utils";
 import { UserAvatarProps, UserAvatarMenuItem } from "./UserAvatar.types";
 
 export function UserAvatar({
@@ -128,7 +128,7 @@ export function UserAvatar({
                         className={styles.avatarButton}
                     >
                         <Avatar className={styles.avatar}>
-                            <AvatarImage src={avatarUrl} alt={userName} />
+                            <AvatarImage src={getMediaUrl(avatarUrl)} alt={userName} />
                             <AvatarFallback className={styles.avatarFallback}>
                                 {getInitials()}
                             </AvatarFallback>

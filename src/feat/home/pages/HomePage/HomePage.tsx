@@ -15,7 +15,7 @@ import layout from "@/styles/Layout.module.css";
 
 import { apiClient } from "@/infra/api/apiClient";
 import { BottomBannerCarousel } from "@/shared/ui/BottomBannerCarousel";
-import { WhatsAppButton } from "@/shared/ui/WhatsAppButton";
+
 import { useGsapAnimations } from "@/shared/hook/useGsapAnimations";
 import { ArrowRight, TrendingUp, Zap, Shield, Mail, Info } from "lucide-react";
 import categoryMenImg from "@/assets/category-men.jpg";
@@ -31,7 +31,7 @@ interface Category {
     name: string;
     slug: string;
     description: string | null;
-    image_url: string | null;
+    imageUrl: string | null;
     status: string;
 }
 
@@ -71,7 +71,12 @@ export function HomePage() {
         try {
             const response = await apiClient.get('/categories');
             if (response.data.success) {
-                setCategories(response.data.categories || []);
+                const sortedCategories = (response.data.categories || []).sort((a: Category, b: Category) => {
+                    if (a.status === 'active' && b.status !== 'active') return -1;
+                    if (a.status !== 'active' && b.status === 'active') return 1;
+                    return 0;
+                });
+                setCategories(sortedCategories);
             }
         } catch (error) {
             console.error("Error fetching categories:", error);
@@ -235,7 +240,7 @@ export function HomePage() {
                 </div>
             </section>
 
-            <WhatsAppButton />
+
         </div>
     );
 }

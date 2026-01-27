@@ -68,9 +68,18 @@ export default function AdminComboOffers() {
   const fetchOffers = async () => {
     try {
       setLoading(true);
+      console.log("[AdminComboOffers] Fetching offers...");
       const { data } = await apiClient.get('/combo-offers');
+      console.log("[AdminComboOffers] API Response:", data);
+
       // Standardize response extraction and map fields to ensure non-null values
       const rawOffers = data.comboOffers || data.data || data || [];
+
+      if (!Array.isArray(rawOffers)) {
+        console.error("[AdminComboOffers] Invalid data format received:", rawOffers);
+        throw new Error("Invalid data format received from API");
+      }
+
       const mappedOffers = rawOffers.map((offer: any) => ({
         ...offer,
         productIds: Array.isArray(offer.productIds) ? offer.productIds : [],
@@ -86,7 +95,7 @@ export default function AdminComboOffers() {
       console.error("[AdminComboOffers] Error fetching offers:", err);
       toast({
         title: "Error",
-        description: "Failed to fetch combo offers",
+        description: "Failed to fetch combo offers. Check console for details.",
         variant: "destructive",
       });
     } finally {

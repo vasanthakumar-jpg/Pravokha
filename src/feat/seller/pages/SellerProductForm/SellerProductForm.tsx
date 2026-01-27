@@ -13,7 +13,7 @@ import {
 } from "@/ui/Select";
 import { Badge } from "@/ui/Badge";
 import { useToast } from "@/shared/hook/use-toast";
-import { WhatsAppButton } from "@/shared/ui/WhatsAppButton";
+
 import {
     ArrowLeft, Upload, X, Plus, ChevronRight, Check, DollarSign, Image as ImageIcon, Package, Tag, Loader2, ShieldAlert, ShieldCheck, AlertCircle
 } from "lucide-react";
@@ -121,7 +121,7 @@ export default function SellerProductForm() {
     const [isRequestDialogOpen, setIsRequestDialogOpen] = useState(false);
     const [requestReason, setRequestReason] = useState("");
     const [dbCategories, setDbCategories] = useState<{ id: string; name: string; slug: string }[]>([]);
-    const [dbSubcategories, setDbSubcategories] = useState<{ id: string; name: string; slug: string; category_id: string }[]>([]);
+    const [dbSubcategories, setDbSubcategories] = useState<{ id: string; name: string; slug: string; categoryId: string }[]>([]);
     const [isLoadingSubcategories, setIsLoadingSubcategories] = useState(false);
     const [subcategoryWarning, setSubcategoryWarning] = useState("");
 
@@ -265,14 +265,14 @@ export default function SellerProductForm() {
         setSubcategoryWarning("");
 
         // Check if category has subcategories
-        const hasSubcategories = dbSubcategories.some(s => s.category_id === categoryId);
+        const hasSubcategories = dbSubcategories.some(s => s.categoryId === categoryId);
         if (hasSubcategories) {
             setSubcategoryWarning("This category has subcategories. Please select one for better product organization.");
         }
     };
 
     const handleSave = async (isPublished: boolean = true) => {
-        if (verificationStatus !== 'verified') {
+        if (isPublished && !isAdmin && verificationStatus !== 'verified') {
             toast({
                 title: "Verification Required",
                 description: "You must be a verified seller to list products. Please check your settings.",
@@ -817,7 +817,7 @@ export default function SellerProductForm() {
                                                     </SelectTrigger>
                                                     <SelectContent>
                                                         {dbSubcategories
-                                                            .filter(sub => sub.category_id === formData.selectedCategoryId)
+                                                            .filter(sub => sub.categoryId === formData.selectedCategoryId)
                                                             .map(sub => (
                                                                 <SelectItem key={sub.id} value={sub.id}>{sub.name}</SelectItem>
                                                             ))
@@ -1541,7 +1541,7 @@ export default function SellerProductForm() {
                     )
                 }
             </AnimatePresence>
-            <WhatsAppButton />
+
 
             {/* Change Request Dialog */}
             <AlertDialog open={isRequestDialogOpen} onOpenChange={setIsRequestDialogOpen}>

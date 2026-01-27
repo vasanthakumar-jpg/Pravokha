@@ -59,7 +59,7 @@ import { apiClient } from "@/infra/api/apiClient";
 import { toast } from "@/shared/hook/use-toast";
 import { AdminFormSkeleton } from "@/feat/admin/components/AdminSkeleton";
 import { motion, AnimatePresence } from "framer-motion";
-import { cn } from "@/lib/utils";
+import { cn, getMediaUrl } from "@/lib/utils";
 import type { AdminRoleCounts, ApiResponse } from "@/feat/admin/types/settings";
 
 export default function AdminSettings() {
@@ -139,15 +139,16 @@ export default function AdminSettings() {
       setLoading(true);
       const { data } = await apiClient.get('/users/profile');
 
-      const userData = data || {};
+      const rawData = data || {};
+      const userData = rawData.user || rawData.data || rawData;
 
       // Backend returns camelCase from Prisma, map directly
       setProfileData({
-        fullName: userData.name || userData.fullName || "",
+        fullName: userData.name || userData.fullName || userData.full_name || "",
         email: userData.email || user?.email || "",
         phone: userData.phone || "",
         address: userData.address || "",
-        avatarUrl: userData.avatarUrl || ""
+        avatarUrl: userData.avatarUrl || userData.avatar_url || user?.avatar_url || ""
       });
     } catch (error) {
       console.error("[AdminSettings] Error fetching profile:", error);
@@ -160,6 +161,18 @@ export default function AdminSettings() {
       setProfileData(prev => ({ ...prev, email: user?.email || "" }));
     } finally {
       setLoading(false);
+    }
+  }, [user]);
+
+  // Sync profile data when user changes from AuthContext
+  useEffect(() => {
+    if (user) {
+      setProfileData(prev => ({
+        ...prev,
+        fullName: prev.fullName || user.full_name || user.name || "",
+        email: prev.email || user.email || "",
+        avatarUrl: user.avatar_url || prev.avatarUrl || ""
+      }));
     }
   }, [user]);
 
@@ -220,6 +233,15 @@ export default function AdminSettings() {
       console.error("[AdminSettings] Error fetching notifications:", error);
     }
   }, []);
+
+  useEffect(() => {
+    if (user) {
+      fetchProfile();
+      fetchSiteSettings();
+      fetchRoleCounts();
+      fetchNotificationSettings();
+    }
+  }, [user, fetchProfile, fetchSiteSettings, fetchRoleCounts, fetchNotificationSettings]);
 
   const handleSaveProfile = async () => {
     try {
@@ -349,7 +371,7 @@ export default function AdminSettings() {
       const formData = new FormData();
       formData.append('file', file);
 
-      const { data } = await apiClient.post('/uploads/single', formData, {
+      const { data } = await apiClient.post('/uploads/image', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
 
@@ -537,9 +559,14 @@ export default function AdminSettings() {
                       <div className="relative group/avatar">
                         <div className="relative p-1 rounded-full bg-primary/10 transition-transform duration-500">
                           <Avatar className="h-40 w-40 border-4 border-background">
-                            <AvatarImage src={profileData.avatarUrl} className="object-cover" />
+                            {/* CRITICAL: Use user.avatar_url from AuthContext with getMediaUrl utility */}
+                            <AvatarImage
+                              key={user?.avatar_url || 'no-avatar'}
+                              src={getMediaUrl(user?.avatar_url)}
+                              className="object-cover"
+                            />
                             <AvatarFallback className="bg-slate-100 dark:bg-slate-900 text-5xl font-black text-primary/40">
-                              {profileData.fullName?.charAt(0) || "A"}
+                              {user?.email?.charAt(0).toUpperCase() || "A"}
                             </AvatarFallback>
                           </Avatar>
                         </div>
@@ -695,8 +722,8 @@ export default function AdminSettings() {
                         <div className="relative group rounded-2xl border border-border/40 bg-muted/10 p-6 flex flex-col items-center gap-6 transition-all hover:bg-muted/20">
                           <div className="relative">
                             <div className="h-28 w-28 rounded-2xl bg-white dark:bg-slate-900 border border-border/40 flex items-center justify-center overflow-hidden group-hover:scale-105 transition-transform duration-500">
-                              {storeData.logo_url ? (
-                                <img src={storeData.logo_url} className="w-full h-full object-contain p-2" />
+                              {storeData.logoUrl ? (
+                                <img src={storeData.logoUrl} className="w-full h-full object-contain p-2" />
                               ) : (
                                 <Store className="h-8 w-8 text-muted-foreground/20" />
                               )}
@@ -1051,7 +1078,7 @@ export default function AdminSettings() {
                             <p className="text-xs text-muted-foreground font-medium leading-relaxed max-w-[200px]">{p.desc}</p>
                           </div>
                           <Switch
-                            checked={p.checked}
+                            checked={Boolean(p.checked)}
                             onCheckedChange={(checked) => setSystemData({ ...systemData, [p.id]: checked })}
                             className="scale-90 data-[state=checked]:bg-emerald-500"
                           />
@@ -1228,7 +1255,7 @@ export default function AdminSettings() {
                                 <f.icon className="h-5 w-5" />
                               </div>
                               <Switch
-                                checked={systemData[f.id as keyof typeof systemData]}
+                                checked={Boolean(systemData[f.id as keyof typeof systemData])}
                                 onCheckedChange={(checked) => setSystemData({ ...systemData, [f.id]: checked })}
                                 className="scale-90 data-[state=checked]:bg-emerald-500"
                               />

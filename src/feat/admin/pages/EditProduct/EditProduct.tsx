@@ -424,7 +424,7 @@ export default function EditProduct() {
     });
 
     try {
-      const response = await apiClient.post('/upload/multiple', uploadFormData, {
+      const response = await apiClient.post('/uploads/multiple', uploadFormData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
 
@@ -519,7 +519,7 @@ export default function EditProduct() {
             </div>
             <Button
               type="button"
-              onClick={handleSave}
+              onClick={handleSaveChanges}
               disabled={isSaving}
               className="w-full sm:w-auto h-10 rounded-xl bg-primary shadow-lg shadow-primary/20 font-bold text-xs"
             >
@@ -528,7 +528,7 @@ export default function EditProduct() {
           </div>
         </div>
 
-        <form onSubmit={(e) => { e.preventDefault(); handleSave(); }}>
+        <form onSubmit={(e) => { e.preventDefault(); handleSaveChanges(); }}>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Main Form */}
             <div className="lg:col-span-2 space-y-6">

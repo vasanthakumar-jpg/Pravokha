@@ -157,11 +157,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   // Check for T-shirt combo: 3 items at Rs 325 each = Rs 949 total
   const tshirtItems = items.filter(item => item.price === 325);
   const tshirtCount = tshirtItems.reduce((sum, item) => sum + item.quantity, 0);
-  const hasComboOffer = tshirtCount === 3;
+  const comboSets = Math.floor(tshirtCount / 3);
+  const comboSavings = comboSets * (3 * 325 - 949);
 
-  const cartTotal = hasComboOffer
-    ? 949 + items.filter(item => item.price !== 325).reduce((sum, item) => sum + item.price * item.quantity, 0)
-    : items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const subTotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const cartTotal = subTotal - comboSavings;
+  const hasComboOffer = comboSets > 0;
 
   const cartCount = items.reduce((sum, item) => sum + item.quantity, 0);
 

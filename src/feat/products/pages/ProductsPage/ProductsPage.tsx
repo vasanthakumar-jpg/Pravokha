@@ -101,8 +101,8 @@ export function ProductsPage() {
 
     // Filter by category (if no subcategory filter)
     if (selectedCategories.length > 0 && selectedSubcategories.length === 0) {
-        filteredProducts = filteredProducts.filter((p) =>
-            selectedCategories.includes(p.category)
+        filteredProducts = filteredProducts.filter((p: any) =>
+            selectedCategories.includes(p.categorySlug || p.category)
         );
     }
 

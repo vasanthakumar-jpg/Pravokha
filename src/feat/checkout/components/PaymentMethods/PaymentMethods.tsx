@@ -1,4 +1,4 @@
-import { ChevronsUpDown, Check, Smartphone, CreditCard, Building2, QrCode } from "lucide-react";
+import { ChevronsUpDown, Check, Smartphone, CreditCard, Building2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/ui/Command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/ui/Popover";
@@ -8,7 +8,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/ui/Card";
 import { RadioGroup, RadioGroupItem } from "@/ui/RadioGroup";
 import { Label } from "@/ui/Label";
 import { Badge } from "@/ui/Badge";
-import paymentQR from "@/assets/payment-qr.png";
 import { Input } from "@/ui/Input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/Select";
 import { ScrollArea } from "@/ui/ScrollArea";
@@ -162,19 +161,7 @@ export const PaymentMethods = ({ value, onChange, details, onDetailsChange }: Pa
                         )}
                     </div>
 
-                    {/* QR Code */}
-                    <div className={cn(styles.methodContainer, value === 'qr' ? styles.methodContainerSelected : styles.methodContainerHover)}>
-                        <div className={styles.methodHeader} onClick={() => onChange('qr')}>
-                            <RadioGroupItem value="qr" id="qr" />
-                            <Label htmlFor="qr" className={styles.methodLabel}>
-                                <QrCode className={styles.methodIcon} />
-                                <div className={styles.methodInfo}>
-                                    <span className={styles.methodName}>Scan QR Code</span>
-                                    <p className={styles.methodDescription}>Pay via any UPI app manually</p>
-                                </div>
-                            </Label>
-                        </div>
-                    </div>
+
 
                     {/* Cash on Delivery */}
                     <div className={cn(styles.methodContainer, value === 'cod' ? styles.methodContainerSelected : styles.methodContainerHover)}>
@@ -195,22 +182,7 @@ export const PaymentMethods = ({ value, onChange, details, onDetailsChange }: Pa
                 </RadioGroup>
 
                 {/* Dynamic footer info based on selection */}
-                {value === "qr" && (
-                    <div className={styles.qrFooter}>
-                        <h4 className={styles.qrTitle}>Scan QR Code to Pay</h4>
-                        <div className={styles.qrImageContainer}>
-                            <img
-                                src={paymentQR}
-                                alt="Payment QR"
-                                className={styles.qrImage}
-                            />
-                        </div>
-                        <div className={styles.qrDetails}>
-                            <p className={styles.qrMerchantName}>PR VasanthaKumar</p>
-                            <p className={styles.qrUpiId}>UPI ID: vasanthakumar141099@oksbi</p>
-                        </div>
-                    </div>
-                )}
+
             </CardContent>
         </Card>
     );

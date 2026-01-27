@@ -9,7 +9,7 @@ import { Label } from "@/ui/Label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/ui/Card";
 import { Separator } from "@/ui/Separator";
 import { PaymentMethods } from "@/feat/checkout/components/PaymentMethods";
-import { UpiPaymentDialog } from "@/feat/checkout/components/UpiPaymentDialog";
+
 import { ProcessingOverlay } from "@/feat/checkout/components/ProcessingOverlay";
 import { toast } from "@/shared/hook/use-toast";
 import { z } from "zod";
@@ -70,16 +70,22 @@ export function CheckoutPage() {
         setLoading(false);
     };
 
-    const shipping = 99;
-    const tax = Math.round(cartTotal * 0.18);
-
     const tshirtItems = items.filter(item => item.price === 325);
     const tshirtCount = tshirtItems.reduce((sum, item) => sum + item.quantity, 0);
-    const hasComboOffer = tshirtCount === 3;
-    const originalTshirtTotal = tshirtItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
-    const comboSavings = hasComboOffer ? originalTshirtTotal - 949 : 0;
+    const comboSets = Math.floor(tshirtCount / 3);
+    const hasComboOffer = comboSets > 0;
 
-    const total = cartTotal + shipping + tax;
+    // rawSubtotal is the price before any combo discounts
+    const rawSubtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    const comboSavings = comboSets * (3 * 325 - 949);
+
+    // actualSubtotal matches what the backend will calculate
+    const actualSubtotal = rawSubtotal - comboSavings;
+
+    const shipping = 99;
+    const tax = Math.round(actualSubtotal * 0.18);
+    const total = actualSubtotal + shipping + tax;
+    const discountedTotal = total; // For clarity in handlePaymentComplete if needed
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -173,15 +179,11 @@ export function CheckoutPage() {
             }
 
             const sanitizedItems = items.map(item => ({
-                variantId: item.variantId,
                 productId: item.productId,
-                title: item.title,
-                colorName: item.colorName,
-                size: item.size,
-                price: item.price,
                 quantity: item.quantity,
-                image: item.image,
-                sellerId: item.sellerId
+                variantId: item.variantId,
+                color: item.colorName,
+                size: item.size,
             }));
 
             const orderData = {
@@ -202,21 +204,21 @@ export function CheckoutPage() {
 
             const response = await apiClient.post("/orders", orderData);
 
-            if (!response.data.success) {
-                throw new Error(response.data.message || "Failed to create order");
+            if (!response.data.success) throw new Error("Backend failed to create order.");
+
+            const confirmedOrder = response.data.data.order;
+
+            // Send confirmation email (don't let it crash the success flow)
+            try {
+                await emailClient.sendOrderConfirmation(formData.email, confirmedOrder);
+            } catch (emailErr) {
+                console.error("Email confirmation failed:", emailErr);
             }
 
             toast({
-                title: "Order placed successfully! 🎉",
-                description: `Your order #${orderNumber || orderId} has been confirmed. Check order history for details.`,
+                title: "Order Placed Successfully",
+                description: `Your order #${confirmedOrder.orderNumber} has been confirmed.`,
             });
-
-            // Send Confirmation Email (Async - don't block UI)
-            emailClient.sendOrderConfirmation(formData.email, {
-                id: orderNumber || orderId,
-                items: sanitizedItems,
-                total: total
-            }).catch(err => console.error("Failed to send order email:", err));
 
             clearCart();
             setShowPaymentDialog(false);
@@ -395,7 +397,7 @@ export function CheckoutPage() {
                             <div className="space-y-2">
                                 <div className="flex justify-between text-sm">
                                     <span>Subtotal</span>
-                                    <span>₹{cartTotal}</span>
+                                    <span>₹{rawSubtotal}</span>
                                 </div>
                                 <div className="flex justify-between text-sm">
                                     <span>Shipping</span>
@@ -475,13 +477,7 @@ export function CheckoutPage() {
                 </div>
             </div>
 
-            <UpiPaymentDialog
-                open={showPaymentDialog}
-                onClose={() => setShowPaymentDialog(false)}
-                amount={total}
-                orderNumber={orderNumber}
-                onPaymentComplete={(details) => handlePaymentComplete(details, orderNumber)}
-            />
+
 
             <ProcessingOverlay
                 isOpen={isProcessing}

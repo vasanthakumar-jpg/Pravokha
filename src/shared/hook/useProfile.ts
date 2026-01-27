@@ -64,7 +64,7 @@ export function useProfile(userId: string | undefined) {
     },
 
     enabled: !!userId,
-    staleTime: 1000 * 60 * 5, // Cache for 5 minutes
+    staleTime: 1000 * 10, // Cache for 10 seconds to avoid stale profile data issues
     refetchOnWindowFocus: false,
   });
 
@@ -79,13 +79,33 @@ export function useProfile(userId: string | undefined) {
       if (updates.address !== undefined) backendUpdates.address = updates.address;
       if (updates.avatar_url !== undefined) backendUpdates.avatarUrl = updates.avatar_url;
       if (updates.bio !== undefined) backendUpdates.bio = updates.bio;
-      if (updates.date_of_birth !== undefined) backendUpdates.dateOfBirth = updates.date_of_birth;
 
+      // Handle both formats for robustness
+      if (updates.date_of_birth !== undefined) {
+        backendUpdates.dateOfBirth = updates.date_of_birth;
+      } else if ((updates as any).dateOfBirth !== undefined) {
+        backendUpdates.dateOfBirth = (updates as any).dateOfBirth;
+      }
+
+      console.log('[useProfile] Updating profile with:', backendUpdates);
       await apiClient.patch('/users/profile', backendUpdates);
 
-      // Invalidate query to trigger re-fetch everywhere
-      queryClient.invalidateQueries({ queryKey: ["profile", userId] });
+      console.log('[useProfile] Profile updated successfully, refreshing auth context...');
+
+      // CRITICAL: Wait a bit for backend to complete write
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      // CRITICAL: Refresh AuthContext FIRST to update header/UI immediately
       await refreshAuthProfile();
+
+      // Then invalidate query cache to trigger re-fetch everywhere
+      queryClient.invalidateQueries({ queryKey: ["profile", userId] });
+
+      // Force immediate refetch to ensure fresh data
+      await refetch();
+
+      console.log('[useProfile] All refreshes complete');
+
       return true;
     } catch (error) {
       console.error("Error updating profile:", error);

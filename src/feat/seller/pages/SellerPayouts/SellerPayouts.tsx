@@ -95,7 +95,8 @@ export default function SellerPayouts() {
         params: { seller_id: user.id }
       });
 
-      const transformedPayouts: Payout[] = (payoutsData || []).map((p: any) => ({
+      const safePayouts = Array.isArray(payoutsData) ? payoutsData : (payoutsData as any)?.data || [];
+      const transformedPayouts: Payout[] = safePayouts.map((p: any) => ({
         id: p.id,
         amount: p.amount,
         status: p.status,
@@ -106,13 +107,15 @@ export default function SellerPayouts() {
 
       setPayouts(transformedPayouts);
 
-      const { data: transactionsData } = await apiClient.get('/transactions', {
+      // Fetch payout transactions from the payouts endpoint
+      const { data: payoutsResponse } = await apiClient.get('/payouts', {
         params: { seller_id: user.id }
       });
-      // Note: Backend endpoint /transactions should return similar structure including joined orders data
-      // If not, we might need a specific endpoint or mapped response. Assuming standard response structure here.
 
-      const transformedTransactions: Transaction[] = (transactionsData || []).map((t: any) => ({
+      // Extract transactions from the payouts response
+      // Backend returns { data: [...], meta: {...} }
+      const safeTransactions = Array.isArray(payoutsResponse) ? payoutsResponse : (payoutsResponse as any)?.data || [];
+      const transformedTransactions: Transaction[] = safeTransactions.map((t: any) => ({
         id: t.id,
         order_id: t.orders?.order_number || `ORD-${(t.order_id || '').slice(0, 8)}`,
         amount: t.amount,

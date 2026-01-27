@@ -6,9 +6,10 @@ import { Button } from "@/ui/Button";
 import { cn } from "@/lib/utils";
 
 export function VerificationBanner() {
-    const { verificationStatus, verificationComments } = useAuth();
+    const { verificationStatus, verificationComments, role } = useAuth();
+    const isAdmin = role === 'ADMIN' || role === 'admin';
 
-    if (verificationStatus === 'verified') return null;
+    if (verificationStatus === 'verified' || isAdmin) return null;
 
     const config = {
         pending: {

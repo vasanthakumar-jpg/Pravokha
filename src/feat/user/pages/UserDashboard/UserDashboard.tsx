@@ -58,7 +58,7 @@ export default function UserDashboard() {
             </CardContent>
           </Card>
 
-          <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate("/profile")}>
+          <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate("/settings")}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Profile</CardTitle>
               <User className="h-4 w-4 text-muted-foreground" />
@@ -81,7 +81,7 @@ export default function UserDashboard() {
               <Button className="w-full" variant="outline" onClick={() => navigate("/orders")}>
                 View Orders
               </Button>
-              <Button className="w-full" variant="outline" onClick={() => navigate("/profile")}>
+              <Button className="w-full" variant="outline" onClick={() => navigate("/settings")}>
                 Edit Profile
               </Button>
             </CardContent>

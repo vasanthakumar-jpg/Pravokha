@@ -27,7 +27,12 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
     (response) => response,
     (error) => {
-        if (error.response?.status === 401) {
+        if (!error.response) {
+            // Handle network/connection errors
+            console.error('API Connection Error: The server might be down or unreachable.', error.message);
+            // We could trigger a global toast here if we had access to the hook, 
+            // but we'll let the calling component handle the specific UI feedback.
+        } else if (error.response?.status === 401) {
             // Handle unauthorized - maybe clear local storage and redirect
             localStorage.removeItem('pravokha_auth_token');
             localStorage.removeItem('pravokha_user_role');

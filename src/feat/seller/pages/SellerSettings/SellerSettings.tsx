@@ -154,7 +154,7 @@ export default function SellerSettings() {
       setProfileName(profile.full_name || "");
       setProfilePhone(profile.phone || "");
       setProfileBio(profile.bio || "");
-      setProfileDob(profile.date_of_birth || "");
+      setProfileDob(profile.date_of_birth?.split('T')[0] || "");
     }
   }, [profile]);
 
@@ -220,7 +220,11 @@ export default function SellerSettings() {
       if (publicUrl) {
         if (type === 'logo') form.setValue('storeLogoUrl', publicUrl, { shouldDirty: true });
         if (type === 'banner') form.setValue('storeBannerUrl', publicUrl, { shouldDirty: true });
-        toast({ title: "Image Uploaded", description: "Don't forget to click Save to persist changes." });
+
+        // Auto-save to avoid user confusion
+        await saveSettings(form.getValues());
+
+        toast({ title: "Image Saved", description: "Your store branding has been updated." });
       }
     }
   };
@@ -444,7 +448,7 @@ export default function SellerSettings() {
                           >
                             {form.watch('storeLogoUrl') ? (
                               <img
-                                src={form.watch('storeLogoUrl')!}
+                                src={getMediaUrl(form.watch('storeLogoUrl'))}
                                 alt="Logo"
                                 className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                               />
@@ -471,7 +475,7 @@ export default function SellerSettings() {
                             className="group relative h-40 border-2 border-dashed rounded-xl flex flex-col items-center justify-center cursor-pointer hover:border-primary/50 hover:bg-muted/50 transition-all overflow-hidden bg-muted/10 shadow-inner"
                           >
                             {form.watch('storeBannerUrl') ? (
-                              <img src={form.watch('storeBannerUrl')!} alt="Banner" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                              <img src={getMediaUrl(form.watch('storeBannerUrl'))} alt="Banner" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
                             ) : (
                               <>
                                 <div className="p-3 bg-muted rounded-full mb-2 group-hover:scale-110 transition-transform shadow-sm">

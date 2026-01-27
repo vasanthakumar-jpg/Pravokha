@@ -44,7 +44,10 @@ export const getMe = asyncHandler(async (req: any, res: Response) => {
             role: req.user.role,
             avatarUrl: req.user.avatarUrl,
             status: req.user.status,
-            verificationStatus: req.user.verificationStatus
+            verificationStatus: req.user.verificationStatus,
+            phone: req.user.phone,
+            bio: req.user.bio,
+            dateOfBirth: req.user.dateOfBirth
         }
     });
 });

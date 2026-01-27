@@ -26,6 +26,7 @@ export function useProducts() {
         price: parseFloat(p.price) || 0,
         discountPrice: p.discountPrice ? parseFloat(p.discountPrice) : undefined,
         category: p.category?.name || p.category || 'Uncategorized',
+        categorySlug: p.category?.slug,
         subcategory_id: p.subcategoryId,
         rating: parseFloat(p.rating) || 4.5,
         reviews: parseInt(p.reviews) || 0,

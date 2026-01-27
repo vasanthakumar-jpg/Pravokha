@@ -27,10 +27,15 @@ interface ProfileFormProps {
 export const ProfileForm = ({ profile, updateProfile, loading, strength }: ProfileFormProps) => {
   const [formData, setFormData] = useState(profile);
 
-  // Sync state with props when profile data loads
+  // Sync state with props when profile data loads OR changes
   useEffect(() => {
     if (profile) {
-      setFormData(profile);
+      console.log('[ProfileForm] Syncing form with profile:', profile);
+      setFormData({
+        ...profile,
+        // Ensure DOB is properly formatted for date input
+        date_of_birth: profile.date_of_birth?.split('T')[0] || ''
+      });
     }
   }, [profile]);
 
@@ -72,8 +77,16 @@ export const ProfileForm = ({ profile, updateProfile, loading, strength }: Profi
               <Label>Date of Birth</Label>
               <Input
                 type="date"
-                value={formData.date_of_birth || ''}
-                onChange={e => setFormData({ ...formData, date_of_birth: e.target.value || null })}
+                value={formData.date_of_birth?.split('T')[0] || ''}
+                onChange={e => {
+                  // CRITICAL: Never send empty string to backend, always use null
+                  const value = e.target.value;
+                  setFormData({
+                    ...formData,
+                    date_of_birth: value ? value : null
+                  });
+                  console.log('[ProfileForm] DOB changed to:', value || null);
+                }}
                 className="bg-background/50 h-10"
               />
             </div>
@@ -114,7 +127,7 @@ export const ProfileForm = ({ profile, updateProfile, loading, strength }: Profi
             </div>
             <ul className="space-y-3 text-sm text-muted-foreground">
               {[
-                { checked: checks.emailVerified, done: "Email Verified", todo: "Verify Email" },
+                { checked: checks.emailVerified, done: "Email Verified", todo: "Verify Email (Pending)" },
                 { checked: checks.phoneVerified, done: "Phone Added", todo: "Add Phone Number" },
                 { checked: checks.hasAddress, done: "Address Added", todo: "Add Address" },
                 { checked: checks.hasPayment, done: "Payment Method Added", todo: "Add Payment Method" },

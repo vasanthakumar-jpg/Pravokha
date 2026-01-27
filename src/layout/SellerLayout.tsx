@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useLocation, Outlet } from "react-router-dom";
-import { cn } from "@/lib/utils";
+import { cn, getMediaUrl } from "@/lib/utils";
 import { Button } from "@/ui/Button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/ui/Avatar";
 import {
@@ -107,7 +107,7 @@ export default function SellerLayout() {
     const [profileMenuOpen, setProfileMenuOpen] = useState(false);
     const [allProductsDropdownOpen, setAllProductsDropdownOpen] = useState(false);
     const location = useLocation();
-    const { user, signOut, isSuspended, profile, loading } = useAuth();
+    const { user, signOut, isSuspended, loading } = useAuth();
     const { resolvedTheme } = useTheme();
     const profileMenuRef = useRef<HTMLDivElement>(null);
 
@@ -396,16 +396,16 @@ export default function SellerLayout() {
                                         className="h-8 w-8 sm:h-9 sm:w-9 rounded-full flex-shrink-0"
                                     >
                                         <Avatar className="h-8 w-8 sm:h-9 sm:w-9">
-                                            <AvatarImage src={profile?.avatar_url || undefined} alt="Profile" />
+                                            <AvatarImage src={getMediaUrl(user?.avatar_url)} alt="Profile" />
                                             <AvatarFallback className="text-xs bg-primary text-primary-foreground">
-                                                {profile?.full_name?.[0]?.toUpperCase() || user?.email?.[0].toUpperCase() || "S"}
+                                                {user?.full_name?.[0]?.toUpperCase() || user?.email?.[0].toUpperCase() || "S"}
                                             </AvatarFallback>
                                         </Avatar>
                                     </Button>
                                 </TooltipTrigger>
                                 <TooltipContent>
                                     <div className="text-center">
-                                        <p className="font-semibold">{profile?.full_name || "Seller"}</p>
+                                        <p className="font-semibold">{user?.full_name || user?.name || "Seller"}</p>
                                         <p className="text-xs text-muted-foreground">{user?.email}</p>
                                     </div>
                                 </TooltipContent>
@@ -414,7 +414,7 @@ export default function SellerLayout() {
                             {profileMenuOpen && (
                                 <div className="absolute right-0 top-full mt-1 w-56 bg-background border rounded-md shadow-lg overflow-hidden animate-scale-in z-50">
                                     <div className="px-3 py-1.5 border-b bg-muted/30">
-                                        <p className="font-semibold text-sm truncate leading-tight">{profile?.full_name || user?.email?.split('@')[0] || "Seller"}</p>
+                                        <p className="font-semibold text-sm truncate leading-tight">{user?.full_name || user?.name || user?.email?.split('@')[0] || "Seller"}</p>
                                         <p className="text-[10px] text-muted-foreground truncate leading-tight">{user?.email}</p>
                                         {isSuspended && <p className="text-[10px] text-destructive font-semibold mt-0.5">Suspended</p>}
                                     </div>

@@ -24,15 +24,22 @@ import homeRoutes from '../feat/home/route';
 import analyticsRoutes from '../feat/analytics/route';
 import reportRoutes from '../feat/report/route';
 import comboOfferRoutes from '../feat/combo-offer/route';
+import emailRoutes from '../feat/email/route';
 import { WebhookController } from '../feat/webhook/controller';
 
 const app = express();
 
 // Security & Middleware
-app.use(helmet());
+app.use(helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
 app.use(cors());
 app.use(morgan('dev'));
-app.use('/uploads', express.static(path.join(__dirname, '../../../uploads')));
+app.use('/uploads', express.static(path.join(__dirname, '../../../uploads'), {
+    setHeaders: (res) => {
+        res.set('Cross-Origin-Resource-Policy', 'cross-origin');
+    }
+}));
 
 // Rate Limiting
 const limiter = rateLimit({
@@ -70,6 +77,7 @@ app.use('/api/newsletter', newsletterRoutes);
 app.use('/api/home', homeRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/email', emailRoutes);
 app.use('/api/combo-offers', comboOfferRoutes);
 
 // Error Handling
