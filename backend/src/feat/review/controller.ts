@@ -34,7 +34,24 @@ export class ReviewController {
                 title,
                 comment,
                 images: images || [],
-                status: 'approved' // Automatically approve for now, or 'pending' if desired
+                status: 'approved'
+            }
+        });
+
+        // Update product rating and review count
+        const productReviews = await prisma.productReview.findMany({
+            where: { productId, status: 'approved' },
+            select: { rating: true }
+        });
+
+        const totalReviews = productReviews.length;
+        const avgRating = productReviews.reduce((acc, curr) => acc + curr.rating, 0) / totalReviews;
+
+        await prisma.product.update({
+            where: { id: productId },
+            data: {
+                rating: parseFloat(avgRating.toFixed(1)),
+                reviews: totalReviews
             }
         });
 
@@ -76,6 +93,9 @@ export class ReviewController {
             include: {
                 user: {
                     select: { name: true, avatarUrl: true }
+                },
+                product: {
+                    select: { title: true, slug: true }
                 }
             },
             orderBy: { createdAt: 'desc' }

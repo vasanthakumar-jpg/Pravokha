@@ -99,7 +99,8 @@ export class OrderController {
             const { id } = req.params;
             const user = (req as any).user;
 
-            const order = await OrderService.cancelOrder(id, user.id, user.role);
+            const { reason, comments } = req.body;
+            const order = await OrderService.cancelOrder(id, user.id, user.role, reason, comments);
 
             res.status(200).json({
                 success: true,

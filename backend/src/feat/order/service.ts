@@ -134,7 +134,15 @@ export class OrderService {
                 items: {
                     include: {
                         product: {
-                            select: { title: true, dealerId: true }
+                            select: {
+                                title: true,
+                                slug: true,
+                                dealerId: true,
+                                variants: {
+                                    take: 1,
+                                    select: { images: true }
+                                }
+                            }
                         }
                     }
                 }
@@ -228,7 +236,14 @@ export class OrderService {
                     items: {
                         include: {
                             product: {
-                                select: { title: true, slug: true }
+                                select: {
+                                    title: true,
+                                    slug: true,
+                                    variants: {
+                                        take: 1,
+                                        select: { images: true }
+                                    }
+                                }
                             }
                         }
                     }
@@ -267,7 +282,7 @@ export class OrderService {
         return stats;
     }
 
-    static async cancelOrder(id: string, userId: string, role: string) {
+    static async cancelOrder(id: string, userId: string, role: string, reason?: string, comments?: string) {
         return await prisma.$transaction(async (tx) => {
             const order = await tx.order.findUnique({
                 where: { id },
@@ -314,7 +329,17 @@ export class OrderService {
                 where: { id },
                 data: {
                     status: OrderStatus.CANCELLED,
-                    paymentStatus: order.paymentStatus === PaymentStatus.PAID ? PaymentStatus.REFUNDED : order.paymentStatus
+                    paymentStatus: order.paymentStatus === PaymentStatus.PAID ? PaymentStatus.REFUNDED : order.paymentStatus,
+                    trackingUpdates: [
+                        ...(order.trackingUpdates as any[] || []),
+                        {
+                            status: OrderStatus.CANCELLED,
+                            timestamp: new Date().toISOString(),
+                            message: reason ? `Cancelled: ${reason}${comments ? ` (${comments})` : ''}` : 'Order Cancelled',
+                            actorId: userId,
+                            actorRole: role
+                        }
+                    ]
                 },
                 include: { items: true }
             });

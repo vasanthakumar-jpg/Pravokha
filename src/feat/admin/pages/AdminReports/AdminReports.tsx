@@ -191,27 +191,15 @@ export default function AdminReports() {
   }
 
   return (
-    <div className="max-w-[1600px] mx-auto py-8 px-4 sm:px-6 lg:px-8 flex flex-col gap-8 animate-in fade-in duration-500 pb-10">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
-        <div className="flex items-center gap-4">
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-10 w-10 rounded-xl border-border/60 bg-card p-0 flex items-center justify-center shadow-sm hover:bg-accent transition-colors"
-            onClick={() => navigate("/admin")}
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <div className="min-w-0">
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Reports & Analytics</h1>
-            <p className="text-xs sm:text-base text-muted-foreground mt-1">
-              Comprehensive telemetry of platform operations and financial growth
-            </p>
-          </div>
+    <div className="flex flex-col gap-6 sm:gap-8 animate-in fade-in duration-500 pb-10">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Reports & Analytics</h1>
+          <p className="text-sm sm:text-base text-muted-foreground mt-1">Track your store performance</p>
         </div>
-        <div className="flex flex-wrap lg:flex-nowrap items-center gap-3 w-full lg:w-auto mt-4 lg:mt-0">
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
           <Select value={dateRange} onValueChange={setDateRange}>
-            <SelectTrigger className="flex-1 sm:flex-none w-full sm:w-[180px] h-10 rounded-xl border-border/60 bg-card font-medium text-sm shadow-sm">
+            <SelectTrigger className="w-full sm:w-40 h-10 rounded-lg border-border/60 bg-card font-medium text-sm shadow-sm transition-all duration-300">
               <Calendar className="mr-2 h-4 w-4 text-primary" />
               <SelectValue placeholder="Select range" />
             </SelectTrigger>
@@ -222,9 +210,11 @@ export default function AdminReports() {
               <SelectItem value="all">All time</SelectItem>
             </SelectContent>
           </Select>
-          <Button variant="outline" className="flex-1 sm:flex-none h-10 rounded-xl border-border/60 bg-card font-medium text-xs shadow-sm">
-            <Download className="mr-2 h-4 w-4" />
-            Export
+          <Button
+            variant="outline"
+            className="w-full sm:w-auto h-10 rounded-lg border-border/60 bg-card hover:bg-accent font-bold text-xs shadow-sm transition-all duration-300"
+          >
+            <Download className="mr-2 h-4 w-4" /> Export Report
           </Button>
         </div>
       </div>

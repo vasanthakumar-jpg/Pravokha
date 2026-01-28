@@ -40,6 +40,7 @@ export function ProductGridDisplay({ products, onTogglePublish, onDelete, basePa
                                         <ShieldCheck className="h-3 w-3" /> Verified
                                     </Badge>
                                 )}
+                                {!product.published && <Badge className="bg-orange-500 text-white border-0 text-[10px]">Draft</Badge>}
                                 <Badge className={cn(stockStatus.color, "border-0 text-[10px]")}>{stockStatus.label}</Badge>
                             </div>
                         </div>

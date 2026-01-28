@@ -26,8 +26,8 @@ export function ProductImage({ productId, title, src, size = "list", className }
         const loadImage = async () => {
             try {
                 const response = await apiClient.get(`/products/${productId}`);
-                if (isMounted && response.data.success && response.data.product?.variants?.[0]?.images?.[0]) {
-                    setImageUrl(response.data.product.variants[0].images[0]);
+                if (isMounted && response.data.success && response.data.data?.variants?.[0]?.images?.[0]) {
+                    setImageUrl(response.data.data.variants[0].images[0]);
                 }
             } catch (err) {
                 console.error('Error loading image:', err);

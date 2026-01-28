@@ -28,7 +28,7 @@ export function useProducts() {
         category: p.category?.name || p.category || 'Uncategorized',
         categorySlug: p.category?.slug,
         subcategory_id: p.subcategoryId,
-        rating: parseFloat(p.rating) || 4.5,
+        rating: parseFloat(p.rating) || 0,
         reviews: parseInt(p.reviews) || 0,
         sku: p.sku,
         sellerId: p.dealerId,

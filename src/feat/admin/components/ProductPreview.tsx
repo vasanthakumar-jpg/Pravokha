@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/ui/Card";
 import { Badge } from "@/ui/Badge";
 import { Button } from "@/ui/Button";
 import { Heart, ShoppingCart, Star } from "lucide-react";
+import { InteractiveStarRating } from "@/shared/ui/InteractiveStarRating";
 
 interface ProductPreviewProps {
   title: string;
@@ -120,13 +121,13 @@ export function ProductPreview({
 
                 {/* Rating */}
                 <div className="flex items-center gap-1">
-                  {[...Array(5)].map((_, i) => (
-                    <Star
-                      key={i}
-                      className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400"
-                    />
-                  ))}
-                  <span className="text-xs text-muted-foreground ml-1">(4.5)</span>
+                  <InteractiveStarRating
+                    rating={0}
+                    readOnly
+                    size="sm"
+                    showQuotes={false}
+                  />
+                  <span className="text-xs text-muted-foreground ml-1">(No reviews)</span>
                 </div>
 
                 {/* Price */}

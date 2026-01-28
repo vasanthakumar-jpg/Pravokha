@@ -1,0 +1,65 @@
+.container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.starsWrapper {
+    display: flex;
+    gap: 0.25rem;
+    align-items: center;
+}
+
+.starButton {
+    background: none;
+    border: none;
+    padding: 0;
+    outline: none;
+    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.interactive:hover {
+    transform: scale(1.2);
+}
+
+.starIcon {
+    transition: all 0.3s ease;
+}
+
+.filled {
+    fill: #FFB800;
+    color: #FFB800;
+    filter: drop-shadow(0 0 4px rgba(255, 184, 0, 0.3));
+}
+
+.empty {
+    fill: transparent;
+    color: #94A3B8;
+}
+
+.quoteWrapper {
+    height: 1.25rem;
+    display: flex;
+    align-items: center;
+}
+
+.quoteText {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: #FFB800;
+    font-style: italic;
+    letter-spacing: 0.025em;
+    animation: fadeInSlide 0.3s ease-out;
+    text-transform: uppercase;
+}
+
+@keyframes fadeInSlide {
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

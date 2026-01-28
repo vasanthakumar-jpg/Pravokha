@@ -64,6 +64,7 @@ interface Review {
   verified_purchase: boolean | null;
   created_at: string;
   product_title?: string;
+  product_slug?: string;
   user_name?: string;
 }
 
@@ -106,6 +107,7 @@ export default function AdminReviews() {
         const enrichedReviews = response.data.reviews.map((review: any) => ({
           ...review,
           product_title: review.product?.title || "Unknown Product",
+          product_slug: review.product?.slug,
           user_name: review.user?.name || "Unknown User",
           product_id: review.productId,
           user_id: review.userId,
@@ -425,7 +427,17 @@ export default function AdminReviews() {
                       {filteredReviews.map((review) => (
                         <TableRow key={review.id}>
                           <TableCell className="font-medium max-w-[150px] truncate">
-                            {review.product_title}
+                            {review.product_slug ? (
+                              <Link
+                                to={`/product/${review.product_slug}`}
+                                target="_blank"
+                                className="text-primary hover:underline"
+                              >
+                                {review.product_title}
+                              </Link>
+                            ) : (
+                              review.product_title
+                            )}
                           </TableCell>
                           <TableCell>{review.user_name}</TableCell>
                           <TableCell>{renderStars(review.rating)}</TableCell>

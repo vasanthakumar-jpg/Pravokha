@@ -13,6 +13,7 @@ import styles from "./ProductCard.module.css";
 import { cn, getMediaUrl } from "@/lib/utils";
 import { useRecentlyViewed } from "@/shared/hook/useRecentlyViewed";
 import { Eye } from "lucide-react";
+import { InteractiveStarRating } from "@/shared/ui/InteractiveStarRating";
 
 interface ProductCardProps {
     product: Product;
@@ -210,20 +211,15 @@ export function ProductCard({ product }: ProductCardProps) {
                         {product.description}
                     </p>
                     <div className={styles.rating}>
-                        <div className={styles.stars}>
-                            {[...Array(5)].map((_, i) => (
-                                <Star
-                                    key={i}
-                                    className={cn(
-                                        styles.star,
-                                        i < Math.floor(product.rating)
-                                            ? "fill-yellow-400 text-yellow-400"
-                                            : "fill-muted text-muted"
-                                    )}
-                                />
-                            ))}
-                        </div>
-                        <span className={styles.reviewCount}>({product.reviews})</span>
+                        <InteractiveStarRating
+                            rating={product.rating}
+                            readOnly
+                            size="sm"
+                            showQuotes={false}
+                        />
+                        <span className={styles.reviewCount}>
+                            {product.reviews > 0 ? `(${product.reviews})` : "(No reviews)"}
+                        </span>
                     </div>
                 </div>
 

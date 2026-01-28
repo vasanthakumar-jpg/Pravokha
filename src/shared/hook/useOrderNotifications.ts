@@ -11,7 +11,7 @@ export function useOrderNotifications(userId: string | undefined) {
     const checkOrderUpdates = async () => {
       try {
         const response = await apiClient.get('/orders');
-        const orders = response.data;
+        const orders = response.data.data;
 
         // Safety check: ensure orders is an array before calling forEach
         if (!Array.isArray(orders)) {

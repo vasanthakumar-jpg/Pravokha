@@ -102,7 +102,7 @@ export default function OrderHistory() {
       });
 
       if (response.data.success) {
-        const orders = response.data.orders || [];
+        const orders = response.data.data || [];
         // Transform data to match expected interface
         const transformedOrders = orders.map((order: any) => ({
           id: order.id,
@@ -321,7 +321,9 @@ export default function OrderHistory() {
                       </div>
                       <div className="flex items-center gap-2 text-[10px] sm:text-xs text-muted-foreground font-medium">
                         <Calendar className="h-3.5 w-3.5" />
-                        {format(new Date(order.created_at), "PPP")}
+                        {order.created_at && !isNaN(new Date(order.created_at).getTime())
+                          ? format(new Date(order.created_at), 'PPP')
+                          : 'Date N/A'}
                       </div>
                     </div>
                     <div className="flex flex-wrap gap-2">
@@ -357,10 +359,18 @@ export default function OrderHistory() {
                     </h3>
                     <div className="grid gap-4">
                       {items.slice(0, 3).map((item: any, idx: number) => (
-                        <div key={idx} className="flex gap-4 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors">
+                        <div
+                          key={idx}
+                          className="flex gap-4 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors cursor-pointer"
+                          onClick={() => {
+                            const slug = item.product?.slug || item.productId || item.product_id || item.id;
+                            navigate(`/product/${slug}`);
+                          }}
+                        >
+
                           <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg border overflow-hidden bg-muted flex-shrink-0">
                             <img
-                              src={item.image || '/placeholder-product.jpg'}
+                              src={item.image || item.product?.variants?.[0]?.images?.[0] || '/placeholder-product.jpg'}
                               alt={item.title}
                               className="w-full h-full object-cover"
                             />

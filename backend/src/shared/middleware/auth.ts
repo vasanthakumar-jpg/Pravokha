@@ -19,6 +19,12 @@ declare module 'express-serve-static-core' {
             email: string;
             name: string | null;
             avatarUrl: string | null;
+            verificationStatus: string | null;
+            verificationComments: string | null;
+            dateOfBirth: Date | string | null;
+            phone: string | null;
+            bio: string | null;
+            status: string;
         };
     }
 }
@@ -44,7 +50,12 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
                 status: true,
                 email: true,
                 name: true,
-                avatarUrl: true
+                avatarUrl: true,
+                verificationStatus: true,
+                verificationComments: true,
+                dateOfBirth: true,
+                phone: true,
+                bio: true
             },
         });
 
@@ -61,7 +72,13 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
             role: user.role as Role,
             email: user.email,
             name: user.name,
-            avatarUrl: user.avatarUrl
+            avatarUrl: user.avatarUrl,
+            verificationStatus: user.verificationStatus,
+            verificationComments: user.verificationComments,
+            dateOfBirth: user.dateOfBirth,
+            phone: user.phone,
+            bio: user.bio,
+            status: user.status
         };
         next();
     } catch (error) {
@@ -110,7 +127,12 @@ export const optionalAuthenticate = async (req: Request, res: Response, next: Ne
                 status: true,
                 email: true,
                 name: true,
-                avatarUrl: true
+                avatarUrl: true,
+                verificationStatus: true,
+                verificationComments: true,
+                dateOfBirth: true,
+                phone: true,
+                bio: true
             },
         });
 
@@ -120,7 +142,13 @@ export const optionalAuthenticate = async (req: Request, res: Response, next: Ne
                 role: user.role as Role,
                 email: user.email,
                 name: user.name,
-                avatarUrl: user.avatarUrl
+                avatarUrl: user.avatarUrl,
+                verificationStatus: user.verificationStatus,
+                verificationComments: user.verificationComments,
+                dateOfBirth: user.dateOfBirth,
+                phone: user.phone,
+                bio: user.bio,
+                status: user.status
             };
         }
 

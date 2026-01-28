@@ -45,6 +45,7 @@ export const getMe = asyncHandler(async (req: any, res: Response) => {
             avatarUrl: req.user.avatarUrl,
             status: req.user.status,
             verificationStatus: req.user.verificationStatus,
+            verificationComments: req.user.verificationComments,
             phone: req.user.phone,
             bio: req.user.bio,
             dateOfBirth: req.user.dateOfBirth

@@ -10,9 +10,13 @@ import { toast } from "sonner";
 import { LoadingSpinner } from "@/shared/ui/LoadingSpinner";
 import styles from "./ProductReviews.module.css";
 import { cn } from "@/lib/utils";
+import { InteractiveStarRating } from "@/shared/ui/InteractiveStarRating";
 
 interface ProductReviewsProps {
     productId: string;
+    reviews: Review[];
+    isLoading: boolean;
+    onReviewAction?: () => void;
 }
 
 interface Review {
@@ -30,41 +34,20 @@ interface Review {
     }
 }
 
-export const ProductReviews = ({ productId }: ProductReviewsProps) => {
+export const ProductReviews = ({ productId, reviews, isLoading, onReviewAction }: ProductReviewsProps) => {
     const { user } = useAuth();
     const [rating, setRating] = useState(0);
-    const [hoverRating, setHoverRating] = useState(0);
     const [title, setTitle] = useState("");
     const [reviewText, setReviewText] = useState("");
     const [selectedImages, setSelectedImages] = useState<File[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [reviews, setReviews] = useState<Review[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
     const [editingReview, setEditingReview] = useState<string | null>(null);
+    const [selectedModalImage, setSelectedModalImage] = useState<string | null>(null);
     const [validationErrors, setValidationErrors] = useState<{
         title?: string;
         reviewText?: string;
         rating?: string;
     }>({});
-
-    useEffect(() => {
-        fetchReviews();
-    }, [productId]);
-
-    const fetchReviews = async () => {
-        setIsLoading(true);
-        try {
-            const response = await apiClient.get(`/reviews/product/${productId}`);
-            if (response.data.success) {
-                setReviews(response.data.reviews || []);
-            }
-        } catch (error) {
-            console.error("Error fetching reviews:", error);
-            toast.error("Failed to load reviews");
-        } finally {
-            setIsLoading(false);
-        }
-    };
 
     const validateForm = () => {
         const errors: typeof validationErrors = {};
@@ -179,7 +162,7 @@ export const ProductReviews = ({ productId }: ProductReviewsProps) => {
             setSelectedImages([]);
             setValidationErrors({});
 
-            fetchReviews();
+            onReviewAction?.();
         } catch (error: any) {
             console.error("Error submitting review:", error);
             toast.error(error.response?.data?.message || "Failed to submit review");
@@ -203,7 +186,7 @@ export const ProductReviews = ({ productId }: ProductReviewsProps) => {
             const response = await apiClient.delete(`/reviews/${reviewId}`);
             if (response.data.success) {
                 toast.success("Review deleted successfully");
-                fetchReviews();
+                onReviewAction?.();
             }
         } catch (error: any) {
             console.error("Error deleting review:", error);
@@ -226,30 +209,14 @@ export const ProductReviews = ({ productId }: ProductReviewsProps) => {
                     {/* Rating */}
                     <div className={styles.ratingContainer}>
                         <label className={styles.label}>Rating *</label>
-                        <div className={styles.starsRow}>
-                            {[1, 2, 3, 4, 5].map((star) => (
-                                <button
-                                    key={star}
-                                    type="button"
-                                    onClick={() => {
-                                        setRating(star);
-                                        setValidationErrors(prev => ({ ...prev, rating: undefined }));
-                                    }}
-                                    onMouseEnter={() => setHoverRating(star)}
-                                    onMouseLeave={() => setHoverRating(0)}
-                                    className={styles.starButton}
-                                >
-                                    <Star
-                                        className={cn(
-                                            styles.starIcon,
-                                            star <= (hoverRating || rating)
-                                                ? "fill-[#146B6B] text-[#146B6B]"
-                                                : "text-muted"
-                                        )}
-                                    />
-                                </button>
-                            ))}
-                        </div>
+                        <InteractiveStarRating
+                            rating={rating}
+                            onRatingChange={(newRating) => {
+                                setRating(newRating);
+                                setValidationErrors(prev => ({ ...prev, rating: undefined }));
+                            }}
+                            size="lg"
+                        />
                         {validationErrors.rating && (
                             <p className={styles.error}>{validationErrors.rating}</p>
                         )}
@@ -392,17 +359,12 @@ export const ProductReviews = ({ productId }: ProductReviewsProps) => {
                         <Card key={review.id} className={styles.reviewCard}>
                             <div className={styles.reviewHeader}>
                                 <div className={styles.reviewStars}>
-                                    {Array.from({ length: 5 }).map((_, i) => (
-                                        <Star
-                                            key={i}
-                                            className={cn(
-                                                styles.reviewStarIcon,
-                                                i < review.rating
-                                                    ? "fill-[#146B6B] text-[#146B6B]"
-                                                    : "text-muted"
-                                            )}
-                                        />
-                                    ))}
+                                    <InteractiveStarRating
+                                        rating={review.rating}
+                                        readOnly
+                                        size="sm"
+                                        showQuotes={false}
+                                    />
                                 </div>
                                 {user && user.id === review.userId && (
                                     <div className="flex gap-2">
@@ -436,7 +398,7 @@ export const ProductReviews = ({ productId }: ProductReviewsProps) => {
                                             alt={`Review image ${index + 1}`}
                                             className={styles.reviewImgThumb}
                                             loading="lazy"
-                                            onClick={() => window.open(imageUrl, '_blank')}
+                                            onClick={() => setSelectedModalImage(imageUrl)}
                                         />
                                     ))}
                                 </div>
@@ -453,6 +415,28 @@ export const ProductReviews = ({ productId }: ProductReviewsProps) => {
                     </Card>
                 )}
             </div>
+
+            {/* Image Modal */}
+            {selectedModalImage && (
+                <div
+                    className={styles.modalOverlay}
+                    onClick={() => setSelectedModalImage(null)}
+                >
+                    <div className={styles.modalContent} onClick={e => e.stopPropagation()}>
+                        <button
+                            className={styles.modalClose}
+                            onClick={() => setSelectedModalImage(null)}
+                        >
+                            <X size={24} />
+                        </button>
+                        <img
+                            src={selectedModalImage}
+                            alt="Full size review"
+                            className={styles.modalImage}
+                        />
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

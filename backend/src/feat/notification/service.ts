@@ -5,7 +5,9 @@ export class NotificationService {
         userId: string;
         title: string;
         message: string;
-        type: 'order' | 'info' | 'alert';
+        type: 'order' | 'info' | 'alert' | 'message';
+        link?: string;
+        metadata?: any;
     }) {
         return await prisma.notification.create({
             data: {
@@ -13,8 +15,10 @@ export class NotificationService {
                 title: data.title,
                 message: data.message,
                 type: data.type,
+                link: data.link,
+                metadata: data.metadata,
                 isRead: false
-            }
+            } as any
         });
     }
 
@@ -30,7 +34,9 @@ export class NotificationService {
             userId,
             title,
             message,
-            type: 'order'
+            type: 'order',
+            link: `/orders` // More specific link can be added if order.id is available, but /orders is a good fallback. 
+            // Actually, we usually want specific order detail, let's see where this is called.
         });
     }
 
@@ -39,7 +45,8 @@ export class NotificationService {
             userId: sellerId,
             title: 'New Order Received',
             message: `You have received a new order ${orderNumber}. Please review and pack the items.`,
-            type: 'order'
+            type: 'order',
+            link: '/seller/orders'
         });
     }
 }

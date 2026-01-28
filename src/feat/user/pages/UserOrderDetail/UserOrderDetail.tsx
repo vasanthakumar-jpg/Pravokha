@@ -164,7 +164,9 @@ export default function UserOrderDetail() {
 
          await generateInvoicePDF({
             orderNumber: order.order_number || "N/A",
-            orderDate: order.created_at ? format(new Date(order.created_at), 'MMMM dd, yyyy') : new Date().toDateString(),
+            orderDate: order.created_at && !isNaN(new Date(order.created_at).getTime())
+               ? format(new Date(order.created_at), 'MMMM dd, yyyy')
+               : new Date().toDateString(),
             customerName: order.customer_name || "Customer",
             customerEmail: order.customer_email || "N/A",
             customerPhone: order.customer_phone || "N/A",
@@ -254,7 +256,9 @@ export default function UserOrderDetail() {
                </div>
                <div className="flex items-center gap-2 mt-2 text-sm sm:text-base text-muted-foreground">
                   <Calendar className="h-4 w-4 sm:h-5 sm:w-5" />
-                  {format(new Date(order.created_at), 'MMM dd, yyyy')}
+                  {order.created_at && !isNaN(new Date(order.created_at).getTime())
+                     ? format(new Date(order.created_at), 'MMM dd, yyyy')
+                     : 'N/A'}
                </div>
             </div>
 
@@ -340,16 +344,23 @@ export default function UserOrderDetail() {
                            <div
                               key={idx}
                               className="flex gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl border bg-card hover:bg-muted/30 transition-all cursor-pointer group"
-                              onClick={() => navigate(`/product/${productId}`)}
+                              onClick={() => {
+                                 const slug = item.product?.slug || item.productId || item.product_id || item.id;
+                                 navigate(`/product/${slug}`);
+                              }}
+
                            >
                               <div className="h-20 w-20 sm:h-24 sm:w-24 flex-shrink-0 overflow-hidden rounded-md border border-gray-200">
-                                 {item.image ? (
-                                    <img src={item.image} alt={item.title} className="h-full w-full object-cover object-center group-hover:scale-105 transition-transform duration-300" />
-                                 ) : (
-                                    <div className="flex h-full w-full items-center justify-center bg-gray-100">
-                                       <ShoppingBag className="h-8 w-8 text-gray-400" />
-                                    </div>
-                                 )}
+                                 {(() => {
+                                    const img = item.image || item.product?.variants?.[0]?.images?.[0];
+                                    return img ? (
+                                       <img src={img} alt={item.title} className="h-full w-full object-cover object-center group-hover:scale-105 transition-transform duration-300" />
+                                    ) : (
+                                       <div className="flex h-full w-full items-center justify-center bg-gray-100">
+                                          <ShoppingBag className="h-8 w-8 text-gray-400" />
+                                       </div>
+                                    );
+                                 })()}
                               </div>
                               <div className="flex flex-1 flex-col min-w-0">
                                  <div className="flex flex-col sm:flex-row sm:justify-between items-start gap-1 sm:gap-4">

@@ -45,7 +45,7 @@ export function OnboardingProgress({ profile, productsCount }: OnboardingProgres
             id: "verification",
             title: "Compliance",
             description: "KYC verification",
-            isCompleted: profile.verificationStatus === "verified",
+            isCompleted: profile.verificationStatus === "verified" || profile.verification_status === "verified",
             link: "/seller/settings?tab=business"
         },
     ];

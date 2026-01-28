@@ -18,6 +18,7 @@ router.use(authenticate);
 router.post('/check-sku', checkSku);
 router.post('/', authorize([Role.DEALER, Role.ADMIN]), validate({ body: createProductSchema }), createProduct);
 router.put('/:id', authorize([Role.DEALER, Role.ADMIN]), requireProductOwnership, validate({ body: updateProductSchema }), updateProduct);
+router.patch('/:id', authorize([Role.DEALER, Role.ADMIN]), requireProductOwnership, validate({ body: updateProductSchema }), updateProduct);
 router.delete('/:id', authorize([Role.DEALER, Role.ADMIN]), requireProductOwnership, deleteProduct);
 
 export default router;

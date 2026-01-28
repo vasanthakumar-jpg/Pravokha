@@ -154,7 +154,7 @@ model Product {
   published     Boolean     @default(false)
   isFeatured    Boolean     @default(false)
   isNew         Boolean     @default(false)
-  rating        Float       @default(4.5)
+  rating        Float       @default(0.0)
   reviews       Int         @default(0)
   sku           String?     @unique
   isVerified    Boolean     @default(false)
@@ -293,6 +293,8 @@ model Notification {
   message   String
   type      String   // order, info, alert
   isRead    Boolean  @default(false)
+  link      String?
+  metadata  Json?
   createdAt DateTime @default(now())
 
   @@map("notifications")

@@ -51,10 +51,14 @@ export function NotificationBell() {
     const [isOpen, setIsOpen] = React.useState(false);
 
     const handleNotificationClick = (notification: Notification) => {
-        if (!notification.is_read) {
+        if (!notification.isRead) {
             markAsRead(notification.id);
         }
-        navigate(getMessagesLink());
+        if (notification.link) {
+            navigate(notification.link);
+        } else {
+            navigate(getMessagesLink());
+        }
         setIsOpen(false);
     };
 
@@ -112,24 +116,26 @@ export function NotificationBell() {
                                     key={notification.id}
                                     className={cn(
                                         styles.notificationItem,
-                                        !notification.is_read && styles.unreadItem
+                                        !notification.isRead && styles.unreadItem
                                     )}
                                     onClick={() => handleNotificationClick(notification)}
                                 >
                                     <div className={styles.itemContentWrapper}>
                                         <div className={cn(
                                             styles.iconWrapper,
-                                            !notification.is_read ? styles.iconUnread : styles.iconRead
+                                            !notification.isRead ? styles.iconUnread : styles.iconRead
                                         )}>
                                             {getIcon(notification.type)}
                                         </div>
                                         <div className={styles.textContent}>
                                             <div className={styles.titleRow}>
-                                                <p className={cn(styles.title, !notification.is_read ? "" : styles.titleRead)}>
+                                                <p className={cn(styles.title, !notification.isRead ? "" : styles.titleRead)}>
                                                     {notification.title}
                                                 </p>
                                                 <span className={styles.time}>
-                                                    {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
+                                                    {notification.createdAt && !isNaN(new Date(notification.createdAt).getTime())
+                                                        ? formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })
+                                                        : 'N/A'}
                                                 </span>
                                             </div>
                                             <p className={styles.message}>
@@ -137,7 +143,7 @@ export function NotificationBell() {
                                             </p>
                                         </div>
                                         <div className={styles.actions}>
-                                            {!notification.is_read && (
+                                            {!notification.isRead && (
                                                 <div className={styles.unreadDot} />
                                             )}
                                             <Button

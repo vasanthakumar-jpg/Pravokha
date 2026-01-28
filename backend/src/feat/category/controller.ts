@@ -6,6 +6,13 @@ export class CategoryController {
     // Categories
     static listCategories = asyncHandler(async (req: any, res: Response) => {
         const categories = await prisma.category.findMany({
+            where: { status: 'active' },
+            include: {
+                subcategories: {
+                    where: { status: 'active' },
+                    orderBy: { displayOrder: 'asc' }
+                }
+            },
             orderBy: { displayOrder: 'asc' }
         });
 

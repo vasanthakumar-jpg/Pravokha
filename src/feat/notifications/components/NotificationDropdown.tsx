@@ -50,10 +50,14 @@ export function NotificationDropdown() {
   const [isOpen, setIsOpen] = React.useState(false);
 
   const handleNotificationClick = (notification: Notification) => {
-    if (!notification.is_read) {
+    if (!notification.isRead) {
       markAsRead(notification.id);
     }
-    navigate(getMessagesLink());
+    if (notification.link) {
+      navigate(notification.link);
+    } else {
+      navigate(getMessagesLink());
+    }
     setIsOpen(false);
   };
 
@@ -111,24 +115,24 @@ export function NotificationDropdown() {
                   key={notification.id}
                   className={cn(
                     "flex flex-col items-start gap-1 p-4 cursor-pointer rounded-2xl focus:bg-primary/5 group transition-all duration-300 relative",
-                    !notification.is_read && "bg-primary/[0.03] border-l-2 border-primary"
+                    !notification.isRead && "bg-primary/[0.03] border-l-2 border-primary"
                   )}
                   onClick={() => handleNotificationClick(notification)}
                 >
                   <div className="flex items-start gap-4 w-full">
                     <div className={cn(
                       "mt-1 h-10 w-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-transform group-hover:scale-110",
-                      !notification.is_read ? "bg-primary/10" : "bg-muted/30"
+                      !notification.isRead ? "bg-primary/10" : "bg-muted/30"
                     )}>
                       {getIcon(notification.type)}
                     </div>
                     <div className="flex-1 space-y-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">
-                        <p className={cn("text-xs font-bold capitalize tracking-tight truncate", !notification.is_read ? "text-foreground" : "text-muted-foreground/60")}>
+                        <p className={cn("text-xs font-bold capitalize tracking-tight truncate", !notification.isRead ? "text-foreground" : "text-muted-foreground/60")}>
                           {notification.title}
                         </p>
                         <span className="text-[9px] font-bold text-muted-foreground/40 whitespace-nowrap">
-                          {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
+                          {notification.createdAt ? formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true }) : 'N/A'}
                         </span>
                       </div>
                       <p className="text-[11px] font-medium text-muted-foreground/70 line-clamp-2 leading-relaxed">
@@ -136,7 +140,7 @@ export function NotificationDropdown() {
                       </p>
                     </div>
                     <div className="flex flex-col gap-2">
-                      {!notification.is_read && (
+                      {!notification.isRead && (
                         <div className="h-2 w-2 rounded-full bg-primary shadow-[0_0_8px_rgba(var(--primary),0.5)]" />
                       )}
                       <Button

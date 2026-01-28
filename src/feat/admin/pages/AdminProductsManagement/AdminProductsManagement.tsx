@@ -255,7 +255,7 @@ export default function AdminProductsManagement() {
 
   const togglePublished = async (id: string, current: boolean) => {
     try {
-      await apiClient.patch(`/products/${id}/status`, { published: !current });
+      await apiClient.patch(`/products/${id}`, { published: !current });
       // product_variants update will be handled by backend if needed, or we just rely on product-level published flag
       setProducts(prev => prev.map(p => p.id === id ? { ...p, published: !current } : p));
       toast({ title: "Visibility Updated", description: "Product status shifted successfully." });
@@ -283,56 +283,59 @@ export default function AdminProductsManagement() {
     <div className="w-full mx-auto py-3 sm:py-6 lg:py-8 px-2 sm:px-4 lg:px-6 xl:px-8 flex flex-col gap-3 sm:gap-6 lg:gap-8 animate-in fade-in duration-500 pb-6 sm:pb-8 lg:pb-10">
       {/* Header & Stats Section */}
       <div className="flex flex-col gap-3 sm:gap-6">
-        <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 w-full xl:w-auto">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div className="flex items-center gap-4 w-full lg:w-auto">
             <Button
               variant="outline"
               size="sm"
-              className="h-9 rounded-xl border-border/60 bg-card gap-2 font-medium text-xs w-fit justify-start shadow-sm"
+              className="h-9 w-9 sm:w-auto px-0 sm:px-3 rounded-xl border-border/60 bg-card gap-2 font-medium text-xs shadow-sm flex-shrink-0"
               onClick={() => navigate("/admin")}
             >
               <ArrowLeft className="h-4 w-4" />
-              Back
+              <span className="hidden sm:inline">Back</span>
             </Button>
             <div className="min-w-0">
-              <h1 className="text-base sm:text-xl lg:text-2xl font-bold flex items-center flex-wrap gap-2 sm:gap-3">
+              <h1 className="text-xl sm:text-2xl font-bold flex items-center flex-wrap gap-2 sm:gap-3 truncate">
                 Product Master
                 <Badge variant="outline" className="text-[10px] font-bold tracking-tight bg-primary/5 rounded-lg border-primary/20 shrink-0 h-5 px-1.5">{stats.total} items</Badge>
               </h1>
-              <p className="text-xs sm:text-sm lg:text-base text-muted-foreground mt-0.5">Catalogue governance & lifecycle management</p>
+              <p className="text-sm text-muted-foreground mt-0.5 truncate">Catalogue governance & lifecycle management</p>
             </div>
           </div>
-          <div className="flex flex-wrap items-center justify-end gap-2 w-full xl:w-auto">
+          <div className="flex items-center gap-2 w-full lg:w-auto overflow-x-auto pb-1 sm:pb-0 scrollbar-hide">
             <Button
               variant="outline"
               onClick={() => setViewMode(viewMode === "table" ? "grid" : "table")}
-              className="flex-1 sm:flex-none h-10 rounded-xl border-border/60 bg-card font-medium text-xs shadow-sm"
+              className="flex-none h-10 px-3 rounded-xl border-border/60 bg-card font-medium text-xs shadow-sm"
             >
-              {viewMode === "table" ? <LayoutGrid className="h-3.5 w-3.5 mr-2" /> : <List className="h-3.5 w-3.5 mr-2" />}
-              {viewMode === "table" ? "Grid" : "Table"}
+              {viewMode === "table" ? <LayoutGrid className="h-3.5 w-3.5 sm:mr-2" /> : <List className="h-3.5 w-3.5 sm:mr-2" />}
+              <span className="hidden sm:inline">{viewMode === "table" ? "Grid" : "Table"}</span>
             </Button>
             <Button
               onClick={handleExportCSV}
               variant="outline"
-              className="flex-1 sm:flex-none h-10 rounded-xl border-border/60 bg-card font-medium text-xs shadow-sm"
+              className="flex-none h-10 px-3 rounded-xl border-border/60 bg-card font-medium text-xs shadow-sm"
             >
-              <Download className="h-3.5 w-3.5 mr-2" />
-              Export CSV
+              <Download className="h-3.5 w-3.5 sm:mr-2" />
+              <span className="hidden sm:inline">Export CSV</span>
+              <span className="sm:hidden">CSV</span>
             </Button>
             <Button
               onClick={() => navigate("/admin/products/updates")}
               variant="outline"
-              className="flex-1 sm:flex-none h-8 sm:h-10 rounded-xl border-amber-200 bg-amber-50/50 text-amber-700 hover:bg-amber-100 font-bold text-xs"
+              className="flex-none h-10 px-3 rounded-xl border-amber-200 bg-amber-50/50 text-amber-700 hover:bg-amber-100 font-bold text-xs"
             >
-              <ShieldCheck className="h-4 w-4 mr-2" />
-              Update Requests
+              <ShieldCheck className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Update Requests</span>
+              <span className="sm:hidden">Updates</span>
             </Button>
             <Button
               onClick={() => navigate("/admin/products/add")}
-              className="flex-1 sm:flex-none h-8 sm:h-10 rounded-xl font-bold text-xs bg-primary hover:bg-primary/90 shadow-md shadow-primary/20"
+              className="flex-1 sm:flex-none h-10 px-4 rounded-xl font-bold text-xs bg-primary hover:bg-primary/90 shadow-md shadow-primary/20 whitespace-nowrap"
             >
-              <Plus className="h-4 w-4 mr-2" />
-              Initialisation
+              <Plus className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Initialisation</span>
+              <span className="sm:hidden">Add</span>
             </Button>
           </div>
         </div>

@@ -60,7 +60,7 @@ export function ProductsPage() {
                     setDbSubcategories(response.data.subcategories
                         .filter((s: any) => s.status === 'active')
                         .map((s: any) => ({
-                            id: s.slug,
+                            id: s.id, // Use ID (UUID) to match p.subcategory_id
                             name: s.name,
                             category_id: s.categoryId
                         })));
@@ -157,6 +157,7 @@ export function ProductsPage() {
         setTempSubcategories([]);
         setPriceRange([0, 5000]);
         setTempPriceRange([0, 5000]);
+        setSortBy("featured"); // Reset sort as well for a "perfect" clear
     };
 
     const FilterContent = ({ isDesktop = false }: { isDesktop?: boolean }) => {
@@ -409,10 +410,7 @@ export function ProductsPage() {
                                         <Button
                                             variant="outline"
                                             className="mt-4"
-                                            onClick={() => {
-                                                setSelectedCategories([]);
-                                                setPriceRange([0, 2000]);
-                                            }}
+                                            onClick={clearFilters}
                                         >
                                             Clear Filters
                                         </Button>

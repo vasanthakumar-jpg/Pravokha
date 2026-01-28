@@ -12,6 +12,7 @@ import { ImageViewer } from "@/feat/products/components/ImageViewer";
 import { RelatedProducts } from "@/feat/products/components/RelatedProducts";
 import { ProductReviews, ReviewStatistics } from "@/feat/products/components/ProductReviews";
 import { useGsapAnimations } from "@/shared/hook/useGsapAnimations";
+import { InteractiveStarRating } from "@/shared/ui/InteractiveStarRating";
 import { apiClient } from "@/infra/api/apiClient";
 import { useRecentlyViewed } from "@/shared/hook/useRecentlyViewed";
 import { Product } from "@/data/products";
@@ -35,6 +36,45 @@ export function ProductDetailPage() {
     const [mainImage, setMainImage] = useState(0);
     const [imageViewerOpen, setImageViewerOpen] = useState(false);
     const [isInWishlist, setIsInWishlist] = useState(false);
+    const [reviews, setReviews] = useState<any[]>([]);
+    const [reviewsLoading, setReviewsLoading] = useState(false);
+
+    const fetchReviews = async () => {
+        if (!product?.id) return;
+        setReviewsLoading(true);
+        try {
+            const response = await apiClient.get(`/reviews/product/${product.id}`);
+            if (response.data.success) {
+                setReviews(response.data.reviews || []);
+            }
+        } catch (error) {
+            console.error("Error fetching reviews:", error);
+        } finally {
+            setReviewsLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (product?.id) fetchReviews();
+    }, [product?.id]);
+
+    const calculateDistribution = () => {
+        const dist = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+        if (reviews.length === 0) return dist;
+
+        reviews.forEach(r => {
+            const star = Math.round(r.rating) as keyof typeof dist;
+            if (dist[star] !== undefined) dist[star]++;
+        });
+
+        // Convert to percentages
+        Object.keys(dist).forEach(key => {
+            const k = parseInt(key) as keyof typeof dist;
+            dist[k] = Math.round((dist[k] / reviews.length) * 100);
+        });
+
+        return dist;
+    };
 
     // Check wishlist status
     useEffect(() => {
@@ -79,7 +119,7 @@ export function ProductDetailPage() {
                     price: parseFloat(String(productData.price)) || 0,
                     discountPrice: productData.discountPrice ? (parseFloat(String(productData.discountPrice)) || undefined) : undefined,
                     category: productData.category?.name || productData.category,
-                    rating: Math.min(5, Math.max(0, parseFloat(String(productData.rating || 4.5)))),
+                    rating: Math.min(5, Math.max(0, parseFloat(String(productData.rating || 0)))),
                     reviews: Math.max(0, parseInt(String(productData.reviews || 0))),
                     sku: productData.sku,
                     featured: productData.isFeatured || false,
@@ -118,7 +158,7 @@ export function ProductDetailPage() {
                         price: parseFloat(String(p.price)) || 0,
                         discountPrice: p.discountPrice ? (parseFloat(String(p.discountPrice)) || undefined) : undefined,
                         category: p.category?.name || p.category,
-                        rating: Math.min(5, Math.max(0, parseFloat(String(p.rating || 4.5)))),
+                        rating: Math.min(5, Math.max(0, parseFloat(String(p.rating || 0)))),
                         reviews: Math.max(0, parseInt(String(p.reviews || 0))),
                         sku: p.sku,
                         featured: p.isFeatured || false,
@@ -298,21 +338,20 @@ export function ProductDetailPage() {
                                     reviewsSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                                 }, 100);
                             }}
-                            className="flex items-center gap-4 hover:opacity-80 transition-opacity"
+                            className="flex items-center gap-4 hover:opacity-80 transition-opacity group"
                         >
                             <div className="flex items-center gap-1">
-                                {[...Array(5)].map((_, i) => (
-                                    <Star
-                                        key={i}
-                                        className={`h-5 w-5 ${i < Math.floor(product.rating)
-                                            ? "fill-accent text-accent"
-                                            : "fill-muted text-muted"
-                                            }`}
-                                    />
-                                ))}
-                                <span className="ml-2 font-medium">{product.rating}★</span>
+                                <InteractiveStarRating
+                                    rating={product.rating}
+                                    readOnly
+                                    size="sm"
+                                    showQuotes={false}
+                                />
+                                <span className="ml-2 font-bold text-lg">{product.rating}★</span>
                             </div>
-                            <span className="text-muted-foreground underline">({product.reviews} reviews)</span>
+                            <span className="text-muted-foreground underline decoration-dotted underline-offset-4 group-hover:text-primary transition-colors">
+                                ({product.reviews} reviews)
+                            </span>
                         </button>
 
                         <div className="flex items-center gap-3">
@@ -599,12 +638,18 @@ export function ProductDetailPage() {
                             <div className="md:col-span-1">
                                 <ReviewStatistics
                                     rating={product.rating}
-                                    totalRatings={3895}
-                                    totalReviews={product.reviews}
+                                    totalRatings={reviews.length}
+                                    totalReviews={reviews.length}
+                                    distribution={calculateDistribution()}
                                 />
                             </div>
                             <div className="md:col-span-2">
-                                <ProductReviews productId={product.id} />
+                                <ProductReviews
+                                    productId={product.id}
+                                    reviews={reviews}
+                                    isLoading={reviewsLoading}
+                                    onReviewAction={fetchReviews}
+                                />
                             </div>
                         </div>
                     </TabsContent>

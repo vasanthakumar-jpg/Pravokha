@@ -27,13 +27,17 @@ import { ProductViewMode } from "@/feat/products/domain/types";
 
 // Seller specific items
 import { BulkUploadModal } from "@/feat/seller/components/BulkUploadModal";
+import { useProfile } from "@/shared/hook/useProfile";
 
 export default function SellerProducts() {
-  const { user, role, verificationStatus } = useAuth();
+  const { user, role } = useAuth();
+  const { profile } = useProfile(user?.id);
   const isAdmin = role === 'ADMIN' || role === 'admin';
   const navigate = useNavigate();
   const { toast } = useToast();
   const [viewMode, setViewMode] = useState<ProductViewMode>("grid");
+
+  const verificationStatus = (profile as any)?.verificationStatus || (profile as any)?.verification_status;
 
   // Global inventory hook
   const {
@@ -127,34 +131,34 @@ export default function SellerProducts() {
   return (
     <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8 flex flex-col gap-8 pb-10">
       <div className="flex flex-col gap-6">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full sm:w-auto">
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+          <div className="flex items-center gap-4 w-full lg:w-auto">
             <Button
               variant="outline"
               size="sm"
-              className="h-9 rounded-xl border-border/40 bg-card/40 backdrop-blur-sm gap-2 font-bold text-xs"
+              className="h-9 w-9 sm:w-auto sm:px-3 rounded-xl border-border/40 bg-card/40 backdrop-blur-sm gap-2 font-bold text-xs shrink-0"
               onClick={() => navigate("/seller")}
             >
-              <ArrowLeft className="h-4 w-4" /> Back
+              <ArrowLeft className="h-4 w-4" /> <span className="hidden sm:inline">Back</span>
             </Button>
-            <div>
-              <h1 className="text-xl sm:text-2xl font-bold">My Products</h1>
-              <p className="text-sm text-muted-foreground mt-0.5">Manage your store inventory</p>
+            <div className="min-w-0">
+              <h1 className="text-xl sm:text-2xl font-bold truncate">My Products</h1>
+              <p className="text-sm text-muted-foreground mt-0.5 truncate">Manage your store inventory</p>
             </div>
           </div>
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <Button variant="outline" size="sm" onClick={exportToCSV} className="h-10 rounded-xl gap-2 font-bold text-xs">
+          <div className="flex items-center gap-2 w-full lg:w-auto overflow-x-auto pb-1 sm:pb-0 scrollbar-hide">
+            <Button variant="outline" size="sm" onClick={exportToCSV} className="flex-none h-10 rounded-xl gap-2 font-bold text-xs px-3 sm:px-4">
               <Download className="h-4 w-4" /> Export
             </Button>
-            <Button variant="outline" size="sm" onClick={() => setBulkUploadOpen(true)} className="h-10 rounded-xl gap-2 font-bold text-xs">
+            <Button variant="outline" size="sm" onClick={() => setBulkUploadOpen(true)} className="flex-none h-10 rounded-xl gap-2 font-bold text-xs px-3 sm:px-4">
               <Upload className="h-4 w-4" /> Bulk
             </Button>
             <Button
               onClick={() => navigate("/seller/products/add")}
-              className="flex-1 sm:flex-none h-10 rounded-xl bg-primary shadow-lg shadow-primary/20 font-bold text-xs"
+              className="flex-1 sm:flex-none h-10 rounded-xl bg-primary shadow-lg shadow-primary/20 font-bold text-xs px-3 sm:px-4"
               disabled={!isAdmin && verificationStatus !== 'verified'}
             >
-              <Plus className="h-4 w-4 mr-2" /> Add Product
+              <Plus className="h-4 w-4 mr-2" /> <span className="whitespace-nowrap">Add Product</span>
             </Button>
           </div>
         </div>

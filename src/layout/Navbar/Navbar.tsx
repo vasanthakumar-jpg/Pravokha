@@ -31,7 +31,7 @@ import { Input } from "@/ui/Input";
 import { useCart } from "@/core/context/CartContext";
 import { useAdmin } from "@/core/context/AdminContext";
 import { Badge } from "@/ui/Badge";
-import { categories } from "@/data/products";
+// removed static categories import
 import { ThemeToggle } from "@/shared/ui/ThemeToggle";
 import { toast } from "@/shared/hook/use-toast";
 import { useTheme } from "next-themes";
@@ -56,6 +56,8 @@ import { TShirtIcon, PantsIcon, ShortsIcon, MensIcon, WomensIcon, KidsIcon } fro
 import styles from "./Navbar.module.css";
 import { NotificationBell } from "@/shared/ui/NotificationBell";
 import { UserAccountDropdown } from "@/shared/ui/UserAccountDropdown";
+import { useCategories } from "@/shared/hook/useCategories";
+import { apiClient } from "@/infra/api/apiClient";
 
 interface SearchResult {
     id: string;
@@ -82,9 +84,8 @@ export function Navbar() {
     const profileMenuRef = useRef<HTMLDivElement>(null);
     const { theme, resolvedTheme } = useTheme();
     const { profile } = useProfile(user?.id);
-    const [mensDropdownOpen, setMensDropdownOpen] = useState(false);
-    const [womensDropdownOpen, setWomensDropdownOpen] = useState(false);
-    const [kidsDropdownOpen, setKidsDropdownOpen] = useState(false);
+    const { categories: dynamicCategories } = useCategories();
+    const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
     const [sellerProductsDropdownOpen, setSellerProductsDropdownOpen] = useState(false);
 
     const debouncedSearch = useCallback(
@@ -244,7 +245,7 @@ export function Navbar() {
                                         <Link to="/" onClick={closeMobileMenu}>
                                             <Button variant="ghost" className="w-full justify-start">Home</Button>
                                         </Link>
-                                        {categories.map((category) => (
+                                        {dynamicCategories.map((category) => (
                                             <Link key={category.id} to={`/products?category=${category.slug}`} onClick={closeMobileMenu}>
                                                 <Button variant="ghost" className="w-full justify-start">{category.name}</Button>
                                             </Link>
@@ -369,131 +370,60 @@ export function Navbar() {
                             </DropdownMenu>
                         )}
 
-                        {/* Mens Dropdown */}
-                        <DropdownMenu open={mensDropdownOpen} onOpenChange={setMensDropdownOpen}>
-                            <DropdownMenuTrigger asChild>
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className={styles.navButton}
-                                    onMouseEnter={() => setMensDropdownOpen(true)}
-                                    onMouseLeave={() => setMensDropdownOpen(false)}
-                                >
-                                    <MensIcon className={cn("h-4 w-4 flex-shrink-0", styles.navButtonIcon)} />
-                                    <span className={cn("hidden xl:inline", styles.navButtonText)}>Men</span>
-                                    <ChevronDown className="h-3 w-3 ml-1 flex-shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent
-                                align="center"
-                                className="w-48 focus:outline-none focus-visible:outline-none"
-                                onMouseEnter={() => setMensDropdownOpen(true)}
-                                onMouseLeave={() => setMensDropdownOpen(false)}
-                            >
-                                <Link to="/products?category=mens-tshirts">
-                                    <DropdownMenuItem className="cursor-pointer">
-                                        <TShirtIcon className="h-4 w-4 mr-2" />
-                                        T-Shirts
-                                    </DropdownMenuItem>
-                                </Link>
-                                <Link to="/products?category=mens-track-pants">
-                                    <DropdownMenuItem className="cursor-pointer">
-                                        <PantsIcon className="h-4 w-4 mr-2" />
-                                        Track Pants
-                                    </DropdownMenuItem>
-                                </Link>
-                                <Link to="/products?category=mens-shorts">
-                                    <DropdownMenuItem className="cursor-pointer">
-                                        <ShortsIcon className="h-4 w-4 mr-2" />
-                                        Shorts
-                                    </DropdownMenuItem>
-                                </Link>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
+                        {dynamicCategories.map((category) => {
+                            const CategoryIcon = category.slug.includes('men') ? MensIcon :
+                                category.slug.includes('women') ? WomensIcon :
+                                    category.slug.includes('kids') ? KidsIcon : Package;
 
-                        {/* Womens Dropdown */}
-                        <DropdownMenu open={womensDropdownOpen} onOpenChange={setWomensDropdownOpen}>
-                            <DropdownMenuTrigger asChild>
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className={styles.navButton}
-                                    onMouseEnter={() => setWomensDropdownOpen(true)}
-                                    onMouseLeave={() => setWomensDropdownOpen(false)}
+                            return (
+                                <DropdownMenu
+                                    key={category.id}
+                                    open={openDropdownId === category.id}
+                                    onOpenChange={(open) => setOpenDropdownId(open ? category.id : null)}
                                 >
-                                    <WomensIcon className={cn("h-4 w-4 flex-shrink-0", styles.navButtonIcon)} />
-                                    <span className={cn("hidden xl:inline", styles.navButtonText)}>Women</span>
-                                    <ChevronDown className="h-3 w-3 ml-1 flex-shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent
-                                align="center"
-                                className="w-48 focus:outline-none focus-visible:outline-none"
-                                onMouseEnter={() => setWomensDropdownOpen(true)}
-                                onMouseLeave={() => setWomensDropdownOpen(false)}
-                            >
-                                <Link to="/products?category=womens-tshirts">
-                                    <DropdownMenuItem className="cursor-pointer">
-                                        <TShirtIcon className="h-4 w-4 mr-2" />
-                                        T-Shirts
-                                    </DropdownMenuItem>
-                                </Link>
-                                <Link to="/products?category=womens-track-pants">
-                                    <DropdownMenuItem className="cursor-pointer">
-                                        <PantsIcon className="h-4 w-4 mr-2" />
-                                        Track Pants
-                                    </DropdownMenuItem>
-                                </Link>
-                                <Link to="/products?category=womens-shorts">
-                                    <DropdownMenuItem className="cursor-pointer">
-                                        <ShortsIcon className="h-4 w-4 mr-2" />
-                                        Shorts
-                                    </DropdownMenuItem>
-                                </Link>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className={styles.navButton}
+                                            onMouseEnter={() => setOpenDropdownId(category.id)}
+                                            onMouseLeave={() => setOpenDropdownId(null)}
+                                        >
+                                            <CategoryIcon className={cn("h-4 w-4 flex-shrink-0", styles.navButtonIcon)} />
+                                            <span className={cn("hidden xl:inline", styles.navButtonText)}>{category.name}</span>
+                                            <ChevronDown className="h-3 w-3 ml-1 flex-shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent
+                                        align="center"
+                                        className="w-48 focus:outline-none focus-visible:outline-none"
+                                        onMouseEnter={() => setOpenDropdownId(category.id)}
+                                        onMouseLeave={() => setOpenDropdownId(null)}
+                                    >
+                                        <Link to={`/products?category=${category.slug}`}>
+                                            <DropdownMenuItem className="cursor-pointer font-bold border-b">
+                                                <CategoryIcon className="h-4 w-4 mr-2" />
+                                                All {category.name}
+                                            </DropdownMenuItem>
+                                        </Link>
+                                        {category.subcategories?.map(sub => {
+                                            const SubIcon = sub.slug.includes('tshirt') ? TShirtIcon :
+                                                sub.slug.includes('pant') ? PantsIcon :
+                                                    sub.slug.includes('short') ? ShortsIcon : Package;
 
-                        {/* Kids Dropdown */}
-                        <DropdownMenu open={kidsDropdownOpen} onOpenChange={setKidsDropdownOpen}>
-                            <DropdownMenuTrigger asChild>
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className={styles.navButton}
-                                    onMouseEnter={() => setKidsDropdownOpen(true)}
-                                    onMouseLeave={() => setKidsDropdownOpen(false)}
-                                >
-                                    <KidsIcon className={cn("h-4 w-4 flex-shrink-0", styles.navButtonIcon)} />
-                                    <span className={cn("hidden xl:inline", styles.navButtonText)}>Kids</span>
-                                    <ChevronDown className="h-3 w-3 ml-1 flex-shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent
-                                align="center"
-                                className="w-48 focus:outline-none focus-visible:outline-none"
-                                onMouseEnter={() => setKidsDropdownOpen(true)}
-                                onMouseLeave={() => setKidsDropdownOpen(false)}
-                            >
-                                <Link to="/products?category=kids-tshirts">
-                                    <DropdownMenuItem className="cursor-pointer">
-                                        <TShirtIcon className="h-4 w-4 mr-2" />
-                                        T-Shirts
-                                    </DropdownMenuItem>
-                                </Link>
-                                <Link to="/products?category=kids-track-pants">
-                                    <DropdownMenuItem className="cursor-pointer">
-                                        <PantsIcon className="h-4 w-4 mr-2" />
-                                        Track Pants
-                                    </DropdownMenuItem>
-                                </Link>
-                                <Link to="/products?category=kids-shorts">
-                                    <DropdownMenuItem className="cursor-pointer">
-                                        <ShortsIcon className="h-4 w-4 mr-2" />
-                                        Shorts
-                                    </DropdownMenuItem>
-                                </Link>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
+                                            return (
+                                                <Link key={sub.id} to={`/products?category=${sub.slug}`}>
+                                                    <DropdownMenuItem className="cursor-pointer">
+                                                        <SubIcon className="h-4 w-4 mr-2" />
+                                                        {sub.name}
+                                                    </DropdownMenuItem>
+                                                </Link>
+                                            );
+                                        })}
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            );
+                        })}
 
                         {user && (role === "ADMIN" || role === "admin") && (
                             <Link to="/admin">

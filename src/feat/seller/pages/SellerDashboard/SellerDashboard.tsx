@@ -147,7 +147,7 @@ export default function SellerDashboard() {
       setProducts(transformedProducts);
       setRecentOrders(transformedOrders);
       setStats({
-        totalProducts: transformedProducts.length || 0,
+        totalProducts: productsResponse.data.total || transformedProducts.length || 0,
         totalOrders: sellerOrders.length || 0,
         totalRevenue: totalRevenue,
         pendingOrders: pendingOrders,
@@ -290,7 +290,7 @@ export default function SellerDashboard() {
             !isVerified && "opacity-60 grayscale-[0.5] blur-[1px] pointer-events-none"
           )}>
             {[
-              { label: "Inventory", val: stats.totalProducts, icon: Package, sub: "Live products", color: "from-blue-600 to-blue-400", iconBg: "bg-blue-600" },
+              { label: "Inventory", val: products.length || 0, icon: Package, sub: "Live products", color: "from-blue-600 to-blue-400", iconBg: "bg-blue-600" },
               { label: "Orders", val: stats.totalOrders, icon: ShoppingCart, sub: "Total lifecycle", color: "from-emerald-500 to-emerald-400", iconBg: "bg-emerald-500" },
               { label: "Revenue", val: `₹${stats.totalRevenue.toLocaleString()}`, icon: DollarSign, sub: "Gross earnings", color: "from-rose-500 to-rose-400", iconBg: "bg-rose-500" },
               { label: "Processing", val: stats.pendingOrders, icon: TrendingUp, sub: "Needs attention", color: "from-violet-600 to-violet-400", iconBg: "bg-violet-600" }

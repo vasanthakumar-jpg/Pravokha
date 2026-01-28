@@ -29,7 +29,8 @@ export function useProductInventory({ sellerId, isAdmin }: UseProductInventoryPr
             console.log(`[useProductInventory] API Response:`, response.data);
 
             if (response.data.success) {
-                const transformed = (response.data.data || []).map((p: any) => {
+                const productList = response.data.products || response.data.data || [];
+                const transformed = productList.map((p: any) => {
                     // Handle both simple and nested stock structures found in Admin/Seller pages
                     const totalStock = p.variants?.reduce((sum: number, v: any) => {
                         if (v.sizes && v.sizes.length > 0) {
@@ -49,7 +50,7 @@ export function useProductInventory({ sellerId, isAdmin }: UseProductInventoryPr
                         seller_id: p.dealerId,
                         created_at: p.createdAt,
                         stock_quantity: totalStock,
-                        main_image: p.images && p.images.length > 0 ? p.images[0] : null
+                        main_image: p.variants?.[0]?.images?.[0] || p.product_variants?.[0]?.images?.[0] || null
                     };
                 });
 

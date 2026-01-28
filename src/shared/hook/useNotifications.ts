@@ -11,6 +11,7 @@ export interface Notification {
     isRead: boolean;
     createdAt: string;
     link?: string;
+    metadata?: any;
 }
 
 export function useNotifications() {

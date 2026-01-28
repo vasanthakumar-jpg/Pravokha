@@ -1,7 +1,8 @@
-import { Star } from "lucide-react";
 import { Progress } from "@/ui/Progress";
 import styles from "./ProductReviews.module.css";
 import { cn } from "@/lib/utils";
+import { InteractiveStarRating } from "@/shared/ui/InteractiveStarRating";
+import { Star } from "lucide-react";
 
 interface ReviewStatisticsProps {
     rating: number;
@@ -26,18 +27,13 @@ export const ReviewStatistics = ({
         <div className={styles.statsSection}>
             <div className={styles.statsHeader}>
                 <div className={styles.avgRating}>{rating.toFixed(1)}</div>
-                <div className="flex items-center justify-center gap-1">
-                    {[...Array(5)].map((_, i) => (
-                        <Star
-                            key={i}
-                            className={cn(
-                                "h-5 w-5",
-                                i < Math.floor(rating)
-                                    ? "fill-[#146B6B] text-[#146B6B]"
-                                    : "fill-muted text-muted"
-                            )}
-                        />
-                    ))}
+                <div className="flex items-center justify-center">
+                    <InteractiveStarRating
+                        rating={rating}
+                        readOnly
+                        size="md"
+                        showQuotes={false}
+                    />
                 </div>
                 <p className="text-sm text-muted-foreground mt-2">
                     {totalRatings.toLocaleString()} ratings & {totalReviews} reviews
