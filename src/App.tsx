@@ -125,9 +125,9 @@ const ConditionalNavbar = () => {
 // Conditional Footer - only show on routes that don't have their own layout
 const ConditionalFooter = () => {
   const location = useLocation();
-  const hideFooterRoutes = ["/admin", "/seller"];
+  const hideFooterRoutes = ["/admin"]; // Enabled for /seller
 
-  // Don't show footer on admin or seller routes
+  // Don't show footer on admin routes
   if (hideFooterRoutes.some(route => location.pathname.startsWith(route))) {
     return null;
   }

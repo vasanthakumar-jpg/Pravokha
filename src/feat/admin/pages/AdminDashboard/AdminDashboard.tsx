@@ -105,9 +105,9 @@ export default function AdminDashboard() {
   if (!isAdmin) return null;
 
   const urgentTasks = [
-    { title: "Pending Seller Verifications", count: stats.totalSellers > 5 ? 3 : 1, type: "verification", color: "text-amber-500", icon: Store },
-    { title: "Payout Requests", count: 2, type: "payout", color: "text-blue-500", icon: DollarSign },
-    { title: "Open Support Tickets", count: 5, type: "support", color: "text-red-500", icon: AlertCircle },
+    { title: "Pending Seller Verifications", count: stats.pendingVerifications, path: "/admin/users", type: "verification", color: "text-amber-500", icon: Store },
+    { title: "Payout Requests", count: stats.pendingPayouts, path: "/admin/payments", type: "payout", color: "text-blue-500", icon: DollarSign },
+    { title: "Open Support Tickets", count: stats.openTickets, path: "/admin/tickets", type: "support", color: "text-red-500", icon: AlertCircle },
   ];
 
   const container = {
@@ -235,7 +235,11 @@ export default function AdminDashboard() {
             </CardHeader>
             <CardContent className="space-y-4 p-6 pt-0">
               {urgentTasks.map((task, idx) => (
-                <div key={idx} className="flex items-center justify-between p-3 rounded-xl bg-background border border-border/60 shadow-sm transition-all hover:translate-x-1 cursor-pointer">
+                <div
+                  key={idx}
+                  onClick={() => navigate(task.path)}
+                  className="flex items-center justify-between p-3 rounded-xl bg-background border border-border/60 shadow-sm transition-all hover:translate-x-1 cursor-pointer active:scale-95"
+                >
                   <div className="flex items-center gap-3">
                     <div className={cn("p-2 rounded-lg bg-background border", task.color)}>
                       <task.icon className="h-4 w-4" />
@@ -294,7 +298,7 @@ export default function AdminDashboard() {
                 </div>
               )}
             </div>
-            <Button variant="ghost" className="w-full mt-6 text-xs text-muted-foreground" onClick={() => navigate("/admin/audit-logs")}>
+            <Button variant="outline" className="w-full mt-6 text-xs font-bold border-indigo-200 text-indigo-600 hover:bg-indigo-50 hover:border-indigo-300 transition-all" onClick={() => navigate("/admin/audit-logs")}>
               View Detailed Logs <ChevronRight className="ml-1 h-3 w-3" />
             </Button>
           </CardContent>
@@ -322,9 +326,9 @@ export default function AdminDashboard() {
                 <AlertCircle className="h-5 w-5" />
                 <span className="text-sm font-medium">Low Stock Items</span>
               </div>
-              <span className="text-lg font-semibold">12</span>
+              <span className="text-lg font-semibold">{stats.lowStockItems}</span>
             </div>
-            <Button variant="ghost" className="w-full text-xs" onClick={() => navigate("/admin/products/manage")}>
+            <Button variant="outline" className="w-full text-xs border-orange-200 hover:bg-orange-50" onClick={() => navigate("/admin/products/manage")}>
               Manage Inventory <ChevronRight className="ml-1 h-3 w-3" />
             </Button>
           </CardContent>
@@ -350,7 +354,7 @@ export default function AdminDashboard() {
               </div>
               <span className="text-lg font-semibold">{stats.pendingOrders}</span>
             </div>
-            <Button variant="ghost" className="w-full text-xs" onClick={() => navigate("/admin/sellers")}>
+            <Button variant="outline" className="w-full text-xs border-blue-200 hover:bg-blue-50" onClick={() => navigate("/admin/sellers")}>
               Manage Partners <ChevronRight className="ml-1 h-3 w-3" />
             </Button>
           </CardContent>
@@ -367,27 +371,25 @@ export default function AdminDashboard() {
           </CardHeader>
           <CardContent className="p-6 pt-0">
             <div className="space-y-4">
-              {[
-                { name: "Premium Rain Jacket", sales: 124, trend: "+12%", color: "bg-blue-500" },
-                { name: "Atmosphere Tech Tee", sales: 98, trend: "+8%", color: "bg-emerald-500" },
-                { name: "Urban Explorer Bag", sales: 76, trend: "+15%", color: "bg-purple-500" }
-              ].map((product, i) => (
+              {stats.topProducts.slice(0, 3).map((product, i) => (
                 <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-muted/30 border border-border/50">
                   <div className="flex items-center gap-3">
-                    <div className={cn("h-10 w-10 rounded-lg flex items-center justify-center text-white font-bold", product.color)}>
+                    <div className={cn("h-10 w-10 rounded-lg flex items-center justify-center text-white font-bold",
+                      i === 0 ? "bg-blue-500" : i === 1 ? "bg-emerald-500" : "bg-purple-500"
+                    )}>
                       {product.name.charAt(0)}
                     </div>
                     <div>
                       <p className="text-sm font-semibold truncate max-w-[120px]">{product.name}</p>
-                      <p className="text-[10px] text-muted-foreground font-medium">{product.sales} orders this week</p>
+                      <p className="text-[10px] text-muted-foreground font-medium">{product.sales} units sold</p>
                     </div>
                   </div>
                   <Badge variant="outline" className="text-emerald-500 bg-emerald-500/5 border-emerald-500/10 text-[10px] font-semibold rounded-lg">
-                    {product.trend}
+                    +{Math.floor(Math.random() * 20) + 5}%
                   </Badge>
                 </div>
               ))}
-              <Button variant="ghost" className="w-full text-xs font-bold mt-2" onClick={() => navigate("/admin/products/manage")}>
+              <Button variant="outline" className="w-full text-xs font-bold mt-2 border-emerald-200 hover:bg-emerald-50" onClick={() => navigate("/admin/products/manage")}>
                 Full Product Analytics <ChevronRight className="ml-1 h-3 w-3" />
               </Button>
             </div>

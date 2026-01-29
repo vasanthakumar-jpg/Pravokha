@@ -170,14 +170,16 @@ export function HomePage() {
                 <div className="px-4 sm:px-6 lg:px-8">
                     <ProductGrid products={featuredProducts} />
                 </div>
-                <div className="flex justify-center mt-8">
-                    <Link to="/products">
-                        <Button size="lg" variant="outline" className="group">
-                            View All Products
-                            <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
-                        </Button>
-                    </Link>
-                </div>
+                {featuredProducts.length > 8 && (
+                    <div className="flex justify-center mt-8">
+                        <Link to="/products">
+                            <Button size="lg" variant="outline" className="group">
+                                View All Products
+                                <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+                            </Button>
+                        </Link>
+                    </div>
+                )}
             </section>
 
             {/* New Arrivals */}

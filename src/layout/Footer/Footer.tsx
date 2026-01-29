@@ -116,17 +116,17 @@ export function Footer() {
                                 </Link>
                             </li>
                             <li>
-                                <Link to="/products?category=t-shirts" className={styles.link}>
+                                <Link to="/products?subcategory=t-shirts" className={styles.link}>
                                     T-Shirts
                                 </Link>
                             </li>
                             <li>
-                                <Link to="/products?category=track-pants" className={styles.link}>
+                                <Link to="/products?subcategory=track-pants" className={styles.link}>
                                     Track Pants
                                 </Link>
                             </li>
                             <li>
-                                <Link to="/products?category=shorts" className={styles.link}>
+                                <Link to="/products?subcategory=shorts" className={styles.link}>
                                     Shorts
                                 </Link>
                             </li>
@@ -148,9 +148,41 @@ export function Footer() {
                         </ul>
                     </div>
 
-                    {/* Customer Service / Admin */}
+                    {/* Collections Section */}
                     <div>
-                        {role === "admin" ? (
+                        <h4 className={styles.sectionTitle}>Collections</h4>
+                        <ul className={styles.linkList}>
+                            <li>
+                                <Link to="/products?subcategory=oversized-t-shirts" className={styles.link}>
+                                    Oversized
+                                </Link>
+                            </li>
+                            <li>
+                                <Link to="/products?subcategory=printed-t-shirts" className={styles.link}>
+                                    Printed
+                                </Link>
+                            </li>
+                            <li>
+                                <Link to="/products?subcategory=hoodies" className={styles.link}>
+                                    Hoodies
+                                </Link>
+                            </li>
+                            <li>
+                                <Link to="/products?subcategory=activewear" className={styles.link}>
+                                    Activewear
+                                </Link>
+                            </li>
+                            <li>
+                                <Link to="/products" className={styles.link}>
+                                    Shop All
+                                </Link>
+                            </li>
+                        </ul>
+                    </div>
+
+                    {/* Customer Service / Admin / Seller */}
+                    <div>
+                        {role?.toUpperCase() === "ADMIN" ? (
                             <>
                                 <h4 className={styles.sectionTitle}>Admin</h4>
                                 <ul className={styles.linkList}>
@@ -160,7 +192,7 @@ export function Footer() {
                                         </Link>
                                     </li>
                                     <li>
-                                        <Link to="/admin/products" className={styles.link}>
+                                        <Link to="/admin/products/manage" className={styles.link}>
                                             Manage Products
                                         </Link>
                                     </li>
@@ -177,6 +209,37 @@ export function Footer() {
                                     <li>
                                         <Link to="/admin/tickets" className={styles.link}>
                                             Support Registry
+                                        </Link>
+                                    </li>
+                                </ul>
+                            </>
+                        ) : role?.toUpperCase() === "DEALER" || role?.toUpperCase() === "SELLER" ? (
+                            <>
+                                <h4 className={styles.sectionTitle}>Seller Portal</h4>
+                                <ul className={styles.linkList}>
+                                    <li>
+                                        <Link to="/seller" className={styles.link}>
+                                            Dashboard
+                                        </Link>
+                                    </li>
+                                    <li>
+                                        <Link to="/seller/products" className={styles.link}>
+                                            My Products
+                                        </Link>
+                                    </li>
+                                    <li>
+                                        <Link to="/seller/orders" className={styles.link}>
+                                            Manage Orders
+                                        </Link>
+                                    </li>
+                                    <li>
+                                        <Link to="/seller/payouts" className={styles.link}>
+                                            Payouts
+                                        </Link>
+                                    </li>
+                                    <li>
+                                        <Link to="/seller/settings" className={styles.link}>
+                                            Store Settings
                                         </Link>
                                     </li>
                                 </ul>

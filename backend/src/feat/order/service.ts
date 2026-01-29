@@ -120,7 +120,20 @@ export class OrderService {
             const sellerIds = Array.from(new Set(orderItems.map(item => item.sellerId)));
             const { NotificationService } = await import('../notification/service');
             for (const sellerId of sellerIds) {
-                await NotificationService.notifyNewOrder(sellerId, orderNumber).catch(e => console.error("Notification failed:", e));
+                // Get first product for this seller to show in notification
+                const sellerItem = orderItems.find(item => item.sellerId === sellerId);
+                const productName = sellerItem?.title || 'Product';
+                const sellerTotal = orderItems
+                    .filter(item => item.sellerId === sellerId)
+                    .reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+                await NotificationService.notifyNewOrder(
+                    sellerId,
+                    orderNumber,
+                    order.id,
+                    productName,
+                    sellerTotal
+                ).catch(e => console.error("Notification failed:", e));
             }
 
             return { order, clientSecret };
@@ -352,6 +365,7 @@ export class OrderService {
         trackingNumber?: string;
         trackingCarrier?: string;
         trackingUpdates?: any;
+        packingNotes?: string;
         version?: number;
     }) {
         const { isValidTransition, getRequiredFieldsForTransition } = await import('./stateMachine');
@@ -396,6 +410,8 @@ export class OrderService {
                 version: { increment: 1 },
                 trackingUpdates: options.trackingUpdates || (currentOrder.trackingUpdates as any || []),
             };
+
+            if (options.packingNotes !== undefined) updateData.packingNotes = options.packingNotes;
 
             if (options.trackingNumber) updateData.trackingNumber = options.trackingNumber;
             if (options.trackingCarrier) updateData.trackingCarrier = options.trackingCarrier;
@@ -519,5 +535,40 @@ export class OrderService {
             }
         });
         return count > 0;
+    }
+
+    static async getOrderHistory(orderId: string, userId: string, role: string) {
+        const order = await prisma.order.findUnique({
+            where: { id: orderId },
+            include: {
+                statusHistory: {
+                    orderBy: { createdAt: 'desc' },
+                    include: {
+                        user: {
+                            select: {
+                                name: true,
+                                email: true,
+                                avatarUrl: true,
+                                role: true
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        if (!order) throw new Error('Order not found');
+
+        // Access Control (Same logic as getOrder)
+        if (role !== Role.ADMIN) {
+            if (role === Role.DEALER) {
+                const hasSellerItem = await this.verifySellerOwnsOrder(userId, orderId);
+                if (!hasSellerItem) throw new Error('Forbidden');
+            } else if (order.userId !== userId) {
+                throw new Error('Unauthorized');
+            }
+        }
+
+        return order.statusHistory;
     }
 }

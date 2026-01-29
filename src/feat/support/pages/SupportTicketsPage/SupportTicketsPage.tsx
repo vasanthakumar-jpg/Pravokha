@@ -36,6 +36,8 @@ export function SupportTicketsPage() {
     useEffect(() => {
         if (user) {
             fetchTickets();
+        } else {
+            setLoading(false);
         }
     }, [user]);
 
@@ -44,17 +46,21 @@ export function SupportTicketsPage() {
     }, [tickets, searchQuery, statusFilter]);
 
     const fetchTickets = async () => {
-        if (!user) return;
+        if (!user) {
+            setLoading(false);
+            return;
+        }
 
         try {
             const response = await apiClient.get('/support/tickets');
-            const data = response.data.tickets.map((t: any) => ({
+            const ticketsList = response.data.tickets || [];
+            const data = ticketsList.map((t: any) => ({
                 ...t,
                 ticket_number: t.ticketNumber,
                 created_at: t.createdAt,
                 updated_at: t.updatedAt
             }));
-            setTickets(data || []);
+            setTickets(data);
         } catch (error: any) {
             console.error('Error fetching tickets:', error);
             toast({

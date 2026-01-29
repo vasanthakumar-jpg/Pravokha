@@ -1083,8 +1083,12 @@ export default function AdminPayments() {
                         selectedTransaction.items.map((item: any, idx: number) => (
                           <div key={idx} className="bg-muted/30 rounded-xl p-3 border border-border/50 flex gap-4 items-start">
                             <div className="h-16 w-16 rounded-lg bg-white overflow-hidden border shadow-sm shrink-0">
-                              {item.image ? (
-                                <img src={item.image} alt={item.title} className="h-full w-full object-cover" />
+                              {item.product?.variants?.[0]?.images?.[0] || item.image ? (
+                                <img
+                                  src={item.product?.variants?.[0]?.images?.[0] || item.image}
+                                  alt={item.title}
+                                  className="h-full w-full object-cover"
+                                />
                               ) : (
                                 <div className="h-full w-full flex items-center justify-center bg-gray-100">
                                   <ShoppingBag className="h-6 w-6 text-gray-400" />

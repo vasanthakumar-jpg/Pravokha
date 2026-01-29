@@ -87,7 +87,7 @@ export default function AdminSuspendedSellerTickets() {
         try {
             setLoading(true);
             const response = await apiClient.get('/support/admin/tickets?isSuspendedSeller=true');
-            const data = response.data.tickets.map((ticket: any) => ({
+            const data = (response.data.tickets || []).map((ticket: any) => ({
                 ...ticket,
                 ticket_number: ticket.ticketNumber,
                 suspended_seller: ticket.isSuspendedSeller,

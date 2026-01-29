@@ -7,7 +7,6 @@ const paymentMethods = [
     { name: "GPay", color: "text-blue-600 dark:text-blue-400" },
     { name: "PhonePe", color: "text-purple-600 dark:text-purple-400" },
     { name: "Paytm", color: "text-cyan-600 dark:text-cyan-400" },
-    { name: "QR", color: "text-orange-600 dark:text-orange-400" },
 ];
 
 export function AnimatedPaymentIcons() {

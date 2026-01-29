@@ -13,6 +13,22 @@ export const subscribeToNewsletter = asyncHandler(async (req: Request, res: Resp
         await prisma.newsletterSubscription.create({
             data: { email: email.toLowerCase().trim() }
         });
+
+        // Notify Admins
+        try {
+            const { NotificationService } = await import('../notification/service');
+            const admins = await prisma.user.findMany({
+                where: { role: 'ADMIN' },
+                select: { id: true }
+            });
+
+            for (const admin of admins) {
+                await NotificationService.notifyAdminNewsletterSubscription(admin.id, email);
+            }
+        } catch (err) {
+            console.error('Failed to notify admins of newsletter subscription:', err);
+        }
+
         res.status(201).json({ success: true, message: 'Subscribed successfully' });
     } catch (error: any) {
         if (error.code === 'P2002') {

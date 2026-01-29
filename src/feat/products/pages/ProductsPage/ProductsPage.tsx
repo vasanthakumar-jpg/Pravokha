@@ -78,14 +78,24 @@ export function ProductsPage() {
     useGsapAnimations();
 
     const categoryParam = searchParams.get("category");
+    const subcategoryParam = searchParams.get("subcategory");
     const searchQuery = searchParams.get("search");
 
     useEffect(() => {
         if (categoryParam && categoryParam !== "all") {
-            setSelectedCategories([categoryParam]);
-            setTempCategories([categoryParam]);
+            const lowerParam = categoryParam.toLowerCase();
+            setSelectedCategories([lowerParam]);
+            setTempCategories([lowerParam]);
         }
     }, [categoryParam]);
+
+    useEffect(() => {
+        if (subcategoryParam) {
+            const lowerParam = subcategoryParam.toLowerCase();
+            setSelectedSubcategories([lowerParam]);
+            setTempSubcategories([lowerParam]);
+        }
+    }, [subcategoryParam]);
 
     let filteredProducts = [...(products || [])];
 
@@ -95,22 +105,35 @@ export function ProductsPage() {
         filteredProducts = filteredProducts.filter((p) =>
             p.title.toLowerCase().includes(query) ||
             p.description.toLowerCase().includes(query) ||
-            p.category.toLowerCase().includes(query)
+            (p.category && p.category.toLowerCase().includes(query))
         );
     }
 
-    // Filter by category (if no subcategory filter)
+    // Filter by category (if no subcategory filter active)
     if (selectedCategories.length > 0 && selectedSubcategories.length === 0) {
-        filteredProducts = filteredProducts.filter((p: any) =>
-            selectedCategories.includes(p.categorySlug || p.category)
-        );
+        filteredProducts = filteredProducts.filter((p: any) => {
+            const pCatSlug = (p.categorySlug || "").toLowerCase();
+            const pCatName = (p.category || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+            return selectedCategories.some(cat => {
+                const target = cat.toLowerCase().replace(/[^a-z0-9]/g, "");
+                return target === pCatSlug || target === pCatName;
+            });
+        });
     }
 
     // Filter by subcategory (priority over category)
     if (selectedSubcategories.length > 0) {
-        filteredProducts = filteredProducts.filter((p) =>
-            p.subcategory_id && selectedSubcategories.includes(p.subcategory_id)
-        );
+        filteredProducts = filteredProducts.filter((p) => {
+            const pSubId = p.subcategory_id;
+            const pSubSlug = ((p as any).subcategorySlug || "").toLowerCase();
+            return selectedSubcategories.some(sub => {
+                const target = sub.toLowerCase();
+                // Match exact UUID, exact slug, or if the pSubSlug ends with -slug (scoped)
+                return target === pSubId ||
+                    target === pSubSlug ||
+                    pSubSlug.endsWith(`-${target}`);
+            });
+        });
     }
 
     // Filter by price

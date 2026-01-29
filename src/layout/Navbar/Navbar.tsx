@@ -412,7 +412,7 @@ export function Navbar() {
                                                     sub.slug.includes('short') ? ShortsIcon : Package;
 
                                             return (
-                                                <Link key={sub.id} to={`/products?category=${sub.slug}`}>
+                                                <Link key={sub.id} to={`/products?subcategory=${sub.slug}`}>
                                                     <DropdownMenuItem className="cursor-pointer">
                                                         <SubIcon className="h-4 w-4 mr-2" />
                                                         {sub.name}

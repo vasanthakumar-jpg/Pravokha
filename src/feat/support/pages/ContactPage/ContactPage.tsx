@@ -6,6 +6,7 @@ import { Label } from "@/ui/Label";
 import { Textarea } from "@/ui/Textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/ui/Card";
 import { toast } from "@/shared/hook/use-toast";
+import { apiClient } from "@/infra/api/apiClient";
 import { z } from "zod";
 import { cn } from "@/lib/utils";
 
@@ -61,8 +62,7 @@ export function ContactPage() {
             setErrors({});
             setLoading(true);
 
-            // Simulate sending message
-            await new Promise((resolve) => setTimeout(resolve, 1000));
+            await apiClient.post("/support/contact", formData);
 
             toast({
                 title: "Message sent!",
@@ -85,9 +85,10 @@ export function ContactPage() {
                     variant: "destructive",
                 });
             } else {
+                const msg = error.response?.data?.message || "Failed to send message. Please try again.";
                 toast({
                     title: "Error",
-                    description: "Failed to send message. Please try again.",
+                    description: msg,
                     variant: "destructive",
                 });
             }

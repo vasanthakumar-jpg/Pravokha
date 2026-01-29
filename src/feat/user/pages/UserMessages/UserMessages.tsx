@@ -149,7 +149,15 @@ export default function UserMessages() {
                         {notification.title}
                       </h4>
                       <span className="text-xs text-muted-foreground whitespace-nowrap flex-shrink-0">
-                        {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
+                        {(() => {
+                          try {
+                            const date = new Date(notification.created_at || notification.createdAt);
+                            if (isNaN(date.getTime())) return "Recently";
+                            return formatDistanceToNow(date, { addSuffix: true });
+                          } catch (e) {
+                            return "Recently";
+                          }
+                        })()}
                       </span>
                     </div>
                     <p className="text-sm text-muted-foreground leading-relaxed">

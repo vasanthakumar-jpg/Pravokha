@@ -44,7 +44,8 @@ export class AuditService {
                 actor: {
                     select: {
                         name: true,
-                        email: true
+                        email: true,
+                        avatarUrl: true
                     }
                 }
             }

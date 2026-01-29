@@ -58,13 +58,13 @@ export function SupportPage() {
                                 <CardContent className="p-4 sm:p-6 pt-0">
                                     {option.link.startsWith("http") || option.link.startsWith("mailto") || option.link.startsWith("tel") ? (
                                         <a href={option.link} className="block">
-                                            <Button variant="outline" className="w-full h-9 sm:h-10 text-xs sm:text-sm">
+                                            <Button variant="outline" className="w-full h-9 sm:h-10 text-xs sm:text-sm border-2">
                                                 {option.action}
                                             </Button>
                                         </a>
                                     ) : (
                                         <Link to={option.link}>
-                                            <Button variant="outline" className="w-full h-9 sm:h-10 text-xs sm:text-sm">
+                                            <Button variant="outline" className="w-full h-9 sm:h-10 text-xs sm:text-sm border-2">
                                                 {option.action}
                                             </Button>
                                         </Link>

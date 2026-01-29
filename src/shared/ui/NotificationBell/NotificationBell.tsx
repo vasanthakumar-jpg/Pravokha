@@ -36,9 +36,11 @@ export function NotificationBell() {
     };
 
     const getMessagesLink = () => {
-        switch (role) {
+        const normalizedRole = role?.toLowerCase();
+        switch (normalizedRole) {
             case 'admin':
                 return '/admin/messages';
+            case 'dealer':
             case 'seller':
                 return '/seller/messages';
             case 'user':

@@ -5,12 +5,16 @@ import { asyncHandler } from '../../utils/asyncHandler';
 export class AdminController {
     static getStats = asyncHandler(async (req: any, res: Response) => {
         // 1. Basic counts
-        const [totalProducts, totalUsers, totalSellers, totalSales, pendingOrders] = await Promise.all([
-            prisma.product.count(),
+        const [totalProducts, totalUsers, totalSellers, totalSales, pendingOrders, lowStockItems, pendingPayouts, openTickets, pendingVerifications] = await Promise.all([
+            prisma.product.count({ where: { deletedAt: null } }),
             prisma.user.count(),
             prisma.user.count({ where: { role: 'DEALER' } }),
             prisma.order.count(),
-            prisma.order.count({ where: { status: 'PENDING' } })
+            prisma.order.count({ where: { status: 'PENDING' } }),
+            prisma.product.count({ where: { stock: { lte: 10 }, deletedAt: null } }),
+            prisma.payout.count({ where: { status: 'PENDING' } }),
+            prisma.supportTicket.count({ where: { status: 'open' } }),
+            prisma.user.count({ where: { role: 'DEALER', verificationStatus: 'pending' } })
         ]);
 
         // 2. Revenue and Orders for derived stats
@@ -93,6 +97,10 @@ export class AdminController {
                 totalSellers,
                 totalSales,
                 pendingOrders,
+                lowStockItems,
+                pendingPayouts,
+                openTickets,
+                pendingVerifications,
                 revenue: totalRevenue,
                 salesTrend,
                 topProducts,

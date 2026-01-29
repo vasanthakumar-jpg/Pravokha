@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useLocation, Outlet, useNavigate } from "react-router-dom";
-import { cn } from "@/lib/utils";
+import { cn, getMediaUrl } from "@/lib/utils";
 import { Button } from "@/ui/Button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/ui/Avatar";
 import { Input } from "@/ui/Input";
@@ -317,7 +317,7 @@ export default function AdminLayout() {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="h-9 w-9 p-0 rounded-full border border-border/40 ml-1">
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src={user?.avatar_url} />
+                    <AvatarImage src={getMediaUrl(user?.avatar_url)} />
                     <AvatarFallback className="text-[10px] font-bold bg-primary/10 text-primary">
                       {user?.name?.[0] || 'A'}
                     </AvatarFallback>
@@ -395,7 +395,7 @@ export default function AdminLayout() {
                   )}
                 >
                   <Avatar className={cn("ring-2 ring-primary/10 transition-all", sidebarCollapsed ? "h-9 w-9" : "h-10 w-10")}>
-                    <AvatarImage src={user?.avatar_url || undefined} />
+                    <AvatarImage src={getMediaUrl(user?.avatar_url)} />
                     <AvatarFallback className="bg-primary text-primary-foreground text-xs font-bold">
                       {user?.name?.[0] || user?.email?.[0] || 'A'}
                     </AvatarFallback>

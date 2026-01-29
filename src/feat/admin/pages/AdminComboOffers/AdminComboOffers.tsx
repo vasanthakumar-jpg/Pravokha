@@ -91,6 +91,7 @@ export default function AdminComboOffers() {
         imageUrl: offer.imageUrl || null
       }));
       setOffers(mappedOffers);
+      console.log("[AdminComboOffers] Offers state updated:", mappedOffers.length);
     } catch (err: any) {
       console.error("[AdminComboOffers] Error fetching offers:", err);
       toast({
@@ -99,6 +100,7 @@ export default function AdminComboOffers() {
         variant: "destructive",
       });
     } finally {
+      console.log("[AdminComboOffers] Fetch complete, setting loading to false");
       setLoading(false);
     }
   };

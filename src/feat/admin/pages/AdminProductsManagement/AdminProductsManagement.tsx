@@ -474,17 +474,19 @@ export default function AdminProductsManagement() {
                             </div>
                           </TableCell>
                           <TableCell>
-                            <div>
+                            <div className="flex flex-col gap-1">
                               <div className="text-sm font-bold tracking-tight text-foreground/90">{product.title}</div>
                               <div className="text-[10px] font-mono text-muted-foreground flex items-center gap-1">
                                 SKU: {product.sku}
-                                {(product.isFeatured || product.featured) && <Badge className="h-3 px-1 text-[8px] bg-amber-500/10 text-amber-600 border-amber-500/20">FEATURED</Badge>}
+                                {(product.isFeatured || product.featured) && (
+                                  <Badge className="h-3 px-1 text-[8px] bg-amber-500/10 text-amber-600 border-amber-500/20">FEATURED</Badge>
+                                )}
                               </div>
                             </div>
                           </TableCell>
                           <TableCell>
                             <Badge variant="outline" className="text-[9px] font-bold rounded-lg border-border/50 bg-background/50">
-                              {(typeof product.category === 'object' ? product.category?.name : (product.category || "N/A")).toUpperCase()}
+                              {((typeof product.category === 'object' ? product.category?.name : product.category) || "N/A").toUpperCase()}
                             </Badge>
                           </TableCell>
                           <TableCell>

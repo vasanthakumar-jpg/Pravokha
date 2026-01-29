@@ -147,7 +147,7 @@ export default function UnifiedOrdersPage() {
     const checkUserRole = async () => {
         if (!user) return;
         if (location.pathname.startsWith('/admin')) {
-            setUserRole('admin');
+            setUserRole('ADMIN');
             return;
         }
         // If the user object from AuthContext already has the role, use it.
@@ -223,8 +223,14 @@ export default function UnifiedOrdersPage() {
     const mapOrders = (data: any[]): Order[] => {
         return (data || []).map((order: any) => ({
             ...order,
-            status: order.order_status || order.status, // Handle both snake_case from DB and potentially normalized response
-            items_count: Array.isArray(order.items) ? order.items.length : 0,
+            order_number: order.order_number || order.orderNumber || order.id?.slice(0, 8),
+            customer_name: order.customer_name || order.customerName || "Customer",
+            customer_email: order.customer_email || order.customerEmail || "",
+            created_at: order.created_at || order.createdAt || new Date().toISOString(),
+            status: (order.order_status || order.status || 'pending').toLowerCase() as any,
+            payment_status: (order.payment_status || order.paymentStatus || 'pending').toLowerCase() as any,
+            total: order.total || 0,
+            items_count: Array.isArray(order.items) ? order.items.length : (order.items_count || 0),
         }));
     };
 
@@ -265,7 +271,7 @@ export default function UnifiedOrdersPage() {
         if (type === 'buyer') {
             navigate(`/orders/${orderId}`);
         } else {
-            const basePath = userRole === 'admin' ? '/admin' : '/seller';
+            const basePath = userRole === 'ADMIN' ? '/admin' : '/seller';
             navigate(`${basePath}/orders/${orderId}`);
         }
     };

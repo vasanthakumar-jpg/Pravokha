@@ -16,6 +16,36 @@ export class PayoutController {
         }
     }
 
+    static async requestPayout(req: Request, res: Response, next: NextFunction) {
+        try {
+            const user = (req as any).user;
+            const { amount } = req.body;
+            const payout = await PayoutService.createPayoutRequest(user.id, amount);
+
+            res.status(201).json({
+                success: true,
+                message: 'Payout request submitted successfully',
+                data: payout,
+            });
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    static async getTransactions(req: Request, res: Response, next: NextFunction) {
+        try {
+            const user = (req as any).user;
+            const transactions = await PayoutService.getTransactions(user.id);
+
+            res.status(200).json({
+                success: true,
+                data: transactions,
+            });
+        } catch (error) {
+            next(error);
+        }
+    }
+
     static async updatePayoutStatus(req: Request, res: Response, next: NextFunction) {
         try {
             const { id } = req.params;
@@ -37,7 +67,7 @@ export class PayoutController {
     static async getStats(req: Request, res: Response, next: NextFunction) {
         try {
             const user = (req as any).user;
-            const stats = await PayoutService.getPayoutStats(user.role);
+            const stats = await PayoutService.getPayoutStats(user.role, user.id);
 
             res.status(200).json({
                 success: true,

@@ -62,12 +62,32 @@ export default function AdminOrderTracking() {
       });
 
       // Handle response structure (standardized)
-      if (data && Array.isArray(data.orders)) {
-        setOrders(data.orders);
-        setTotalCount(data.total || 0);
+      if (data && Array.isArray(data.data)) {
+        setOrders(data.data.map((o: any) => ({
+          ...o,
+          order_number: o.order_number || o.orderNumber,
+          customer_name: o.customer_name || o.customerName,
+          customer_email: o.customer_email || o.customerEmail,
+          created_at: o.created_at || o.createdAt,
+          order_status: o.order_status || o.status,
+          total: o.total || 0,
+        })));
+        setTotalCount(data.meta?.total || data.data.length);
       } else if (Array.isArray(data)) {
-        setOrders(data);
+        setOrders(data.map((o: any) => ({
+          ...o,
+          order_number: o.order_number || o.orderNumber,
+          customer_name: o.customer_name || o.customerName,
+          customer_email: o.customer_email || o.customerEmail,
+          created_at: o.created_at || o.createdAt,
+          order_status: o.order_status || o.status,
+          total: o.total || 0,
+        })));
         setTotalCount(parseInt(headers['x-total-count'] || data.length.toString()));
+      } else {
+        console.warn('Unexpected order data structure:', data);
+        setOrders([]);
+        setTotalCount(0);
       }
     } catch (error) {
       console.error("Error loading orders:", error);
@@ -104,9 +124,10 @@ export default function AdminOrderTracking() {
       setUpdating(true);
 
       const payload = {
-        status: newStatus,
+        status: newStatus.toUpperCase(),
         message: statusNote || `Lifecycle stage updated to ${newStatus}`,
-        otp: otpCode
+        otp: otpCode,
+        version: selectedOrder.version
       };
 
       await apiClient.patch(`/orders/${selectedOrder.id}/status`, payload);
@@ -147,8 +168,8 @@ export default function AdminOrderTracking() {
 
   const filteredOrders = useMemo(() => {
     return orders.filter(o =>
-      o.order_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      o.customer_name.toLowerCase().includes(searchQuery.toLowerCase())
+      (o.order_number || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (o.customer_name || "").toLowerCase().includes(searchQuery.toLowerCase())
     );
   }, [orders, searchQuery]);
 
@@ -241,8 +262,8 @@ export default function AdminOrderTracking() {
               <CardHeader className="p-2.5 bg-muted/20 border-b border-border/10 pb-2">
                 <div className="flex justify-between items-start">
                   <div className="flex flex-col">
-                    <span className="font-semibold text-foreground" style={{ fontSize: '14px' }}>#{order.order_number}</span>
-                    <span className="text-[10px] text-muted-foreground">{format(new Date(order.created_at), 'MMM dd, HH:mm')}</span>
+                    <span className="font-semibold text-foreground" style={{ fontSize: '14px' }}>#{order.order_number || order.orderNumber}</span>
+                    <span className="text-[10px] text-muted-foreground">{order.created_at || order.createdAt ? format(new Date(order.created_at || order.createdAt), 'MMM dd, HH:mm') : 'N/A'}</span>
                   </div>
                   {getStatusBadge(order.order_status)}
                 </div>
@@ -303,7 +324,7 @@ export default function AdminOrderTracking() {
                       <div className="flex flex-col">
                         <span className="font-semibold text-sm tracking-tight">#{order.order_number}</span>
                         <span className="text-[10px] text-muted-foreground font-mono tracking-tighter opacity-70">
-                          {format(new Date(order.created_at), 'MMM dd, HH:mm')}
+                          {order.created_at ? format(new Date(order.created_at), 'MMM dd, HH:mm') : 'N/A'}
                         </span>
                       </div>
                     </TableCell>
@@ -489,7 +510,7 @@ export default function AdminOrderTracking() {
                         <div className="flex flex-col">
                           <div className="flex items-center justify-between mb-1">
                             <span className="text-[11px] font-semibold tracking-widest text-[#146B6B]">{update.status}</span>
-                            <span className="text-[10px] font-semibold text-muted-foreground">{format(new Date(update.timestamp), 'MMM dd, HH:mm')}</span>
+                            <span className="text-[10px] font-semibold text-muted-foreground">{update.timestamp ? format(new Date(update.timestamp), 'MMM dd, HH:mm') : 'N/A'}</span>
                           </div>
                           <p className="text-xs font-semibold text-muted-foreground leading-relaxed">{update.message}</p>
                         </div>

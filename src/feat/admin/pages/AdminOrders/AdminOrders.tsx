@@ -77,22 +77,22 @@ export default function AdminOrders() {
 
   const mapOrderData = (apiOrder: any): Order => ({
     id: apiOrder.id,
-    order_number: apiOrder.orderNumber,
-    created_at: apiOrder.createdAt,
-    total: apiOrder.total,
-    order_status: apiOrder.status.toLowerCase(),
-    payment_status: apiOrder.paymentStatus.toLowerCase(),
-    customer_name: apiOrder.customerName || "N/A",
-    customer_email: apiOrder.customerEmail || "N/A",
+    order_number: apiOrder.order_number || apiOrder.orderNumber || apiOrder.id?.slice(0, 8),
+    created_at: apiOrder.created_at || apiOrder.createdAt || new Date().toISOString(),
+    total: apiOrder.total || 0,
+    order_status: (apiOrder.order_status || apiOrder.status || 'pending').toLowerCase(),
+    payment_status: (apiOrder.payment_status || apiOrder.paymentStatus || 'pending').toLowerCase(),
+    customer_name: apiOrder.customer_name || apiOrder.customerName || "N/A",
+    customer_email: apiOrder.customer_email || apiOrder.customerEmail || "N/A",
     shipping_address: {
-      address_line1: apiOrder.shippingAddress || "",
-      city: apiOrder.shippingCity || "",
-      pincode: apiOrder.shippingPincode || "",
+      address_line1: apiOrder.shipping_address || apiOrder.shippingAddress || "",
+      city: apiOrder.shipping_city || apiOrder.shippingCity || "",
+      pincode: apiOrder.shipping_pincode || apiOrder.shippingPincode || "",
       state: "",
       country: "India"
     },
     items: apiOrder.items || [],
-    payment_method: apiOrder.paymentMethod || "Online"
+    payment_method: apiOrder.payment_method || apiOrder.paymentMethod || "Online"
   });
 
   const loadOrders = async () => {

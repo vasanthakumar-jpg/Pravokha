@@ -87,8 +87,8 @@
     /* Soft grey border */
     --input: 0 0% 100%;
     /* White inputs */
-    --input-border: 215 15% 80%;
-    /* Input border */
+    --input-border: 215 15% 70%;
+    /* Darker input border for visibility */
     --ring: 180 45% 45%;
     /* Focus ring - matches primary */
 

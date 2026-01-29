@@ -73,7 +73,7 @@ export default function SellerPayouts() {
 
       // Attempt to create a standard payout request
       await apiClient.post('/payouts/request', {
-        amount: payoutStats.pendingBalance
+        amount: Math.floor(payoutStats.pendingBalance)
       });
 
       alert("Payout request submitted successfully! 🎉");
@@ -91,59 +91,48 @@ export default function SellerPayouts() {
     if (!user) return;
     setLoading(true);
     try {
-      const { data: payoutsData } = await apiClient.get('/payouts', {
-        params: { seller_id: user.id }
-      });
-
-      const safePayouts = Array.isArray(payoutsData) ? payoutsData : (payoutsData as any)?.data || [];
+      // 1. Fetch Payout History
+      const { data: payoutsResponse } = await apiClient.get('/payouts');
+      const safePayouts = Array.isArray(payoutsResponse.data) ? payoutsResponse.data : [];
       const transformedPayouts: Payout[] = safePayouts.map((p: any) => ({
         id: p.id,
         amount: p.amount,
-        status: p.status,
-        period: `${format(new Date(p.period_start), 'MMM dd')} - ${format(new Date(p.period_end), 'MMM dd, yyyy')}`,
-        date: p.created_at,
-        transaction_id: p.transaction_id,
+        status: p.status.toLowerCase(),
+        period: p.periodStart && p.periodEnd ?
+          `${format(new Date(p.periodStart), 'MMM dd')} - ${format(new Date(p.periodEnd), 'MMM dd, yyyy')}` :
+          format(new Date(p.createdAt || p.created_at), 'MMM dd, yyyy'),
+        date: p.createdAt || p.created_at,
+        transaction_id: p.transactionId || p.transaction_id,
       }));
 
       setPayouts(transformedPayouts);
 
-      // Fetch payout transactions from the payouts endpoint
-      const { data: payoutsResponse } = await apiClient.get('/payouts', {
-        params: { seller_id: user.id }
-      });
-
-      // Extract transactions from the payouts response
-      // Backend returns { data: [...], meta: {...} }
-      const safeTransactions = Array.isArray(payoutsResponse) ? payoutsResponse : (payoutsResponse as any)?.data || [];
+      // 2. Fetch Ledger Transactions
+      const { data: transactionsResponse } = await apiClient.get('/payouts/transactions');
+      const safeTransactions = Array.isArray(transactionsResponse.data) ? transactionsResponse.data : [];
       const transformedTransactions: Transaction[] = safeTransactions.map((t: any) => ({
         id: t.id,
-        order_id: t.orders?.order_number || `ORD-${(t.order_id || '').slice(0, 8)}`,
+        order_id: t.order_id,
         amount: t.amount,
         commission: t.commission,
         net_amount: t.net_amount,
-        date: t.created_at,
+        date: t.date,
         status: t.status,
       }));
 
       setTransactions(transformedTransactions);
 
-      const totalEarnings = transformedTransactions
-        .filter(t => t.status === 'completed')
-        .reduce((sum, t) => sum + t.net_amount, 0);
-
-      const pendingEarnings = transformedTransactions
-        .filter(t => t.status === 'pending')
-        .reduce((sum, t) => sum + t.net_amount, 0);
+      // 3. Fetch Payout Stats (Balance)
+      const { data: statsResponse } = await apiClient.get('/payouts/stats');
+      const stats = statsResponse.data;
 
       setPayoutStats({
-        pendingBalance: pendingEarnings,
-        nextPayout: pendingEarnings > 1000 ? pendingEarnings : 0,
-        totalEarnings: totalEarnings,
-        commissionRate: MARKETPLACE_FEE_PERCENTAGE * 100,
+        pendingBalance: stats.pendingBalance || 0,
+        nextPayout: stats.pendingBalance > 1000 ? stats.pendingBalance : 0,
+        totalEarnings: stats.totalEarnings || 0,
+        commissionRate: 10,
         nextPayoutDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       });
-
-      // Profile data is handled by useProfile hook
 
     } catch (error) {
       console.error('Error fetching payout data:', error);
@@ -207,7 +196,8 @@ export default function SellerPayouts() {
     toast({ title: "Tax Report Exported", description: "Detailed tax and fee breakdown ready." });
   };
 
-  const isVerified = verificationStatus === 'verified';
+  const isVerified = verificationStatus?.toLowerCase() === 'verified';
+  const hasTransactions = transactions && transactions.length > 0;
 
   if (loading) {
     return (

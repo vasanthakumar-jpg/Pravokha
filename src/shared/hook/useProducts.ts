@@ -26,22 +26,24 @@ export function useProducts() {
         price: parseFloat(p.price) || 0,
         discountPrice: p.discountPrice ? parseFloat(p.discountPrice) : undefined,
         category: p.category?.name || p.category || 'Uncategorized',
-        categorySlug: p.category?.slug,
-        subcategory_id: p.subcategoryId,
+        categorySlug: p.category?.slug || p.category_slug,
+        subcategory_id: p.subcategoryId || p.subcategory_id,
+        subcategoryName: p.subcategory?.name || p.subcategory_name,
+        subcategorySlug: p.subcategory?.slug || p.subcategory_slug,
         rating: parseFloat(p.rating) || 0,
         reviews: parseInt(p.reviews) || 0,
         sku: p.sku,
-        sellerId: p.dealerId,
-        featured: p.isFeatured || false,
-        newArrival: p.isNew || false,
+        sellerId: p.dealerId || p.seller_id,
+        featured: p.isFeatured || p.is_featured || false,
+        newArrival: p.isNew || p.is_new || false,
         variants: (p.variants || []).map((v: any) => ({
           id: v.id,
-          colorName: v.colorName || 'Default',
-          colorHex: v.colorHex || '#000',
-          images: v.images && Array.isArray(v.images) && v.images.length > 0
+          colorName: v.colorName || v.color_name || 'Default',
+          colorHex: v.colorHex || v.color_hex || '#000',
+          images: (v.images && Array.isArray(v.images) && v.images.length > 0)
             ? v.images
-            : ['https://placehold.co/600x600/e2e8f0/64748b?text=No+Image'],
-          sizes: (v.sizes || []).map((s: any) => ({
+            : (v.image_url ? [v.image_url] : ['https://placehold.co/600x600/e2e8f0/64748b?text=No+Image']),
+          sizes: (v.sizes || v.product_sizes || []).map((s: any) => ({
             size: s.size || 'One Size',
             stock: parseInt(s.stock) || 0,
           })),

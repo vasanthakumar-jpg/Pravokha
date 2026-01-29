@@ -7,11 +7,11 @@ export function LearnMorePage() {
     return (
         <div className="min-h-screen">
             {/* Hero Section */}
-            <section className="relative bg-gradient-hero py-20 text-background">
+            <section className="relative bg-gradient-hero py-20 text-foreground">
                 <div className="container mx-auto px-4 md:px-6 lg:px-8">
                     <div className="max-w-3xl mx-auto text-center">
                         <h1 className="text-4xl md:text-5xl font-bold mb-6">About Pravokha</h1>
-                        <p className="text-lg md:text-xl mb-8 text-background/90">
+                        <p className="text-lg md:text-xl mb-8 text-foreground/80">
                             Your trusted destination for premium quality clothing and exceptional style
                         </p>
                         <Link to="/products">
@@ -133,19 +133,19 @@ export function LearnMorePage() {
             {/* CTA Section */}
             <section className="py-16">
                 <div className="container mx-auto px-4 md:px-6 lg:px-8">
-                    <div className="max-w-3xl mx-auto text-center bg-gradient-hero p-8 md:p-12 rounded-2xl text-background">
+                    <div className="max-w-3xl mx-auto text-center bg-gradient-hero p-8 md:p-12 rounded-2xl text-foreground">
                         <h2 className="text-3xl md:text-4xl font-bold mb-4">Ready to Upgrade Your Wardrobe?</h2>
-                        <p className="text-lg mb-8 text-background/90">
+                        <p className="text-lg mb-8 text-foreground/80">
                             Explore our collection and find the perfect pieces that match your style.
                         </p>
                         <div className="flex flex-col sm:flex-row gap-4 justify-center">
                             <Link to="/products">
-                                <Button size="lg" className="bg-background text-foreground hover:bg-background/90">
+                                <Button size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90">
                                     Shop Now
                                 </Button>
                             </Link>
                             <Link to="/contact">
-                                <Button size="lg" variant="outline" className="border-background bg-background/10 text-background hover:bg-background/20">
+                                <Button size="lg" variant="outline" className="border-primary text-primary hover:bg-primary/5">
                                     Contact Us
                                 </Button>
                             </Link>

@@ -115,7 +115,7 @@ export class OrderController {
     static async updateStatus(req: Request, res: Response, next: NextFunction) {
         try {
             const { id } = req.params;
-            const { status, trackingNumber, trackingCarrier, trackingUpdates, version } = req.body;
+            const { status, trackingNumber, trackingCarrier, trackingUpdates, version, packingNotes } = req.body;
             const user = (req as any).user;
 
             const order = await OrderService.updateOrderStatus(id, status, {
@@ -124,6 +124,7 @@ export class OrderController {
                 trackingNumber,
                 trackingCarrier,
                 trackingUpdates,
+                packingNotes,
                 version: version !== undefined ? parseInt(version.toString()) : undefined
             });
 
@@ -214,6 +215,22 @@ export class OrderController {
             res.status(200).json({
                 success: true,
                 message: 'Order refunded successfully',
+            });
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    static async getHistory(req: Request, res: Response, next: NextFunction) {
+        try {
+            const { id } = req.params;
+            const user = (req as any).user;
+
+            const history = await OrderService.getOrderHistory(id, user.id, user.role);
+
+            res.status(200).json({
+                success: true,
+                data: history,
             });
         } catch (error) {
             next(error);

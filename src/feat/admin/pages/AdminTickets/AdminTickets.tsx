@@ -123,7 +123,7 @@ export default function AdminTickets() {
     try {
       setLoading(true);
       const response = await apiClient.get('/support/admin/tickets');
-      const data = response.data.tickets.map((ticket: any) => ({
+      const data = (response.data.tickets || []).map((ticket: any) => ({
         ...ticket,
         ticket_number: ticket.ticketNumber,
         user_id: ticket.userId,

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Star, ShoppingCart, ShieldCheck } from "lucide-react";
+import { Star, ShoppingCart, ShieldCheck, Eye } from "lucide-react";
 import { TbHeartPlus } from "react-icons/tb";
 import { CardContent } from "@/ui/Card";
 import { Badge } from "@/ui/Badge";
@@ -11,8 +11,8 @@ import { apiClient } from "@/infra/api/apiClient";
 import { toast } from "@/shared/hook/use-toast";
 import styles from "./ProductCard.module.css";
 import { cn, getMediaUrl } from "@/lib/utils";
+import { useAuth } from "@/core/context/AuthContext";
 import { useRecentlyViewed } from "@/shared/hook/useRecentlyViewed";
-import { Eye } from "lucide-react";
 import { InteractiveStarRating } from "@/shared/ui/InteractiveStarRating";
 
 interface ProductCardProps {
@@ -21,19 +21,21 @@ interface ProductCardProps {
 
 export function ProductCard({ product }: ProductCardProps) {
     const { addToCart } = useCart();
+    const { user } = useAuth();
     const navigate = useNavigate();
     const [isInWishlist, setIsInWishlist] = useState(false);
-    const [, setUser] = useState<any>(null);
     const [isTogglingWishlist, setIsTogglingWishlist] = useState(false);
     const [showBlinkAnimation, setShowBlinkAnimation] = useState(false);
-    const { recentlyViewed } = useRecentlyViewed();
+    const { recentlyViewed, addToRecentlyViewed } = useRecentlyViewed();
     const isRecentlyViewed = recentlyViewed.some(p => p.id === product.id);
 
     useEffect(() => {
-        checkWishlistStatus();
-        // Note: Auth state management is now handled by AuthContext
-        // No need for onAuthStateChange subscription here
-    }, [product.id]);
+        if (user) {
+            checkWishlistStatus();
+        } else {
+            setIsInWishlist(false);
+        }
+    }, [product.id, user]);
 
     const checkWishlistStatus = async () => {
         try {

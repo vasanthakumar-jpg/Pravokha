@@ -5,6 +5,9 @@ import { Role } from '@prisma/client';
 
 const router = Router();
 
+// Public routes
+router.post('/contact', SupportController.contactUs);
+
 // User routes
 router.post('/tickets', authenticate, SupportController.createTicket);
 router.get('/tickets', authenticate, SupportController.listTickets);

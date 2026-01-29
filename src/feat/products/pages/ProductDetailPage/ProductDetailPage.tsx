@@ -15,12 +15,13 @@ import { useGsapAnimations } from "@/shared/hook/useGsapAnimations";
 import { InteractiveStarRating } from "@/shared/ui/InteractiveStarRating";
 import { apiClient } from "@/infra/api/apiClient";
 import { useRecentlyViewed } from "@/shared/hook/useRecentlyViewed";
-import { Product } from "@/data/products";
+import { useAuth } from "@/core/context/AuthContext";
 import { getMediaUrl } from "@/lib/utils";
 
 export function ProductDetailPage() {
     const { slug } = useParams();
     const navigate = useNavigate();
+    const { user } = useAuth();
     const { addToCart } = useCart();
     const { addToRecentlyViewed } = useRecentlyViewed();
 
@@ -79,7 +80,10 @@ export function ProductDetailPage() {
     // Check wishlist status
     useEffect(() => {
         const checkWishlistStatus = async () => {
-            if (!product) return;
+            if (!product || !user) {
+                setIsInWishlist(false);
+                return;
+            }
 
             try {
                 const response = await apiClient.get("/wishlist/status", { params: { productId: product.id } });
@@ -93,7 +97,7 @@ export function ProductDetailPage() {
         };
 
         checkWishlistStatus();
-    }, [product]);
+    }, [product, user]);
 
     // Fetch product from database
     useEffect(() => {

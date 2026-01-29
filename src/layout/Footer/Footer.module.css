@@ -6,9 +6,7 @@
     margin-top: auto;
 }
 
-.trustBadgesContainer {
-    /* Inherits container styles */
-}
+
 
 .mainContent {
     width: 100%;
@@ -48,7 +46,7 @@
 
 @media (min-width: 1024px) {
     .grid {
-        grid-template-columns: repeat(4, minmax(0, 1fr));
+        grid-template-columns: repeat(5, minmax(0, 1fr));
     }
 }
 
@@ -179,6 +177,16 @@
     flex: 1;
     font-size: 0.75rem;
     height: 2.25rem;
+    border: 1.5px solid hsl(var(--primary) / 0.3) !important;
+    background: hsl(var(--background) / 0.5);
+    color: hsl(var(--foreground));
+    transition: all 0.2s ease;
+}
+
+.newsletterInput:focus {
+    border-color: hsl(var(--primary)) !important;
+    background: hsl(var(--background));
+    box-shadow: 0 0 0 2px hsl(var(--primary) / 0.1);
 }
 
 @media (min-width: 640px) {

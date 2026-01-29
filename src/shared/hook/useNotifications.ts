@@ -9,7 +9,9 @@ export interface Notification {
     message: string;
     type: 'order' | 'message' | 'system' | 'alert' | 'order_cancelled';
     isRead: boolean;
+    is_read: boolean;
     createdAt: string;
+    created_at: string;
     link?: string;
     metadata?: any;
 }
@@ -24,7 +26,13 @@ export function useNotifications() {
         if (!user) return;
         try {
             const response = await apiClient.get('/notifications');
-            const data = response.data;
+            const data = (response.data || []).map((n: any) => ({
+                ...n,
+                is_read: n.is_read ?? n.isRead,
+                isRead: n.isRead ?? n.is_read,
+                created_at: n.created_at ?? n.createdAt,
+                createdAt: n.createdAt ?? n.created_at
+            }));
             setNotifications(data);
             setUnreadCount(data.filter((n: any) => !n.isRead).length);
         } catch (error: any) {

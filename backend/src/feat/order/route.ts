@@ -15,6 +15,9 @@ router.get('/stats', authenticate, OrderController.getStats);
 // Get specific order (Protected)
 router.get('/:id', authenticate, OrderController.getOrder);
 
+// Get order history (Protected)
+router.get('/:id/history', authenticate, OrderController.getHistory);
+
 // List user orders (Protected)
 router.get('/', authenticate, OrderController.listOrders);
 

@@ -352,4 +352,38 @@ export class SupportController {
             conversation
         });
     });
+
+    static contactUs = asyncHandler(async (req: Request, res: Response) => {
+        const { name, email, phone, subject, message } = req.body;
+
+        if (!name || !email || !subject || !message) {
+            return res.status(400).json({ success: false, message: 'All required fields must be filled.' });
+        }
+
+        // Notify Admins
+        try {
+            const { NotificationService } = await import('../notification/service');
+            const admins = await prisma.user.findMany({
+                where: { role: 'ADMIN' },
+                select: { id: true }
+            });
+
+            for (const admin of admins) {
+                await NotificationService.notifyAdminContactForm(admin.id, {
+                    name,
+                    email,
+                    phone: phone || 'N/A',
+                    subject,
+                    message
+                });
+            }
+        } catch (error) {
+            console.error('Failed to notify admins regarding contact form:', error);
+        }
+
+        res.status(200).json({
+            success: true,
+            message: 'Your message has been received. Our team will contact you soon.'
+        });
+    });
 }

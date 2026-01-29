@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { format, subDays, startOfDay, endOfDay } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
+import { getMediaUrl } from "@/lib/utils";
 import {
     Card,
     CardContent,
@@ -80,6 +81,7 @@ interface AuditLog {
     actor?: {
         name: string;
         email: string;
+        avatarUrl?: string;
     };
 }
 
@@ -438,7 +440,7 @@ export default function AdminAuditLogs() {
                                                     </div>
                                                     <div className="flex flex-col">
                                                         <span className="text-sm font-bold truncate max-w-[120px]">{log.actor?.name || 'System'}</span>
-                                                        <span className="text-[10px] text-muted-foreground">{format(new Date(log.createdAt), "MMM d, HH:mm")}</span>
+                                                        <span className="text-[10px] text-muted-foreground">{log.createdAt ? format(new Date(log.createdAt), "MMM d, HH:mm") : "N/A"}</span>
                                                     </div>
                                                 </div>
                                                 {getSeverityBadge(log.severity)}
@@ -515,9 +517,17 @@ export default function AdminAuditLogs() {
                                                         </TableCell>
                                                         <TableCell>
                                                             <div className="flex items-center gap-3">
-                                                                <div className="h-8 w-8 rounded-lg bg-primary/5 border border-primary/10 flex items-center justify-center text-primary text-[10px] font-bold shadow-inner">
-                                                                    {log.actor?.name?.charAt(0) || <Activity className="h-3 w-3" />}
-                                                                </div>
+                                                                {log.actor?.avatarUrl ? (
+                                                                    <img
+                                                                        src={getMediaUrl(log.actor.avatarUrl)}
+                                                                        alt={log.actor.name || 'User'}
+                                                                        className="h-8 w-8 rounded-lg object-cover border border-primary/10 shadow-inner"
+                                                                    />
+                                                                ) : (
+                                                                    <div className="h-8 w-8 rounded-lg bg-primary/5 border border-primary/10 flex items-center justify-center text-primary text-[10px] font-bold shadow-inner">
+                                                                        {log.actor?.name?.charAt(0) || <Activity className="h-3 w-3" />}
+                                                                    </div>
+                                                                )}
                                                                 <div className="flex flex-col min-w-0">
                                                                     <span className="text-sm font-medium truncate max-w-[120px]">{log.actor?.name || 'System'}</span>
                                                                     <span className="text-[11px] text-muted-foreground/70 truncate max-w-[120px] opacity-60">{log.actor?.email || 'automated'}</span>
@@ -613,8 +623,16 @@ export default function AdminAuditLogs() {
                                     <Card className="rounded-[2rem] border-border/40 bg-card overflow-hidden shadow-sm">
                                         <div className="p-6 bg-muted/30 border-b border-border/40">
                                             <div className="flex items-center gap-3">
-                                                <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20">
-                                                    <User className="h-5 w-5 text-primary" />
+                                                <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20 overflow-hidden">
+                                                    {selectedLog.actor?.avatarUrl ? (
+                                                        <img
+                                                            src={getMediaUrl(selectedLog.actor.avatarUrl)}
+                                                            className="h-full w-full object-cover"
+                                                            alt={selectedLog.actor.name}
+                                                        />
+                                                    ) : (
+                                                        <User className="h-5 w-5 text-primary" />
+                                                    )}
                                                 </div>
                                                 <div className="flex flex-col">
                                                     <span className="text-xs font-medium text-muted-foreground">Principal actor</span>

@@ -8,6 +8,10 @@ interface AdminStats {
     totalSellers: number;
     totalSales: number;
     pendingOrders: number;
+    lowStockItems: number;
+    pendingPayouts: number;
+    openTickets: number;
+    pendingVerifications: number;
     revenue: number;
     salesTrend: { date: string; sales: number }[];
     topProducts: { name: string; sales: number }[];
@@ -23,6 +27,10 @@ export function useAdminStats() {
         totalSellers: 0,
         totalSales: 0,
         pendingOrders: 0,
+        lowStockItems: 0,
+        pendingPayouts: 0,
+        openTickets: 0,
+        pendingVerifications: 0,
         revenue: 0,
         salesTrend: [],
         topProducts: [],

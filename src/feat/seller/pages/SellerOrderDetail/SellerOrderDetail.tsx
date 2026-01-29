@@ -49,6 +49,14 @@ import { useAuth } from "@/core/context/AuthContext";
 import { generateInvoicePDF } from "@/shared/util/invoiceGenerator";
 import { cn } from "@/lib/utils";
 
+// Safe date formatting helper
+const safeFormatDate = (dateValue: any, formatStr: string, fallback: string = 'N/A'): string => {
+  if (!dateValue) return fallback;
+  const date = new Date(dateValue);
+  if (isNaN(date.getTime())) return fallback;
+  return format(date, formatStr);
+};
+
 interface OrderItem {
   id: string;
   title: string;
@@ -104,15 +112,47 @@ export default function SellerOrderDetail() {
     }
   }, [orderId]);
 
+  // Normalize order data to handle both camelCase (Prisma default) and snake_case field names
+  const normalizeOrderData = (data: any) => {
+    if (!data) return null;
+    return {
+      ...data,
+      order_number: data.order_number || data.orderNumber,
+      created_at: data.created_at || data.createdAt,
+      order_status: (data.order_status || data.status || '').toLowerCase(),
+      payment_status: (data.payment_status || data.paymentStatus || '').toLowerCase(),
+      customer_name: data.customer_name || data.customerName,
+      customer_email: data.customer_email || data.customerEmail,
+      customer_phone: data.customer_phone || data.customerPhone,
+      shipping_address: data.shipping_address || data.shippingAddress,
+      shipping_city: data.shipping_city || data.shippingCity,
+      shipping_pincode: data.shipping_pincode || data.shippingPincode,
+      payment_method: data.payment_method || data.paymentMethod,
+      items: Array.isArray(data.items) ? data.items.map((item: any) => ({
+        ...item,
+        title: item.title || item.product?.title || 'Unknown Product',
+        price: item.price !== undefined ? item.price : 0,
+        quantity: item.quantity || 1,
+        image: item.image || item.product?.variants?.[0]?.images?.[0] || '',
+        colorName: item.colorName || item.color_name,
+        size: item.size,
+      })) : [],
+    };
+  };
+
   const loadOrder = async () => {
     try {
-      const { data } = await apiClient.get(`/orders/${orderId}`);
+      const response = await apiClient.get(`/orders/${orderId}`);
 
-      setOrder(data);
-      setNotes(data.notes ? (typeof data.notes === 'string' ? data.notes : JSON.parse(data.notes).seller_notes || '') : '');
-      setTrackingNumber((data as any).tracking_number || '');
+      // Backend response: {success: true, data: {...orderData...}}
+      const rawOrderData = response.data?.data || response.data;
+      const orderData = normalizeOrderData(rawOrderData);
 
-      const items = Array.isArray(data.items) ? data.items : [];
+      setOrder(orderData);
+      setNotes(orderData.packingNotes || '');
+      setTrackingNumber((orderData as any).tracking_number || '');
+
+      const items = Array.isArray(orderData.items) ? orderData.items : [];
       const hasSellerItems = items.some((item: any) => item.sellerId === user?.id);
       if (!isAdmin && !hasSellerItems) {
         setIsReadOnly(true);
@@ -121,12 +161,13 @@ export default function SellerOrderDetail() {
 
       // Fetch history if not included in order object (often separate relationship)
       // Assuming separate endpoint or included.
-      if (data.history) {
-        setOrderHistory(data.history);
+      if (orderData.history) {
+        setOrderHistory(orderData.history);
       } else {
         try {
-          const { data: historyData } = await apiClient.get(`/orders/${orderId}/history`);
-          setOrderHistory(historyData);
+          const historyResponse = await apiClient.get(`/orders/${orderId}/history`);
+          const historyData = historyResponse.data?.data || historyResponse.data;
+          setOrderHistory(Array.isArray(historyData) ? historyData : []);
         } catch (e) {
           console.warn("Could not load history", e);
         }
@@ -231,7 +272,7 @@ export default function SellerOrderDetail() {
     try {
       generateInvoicePDF({
         orderNumber: order.order_number,
-        orderDate: format(new Date(order.created_at), 'MMMM dd, yyyy'),
+        orderDate: safeFormatDate(order.created_at, 'MMMM dd, yyyy'),
         customerName: order.customer_name,
         customerEmail: order.customer_email,
         customerPhone: order.customer_phone,
@@ -282,14 +323,8 @@ export default function SellerOrderDetail() {
               <span className="hidden sm:inline">Back</span>
             </Button>
             <div className="min-w-0 flex-1">
-              <div className="flex flex-row items-center gap-2 sm:gap-3 flex-wrap">
-                <h1 className="text-lg sm:text-2xl font-bold tracking-tight text-foreground truncate">{order.order_number}</h1>
-                <Badge className={cn("px-2 py-0.5 text-[10px] sm:text-xs font-semibold border-0 h-5 sm:h-6 whitespace-nowrap shadow-sm shrink-0", currentStatus?.color, "text-white")}>
-                  {currentStatus?.label || order.order_status}
-                </Badge>
-              </div>
-              <p className="text-[10px] sm:text-sm text-muted-foreground mt-0.5 sm:mt-1 flex items-center gap-1.5 font-medium">
-                <Calendar className="w-3 h-3" /> {format(new Date(order.created_at), 'MMM dd, yyyy • HH:mm')}
+              <p className="text-[10px] sm:text-sm text-muted-foreground flex items-center gap-1.5 font-medium">
+                Order Management Dashboard
               </p>
             </div>
           </div>
@@ -407,7 +442,7 @@ export default function SellerOrderDetail() {
                     <div className="pl-6">
                       <h4 className="font-semibold text-foreground">{event.status}</h4>
                       <p className="text-sm text-muted-foreground mt-1">{event.description}</p>
-                      <p className="text-xs text-muted-foreground mt-1">{format(new Date(event.timestamp), 'MMM dd, yyyy • HH:mm')}</p>
+                      <p className="text-xs text-muted-foreground mt-1">{safeFormatDate(event.timestamp, 'MMM dd, yyyy • HH:mm')}</p>
                     </div>
                   </div>
                 ))}
@@ -436,8 +471,26 @@ export default function SellerOrderDetail() {
           </div>
         </div>
 
-        {/* Right Column (Actions) */}
+        {/* Right Column (Actions & Info) */}
         <div className="space-y-6">
+          <Card className="border shadow-sm bg-card overflow-hidden">
+            <CardHeader className="bg-primary/5 border-b border-primary/10">
+              <div className="flex flex-col gap-1">
+                <span className="text-[10px] font-bold text-primary tracking-widest uppercase opacity-60">Identity telemetry</span>
+                <CardTitle className="text-xl font-black tracking-tight flex items-center justify-between">
+                  {order.order_number}
+                  <Badge className={cn("px-2 py-0 h-5 text-[9px] font-black border-0 shadow-sm", currentStatus?.color, "text-white")}>
+                    {currentStatus?.label?.toUpperCase() || order.order_status?.toUpperCase()}
+                  </Badge>
+                </CardTitle>
+                <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground font-semibold mt-1">
+                  <Calendar className="w-3 h-3" />
+                  {safeFormatDate(order.created_at, 'MMM dd, yyyy • HH:mm')}
+                </div>
+              </div>
+            </CardHeader>
+          </Card>
+
           <Card className="border shadow-sm bg-card">
             <CardHeader className="bg-muted/40 pb-4"><CardTitle className="text-base text-foreground">Order Status</CardTitle></CardHeader>
             <CardContent className="pt-4 space-y-4">
@@ -446,7 +499,7 @@ export default function SellerOrderDetail() {
                 <Select
                   value={order.order_status}
                   onValueChange={handleStatusUpdate}
-                  disabled={isReadOnly || order.order_status === 'cancelled' || verificationStatus !== 'verified'}
+                  disabled={isReadOnly || order.order_status === 'cancelled' || (!isAdmin && verificationStatus !== 'verified')}
                 >
                   <SelectTrigger className="h-12 sm:h-10 bg-background text-base sm:text-sm border-border">
                     <SelectValue />
@@ -457,7 +510,7 @@ export default function SellerOrderDetail() {
                     ))}
                   </SelectContent>
                 </Select>
-                {verificationStatus !== 'verified' && (
+                {!isAdmin && verificationStatus !== 'verified' && (
                   <p className="text-[10px] text-amber-600 font-medium">Verify account to change status</p>
                 )}
               </div>
@@ -479,7 +532,7 @@ export default function SellerOrderDetail() {
                     <Button
                       className="w-full h-12 sm:h-10 text-base sm:text-sm bg-purple-600 hover:bg-purple-700"
                       onClick={() => handleStatusUpdate('packed')}
-                      disabled={verificationStatus !== 'verified'}
+                      disabled={!isAdmin && verificationStatus !== 'verified'}
                     >
                       Mark as Packed
                     </Button>
@@ -489,7 +542,7 @@ export default function SellerOrderDetail() {
                       <Button
                         className="w-full h-12 sm:h-10 text-base sm:text-sm bg-indigo-600 hover:bg-indigo-700 font-bold"
                         onClick={() => setTrackingModalOpen(true)}
-                        disabled={verificationStatus !== 'verified'}
+                        disabled={!isAdmin && verificationStatus !== 'verified'}
                       >
                         <Truck className="h-4 w-4 mr-2" />
                         Mark as Shipped
@@ -500,7 +553,7 @@ export default function SellerOrderDetail() {
                     <Button
                       className="w-full h-12 sm:h-10 text-base sm:text-sm bg-[#0E6C68] hover:bg-[#0B5C58]"
                       onClick={() => handleStatusUpdate('delivered')}
-                      disabled={verificationStatus !== 'verified'}
+                      disabled={!isAdmin && verificationStatus !== 'verified'}
                     >
                       Mark as Delivered
                     </Button>
@@ -509,13 +562,13 @@ export default function SellerOrderDetail() {
                     variant="destructive"
                     className="w-full h-12 sm:h-10 text-base sm:text-sm bg-red-600 hover:bg-red-700 text-white"
                     onClick={() => handleStatusUpdate('cancelled')}
-                    disabled={verificationStatus !== 'verified'}
+                    disabled={!isAdmin && verificationStatus !== 'verified'}
                   >
                     Cancel Order
                   </Button>
                 </>
               )}
-              {verificationStatus !== 'verified' && (
+              {!isAdmin && verificationStatus !== 'verified' && (
                 <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2">
                   <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
                   <p className="text-xs text-amber-700 leading-relaxed">
@@ -604,7 +657,7 @@ export default function SellerOrderDetail() {
               </div>
               <div className="text-right">
                 <p className="font-bold">Order #: {order.order_number}</p>
-                <p className="text-sm text-muted-foreground">{format(new Date(order.created_at), 'MMMM dd, yyyy')}</p>
+                <p className="text-sm text-muted-foreground">{safeFormatDate(order.created_at, 'MMMM dd, yyyy')}</p>
               </div>
             </div>
 

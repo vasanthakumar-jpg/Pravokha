@@ -131,8 +131,16 @@ export function NotificationDropdown() {
                         <p className={cn("text-xs font-bold capitalize tracking-tight truncate", !notification.isRead ? "text-foreground" : "text-muted-foreground/60")}>
                           {notification.title}
                         </p>
-                        <span className="text-[9px] font-bold text-muted-foreground/40 whitespace-nowrap">
-                          {notification.createdAt ? formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true }) : 'N/A'}
+                        <span className="text-xs text-muted-foreground whitespace-nowrap flex-shrink-0">
+                          {(() => {
+                            try {
+                              const date = new Date(notification.createdAt || notification.created_at);
+                              if (isNaN(date.getTime())) return "Recently";
+                              return formatDistanceToNow(date, { addSuffix: true });
+                            } catch (e) {
+                              return "Recently";
+                            }
+                          })()}
                         </span>
                       </div>
                       <p className="text-[11px] font-medium text-muted-foreground/70 line-clamp-2 leading-relaxed">

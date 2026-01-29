@@ -16,6 +16,7 @@ enum Role {
 enum OrderStatus {
   PENDING
   PROCESSING
+  PACKED
   SHIPPED
   DELIVERED
   CANCELLED
@@ -87,6 +88,7 @@ model User {
   productUpdateRequests ProductUpdateRequest[] @relation("SellerUpdateRequests")
   payouts              Payout[]
   shippedOrders        Order[]   @relation("SellerShippedOrders")
+  statusUpdates        OrderStatusHistory[]
 
   @@map("users")
 }
@@ -242,8 +244,22 @@ model Order {
   updatedAt     DateTime    @updatedAt
   deletedAt     DateTime?   @map("deleted_at")
   trackingUpdates Json?     @map("tracking_updates")
+  statusHistory OrderStatusHistory[]
 
   @@map("orders")
+}
+
+model OrderStatusHistory {
+  id        String      @id @default(uuid())
+  orderId   String      @map("order_id")
+  order     Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  status    OrderStatus
+  userId    String?     @map("user_id")
+  user      User?       @relation(fields: [userId], references: [id])
+  notes     String?     @db.Text
+  createdAt DateTime    @default(now()) @map("created_at")
+
+  @@map("order_status_history")
 }
 
 model Payout {

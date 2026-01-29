@@ -27,8 +27,9 @@ export const ORDER_TRANSITIONS: StateTransition[] = [
  * Validates if an order can transition from one state to another based on role.
  */
 export const isValidTransition = (currentStatus: OrderStatus, newStatus: OrderStatus, role: Role): boolean => {
-    // Admin can perform any transition theoretically, but we still apply rules for consistency
-    // unless it's a manual override.
+    // Admin can perform any transition for operational flexibility, 
+    // while other roles follow strict state machine rules.
+    if (role === Role.ADMIN) return true;
 
     const transition = ORDER_TRANSITIONS.find(t =>
         t.from === currentStatus &&
