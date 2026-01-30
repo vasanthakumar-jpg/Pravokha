@@ -14,6 +14,7 @@ const contactSchema = z.object({
     name: z.string().min(2, "Name must be at least 2 characters").max(100),
     email: z.string().email("Invalid email address").max(255),
     phone: z.string().regex(/^[0-9]{10}$/, "Phone must be 10 digits").optional().or(z.literal("")),
+    subject: z.string().min(5, "Subject must be at least 5 characters").max(200),
     message: z.string().min(10, "Message must be at least 10 characters").max(1000),
 });
 
@@ -23,6 +24,7 @@ export function ContactPage() {
         name: "",
         email: "",
         phone: "",
+        subject: "",
         message: "",
     });
     const [errors, setErrors] = useState<Record<string, string>>({});
@@ -35,6 +37,8 @@ export function ContactPage() {
                 z.string().email("Invalid email address").max(255).parse(value);
             } else if (name === "phone" && value) {
                 z.string().regex(/^[0-9]{10}$/, "Phone must be 10 digits").parse(value);
+            } else if (name === "subject") {
+                z.string().min(5, "Subject must be at least 5 characters").max(200).parse(value);
             } else if (name === "message") {
                 z.string().min(10, "Message must be at least 10 characters").max(1000).parse(value);
             }
@@ -69,7 +73,7 @@ export function ContactPage() {
                 description: "We'll get back to you as soon as possible.",
             });
 
-            setFormData({ name: "", email: "", phone: "", message: "" });
+            setFormData({ name: "", email: "", phone: "", subject: "", message: "" });
         } catch (error: any) {
             if (error instanceof z.ZodError) {
                 const fieldErrors: Record<string, string> = {};
@@ -157,6 +161,19 @@ export function ContactPage() {
                                         {errors.phone && <p className="text-sm text-destructive mt-1">{errors.phone}</p>}
                                     </div>
                                     <div>
+                                        <Label htmlFor="subject">Subject *</Label>
+                                        <Input
+                                            id="subject"
+                                            value={formData.subject}
+                                            onChange={(e) => handleChange("subject", e.target.value)}
+                                            onBlur={(e) => validateField("subject", e.target.value)}
+                                            placeholder="What is this regarding?"
+                                            className={cn(errors.subject && "border-destructive focus-visible:ring-destructive")}
+                                            required
+                                        />
+                                        {errors.subject && <p className="text-sm text-destructive mt-1">{errors.subject}</p>}
+                                    </div>
+                                    <div>
                                         <Label htmlFor="message">Message *</Label>
                                         <Textarea
                                             id="message"
@@ -165,7 +182,7 @@ export function ContactPage() {
                                             onBlur={(e) => validateField("message", e.target.value)}
                                             placeholder="How can we help you?"
                                             rows={5}
-                                            className={cn(errors.message && "border-destructive focus-visible:ring-destructive")}
+                                            className={cn("resize-none", errors.message && "border-destructive focus-visible:ring-destructive")}
                                             required
                                         />
                                         {errors.message && <p className="text-sm text-destructive mt-1">{errors.message}</p>}
@@ -230,16 +247,8 @@ export function ContactPage() {
                             </CardHeader>
                             <CardContent className="space-y-2 p-4 sm:p-6">
                                 <div className="flex justify-between gap-2">
-                                    <span className="text-xs sm:text-sm text-muted-foreground">Monday - Friday</span>
-                                    <span className="text-xs sm:text-sm font-medium">9:00 AM - 6:00 PM</span>
-                                </div>
-                                <div className="flex justify-between gap-2">
-                                    <span className="text-xs sm:text-sm text-muted-foreground">Saturday</span>
-                                    <span className="text-xs sm:text-sm font-medium">10:00 AM - 4:00 PM</span>
-                                </div>
-                                <div className="flex justify-between gap-2">
-                                    <span className="text-xs sm:text-sm text-muted-foreground">Sunday</span>
-                                    <span className="text-xs sm:text-sm font-medium">Closed</span>
+                                    <span className="text-xs sm:text-sm text-muted-foreground">Monday - Sunday</span>
+                                    <span className="text-xs sm:text-sm font-medium">9:00 AM - 9:00 PM</span>
                                 </div>
                             </CardContent>
                         </Card>

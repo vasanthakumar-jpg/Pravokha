@@ -11,12 +11,12 @@ const paymentMethods = [
 
 export function AnimatedPaymentIcons() {
     return (
-        <div className={styles.animatedFlex}>
+        <div className={cn(styles.animatedFlex, "flex flex-wrap items-center gap-x-6 gap-y-3 justify-center md:justify-start")}>
             <p className={cn(styles.label, "mr-2")}>We Accept:</p>
             {paymentMethods.map((method) => (
                 <div
                     key={method.name}
-                    className={styles.animatedItem}
+                    className={cn(styles.animatedItem, "flex items-center gap-2")}
                 >
                     <Smartphone className={cn(styles.methodIcon, method.color)} />
                     <span className={styles.methodName}>{method.name}</span>

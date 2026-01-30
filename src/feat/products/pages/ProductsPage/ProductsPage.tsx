@@ -1,27 +1,32 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
-import { ProductCard } from "@/feat/products/components/ProductCard";
 import { ProductGrid } from "@/feat/products/components/ProductGrid";
 import { useProducts } from "@/shared/hook/useProducts";
 import { apiClient } from "@/infra/api/apiClient";
 import { Button } from "@/ui/Button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/Select";
-import { Filter, SlidersHorizontal } from "lucide-react";
+import { Filter, SlidersHorizontal, IndianRupee } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/ui/Sheet";
 import { Label } from "@/ui/Label";
 import { Checkbox } from "@/ui/Checkbox";
 import { Slider } from "@/ui/Slider";
+import { RadioGroup, RadioGroupItem } from "@/ui/RadioGroup"; // Assuming RadioGroup is available, or use Checkbox for single select logic
 import { useGsapAnimations } from "@/shared/hook/useGsapAnimations";
 
 export function ProductsPage() {
     const [searchParams, setSearchParams] = useSearchParams();
     const [sortBy, setSortBy] = useState("featured");
-    const [priceRange, setPriceRange] = useState([0, 5000]);
+    const [priceRange, setPriceRange] = useState([0, 50000]); // Increased max range
     const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
     const [selectedSubcategories, setSelectedSubcategories] = useState<string[]>([]);
-    const [tempPriceRange, setTempPriceRange] = useState([0, 5000]);
+    const [minDiscount, setMinDiscount] = useState<number>(0); // New Discount State
+
+    // Temp states for mobile filter sheet
+    const [tempPriceRange, setTempPriceRange] = useState([0, 50000]);
     const [tempCategories, setTempCategories] = useState<string[]>([]);
     const [tempSubcategories, setTempSubcategories] = useState<string[]>([]);
+    const [tempMinDiscount, setTempMinDiscount] = useState<number>(0);
+
     const [isFilterOpen, setIsFilterOpen] = useState(false);
     const [dbCategories, setDbCategories] = useState<{ id: string; name: string }[]>([]);
     const [dbSubcategories, setDbSubcategories] = useState<{ id: string; name: string; category_id: string }[]>([]);
@@ -53,7 +58,7 @@ export function ProductsPage() {
 
             try {
                 const response = await apiClient.get('/categories/subcategories', {
-                    params: { category: selectedCategories }
+                    params: { category: selectedCategories.length > 0 ? selectedCategories : undefined }
                 });
 
                 if (response.data.success) {
@@ -105,7 +110,8 @@ export function ProductsPage() {
         filteredProducts = filteredProducts.filter((p) =>
             p.title.toLowerCase().includes(query) ||
             p.description.toLowerCase().includes(query) ||
-            (p.category && p.category.toLowerCase().includes(query))
+            (p.category && p.category.toLowerCase().includes(query)) ||
+            ((p as any).subcategoryName && (p as any).subcategoryName.toLowerCase().includes(query))
         );
     }
 
@@ -121,14 +127,13 @@ export function ProductsPage() {
         });
     }
 
-    // Filter by subcategory (priority over category)
+    // Filter by subcategory
     if (selectedSubcategories.length > 0) {
         filteredProducts = filteredProducts.filter((p) => {
             const pSubId = p.subcategory_id;
             const pSubSlug = ((p as any).subcategorySlug || "").toLowerCase();
             return selectedSubcategories.some(sub => {
                 const target = sub.toLowerCase();
-                // Match exact UUID, exact slug, or if the pSubSlug ends with -slug (scoped)
                 return target === pSubId ||
                     target === pSubSlug ||
                     pSubSlug.endsWith(`-${target}`);
@@ -140,6 +145,15 @@ export function ProductsPage() {
     filteredProducts = filteredProducts.filter(
         (p) => (p.discountPrice || p.price) >= priceRange[0] && (p.discountPrice || p.price) <= priceRange[1]
     );
+
+    // Filter by Discount
+    if (minDiscount > 0) {
+        filteredProducts = filteredProducts.filter((p) => {
+            if (!p.discountPrice || p.discountPrice >= p.price) return false;
+            const discountPercent = ((p.price - p.discountPrice) / p.price) * 100;
+            return discountPercent >= minDiscount;
+        });
+    }
 
     // Sort
     if (sortBy === "price-low") {
@@ -170,6 +184,7 @@ export function ProductsPage() {
         setSelectedCategories(tempCategories);
         setSelectedSubcategories(tempSubcategories);
         setPriceRange(tempPriceRange);
+        setMinDiscount(tempMinDiscount);
         setIsFilterOpen(false);
     };
 
@@ -178,21 +193,30 @@ export function ProductsPage() {
         setSelectedSubcategories([]);
         setTempCategories([]);
         setTempSubcategories([]);
-        setPriceRange([0, 5000]);
-        setTempPriceRange([0, 5000]);
-        setSortBy("featured"); // Reset sort as well for a "perfect" clear
+        setPriceRange([0, 50000]);
+        setTempPriceRange([0, 50000]);
+        setMinDiscount(0);
+        setTempMinDiscount(0);
+        setSortBy("featured");
     };
 
     const FilterContent = ({ isDesktop = false }: { isDesktop?: boolean }) => {
+        const currentPriceRange = isDesktop ? priceRange : tempPriceRange;
+        const currentMinDiscount = isDesktop ? minDiscount : tempMinDiscount;
+        const setDiscount = isDesktop ? setMinDiscount : setTempMinDiscount;
+
+        const discountOptions = [10, 20, 30, 40, 50, 60, 70];
+
         return (
-            <div className="space-y-6">
+            <div className="space-y-8">
+                {/* Categories */}
                 <div>
-                    <h3 className="font-semibold mb-3 text-base">Categories</h3>
+                    <h3 className="font-bold mb-4 text-sm uppercase tracking-wide text-foreground/80">Categories</h3>
                     <div className="space-y-3">
                         {dbCategories.map((category) => {
                             const isDisabled = false;
                             return (
-                                <div key={category.id} className="flex items-center space-x-2">
+                                <div key={category.id} className="flex items-center space-x-3">
                                     <Checkbox
                                         id={`${isDesktop ? 'desktop-' : 'mobile-'}${category.id}`}
                                         checked={isDesktop ? selectedCategories.includes(category.id) : tempCategories.includes(category.id)}
@@ -207,7 +231,7 @@ export function ProductsPage() {
                                     />
                                     <Label
                                         htmlFor={`${isDesktop ? 'desktop-' : 'mobile-'}${category.id}`}
-                                        className={`text-sm font-medium ${isDesktop ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+                                        className="text-sm cursor-pointer peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                                     >
                                         {category.name}
                                         {isDisabled && <span className="text-xs ml-2 text-muted-foreground">(Coming Soon)</span>}
@@ -218,12 +242,13 @@ export function ProductsPage() {
                     </div>
                 </div>
 
+                {/* Subcategories */}
                 {dbSubcategories.length > 0 && (
                     <div>
-                        <h3 className="font-semibold mb-3 text-base">Subcategories</h3>
+                        <h3 className="font-bold mb-4 text-sm uppercase tracking-wide text-foreground/80">Subcategories</h3>
                         <div className="space-y-3">
                             {dbSubcategories.map((subcategory) => (
-                                <div key={subcategory.id} className="flex items-center space-x-2">
+                                <div key={subcategory.id} className="flex items-center space-x-3">
                                     <Checkbox
                                         id={`${isDesktop ? 'desktop-' : 'mobile-'}sub-${subcategory.id}`}
                                         checked={isDesktop ? selectedSubcategories.includes(subcategory.id) : tempSubcategories.includes(subcategory.id)}
@@ -235,7 +260,7 @@ export function ProductsPage() {
                                     />
                                     <Label
                                         htmlFor={`${isDesktop ? 'desktop-' : 'mobile-'}sub-${subcategory.id}`}
-                                        className="text-sm font-medium cursor-pointer"
+                                        className="text-sm cursor-pointer"
                                     >
                                         {subcategory.name}
                                     </Label>
@@ -245,26 +270,53 @@ export function ProductsPage() {
                     </div>
                 )}
 
+                {/* Price Range */}
                 <div>
-                    <h3 className="font-semibold mb-3 text-base">Price Range</h3>
+                    <h3 className="font-bold mb-4 text-sm uppercase tracking-wide text-foreground/80">Price</h3>
                     <div className="space-y-4">
+                        <div className="flex items-center justify-between text-sm font-semibold mb-2">
+                            <span className="flex items-center"><IndianRupee className="h-3 w-3 mr-0.5" /> {currentPriceRange[0]}</span>
+                            <span className="flex items-center"><IndianRupee className="h-3 w-3 mr-0.5" /> {currentPriceRange[1]}+</span>
+                        </div>
                         <Slider
                             min={0}
-                            max={5000}
+                            max={50000}
                             step={100}
-                            value={isDesktop ? priceRange : tempPriceRange}
+                            value={currentPriceRange}
                             onValueChange={isDesktop ? setPriceRange : setTempPriceRange}
                             className="w-full"
                         />
-                        <div className="flex items-center justify-between text-sm font-medium">
-                            <span>₹{isDesktop ? priceRange[0] : tempPriceRange[0]}</span>
-                            <span>₹{isDesktop ? priceRange[1] : tempPriceRange[1]}</span>
-                        </div>
+                        <Button
+                            variant="link"
+                            className="p-0 h-auto text-xs text-primary mt-2"
+                            onClick={() => isDesktop ? setPriceRange([0, 50000]) : setTempPriceRange([0, 50000])}
+                        >
+                            Reset price range
+                        </Button>
                     </div>
                 </div>
 
+                {/* Discount */}
+                <div>
+                    <h3 className="font-bold mb-4 text-sm uppercase tracking-wide text-foreground/80">Discount</h3>
+                    <RadioGroup
+                        value={currentMinDiscount.toString()}
+                        onValueChange={(val) => setDiscount(parseInt(val))}
+                        className="space-y-3"
+                    >
+                        {discountOptions.map((option) => (
+                            <div key={option} className="flex items-center space-x-3">
+                                <RadioGroupItem value={option.toString()} id={`${isDesktop ? 'd-desk-' : 'd-mob-'}${option}`} />
+                                <Label htmlFor={`${isDesktop ? 'd-desk-' : 'd-mob-'}${option}`} className="text-sm cursor-pointer">
+                                    {option}% Off or more
+                                </Label>
+                            </div>
+                        ))}
+                    </RadioGroup>
+                </div>
+
                 {!isDesktop && (
-                    <div className="flex gap-2 pt-4">
+                    <div className="flex gap-2 pt-4 sticky bottom-0 bg-background pb-4 border-t mt-4">
                         <Button variant="outline" onClick={clearFilters} className="flex-1">
                             Clear All
                         </Button>
@@ -315,13 +367,13 @@ export function ProductsPage() {
                                 </div>
                             </div>
 
-                            <div className="flex flex-wrap justify-center gap-4 md:gap-6">
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
                                 {[...Array(8)].map((_, i) => (
-                                    <div key={i} className="flex-1 min-w-[160px] max-w-[calc(50%-0.5rem)] sm:max-w-[calc(50%-0.75rem)] md:max-w-[calc(33.333%-1rem)] lg:max-w-[calc(25%-1.125rem)] aspect-[3/4] rounded-xl border border-border/40 overflow-hidden space-y-3">
-                                        <div className="h-[70%] bg-muted" />
-                                        <div className="p-3 space-y-3">
-                                            <div className="h-4 w-3/4 bg-muted rounded" />
-                                            <div className="h-4 w-1/4 bg-muted rounded" />
+                                    <div key={i} className="aspect-[3/4] rounded-xl border border-border/40 overflow-hidden space-y-3 relative">
+                                        <div className="absolute inset-0 bg-muted" />
+                                        <div className="absolute bottom-0 inset-x-0 p-3 space-y-2 bg-background/50">
+                                            <div className="h-4 w-3/4 bg-muted-foreground/20 rounded" />
+                                            <div className="h-4 w-1/4 bg-muted-foreground/20 rounded" />
                                         </div>
                                     </div>
                                 ))}
@@ -349,7 +401,7 @@ export function ProductsPage() {
                                 </p>
                             </div>
 
-                            <div className="flex items-center justify-between sm:justify-end gap-2 w-full md:w-auto">
+                            <div className="grid grid-cols-2 md:flex md:items-center justify-between sm:justify-end gap-2 w-full md:w-auto">
                                 <Select
                                     value={selectedCategories.length === 1 ? selectedCategories[0] : "all"}
                                     onValueChange={(value) => {
@@ -362,7 +414,7 @@ export function ProductsPage() {
                                         }
                                     }}
                                 >
-                                    <SelectTrigger className="w-[140px]">
+                                    <SelectTrigger className="w-full md:w-[140px] whitespace-nowrap text-[10px] sm:text-sm h-8 sm:h-10 px-2 sm:px-3">
                                         <SelectValue placeholder="Category" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -379,8 +431,8 @@ export function ProductsPage() {
                                 </Select>
 
                                 <Select value={sortBy} onValueChange={setSortBy}>
-                                    <SelectTrigger className="w-[180px]">
-                                        <SlidersHorizontal className="h-4 w-4 mr-2" />
+                                    <SelectTrigger className="w-full md:w-[180px] whitespace-nowrap text-[10px] sm:text-sm h-8 sm:h-10 px-2 sm:px-3">
+                                        <SlidersHorizontal className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -393,8 +445,8 @@ export function ProductsPage() {
 
                                 <Sheet open={isFilterOpen} onOpenChange={setIsFilterOpen}>
                                     <SheetTrigger asChild>
-                                        <Button variant="outline" size="icon" className="lg:hidden">
-                                            <Filter className="h-4 w-4" />
+                                        <Button variant="outline" size="icon" className="col-span-2 w-full md:w-auto md:hidden">
+                                            <Filter className="h-4 w-4 mr-2" /> Filters
                                         </Button>
                                     </SheetTrigger>
                                     <SheetContent side="bottom" className="h-[85vh] rounded-t-2xl">
@@ -412,7 +464,7 @@ export function ProductsPage() {
                         {/* Content */}
                         <div className="flex gap-8">
                             <aside className="hidden lg:block w-64 flex-shrink-0 gsap-slide-left">
-                                <div className="sticky top-20 space-y-6 p-4 border rounded-lg bg-card">
+                                <div className="sticky top-20 space-y-6 p-4 border rounded-lg bg-card max-h-[calc(100vh-100px)] overflow-y-auto">
                                     <div className="flex items-center justify-between">
                                         <h2 className="font-semibold text-lg flex items-center gap-2">
                                             <Filter className="h-5 w-5" />

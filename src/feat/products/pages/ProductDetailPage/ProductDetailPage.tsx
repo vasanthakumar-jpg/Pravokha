@@ -18,6 +18,32 @@ import { useRecentlyViewed } from "@/shared/hook/useRecentlyViewed";
 import { useAuth } from "@/core/context/AuthContext";
 import { getMediaUrl } from "@/lib/utils";
 
+interface Product {
+    id: string;
+    title: string;
+    slug: string;
+    description: string;
+    price: number;
+    discountPrice?: number;
+    category: string;
+    rating: number;
+    reviews: number;
+    sku: string;
+    featured: boolean;
+    newArrival: boolean;
+    sellerId: string;
+    variants: Array<{
+        id: string;
+        colorName: string;
+        colorHex: string;
+        images: string[];
+        sizes: Array<{
+            size: string;
+            stock: number;
+        }>;
+    }>;
+}
+
 export function ProductDetailPage() {
     const { slug } = useParams();
     const navigate = useNavigate();
@@ -167,6 +193,7 @@ export function ProductDetailPage() {
                         sku: p.sku,
                         featured: p.isFeatured || false,
                         newArrival: p.isNew || false,
+                        sellerId: p.sellerId || "",
                         variants: (p.variants || []).map((v: any) => ({
                             id: v.id,
                             colorName: v.colorName,
@@ -333,30 +360,45 @@ export function ProductDetailPage() {
                             <p className="text-sm sm:text-base text-muted-foreground mt-1">SKU: {product.sku}</p>
                         </div>
 
-                        <button
-                            onClick={() => {
-                                const reviewsTab = document.querySelector('[value="reviews"]') as HTMLElement;
-                                reviewsTab?.click();
-                                setTimeout(() => {
-                                    const reviewsSection = document.getElementById('reviews-section');
-                                    reviewsSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                                }, 100);
-                            }}
-                            className="flex items-center gap-4 hover:opacity-80 transition-opacity group"
-                        >
-                            <div className="flex items-center gap-1">
-                                <InteractiveStarRating
-                                    rating={product.rating}
-                                    readOnly
-                                    size="sm"
-                                    showQuotes={false}
-                                />
-                                <span className="ml-2 font-bold text-lg">{product.rating}★</span>
+                        {product.rating > 0 && (
+                            <div
+                                role="button"
+                                tabIndex={0}
+                                onClick={() => {
+                                    const reviewsTab = document.querySelector('[value="reviews"]') as HTMLElement;
+                                    reviewsTab?.click();
+                                    setTimeout(() => {
+                                        const reviewsSection = document.getElementById('reviews-section');
+                                        reviewsSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                    }, 100);
+                                }}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                        e.preventDefault();
+                                        const reviewsTab = document.querySelector('[value="reviews"]') as HTMLElement;
+                                        reviewsTab?.click();
+                                        setTimeout(() => {
+                                            const reviewsSection = document.getElementById('reviews-section');
+                                            reviewsSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                        }, 100);
+                                    }
+                                }}
+                                className="flex items-center gap-4 hover:opacity-80 transition-opacity group cursor-pointer w-fit"
+                            >
+                                <div className="flex items-center gap-1">
+                                    <InteractiveStarRating
+                                        rating={product.rating}
+                                        readOnly
+                                        size="sm"
+                                        showQuotes={false}
+                                    />
+                                    <span className="ml-2 font-bold text-lg">{product.rating}★</span>
+                                </div>
+                                <span className="text-muted-foreground underline decoration-dotted underline-offset-4 group-hover:text-primary transition-colors">
+                                    ({product.reviews} reviews)
+                                </span>
                             </div>
-                            <span className="text-muted-foreground underline decoration-dotted underline-offset-4 group-hover:text-primary transition-colors">
-                                ({product.reviews} reviews)
-                            </span>
-                        </button>
+                        )}
 
                         <div className="flex items-center gap-3">
                             <span className="text-3xl sm:text-4xl lg:text-5xl font-bold">₹{product.discountPrice || product.price}</span>

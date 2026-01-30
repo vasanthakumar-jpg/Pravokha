@@ -12,6 +12,7 @@ import { Loader2, Upload, X, ShieldAlert } from "lucide-react";
 import { Badge } from "@/ui/Badge";
 import styles from "./TicketForm.module.css";
 import { cn } from "@/lib/utils";
+import { useNavigate } from "react-router-dom";
 
 interface TicketFormProps {
     onSuccess?: () => void;
@@ -20,7 +21,9 @@ interface TicketFormProps {
 
 export function TicketForm({ onSuccess, initialType = "suspension_appeal" }: TicketFormProps) {
     const { user, isSuspended } = useAuth();
+    const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
+    const [uploading, setUploading] = useState(false);
 
     const categories = [
         { value: "suspension_appeal", label: "Suspension Appeal", suspendedAllowed: true },
@@ -49,7 +52,9 @@ export function TicketForm({ onSuccess, initialType = "suspension_appeal" }: Tic
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!user) {
-            toast({ title: "Error", description: "You must be logged in", variant: "destructive" });
+            toast({ title: "Authentication Required", description: "Please log in to submit a support ticket", variant: "destructive" });
+            // Redirect to login with return URL
+            navigate(`/auth?redirect=/tickets`);
             return;
         }
 
@@ -58,10 +63,37 @@ export function TicketForm({ onSuccess, initialType = "suspension_appeal" }: Tic
         try {
             const evidenceUrls: string[] = [];
 
-            // TODO: Implement backend file upload endpoint
-            // For now, we simulate file upload or log it
+            // Upload files to backend
             if (files.length > 0) {
-                console.warn("Backend file upload for tickets not yet implemented. Skipping attachments.");
+                setUploading(true);
+                try {
+                    for (const file of files) {
+                        const formData = new FormData();
+                        formData.append('file', file);
+
+                        const uploadResponse = await apiClient.post('/uploads/single', formData, {
+                            headers: {
+                                'Content-Type': 'multipart/form-data'
+                            }
+                        });
+
+                        if (uploadResponse.data.success && uploadResponse.data.url) {
+                            evidenceUrls.push(uploadResponse.data.url);
+                        }
+                    }
+                } catch (uploadError: any) {
+                    console.error('File upload failed:', uploadError);
+                    toast({
+                        title: "Upload Failed",
+                        description: "Failed to upload attachments. Please try again.",
+                        variant: "destructive"
+                    });
+                    setUploading(false);
+                    setLoading(false);
+                    return;
+                } finally {
+                    setUploading(false);
+                }
             }
 
             const response = await apiClient.post('/support/tickets', {
@@ -213,11 +245,20 @@ export function TicketForm({ onSuccess, initialType = "suspension_appeal" }: Tic
                                 type="button"
                                 variant="outline"
                                 onClick={() => document.getElementById('evidence')?.click()}
-                                disabled={files.length >= 5}
+                                disabled={files.length >= 5 || uploading}
                             >
                                 <div className={styles.uploadButtonContent}>
-                                    <Upload className="h-4 w-4" />
-                                    <span>Upload Files ({files.length}/5)</span>
+                                    {uploading ? (
+                                        <>
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                            <span>Uploading...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Upload className="h-4 w-4" />
+                                            <span>Upload Files ({files.length}/5)</span>
+                                        </>
+                                    )}
                                 </div>
                             </Button>
                         </div>

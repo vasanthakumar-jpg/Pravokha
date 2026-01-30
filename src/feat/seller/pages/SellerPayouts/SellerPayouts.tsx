@@ -66,7 +66,7 @@ export default function SellerPayouts() {
   }, [user]);
 
   const handleWithdrawal = async () => {
-    if (!user || payoutStats.pendingBalance < 1000) return;
+    if (!user || payoutStats.pendingBalance < 500) return;
 
     try {
       setIsRequesting(true);
@@ -128,7 +128,7 @@ export default function SellerPayouts() {
 
       setPayoutStats({
         pendingBalance: stats.pendingBalance || 0,
-        nextPayout: stats.pendingBalance > 1000 ? stats.pendingBalance : 0,
+        nextPayout: stats.pendingBalance > 500 ? stats.pendingBalance : 0,
         totalEarnings: stats.totalEarnings || 0,
         commissionRate: 10,
         nextPayoutDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
@@ -279,7 +279,7 @@ export default function SellerPayouts() {
             variant="default"
             className="flex-1 sm:flex-none h-11 sm:h-12 px-6 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm rounded-xl border border-emerald-500/20 transition-all active:scale-95 font-semibold"
             onClick={handleWithdrawal}
-            disabled={!isVerified || payoutStats.pendingBalance < 1000 || isRequesting}
+            disabled={!isVerified || payoutStats.pendingBalance < 500 || isRequesting}
           >
             {isRequesting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Wallet className="h-4 w-4 mr-2" />}
             Request payout
@@ -654,7 +654,7 @@ export default function SellerPayouts() {
                 <div className="space-y-4">
                   <div className="flex justify-between items-center bg-muted/20 p-4 rounded-xl border border-border/40">
                     <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Burn threshold</span>
-                    <span className="text-sm font-bold">₹1,000</span>
+                    <span className="text-sm font-bold">₹500</span>
                   </div>
                   <div className="flex justify-between items-center bg-muted/20 p-4 rounded-xl border border-border/40">
                     <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Audit speed</span>

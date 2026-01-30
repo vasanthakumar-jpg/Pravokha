@@ -212,17 +212,27 @@ export function ProductCard({ product }: ProductCardProps) {
                     <p className={styles.description}>
                         {product.description}
                     </p>
-                    <div className={styles.rating}>
-                        <InteractiveStarRating
-                            rating={product.rating}
-                            readOnly
-                            size="sm"
-                            showQuotes={false}
-                        />
-                        <span className={styles.reviewCount}>
-                            {product.reviews > 0 ? `(${product.reviews})` : "(No reviews)"}
-                        </span>
-                    </div>
+                    {product.rating > 0 && (
+                        <div
+                            className={cn(styles.rating, "flex items-center gap-1 sm:gap-2 cursor-pointer hover:opacity-80 transition-opacity")}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                if (product.slug) {
+                                    navigate(`/product/${product.slug}?tab=reviews`);
+                                }
+                            }}
+                        >
+                            <InteractiveStarRating
+                                rating={product.rating}
+                                readOnly
+                                size="sm"
+                                showQuotes={false}
+                            />
+                            <span className={cn(styles.reviewCount, "text-[10px] sm:text-xs whitespace-nowrap overflow-hidden text-ellipsis hidden sm:block")}>
+                                ({product.reviews})
+                            </span>
+                        </div>
+                    )}
                 </div>
 
                 <div className={styles.footer}>

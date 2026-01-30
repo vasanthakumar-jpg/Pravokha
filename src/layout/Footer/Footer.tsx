@@ -69,250 +69,89 @@ export function Footer() {
             </div>
 
             <div className={styles.mainContent}>
-                <div className={styles.grid}>
-                    {/* Company Info */}
-                    <div className={styles.brandColumn}>
-                        <Link to="/" className={styles.logoLink}>
-                            <img
-                                src={theme === "dark" ? logoDark : logoLight}
-                                alt="PRAVOKHA Logo"
-                                className={styles.logo}
-                            />
-                        </Link>
-                        <p className={styles.tagline}>
-                            Premium quality sportswear for your active lifestyle. Comfort meets style.
-                        </p>
-                        <div className={styles.socialLinks}>
-                            <Button size="icon" variant="ghost" className="h-8 w-8 sm:h-9 sm:w-9" asChild>
-                                <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" aria-label="Facebook">
-                                    <Facebook className={styles.socialIcon} />
-                                </a>
-                            </Button>
-                            <Button size="icon" variant="ghost" className="h-8 w-8 sm:h-9 sm:w-9" asChild>
-                                <a href="https://www.instagram.com/vasanth_vasu_vv/" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
-                                    <Instagram className={styles.socialIcon} />
-                                </a>
-                            </Button>
-                            <Button size="icon" variant="ghost" className="h-8 w-8 sm:h-9 sm:w-9" asChild>
-                                <a href="https://youtube.com" target="_blank" rel="noopener noreferrer" aria-label="YouTube">
-                                    <Youtube className={styles.socialIcon} />
-                                </a>
-                            </Button>
-                            <Button size="icon" variant="ghost" className="h-8 w-8 sm:h-9 sm:w-9" asChild>
-                                <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" aria-label="Twitter">
-                                    <Twitter className={styles.socialIcon} />
-                                </a>
-                            </Button>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-8 text-sm">
+                    {/* About */}
+                    <div>
+                        <h4 className="font-semibold mb-4 text-muted-foreground uppercase tracking-wider text-xs">About</h4>
+                        <ul className="space-y-2 mb-6">
+                            <li><Link to="/contact" className="hover:underline hover:text-primary transition-colors">Contact Us</Link></li>
+                            <li><Link to="/about" className="hover:underline hover:text-primary transition-colors">About Us</Link></li>
+                        </ul>
+                        <div className="mt-6">
+                            <h4 className="font-semibold mb-2 text-muted-foreground uppercase tracking-wider text-xs">Social:</h4>
+                            <div className="flex gap-4">
+                                <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors"><Facebook className="h-5 w-5" /></a>
+                                <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors"><Twitter className="h-5 w-5" /></a>
+                                <a href="https://youtube.com" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors"><Youtube className="h-5 w-5" /></a>
+                                <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors"><Instagram className="h-5 w-5" /></a>
+                            </div>
                         </div>
                     </div>
 
-                    {/* Quick Links */}
+                    {/* Help */}
                     <div>
-                        <h4 className={styles.sectionTitle}>Shop</h4>
-                        <ul className={styles.linkList}>
-                            <li>
-                                <Link to="/products" className={styles.link}>
-                                    All Products
-                                </Link>
-                            </li>
-                            <li>
-                                <Link to="/products?subcategory=t-shirts" className={styles.link}>
-                                    T-Shirts
-                                </Link>
-                            </li>
-                            <li>
-                                <Link to="/products?subcategory=track-pants" className={styles.link}>
-                                    Track Pants
-                                </Link>
-                            </li>
-                            <li>
-                                <Link to="/products?subcategory=shorts" className={styles.link}>
-                                    Shorts
-                                </Link>
-                            </li>
-                            <li>
-                                <Link to="/products?category=womens" className={styles.link}>
-                                    Womens
-                                </Link>
-                            </li>
-                            <li>
-                                <Link to="/products?category=mens" className={styles.link}>
-                                    Mens
-                                </Link>
-                            </li>
-                            <li>
-                                <Link to="/products?category=kids" className={styles.link}>
-                                    Kids
-                                </Link>
-                            </li>
+                        <h4 className="font-semibold mb-4 text-muted-foreground uppercase tracking-wider text-xs">Help</h4>
+                        <ul className="space-y-2">
+                            <li><Link to="/payments-info" className="hover:underline hover:text-primary transition-colors">Payments</Link></li>
+                            <li><Link to="/shipping-returns" className="hover:underline hover:text-primary transition-colors">Shipping & Returns</Link></li>
+                            <li><Link to="/faq" className="hover:underline hover:text-primary transition-colors">FAQ</Link></li>
+                            <li><Link to="/tickets" className="hover:underline hover:text-primary transition-colors">Report</Link></li>
+                            <li><Link to="/size-guide" className="hover:underline hover:text-primary transition-colors">Size Guide</Link></li>
+                            <li><Link to="/support" className="hover:underline hover:text-primary transition-colors">Support Center</Link></li>
                         </ul>
                     </div>
 
-                    {/* Collections Section */}
+                    {/* Consumer Policy */}
                     <div>
-                        <h4 className={styles.sectionTitle}>Collections</h4>
-                        <ul className={styles.linkList}>
-                            <li>
-                                <Link to="/products?subcategory=oversized-t-shirts" className={styles.link}>
-                                    Oversized
-                                </Link>
-                            </li>
-                            <li>
-                                <Link to="/products?subcategory=printed-t-shirts" className={styles.link}>
-                                    Printed
-                                </Link>
-                            </li>
-                            <li>
-                                <Link to="/products?subcategory=hoodies" className={styles.link}>
-                                    Hoodies
-                                </Link>
-                            </li>
-                            <li>
-                                <Link to="/products?subcategory=activewear" className={styles.link}>
-                                    Activewear
-                                </Link>
-                            </li>
-                            <li>
-                                <Link to="/products" className={styles.link}>
-                                    Shop All
-                                </Link>
-                            </li>
+                        <h4 className="font-semibold mb-4 text-muted-foreground uppercase tracking-wider text-xs">Consumer Policy</h4>
+                        <ul className="space-y-2">
+                            <li><Link to="/cancellation-returns" className="hover:underline hover:text-primary transition-colors">Cancellation & Returns</Link></li>
+                            <li><Link to="/terms" className="hover:underline hover:text-primary transition-colors">Terms of Use</Link></li>
+                            <li><Link to="/security" className="hover:underline hover:text-primary transition-colors">Security</Link></li>
+                            <li><Link to="/privacy" className="hover:underline hover:text-primary transition-colors">Privacy</Link></li>
+                            <li><Link to="/learn-more" className="hover:underline hover:text-primary transition-colors">Learn More</Link></li>
                         </ul>
                     </div>
 
-                    {/* Customer Service / Admin / Seller */}
-                    <div>
-                        {role?.toUpperCase() === "ADMIN" ? (
-                            <>
-                                <h4 className={styles.sectionTitle}>Admin</h4>
-                                <ul className={styles.linkList}>
-                                    <li>
-                                        <Link to="/admin" className={styles.link}>
-                                            Admin Home
-                                        </Link>
-                                    </li>
-                                    <li>
-                                        <Link to="/admin/products/manage" className={styles.link}>
-                                            Manage Products
-                                        </Link>
-                                    </li>
-                                    <li>
-                                        <Link to="/admin/orders" className={styles.link}>
-                                            Orders
-                                        </Link>
-                                    </li>
-                                    <li>
-                                        <Link to="/admin/users" className={styles.link}>
-                                            Users
-                                        </Link>
-                                    </li>
-                                    <li>
-                                        <Link to="/admin/tickets" className={styles.link}>
-                                            Support Registry
-                                        </Link>
-                                    </li>
-                                </ul>
-                            </>
-                        ) : role?.toUpperCase() === "DEALER" || role?.toUpperCase() === "SELLER" ? (
-                            <>
-                                <h4 className={styles.sectionTitle}>Seller Portal</h4>
-                                <ul className={styles.linkList}>
-                                    <li>
-                                        <Link to="/seller" className={styles.link}>
-                                            Dashboard
-                                        </Link>
-                                    </li>
-                                    <li>
-                                        <Link to="/seller/products" className={styles.link}>
-                                            My Products
-                                        </Link>
-                                    </li>
-                                    <li>
-                                        <Link to="/seller/orders" className={styles.link}>
-                                            Manage Orders
-                                        </Link>
-                                    </li>
-                                    <li>
-                                        <Link to="/seller/payouts" className={styles.link}>
-                                            Payouts
-                                        </Link>
-                                    </li>
-                                    <li>
-                                        <Link to="/seller/settings" className={styles.link}>
-                                            Store Settings
-                                        </Link>
-                                    </li>
-                                </ul>
-                            </>
-                        ) : (
-                            <>
-                                <h4 className={styles.sectionTitle}>Support</h4>
-                                <ul className={styles.linkList}>
-                                    <li>
-                                        <Link to="/contact" className={styles.link}>
-                                            Contact Us
-                                        </Link>
-                                    </li>
-                                    <li>
-                                        <Link to="/tickets" className={cn(styles.link, "font-medium")}>
-                                            Support Tickets
-                                        </Link>
-                                    </li>
-                                    <li>
-                                        <Link to="/shipping-returns" className={styles.link}>
-                                            Shipping & Returns
-                                        </Link>
-                                    </li>
-                                    <li>
-                                        <Link to="/learn-more" className={styles.link}>
-                                            Learn More
-                                        </Link>
-                                    </li>
-                                    <li>
-                                        <Link to="/faq" className={styles.link}>
-                                            FAQ
-                                        </Link>
-                                    </li>
-                                    <li>
-                                        <Link to="/size-guide" className={styles.link}>
-                                            Size Guide
-                                        </Link>
-                                    </li>
-                                    <li>
-                                        <Link to="/support" className={styles.link}>
-                                            Support Center
-                                        </Link>
-                                    </li>
-                                </ul>
-                            </>
-                        )}
-                    </div>
-
-                    {/* Newsletter */}
-                    <div className="text-center">
-                        <h4 className={styles.sectionTitle}>Stay Updated</h4>
-                        <p className={styles.newsletterText}>
-                            Subscribe to get special offers and updates
+                    {/* Mail Us */}
+                    <div className="lg:col-span-1">
+                        <h4 className="font-semibold mb-4 text-muted-foreground uppercase tracking-wider text-xs">Mail Us:</h4>
+                        <p className="text-muted-foreground leading-relaxed text-xs">
+                            Pravokha Internet Private Limited,<br />
+                            12, PN Road,<br />
+                            Tiruppur, 641602,<br />
+                            Tamil Nadu, India
                         </p>
-                        <form onSubmit={handleNewsletterSubmit} className={styles.newsletterForm}>
+                    </div>
+
+                    {/* Registered Office */}
+                    <div className="lg:col-span-1">
+                        <h4 className="font-semibold mb-4 text-muted-foreground uppercase tracking-wider text-xs">Registered Office Address:</h4>
+                        <p className="text-muted-foreground leading-relaxed text-xs">
+                            Pravokha Internet Private Limited,<br />
+                            12, PN Road,<br />
+                            Tiruppur, 641602,<br />
+                            Tamil Nadu, India<br />
+                            CIN : U51109KA2012PTC066107<br />
+                            Telephone: 044-45614700 / 044-67415800
+                        </p>
+                    </div>
+
+                    {/* Newsletter (Keep existing but simplified) */}
+                    <div className="lg:col-span-1">
+                        <h4 className="font-semibold mb-4 text-muted-foreground uppercase tracking-wider text-xs">Stay Updated</h4>
+                        <form onSubmit={handleNewsletterSubmit} className="space-y-2">
                             <Input
                                 type="email"
-                                placeholder="Your email"
+                                placeholder="Enter your email"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
-                                className={styles.newsletterInput}
+                                className="h-8 text-xs bg-background/50 border border-primary/40 focus-visible:border-primary"
                                 required
-                                disabled={isSubmitting}
                             />
-                            <Button
-                                type="submit"
-                                className={cn("bg-primary hover:bg-primary-hover", styles.newsletterButton)}
-                                disabled={isSubmitting}
-                            >
-                                <Mail className={styles.socialIcon} />
-                            </Button>
+                            <Button type="submit" size="sm" className="w-full h-8 text-xs">Subscribe</Button>
                         </form>
-                        <div className="mt-3 sm:mt-4">
+                        <div className="mt-4">
                             <AnimatedPaymentIcons />
                         </div>
                     </div>
@@ -321,12 +160,12 @@ export function Footer() {
                 <div className={styles.copyright}>
                     <p>&copy; 2025 Pravokha. All rights reserved.</p>
                     <div className={styles.legalLinks}>
-                        <a href="#" className={styles.link}>
+                        <Link to="/privacy" className={styles.link}>
                             Privacy Policy
-                        </a>
-                        <a href="#" className={styles.link}>
+                        </Link>
+                        <Link to="/terms" className={styles.link}>
                             Terms & Conditions
-                        </a>
+                        </Link>
                     </div>
                 </div>
             </div>

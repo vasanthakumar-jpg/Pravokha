@@ -1,4 +1,4 @@
-import { Shield, Truck, RefreshCw, CreditCard, Lock } from "lucide-react";
+import { Shield, Truck, RefreshCw, CreditCard, Lock, Headset } from "lucide-react";
 import styles from "./TrustBadges.module.css";
 import { cn } from "@/lib/utils";
 
@@ -9,6 +9,7 @@ export default function TrustBadges() {
         { icon: RefreshCw, text: "Easy 7 Day Returns", color: "text-secondary" },
         { icon: CreditCard, text: "COD Available", color: "text-emerald-600 dark:text-emerald-400" },
         { icon: Lock, text: "Privacy Protected", color: "text-muted-foreground" },
+        { icon: Headset, text: "Ready Support", color: "text-blue-600 dark:text-blue-400" },
     ];
 
     return (

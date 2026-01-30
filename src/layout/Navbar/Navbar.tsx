@@ -457,18 +457,6 @@ export function Navbar() {
                                         <span className={cn("hidden xl:inline", styles.navButtonText)}>{isSuspended ? "Support" : "Account"}</span>
                                     </Button>
                                 </Link>
-                                {!isSuspended && (
-                                    <Link to="/tickets">
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            className={styles.navButton}
-                                        >
-                                            <LifeBuoy className={cn("h-4 w-4", styles.navButtonIcon)} />
-                                            <span className={cn("hidden xl:inline", styles.navButtonText)}>Support</span>
-                                        </Button>
-                                    </Link>
-                                )}
                             </>
                         )}
                     </nav>
@@ -546,4 +534,3 @@ export function Navbar() {
         </header>
     );
 }
-

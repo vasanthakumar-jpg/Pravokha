@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useOrderNotifications } from "@/shared/hook/useOrderNotifications";
 import { apiClient } from "@/infra/api/apiClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/ui/Card";
@@ -46,6 +46,7 @@ interface Order {
 
 export default function OrderHistory() {
   const navigate = useNavigate();
+  const { status } = useParams();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | undefined>(undefined);
@@ -96,6 +97,7 @@ export default function OrderHistory() {
       const response = await apiClient.get("/orders", {
         params: {
           userId,
+          status: status ? status.toLowerCase() : undefined,
           page: currentPage,
           limit: pageSize
         }
@@ -183,7 +185,7 @@ export default function OrderHistory() {
 
   const getStatusConfig = (status: string) => {
     const configs: Record<string, { color: string; icon: any; label: string; progress: number }> = {
-      pending: { color: 'bg-yellow-500/10 text-yellow-700 border-yellow-500/30 dark:text-yellow-400', icon: Clock, label: 'Order Pending', progress: 15 },
+      pending: { color: 'bg-yellow-500/10 text-yellow-700 border-yellow-500/30 hover:bg-yellow-500/20 dark:text-yellow-400', icon: Clock, label: 'Order Pending', progress: 15 },
       confirmed: { color: 'bg-blue-500/10 text-blue-700 border-blue-500/30 dark:text-blue-400', icon: CheckCircle, label: 'Confirmed', progress: 40 },
       packed: { color: 'bg-purple-500/10 text-purple-700 border-purple-500/30 dark:text-purple-400', icon: Package, label: 'Packed', progress: 60 },
       shipped: { color: 'bg-indigo-500/10 text-indigo-700 border-indigo-500/30 dark:text-indigo-400', icon: Truck, label: 'Shipped', progress: 80 },
@@ -293,11 +295,13 @@ export default function OrderHistory() {
       />
       <div className="container max-w-6xl mx-auto py-6 sm:py-10 px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="responsive-h1 mb-2 bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">
-            My orders
+        <div className="mb-8 space-y-1">
+          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">
+            My Order History
           </h1>
-          <p className="responsive-body text-muted-foreground">Track, manage and review your orders</p>
+          <p className="text-muted-foreground text-sm sm:text-base max-w-2xl">
+            Track, manage, and review all your previous purchases and current shipments in one place.
+          </p>
         </div>
 
         {/* Orders List */}
@@ -310,23 +314,23 @@ export default function OrderHistory() {
             return (
               <Card key={order.id} className="overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 border-2">
                 <CardHeader className="bg-gradient-to-r from-muted/50 to-muted/30 border-b">
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-2 sm:gap-3 mb-2 w-full">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 flex-1 min-w-0">
+                      <div className="min-w-0">
                         <CardTitle className="text-sm sm:text-base md:text-lg font-bold truncate break-all sm:break-normal">#{order.order_number}</CardTitle>
-                        <Badge className={cn(statusConfig.color, "text-[10px] sm:text-xs font-semibold px-2 py-0.5 whitespace-nowrap")}>
-                          <StatusIcon className="h-3 w-3 mr-1" />
-                          {statusConfig.label}
-                        </Badge>
+                        <div className="flex items-center gap-2 text-[10px] sm:text-xs text-muted-foreground font-medium mt-1">
+                          <Calendar className="h-3.5 w-3.5" />
+                          {order.created_at && !isNaN(new Date(order.created_at).getTime())
+                            ? format(new Date(order.created_at), 'PPP')
+                            : 'Date N/A'}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2 text-[10px] sm:text-xs text-muted-foreground font-medium">
-                        <Calendar className="h-3.5 w-3.5" />
-                        {order.created_at && !isNaN(new Date(order.created_at).getTime())
-                          ? format(new Date(order.created_at), 'PPP')
-                          : 'Date N/A'}
-                      </div>
+                      <Badge className={cn(statusConfig.color, "text-[10px] sm:text-xs font-semibold px-2 py-1 whitespace-nowrap h-fit w-fit")}>
+                        <StatusIcon className="h-3 w-3 mr-1" />
+                        {statusConfig.label}
+                      </Badge>
                     </div>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap items-center gap-2 shrink-0">
                       <Button variant="outline" size="sm" onClick={() => navigate(`/orders/${order.id}`)} className="responsive-button">
                         <Eye className="h-4 w-4 mr-2" />
                         View details

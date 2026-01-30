@@ -76,24 +76,43 @@
 }
 
 /* Stagger delays for steps */
+/* Stagger delays for steps to create sequential flow */
 .step:nth-child(1) {
     animation-delay: 0.1s;
 }
 
+.step:nth-child(1) .line {
+    animation-delay: 0.4s;
+    /* Starts after step 1 icon pops in */
+}
+
 .step:nth-child(2) {
-    animation-delay: 0.2s;
+    animation-delay: 1.0s;
+    /* 0.4s (line start) + 0.6s (line duration) */
+}
+
+.step:nth-child(2) .line {
+    animation-delay: 1.3s;
 }
 
 .step:nth-child(3) {
-    animation-delay: 0.3s;
+    animation-delay: 1.9s;
+}
+
+.step:nth-child(3) .line {
+    animation-delay: 2.2s;
 }
 
 .step:nth-child(4) {
-    animation-delay: 0.4s;
+    animation-delay: 2.8s;
+}
+
+.step:nth-child(4) .line {
+    animation-delay: 3.1s;
 }
 
 .step:nth-child(5) {
-    animation-delay: 0.5s;
+    animation-delay: 3.7s;
 }
 
 @media (max-width: 640px) {

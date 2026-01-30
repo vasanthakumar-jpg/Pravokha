@@ -222,7 +222,7 @@ export class OrderService {
 
         // 2. Status Filtering
         if (options.status && options.status !== 'all') {
-            where.status = options.status as any;
+            where.status = options.status.toUpperCase() as any;
         }
 
         // 3. Search Filtering
@@ -391,16 +391,18 @@ export class OrderService {
                 throw new Error('Concurrency conflict: The order has been updated by another user. Please refresh and try again.');
             }
 
-            // 3. State Machine Validation
-            if (!isValidTransition(currentOrder.status, newStatus, options.role)) {
+            // 3. State Machine Validation - ONLY if a new status is provided
+            if (newStatus && !isValidTransition(currentOrder.status, newStatus, options.role)) {
                 throw new Error(`Invalid status transition from ${currentOrder.status} to ${newStatus} for role ${options.role}`);
             }
 
-            // 4. Missing Field Validation
-            const requiredFields = getRequiredFieldsForTransition(currentOrder.status, newStatus);
-            for (const field of requiredFields) {
-                if (!(options as any)[field]) {
-                    throw new Error(`Required field missing for transition to ${newStatus}: ${field}`);
+            // 4. Missing Field Validation - ONLY if a new status is provided
+            if (newStatus) {
+                const requiredFields = getRequiredFieldsForTransition(currentOrder.status, newStatus);
+                for (const field of requiredFields) {
+                    if (!(options as any)[field]) {
+                        throw new Error(`Required field missing for transition to ${newStatus}: ${field}`);
+                    }
                 }
             }
 

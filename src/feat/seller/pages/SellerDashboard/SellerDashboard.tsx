@@ -38,7 +38,7 @@ export default function SellerDashboard() {
   // Sync verification status from fullProfile
   useEffect(() => {
     if (fullProfile) {
-      setVerificationStatus((fullProfile as any).verificationStatus || "pending");
+      setVerificationStatus((fullProfile as any).verificationStatus?.toLowerCase() || "unverified");
       setRejectionReason((fullProfile as any).verificationComments || null);
     }
   }, [fullProfile]);
@@ -119,26 +119,38 @@ export default function SellerDashboard() {
 
       sellerOrders.forEach((order: any) => {
         const orderDate = new Date(order.createdAt || order.created_at);
-        const orderRev = order.total || 0;
 
-        totalRevenue += orderRev;
-        if (order.status === 'PENDING' || order.status === 'pending') pendingOrders++;
-
-        const dayName = days[orderDate.getDay()];
-        if (orderDate >= sevenDaysAgo && dailySales[dayName]) {
-          dailySales[dayName].sales += orderRev;
-          dailySales[dayName].orders += 1;
-        }
+        let orderMatched = false;
+        let sellerOrderRev = 0;
 
         if (Array.isArray(order.items)) {
           order.items.forEach((item: any) => {
-            const itemProductId = item.productId || item.product_id;
-            if (!productStats[itemProductId]) {
-              productStats[itemProductId] = { id: itemProductId, title: item.title || 'Product', sales: 0, revenue: 0 };
+            const itemSellerId = item.sellerId || item.seller_id;
+            // Only count items belonging to this seller
+            if (itemSellerId === user.id) {
+              orderMatched = true;
+              const itemRev = (item.price || 0) * (item.quantity || 1);
+              sellerOrderRev += itemRev;
+
+              const itemProductId = item.productId || item.product_id;
+              if (!productStats[itemProductId]) {
+                productStats[itemProductId] = { id: itemProductId, title: item.title || 'Product', sales: 0, revenue: 0 };
+              }
+              productStats[itemProductId].sales += (item.quantity || 1);
+              productStats[itemProductId].revenue += itemRev;
             }
-            productStats[itemProductId].sales += (item.quantity || 1);
-            productStats[itemProductId].revenue += (item.price || 0) * (item.quantity || 1);
           });
+        }
+
+        if (orderMatched) {
+          totalRevenue += sellerOrderRev;
+          if (order.status?.toLowerCase() === 'pending') pendingOrders++;
+
+          const dayName = days[orderDate.getDay()];
+          if (orderDate >= sevenDaysAgo && dailySales[dayName]) {
+            dailySales[dayName].sales += sellerOrderRev;
+            dailySales[dayName].orders += 1;
+          }
         }
       });
 
@@ -147,8 +159,8 @@ export default function SellerDashboard() {
       setProducts(transformedProducts);
       setRecentOrders(transformedOrders);
       setStats({
-        totalProducts: productsResponse.data.total || transformedProducts.length || 0,
-        totalOrders: sellerOrders.length || 0,
+        totalProducts: productsResponse.data.meta?.total || productsResponse.data.total || transformedProducts.length || 0,
+        totalOrders: ordersResponse.data.meta?.total || sellerOrders.length || 0,
         totalRevenue: totalRevenue,
         pendingOrders: pendingOrders,
       });

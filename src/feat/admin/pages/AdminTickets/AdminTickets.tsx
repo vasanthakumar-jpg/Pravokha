@@ -43,6 +43,7 @@ interface Ticket {
   type: string;
   status: string;
   priority: string;
+  evidence_urls?: string[];
   suspended_seller?: boolean;
   is_high_priority?: boolean;
   created_at: string;
@@ -79,6 +80,14 @@ export default function AdminTickets() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
 
+  // Pagination state
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 10,
+    total: 0,
+    totalPages: 0
+  });
+
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   const [messages, setMessages] = useState<TicketMessage[]>([]);
   const [replyMessage, setReplyMessage] = useState("");
@@ -112,30 +121,46 @@ export default function AdminTickets() {
   }, [isAdmin, adminLoading, navigate]);
 
   useEffect(() => {
-    fetchTickets();
+    fetchTickets(1);
   }, []);
 
   useEffect(() => {
     filterTickets();
   }, [tickets, searchQuery, statusFilter, typeFilter]);
 
-  const fetchTickets = async () => {
+  const fetchTickets = async (page = 1) => {
     try {
       setLoading(true);
-      const response = await apiClient.get('/support/admin/tickets');
+      const response = await apiClient.get('/support/admin/tickets', {
+        params: {
+          page,
+          limit: 10
+        }
+      });
+
       const data = (response.data.tickets || []).map((ticket: any) => ({
         ...ticket,
         ticket_number: ticket.ticketNumber,
         user_id: ticket.userId,
         created_at: ticket.createdAt,
         updated_at: ticket.updatedAt,
+        evidence_urls: ticket.evidenceUrls || [],
         user: ticket.user ? {
           full_name: ticket.user.name,
           email: ticket.user.email,
           status: ticket.user.status
         } : undefined
       }));
+
       setTickets(data || []);
+
+      // Update pagination metadata
+      setPagination({
+        page: response.data.page || page,
+        limit: response.data.pagination?.limit || 10,
+        total: response.data.total || 0,
+        totalPages: response.data.totalPages || 0
+      });
     } catch (error: any) {
       console.error('Error fetching tickets:', error);
       toast({
@@ -635,6 +660,63 @@ export default function AdminTickets() {
                       )}
                     </TableBody>
                   </Table>
+
+                  {/* Pagination Controls */}
+                  {pagination.totalPages > 0 && (
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 border-t bg-card">
+                      <p className="text-sm text-muted-foreground">
+                        Showing {((pagination.page - 1) * pagination.limit) + 1} to{' '}
+                        {Math.min(pagination.page * pagination.limit, pagination.total)} of{' '}
+                        {pagination.total} tickets
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={pagination.page === 1 || loading}
+                          onClick={() => fetchTickets(pagination.page - 1)}
+                          className="h-9"
+                        >
+                          Previous
+                        </Button>
+
+                        <div className="flex items-center gap-1">
+                          {Array.from({ length: pagination.totalPages }, (_, i) => i + 1)
+                            .filter(p =>
+                              p === 1 ||
+                              p === pagination.totalPages ||
+                              Math.abs(p - pagination.page) <= 1
+                            )
+                            .map((pageNum, idx, arr) => (
+                              <div key={pageNum} className="flex items-center gap-1">
+                                {idx > 0 && arr[idx - 1] !== pageNum - 1 && (
+                                  <span className="px-2 text-muted-foreground">...</span>
+                                )}
+                                <Button
+                                  variant={pageNum === pagination.page ? "default" : "outline"}
+                                  size="sm"
+                                  className="w-10 h-9"
+                                  disabled={loading}
+                                  onClick={() => fetchTickets(pageNum)}
+                                >
+                                  {pageNum}
+                                </Button>
+                              </div>
+                            ))}
+                        </div>
+
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={pagination.page === pagination.totalPages || loading}
+                          onClick={() => fetchTickets(pagination.page + 1)}
+                          className="h-9"
+                        >
+                          Next
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </Card>
               </div>
             </motion.div>
@@ -653,6 +735,37 @@ export default function AdminTickets() {
                 )}
               </DialogDescription>
             </DialogHeader>
+
+            {selectedTicket?.evidence_urls && selectedTicket.evidence_urls.length > 0 && (
+              <div className="px-6 py-2 border-b bg-muted/20">
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2 flex items-center gap-2">
+                  <Download className="h-3 w-3" /> Attachments ({selectedTicket.evidence_urls.length})
+                </p>
+                <div className="flex gap-3 overflow-x-auto pb-2 custom-scrollbar">
+                  {selectedTicket.evidence_urls.map((url, i) => (
+                    <a
+                      key={i}
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group relative h-16 w-16 sm:h-20 sm:w-20 flex-shrink-0 rounded-xl overflow-hidden border-2 border-primary/10 hover:border-primary transition-all shadow-sm"
+                    >
+                      <img
+                        src={url}
+                        alt={`Evidence ${i + 1}`}
+                        className="h-full w-full object-cover transition-transform group-hover:scale-110"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = 'https://via.placeholder.com/150?text=File';
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-primary/0 group-hover:bg-primary/20 flex items-center justify-center transition-all">
+                        <Eye className="h-4 w-4 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </div>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {selectedTicket?.user?.status === 'suspended' && (
               <div className="bg-rose-50 border border-rose-200 p-3 rounded-xl flex items-start gap-3 mb-4">

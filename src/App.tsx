@@ -1,5 +1,5 @@
 import { Suspense, lazy, useState, useEffect } from "react";
-import { BrowserRouter, Routes, Route, useLocation, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation, Navigate, useParams } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { TooltipProvider } from "@/ui/Tooltip";
 import { Toaster } from "@/ui/Toaster";
@@ -41,6 +41,8 @@ const LearnMore = lazy(() => import("./feat/info/pages/LearnMorePage"));
 const OrderHistory = lazy(() => import("./feat/orders/pages/OrderHistory"));
 const NotFound = lazy(() => import("./feat/system/pages/NotFoundPage"));
 const ForgotPassword = lazy(() => import("./feat/auth/pages/ForgotPasswordPage"));
+const About = lazy(() => import("./feat/info/pages/AboutPage/AboutPage"));
+const PolicyPage = lazy(() => import("./feat/info/pages/PolicyPage/PolicyPage"));
 
 // Admin pages
 const AdminDashboard = lazy(() => import("./feat/admin/pages/AdminDashboard"));
@@ -135,6 +137,11 @@ const ConditionalFooter = () => {
   return <Footer />;
 };
 
+const NavigateToOrderDetail = () => {
+  const { orderId } = useParams();
+  return <Navigate to={`/user/orders/detail/${orderId}`} replace />;
+};
+
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -205,17 +212,33 @@ export default function App() {
                               <Profile />
                             </Suspense>
                           } />
-                          <Route path="/faq" element={<FAQ />} />
-                          <Route path="/size-guide" element={<SizeGuide />} />
-                          <Route path="/shipping-returns" element={<ShippingReturns />} />
-                          <Route path="/wishlist" element={<Wishlist />} />
-                          <Route path="/learn-more" element={<LearnMore />} />
-                          <Route path="/orders" element={<OrderHistory />} />
-                          <Route path="/orders/:orderId" element={
+                          <Route path="/faq" element={<Suspense fallback={<LoadingFallback />}><FAQ /></Suspense>} />
+                          <Route path="/size-guide" element={<Suspense fallback={<LoadingFallback />}><SizeGuide /></Suspense>} />
+                          <Route path="/shipping-returns" element={<Suspense fallback={<LoadingFallback />}><ShippingReturns /></Suspense>} />
+                          <Route path="/wishlist" element={<Suspense fallback={<LoadingFallback />}><Wishlist /></Suspense>} />
+                          <Route path="/learn-more" element={<Suspense fallback={<LoadingFallback />}><LearnMore /></Suspense>} />
+
+                          {/* Static Information Pages */}
+                          <Route path="/about" element={
                             <Suspense fallback={<LoadingFallback />}>
-                              <UserOrderDetail />
+                              <About />
                             </Suspense>
                           } />
+                          <Route path="/privacy" element={<Suspense fallback={<LoadingFallback />}><PolicyPage type="privacy" /></Suspense>} />
+                          <Route path="/terms" element={<Suspense fallback={<LoadingFallback />}><PolicyPage type="terms" /></Suspense>} />
+                          <Route path="/security" element={<Suspense fallback={<LoadingFallback />}><PolicyPage type="security" /></Suspense>} />
+                          <Route path="/cancellation-returns" element={<Suspense fallback={<LoadingFallback />}><PolicyPage type="cancellation" /></Suspense>} />
+                          <Route path="/careers" element={<Suspense fallback={<LoadingFallback />}><PolicyPage type="careers" /></Suspense>} />
+                          <Route path="/stories" element={<Suspense fallback={<LoadingFallback />}><PolicyPage type="stories" /></Suspense>} />
+                          <Route path="/press" element={<Suspense fallback={<LoadingFallback />}><PolicyPage type="press" /></Suspense>} />
+                          <Route path="/corporate" element={<Suspense fallback={<LoadingFallback />}><PolicyPage type="corporate" /></Suspense>} />
+                          <Route path="/sitemap" element={<Suspense fallback={<LoadingFallback />}><PolicyPage type="sitemap" /></Suspense>} />
+                          <Route path="/grievance" element={<Suspense fallback={<LoadingFallback />}><PolicyPage type="grievance" /></Suspense>} />
+                          <Route path="/epr" element={<Suspense fallback={<LoadingFallback />}><PolicyPage type="epr" /></Suspense>} />
+                          <Route path="/report-infringement" element={<Suspense fallback={<LoadingFallback />}><PolicyPage type="infringement" /></Suspense>} />
+                          <Route path="/payments-info" element={<Suspense fallback={<LoadingFallback />}><PolicyPage type="payments" /></Suspense>} />
+                          <Route path="/orders" element={<Navigate to="/user/orders" replace />} />
+                          <Route path="/orders/:orderId" element={<NavigateToOrderDetail />} />
                           <Route path="/settings" element={
                             <Suspense fallback={<LoadingFallback />}>
                               <UserSettings />
@@ -251,7 +274,11 @@ export default function App() {
                             </Suspense>
                           } />
 
-                          <Route path="/support-chat/:conversationId?" element={<SupportChat />} />
+                          <Route path="/support-chat/:conversationId?" element={
+                            <Suspense fallback={<LoadingFallback />}>
+                              <SupportChat />
+                            </Suspense>
+                          } />
 
                           {/* Admin Routes */}
                           <Route path="/admin" element={
@@ -474,6 +501,22 @@ export default function App() {
                                   <Route path="messages" element={
                                     <Suspense fallback={<LoadingFallback />}>
                                       <UserMessages />
+                                    </Suspense>
+                                  } />
+                                  <Route path="orders" element={
+                                    <Suspense fallback={<LoadingFallback />}>
+                                      <OrderHistory />
+                                    </Suspense>
+                                  } />
+                                  <Route path="orders/:status" element={
+                                    <Suspense fallback={<LoadingFallback />}>
+                                      <OrderHistory />
+                                    </Suspense>
+                                  } />
+                                  {/* Backend generates /user/orders/:orderId for notifications, so we handle it here */}
+                                  <Route path="orders/detail/:orderId" element={
+                                    <Suspense fallback={<LoadingFallback />}>
+                                      <UserOrderDetail />
                                     </Suspense>
                                   } />
                                 </Routes>

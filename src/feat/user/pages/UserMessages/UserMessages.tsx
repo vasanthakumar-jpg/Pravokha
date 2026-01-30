@@ -54,8 +54,8 @@ export default function UserMessages() {
     }
 
     // Navigate based on type/metadata
-    if (notification.metadata?.order_id) {
-      navigate(`/orders/${notification.metadata.order_id}`);
+    if (notification.metadata?.orderId) {
+      navigate(`/user/orders/detail/${notification.metadata.orderId}`);
     } else if (notification.type === 'order' || notification.type === 'order_cancelled') {
       // Fallback if metadata is missing (though it shouldn't be for new ones)
       // Check if message contains order number or similar if needed, 
@@ -165,7 +165,7 @@ export default function UserMessages() {
                     </p>
 
                     <div className="flex items-center gap-4 mt-2">
-                      {(notification.metadata?.order_id || notification.link) && (
+                      {(notification.metadata?.orderId || notification.link) && (
                         <Button
                           variant="link"
                           className="h-auto p-0 text-xs font-semibold text-primary group-hover:underline"

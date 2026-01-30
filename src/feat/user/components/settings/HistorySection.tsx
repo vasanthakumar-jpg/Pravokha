@@ -42,20 +42,20 @@ export const HistorySection = ({ history, orders = [], payments = [] }: HistoryS
   const displayOrders = (orders && orders.length > 0 ? orders : (history || [])).filter(
     item => !deletedItems.includes(item.id)
   );
-  
+
   const displayPayments = payments.filter(
     item => !deletedItems.includes(item.id)
   );
 
   const filteredOrders = displayOrders.filter(
-    item => 
+    item =>
       item.order_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.total?.toString().includes(searchTerm) ||
       item.order_status?.toLowerCase().includes(searchTerm)
   );
 
   const filteredPayments = displayPayments.filter(
-    item => 
+    item =>
       item.transaction_id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.amount?.toString().includes(searchTerm) ||
       item.payment_method?.toLowerCase().includes(searchTerm)
@@ -86,7 +86,7 @@ export const HistorySection = ({ history, orders = [], payments = [] }: HistoryS
   };
 
   const getStatusColor = (status: string) => {
-    switch(status?.toLowerCase()) {
+    switch (status?.toLowerCase()) {
       case 'delivered': return "bg-green-500";
       case 'shipped': return "bg-blue-500";
       case 'cancelled': return "bg-red-500";
@@ -103,23 +103,23 @@ export const HistorySection = ({ history, orders = [], payments = [] }: HistoryS
           History & Activity
         </h2>
         <div className="relative w-full sm:w-64">
-           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-           <Input 
-             placeholder="Search history..." 
-             className="pl-9" 
-             value={searchTerm}
-             onChange={(e) => setSearchTerm(e.target.value)}
-           />
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search history..."
+            className="pl-9"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
         </div>
       </div>
 
       <Tabs defaultValue="orders" value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-2 mb-6 h-auto p-1 bg-muted/50 rounded-xl">
           <TabsTrigger value="orders" className="py-2.5 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all duration-300">
-             <ShoppingBag className="h-4 w-4 mr-2" /> Orders
+            <ShoppingBag className="h-4 w-4 mr-2" /> Orders
           </TabsTrigger>
           <TabsTrigger value="transactions" className="py-2.5 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all duration-300">
-             <CreditCard className="h-4 w-4 mr-2" /> Transactions
+            <CreditCard className="h-4 w-4 mr-2" /> Transactions
           </TabsTrigger>
         </TabsList>
 
@@ -130,7 +130,7 @@ export const HistorySection = ({ history, orders = [], payments = [] }: HistoryS
                 <Card key={order.id} className="group overflow-hidden border-border/50 hover:border-primary/20 transition-all duration-300 hover:shadow-md bg-card/50">
                   <div className="flex flex-col sm:flex-row">
                     <div className={cn("w-full sm:w-1.5 h-1 sm:h-auto", getStatusColor(order.order_status))} />
-                    
+
                     <div className="flex-1 p-4 sm:p-5">
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
                         <div>
@@ -139,8 +139,8 @@ export const HistorySection = ({ history, orders = [], payments = [] }: HistoryS
                             <Badge variant="secondary" className={cn(
                               "capitalize ml-2 text-xs font-normal bg-opacity-15",
                               order.order_status === 'delivered' ? "bg-green-500 text-green-700" :
-                              order.order_status === 'cancelled' ? "bg-red-500 text-red-700" :
-                              "bg-blue-500 text-blue-700"
+                                order.order_status === 'cancelled' ? "bg-red-500 text-red-700" :
+                                  "bg-blue-500 text-blue-700"
                             )}>
                               {order.order_status}
                             </Badge>
@@ -151,22 +151,22 @@ export const HistorySection = ({ history, orders = [], payments = [] }: HistoryS
                           </p>
                         </div>
                         <div className="text-right">
-                           <p className="font-bold text-lg">₹{(order.total || order.amount || 0).toLocaleString()}</p>
+                          <p className="font-bold text-lg">₹{(order.total || order.amount || 0).toLocaleString()}</p>
                         </div>
                       </div>
 
                       <div className="flex items-center justify-between pt-2 border-t border-dashed">
-                         <Button variant="ghost" size="sm" onClick={() => handleDelete(order.id)} className="text-muted-foreground hover:text-red-600 -ml-2">
-                            <Trash2 className="h-4 w-4 mr-2" /> Delete
-                         </Button>
-                         <Button 
-                            size="sm" 
-                            variant="outline" 
-                            className="gap-2 group-hover:border-primary/50 group-hover:text-primary transition-colors"
-                            onClick={() => setSelectedOrder(order)}
-                         >
-                            View Details <ArrowRight className="h-3.5 w-3.5" />
-                         </Button>
+                        <Button variant="ghost" size="sm" onClick={() => handleDelete(order.id)} className="text-muted-foreground hover:text-red-600 -ml-2">
+                          <Trash2 className="h-4 w-4 mr-2" /> Delete
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-2 group-hover:border-primary/50 group-hover:text-primary transition-colors"
+                          onClick={() => setSelectedOrder(order)}
+                        >
+                          View Details <ArrowRight className="h-3.5 w-3.5" />
+                        </Button>
                       </div>
                     </div>
                   </div>
@@ -179,40 +179,40 @@ export const HistorySection = ({ history, orders = [], payments = [] }: HistoryS
         </TabsContent>
 
         <TabsContent value="transactions" className="space-y-4 animate-in fade-in-50 duration-300">
-           {filteredPayments.length > 0 ? (
+          {filteredPayments.length > 0 ? (
             <div className="grid gap-4">
               {filteredPayments.map((payment: any) => (
                 <Card key={payment.id} className="border-border/50 hover:border-primary/20 transition-all duration-300">
                   <CardContent className="p-4 sm:p-5 flex items-center justify-between gap-4">
-                     <div className="flex items-center gap-4">
-                        <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center shrink-0">
-                           <CreditCard className="h-5 w-5 text-muted-foreground" />
-                        </div>
-                        <div>
-                           <p className="font-medium">{payment.payment_method?.replace(/_/g, ' ').toUpperCase()}</p>
-                           <p className="text-xs text-muted-foreground font-mono mt-0.5">
-                              {payment.transaction_id || 'TXN-PENDING'}
-                           </p>
-                        </div>
-                     </div>
-                     <div className="text-right">
-                        <p className={cn(
-                           "font-bold",
-                           payment.status === 'success' ? "text-green-600" : "text-foreground"
-                        )}>
-                           {payment.status === 'refunded' ? '-' : '+'}₹{payment.amount.toLocaleString()}
+                    <div className="flex items-center gap-4">
+                      <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center shrink-0">
+                        <CreditCard className="h-5 w-5 text-muted-foreground" />
+                      </div>
+                      <div>
+                        <p className="font-medium">{payment.payment_method?.replace(/_/g, ' ').toUpperCase()}</p>
+                        <p className="text-xs text-muted-foreground font-mono mt-0.5">
+                          {payment.transaction_id || 'TXN-PENDING'}
                         </p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                           {format(new Date(payment.created_at), 'MMM dd')}
-                        </p>
-                     </div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className={cn(
+                        "font-bold",
+                        payment.status === 'success' ? "text-green-600" : "text-foreground"
+                      )}>
+                        {payment.status === 'refunded' ? '-' : '+'}₹{payment.amount.toLocaleString()}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {format(new Date(payment.created_at), 'MMM dd')}
+                      </p>
+                    </div>
                   </CardContent>
                 </Card>
               ))}
             </div>
-           ) : (
-             <EmptyState icon={CreditCard} title="No transactions" description="No payment history available." />
-           )}
+          ) : (
+            <EmptyState icon={CreditCard} title="No transactions" description="No payment history available." />
+          )}
         </TabsContent>
       </Tabs>
 
@@ -223,130 +223,137 @@ export const HistorySection = ({ history, orders = [], payments = [] }: HistoryS
             <>
               {/* Premium Header with Gradient */}
               <SheetHeader className="p-0 border-b-0 space-y-0">
-                  <div className="relative h-32 bg-gradient-to-br from-primary/90 to-primary/70 flex items-center justify-center overflow-hidden shrink-0">
-                     <div className="absolute inset-0 bg-[url('/noise.png')] opacity-10 mix-blend-overlay"></div>
-                     <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-3xl"></div>
-                     <div className="text-center text-primary-foreground relative z-10 p-4">
-                        <div className="inline-flex items-center justify-center p-2 bg-white/10 rounded-full mb-2 backdrop-blur-sm border border-white/20">
-                          <Package className="h-6 w-6 text-white" />
-                        </div>
-                        <SheetTitle className="text-xl font-bold tracking-tight text-white mb-1">Order Details</SheetTitle>
-                        <SheetDescription className="text-primary-foreground/80 text-sm">
-                            #{selectedOrder.order?.order_number || selectedOrder.id.slice(0,8).toUpperCase()}
-                        </SheetDescription>
-                     </div>
+                <div className="relative h-32 bg-gradient-to-br from-primary/90 to-primary/70 flex items-center justify-center overflow-hidden shrink-0">
+                  <div className="absolute inset-0 bg-[url('/noise.png')] opacity-10 mix-blend-overlay"></div>
+                  <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-3xl"></div>
+                  <div className="text-center text-primary-foreground relative z-10 p-4">
+                    <div className="inline-flex items-center justify-center p-2 bg-white/10 rounded-full mb-2 backdrop-blur-sm border border-white/20">
+                      <Package className="h-6 w-6 text-white" />
+                    </div>
+                    <SheetTitle className="text-xl font-bold tracking-tight text-white mb-1">Order Details</SheetTitle>
+                    <SheetDescription className="text-primary-foreground/80 text-sm">
+                      #{selectedOrder.order?.order_number || selectedOrder.id.slice(0, 8).toUpperCase()}
+                    </SheetDescription>
                   </div>
+                </div>
               </SheetHeader>
 
               <ScrollArea className="flex-1">
                 <div className="p-6 space-y-8">
-                  
+
                   {/* Status Banner */}
                   <div className="text-center space-y-2">
-                     <Badge className={cn(
-                        "px-4 py-1.5 text-sm rounded-full shadow-lg transition-all hover:scale-105 cursor-default",
-                        selectedOrder.status === 'delivered' ? "bg-green-500 hover:bg-green-600" :
+                    <Badge className={cn(
+                      "px-4 py-1.5 text-sm rounded-full shadow-lg transition-all hover:scale-105 cursor-default",
+                      selectedOrder.status === 'delivered' ? "bg-green-500 hover:bg-green-600" :
                         selectedOrder.status === 'cancelled' ? "bg-red-500 hover:bg-red-600" :
-                        "bg-primary hover:bg-primary/90"
-                     )}>
-                        {selectedOrder.status?.toUpperCase() || "PROCESSING"}
-                     </Badge>
-                     <p className="text-muted-foreground text-sm">
-                        {selectedOrder.status === 'delivered' ? "Package successfully delivered" : "We are processing your order"}
-                     </p>
+                          "bg-primary hover:bg-primary/90"
+                    )}>
+                      {selectedOrder.status?.toUpperCase() || "PROCESSING"}
+                    </Badge>
+                    <p className="text-muted-foreground text-sm">
+                      {selectedOrder.status === 'delivered' ? "Package successfully delivered" : "We are processing your order"}
+                    </p>
                   </div>
 
                   <Separator />
 
                   {/* Order Items */}
                   <div className="space-y-4">
-                     <h3 className="font-semibold flex items-center gap-2 text-sm uppercase tracking-wider text-muted-foreground">
-                        <ShoppingBag className="h-4 w-4" /> Items Purchased
-                     </h3>
-                     {selectedOrder.items && Array.isArray(selectedOrder.items) && selectedOrder.items.length > 0 ? (
-                        selectedOrder.items.map((item: any, idx: number) => (
-                           <div key={idx} className="bg-muted/30 rounded-xl p-3 border border-border/50 flex gap-4 items-start">
-                              <div className="h-16 w-16 rounded-lg bg-white overflow-hidden border shadow-sm shrink-0">
-                                 {item.image ? (
-                                    <img src={item.image} alt={item.title} className="h-full w-full object-cover" />
-                                 ) : (
-                                    <div className="h-full w-full flex items-center justify-center bg-gray-100">
-                                       <ShoppingBag className="h-6 w-6 text-gray-400" />
-                                    </div>
-                                 )}
+                    <h3 className="font-semibold flex items-center gap-2 text-sm uppercase tracking-wider text-muted-foreground">
+                      <ShoppingBag className="h-4 w-4" /> Items Purchased
+                    </h3>
+                    {selectedOrder.items && Array.isArray(selectedOrder.items) && selectedOrder.items.length > 0 ? (
+                      selectedOrder.items.map((item: any, idx: number) => {
+                        // Extract image from order item structure
+                        const imageUrl = item.image || item.product?.variants?.[0]?.images?.[0] || null;
+
+                        return (
+                          <div key={idx} className="bg-muted/30 rounded-xl p-3 border border-border/50 flex gap-4 items-start">
+                            <div className="h-16 w-16 rounded-lg bg-white overflow-hidden border shadow-sm shrink-0">
+                              {imageUrl ? (
+                                <img src={imageUrl} alt={item.title} className="h-full w-full object-cover" />
+                              ) : (
+                                <div className="h-full w-full flex items-center justify-center bg-gray-100">
+                                  <ShoppingBag className="h-6 w-6 text-gray-400" />
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-medium text-sm line-clamp-2" title={item.title}>{item.title}</h4>
+                              <div className="flex justify-between items-center mt-1">
+                                <p className="text-xs text-muted-foreground">Qty: {item.quantity}</p>
+                                <p className="font-semibold text-sm">₹{(item.price * item.quantity).toLocaleString()}</p>
                               </div>
-                              <div className="flex-1 min-w-0">
-                                 <h4 className="font-medium text-sm line-clamp-2" title={item.title}>{item.title}</h4>
-                                 <div className="flex justify-between items-center mt-1">
-                                    <p className="text-xs text-muted-foreground">Qty: {item.quantity}</p>
-                                    <p className="font-semibold text-sm">₹{(item.price * item.quantity).toLocaleString()}</p>
-                                 </div>
-                              </div>
-                           </div>
-                        ))
-                     ) : (
-                        <p className="text-sm text-muted-foreground italic">No items details available.</p>
-                     )}
+                            </div>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <p className="text-sm text-muted-foreground italic">No items details available.</p>
+                    )}
                   </div>
 
                   {/* Payment Details */}
                   <div className="space-y-4">
-                     <h3 className="font-semibold flex items-center gap-2 text-sm uppercase tracking-wider text-muted-foreground">
-                        <Receipt className="h-4 w-4" /> Payment Info
-                     </h3>
-                     <Card className="bg-card/50 border-dashed">
-                        <CardContent className="p-4 space-y-3 text-sm">
-                           <div className="flex justify-between">
-                              <span className="text-muted-foreground">Payment ID</span>
-                              <span className="font-mono">{selectedOrder.payment_id || selectedOrder.id.slice(0, 8).toUpperCase()}</span>
-                           </div>
-                           <div className="flex justify-between">
-                              <span className="text-muted-foreground">Method</span>
-                              <span className="uppercase">{selectedOrder.payment_method?.replace(/_/g, ' ') || 'N/A'}</span>
-                           </div>
-                           <div className="flex justify-between">
-                              <span className="text-muted-foreground">Status</span>
-                              <Badge variant={selectedOrder.payment_status === 'paid' ? 'secondary' : 'outline'} className="text-xs h-5 px-1.5">
-                                 {selectedOrder.payment_status?.toUpperCase() || 'PENDING'}
-                              </Badge>
-                           </div>
-                           <Separator className="my-2" />
-                           <div className="flex justify-between font-bold text-base">
-                              <span>Total Paid</span>
-                              <span className="text-primary">₹{(selectedOrder.total || selectedOrder.amount || 0).toLocaleString()}</span>
-                           </div>
-                        </CardContent>
-                     </Card>
+                    <h3 className="font-semibold flex items-center gap-2 text-sm uppercase tracking-wider text-muted-foreground">
+                      <Receipt className="h-4 w-4" /> Payment Info
+                    </h3>
+                    <Card className="bg-card/50 border-dashed">
+                      <CardContent className="p-4 space-y-3 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Payment ID</span>
+                          <span className="font-mono">{selectedOrder.payment_id || selectedOrder.id.slice(0, 8).toUpperCase()}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Method</span>
+                          <span className="uppercase">{selectedOrder.payment_method?.replace(/_/g, ' ') || 'N/A'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Status</span>
+                          <Badge variant={selectedOrder.payment_status === 'paid' ? 'secondary' : 'outline'} className="text-xs h-5 px-1.5">
+                            {selectedOrder.payment_status?.toUpperCase() || 'PENDING'}
+                          </Badge>
+                        </div>
+                        <Separator className="my-2" />
+                        <div className="flex justify-between font-bold text-base">
+                          <span>Total Paid</span>
+                          <span className="text-primary">₹{(selectedOrder.total || selectedOrder.amount || 0).toLocaleString()}</span>
+                        </div>
+                      </CardContent>
+                    </Card>
                   </div>
 
                   {/* Shipping Address */}
                   <div className="space-y-4">
-                     <h3 className="font-semibold flex items-center gap-2 text-sm uppercase tracking-wider text-muted-foreground">
-                        <Truck className="h-4 w-4" /> Delivery Address
-                     </h3>
-                     <div className="flex gap-3 text-sm text-muted-foreground bg-muted/20 p-4 rounded-xl border">
-                        <MapPin className="h-5 w-5 shrink-0 text-primary mt-0.5" />
-                        <div>
-                           <p className="font-medium text-foreground mb-1">{selectedOrder.customer_name || 'Customer'}</p>
-                           <p>{selectedOrder.shipping_address}</p>
-                           <p>{selectedOrder.shipping_city} {selectedOrder.shipping_pincode ? `- ${selectedOrder.shipping_pincode}` : ''}</p>
-                           {selectedOrder.customer_phone && (
-                              <p className="mt-2 text-xs font-mono">Ph: {selectedOrder.customer_phone}</p>
-                           )}
-                        </div>
-                     </div>
+                    <h3 className="font-semibold flex items-center gap-2 text-sm uppercase tracking-wider text-muted-foreground">
+                      <Truck className="h-4 w-4" /> Delivery Address
+                    </h3>
+                    <div className="flex gap-3 text-sm text-muted-foreground bg-muted/20 p-4 rounded-xl border">
+                      <MapPin className="h-5 w-5 shrink-0 text-primary mt-0.5" />
+                      <div>
+                        <p className="font-medium text-foreground mb-1">{selectedOrder.customer_name || selectedOrder.customerName || 'Customer'}</p>
+                        <p>{selectedOrder.shipping_address || selectedOrder.shippingAddress || 'Address not available'}</p>
+                        {(selectedOrder.shipping_city || selectedOrder.shippingCity) && (
+                          <p>{selectedOrder.shipping_city || selectedOrder.shippingCity}{(selectedOrder.shipping_pincode || selectedOrder.shippingPincode) ? ` - ${selectedOrder.shipping_pincode || selectedOrder.shippingPincode}` : ''}</p>
+                        )}
+                        {(selectedOrder.customer_phone || selectedOrder.customerPhone) && (
+                          <p className="mt-2 text-xs font-mono">Ph: {selectedOrder.customer_phone || selectedOrder.customerPhone}</p>
+                        )}
+                      </div>
+                    </div>
                   </div>
 
                 </div>
               </ScrollArea>
 
               <div className="p-4 border-t bg-muted/10 backdrop-blur-sm space-y-3">
-                 <Button className="w-full shadow-lg shadow-primary/20" size="lg" onClick={() => navigate(`/orders/${selectedOrder.id}`)}>
-                    View Full Order Details <ExternalLink className="h-4 w-4 ml-2" />
-                 </Button>
-                 <SheetClose asChild>
-                    <Button variant="ghost" className="w-full">Close</Button>
-                 </SheetClose>
+                <Button className="w-full shadow-lg shadow-primary/20" size="lg" onClick={() => navigate(`/orders/${selectedOrder.id}`)}>
+                  View Full Order Details <ExternalLink className="h-4 w-4 ml-2" />
+                </Button>
+                <SheetClose asChild>
+                  <Button variant="ghost" className="w-full">Close</Button>
+                </SheetClose>
               </div>
 
             </>
@@ -358,7 +365,7 @@ export const HistorySection = ({ history, orders = [], payments = [] }: HistoryS
         <AlertDialogContent className="rounded-xl">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2 text-destructive">
-               <AlertTriangle className="h-5 w-5" /> Delete from History
+              <AlertTriangle className="h-5 w-5" /> Delete from History
             </AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to remove this item from your history view? This action cannot be undone after the undo period expires.

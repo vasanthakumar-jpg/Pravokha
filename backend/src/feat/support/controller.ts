@@ -36,7 +36,7 @@ export class SupportController {
                     title: 'New Support Ticket',
                     message: `A new ${type.replace('_', ' ')} ticket has been submitted: ${subject}`,
                     type: 'alert',
-                    // Note: Front-end will handle the link
+                    link: `/admin/tickets` // Admin tickets page for overview
                 }));
 
                 await prisma.notification.createMany({
@@ -89,12 +89,24 @@ export class SupportController {
             return res.status(403).json({ success: false, message: 'Unauthorized' });
         }
 
-        const { isSuspendedSeller } = req.query;
+        const { isSuspendedSeller, page = '1', limit = '10' } = req.query;
 
+        const pageNum = parseInt(page as string) || 1;
+        const limitNum = parseInt(limit as string) || 10;
+        const skip = (pageNum - 1) * limitNum;
+
+        const whereClause = isSuspendedSeller !== undefined ? {
+            isSuspendedSeller: isSuspendedSeller === 'true'
+        } : {};
+
+        // Get total count for pagination
+        const total = await prisma.supportTicket.count({ where: whereClause });
+
+        // Get paginated tickets
         const tickets = await prisma.supportTicket.findMany({
-            where: isSuspendedSeller !== undefined ? {
-                isSuspendedSeller: isSuspendedSeller === 'true'
-            } : {},
+            where: whereClause,
+            skip,
+            take: limitNum,
             include: {
                 user: {
                     select: {
@@ -109,7 +121,17 @@ export class SupportController {
 
         res.json({
             success: true,
-            tickets
+            tickets,
+            pagination: {
+                page: pageNum,
+                limit: limitNum,
+                total,
+                totalPages: Math.ceil(total / limitNum)
+            },
+            // Also include at top level for backwards compatibility
+            total,
+            page: pageNum,
+            totalPages: Math.ceil(total / limitNum)
         });
     });
 

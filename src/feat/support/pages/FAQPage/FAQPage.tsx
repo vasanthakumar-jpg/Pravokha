@@ -4,6 +4,8 @@ import {
     AccordionItem,
     AccordionTrigger,
 } from "@/ui/Accordion";
+import { Card, CardContent } from "@/ui/Card";
+import { Link } from "react-router-dom";
 
 export function FAQPage() {
     const faqs = [
@@ -60,23 +62,37 @@ export function FAQPage() {
     ];
 
     return (
-        <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
-            <div className="max-w-4xl mx-auto">
-                <h1 className="text-4xl font-bold mb-4 text-center">Frequently Asked Questions</h1>
-                <p className="text-muted-foreground text-center mb-12 text-lg">
-                    Find answers to common questions about Pravokha products and services.
-                </p>
+        <div className="w-full px-4 sm:px-6 lg:px-8 py-8 sm:py-12 md:py-16">
+            <div className="max-w-3xl mx-auto space-y-6 sm:space-y-8">
+                <div className="text-center space-y-3">
+                    <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight">Frequently Asked Questions</h1>
+                    <p className="text-muted-foreground text-sm sm:text-base md:text-lg max-w-xl mx-auto leading-relaxed">
+                        Find answers to common questions about Pravokha products and services.
+                    </p>
+                </div>
 
-                <Accordion type="single" collapsible className="w-full">
-                    {faqs.map((faq, index) => (
-                        <AccordionItem key={index} value={`item-${index}`}>
-                            <AccordionTrigger className="text-left">{faq.question}</AccordionTrigger>
-                            <AccordionContent className="text-muted-foreground">
-                                {faq.answer}
-                            </AccordionContent>
-                        </AccordionItem>
-                    ))}
-                </Accordion>
+                <Card className="border-primary/5 shadow-sm overflow-hidden rounded-2xl">
+                    <CardContent className="p-0">
+                        <Accordion type="single" collapsible className="w-full">
+                            {faqs.map((faq, index) => (
+                                <AccordionItem key={index} value={`item-${index}`} className="border-b last:border-0 px-4 sm:px-6">
+                                    <AccordionTrigger className="text-left text-sm sm:text-base font-semibold hover:no-underline py-4 sm:py-5 group">
+                                        <span className="group-hover:text-primary transition-colors">{faq.question}</span>
+                                    </AccordionTrigger>
+                                    <AccordionContent className="text-muted-foreground text-xs sm:text-sm leading-relaxed pb-4 sm:pb-5">
+                                        {faq.answer}
+                                    </AccordionContent>
+                                </AccordionItem>
+                            ))}
+                        </Accordion>
+                    </CardContent>
+                </Card>
+
+                <div className="text-center pt-8">
+                    <p className="text-xs sm:text-sm text-muted-foreground">
+                        Still have questions? <Link to="/support" className="text-primary font-bold hover:underline">Contact our support team</Link>
+                    </p>
+                </div>
             </div>
         </div>
     );

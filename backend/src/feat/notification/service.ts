@@ -35,8 +35,13 @@ export class NotificationService {
 
     // Helper to get role-based order link
     private static getOrderLink(role: Role, orderId?: string): string {
-        const base = role === 'ADMIN' ? '/admin/orders' : role === 'DEALER' ? '/seller/orders' : '/user/orders';
-        return orderId ? `${base}/${orderId}` : base;
+        const base = role === Role.ADMIN ? '/admin/orders' : role === Role.DEALER ? '/seller/orders' : '/user/orders';
+        if (orderId) {
+            // ALWAYS navigate to detail/timeline page for Users
+            if (role === Role.USER) return `/user/orders/detail/${orderId}`;
+            return `${base}/${orderId}`;
+        }
+        return base;
     }
 
     // ORDER PLACED - Notify User

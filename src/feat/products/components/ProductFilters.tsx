@@ -65,7 +65,7 @@ export function ProductFilters({
 
             <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
                 <Select value={categoryFilter} onValueChange={onCategoryFilterChange}>
-                    <SelectTrigger className="w-full sm:w-[160px] h-10 rounded-xl">
+                    <SelectTrigger className="w-full sm:w-auto min-w-[140px] h-10 rounded-xl whitespace-nowrap">
                         <Filter className="h-3.5 w-3.5 mr-1.5 shrink-0" />
                         <SelectValue placeholder="Category" />
                     </SelectTrigger>
@@ -79,7 +79,7 @@ export function ProductFilters({
                 </Select>
 
                 <Select value={statusFilter} onValueChange={(v) => onStatusFilterChange(v as ProductStatusFilter)}>
-                    <SelectTrigger className="w-full sm:w-[130px] h-10 rounded-xl">
+                    <SelectTrigger className="w-full sm:w-auto min-w-[110px] h-10 rounded-xl whitespace-nowrap">
                         <SelectValue placeholder="Status" />
                     </SelectTrigger>
                     <SelectContent>

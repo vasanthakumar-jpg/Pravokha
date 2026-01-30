@@ -1,5 +1,6 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/ui/Table";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/ui/Card";
+import { Link } from "react-router-dom";
 
 export function SizeGuidePage() {
     const tshirtSizes = [
@@ -21,123 +22,116 @@ export function SizeGuidePage() {
     ];
 
     return (
-        <div className="container py-8">
-            <div className="max-w-5xl mx-auto">
-                <h1 className="text-4xl font-bold mb-4 text-center">Size Guide</h1>
-                <p className="text-muted-foreground text-center mb-12 text-lg">
-                    Find your perfect fit with our detailed size charts. All measurements are in inches.
-                </p>
+        <div className="w-full px-4 sm:px-6 lg:px-8 py-8 sm:py-12 md:py-16">
+            <div className="max-w-4xl mx-auto space-y-8 sm:space-y-12">
+                <div className="text-center space-y-3">
+                    <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight">Size Guide</h1>
+                    <p className="text-muted-foreground text-sm sm:text-base md:text-lg max-w-2xl mx-auto leading-relaxed">
+                        Find your perfect fit with our detailed size charts. All measurements are in inches.
+                    </p>
+                </div>
 
-                <div className="space-y-8">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>T-Shirts</CardTitle>
-                            <CardDescription>
+                <div className="grid gap-8">
+                    {/* T-Shirts Section */}
+                    <Card className="border-primary/5 shadow-sm overflow-hidden rounded-2xl">
+                        <CardHeader className="bg-muted/30 pb-4 sm:pb-6">
+                            <CardTitle className="text-lg sm:text-xl font-bold">T-Shirts</CardTitle>
+                            <CardDescription className="text-xs sm:text-sm font-medium">
                                 Measurements for chest, length, and shoulder width
                             </CardDescription>
                         </CardHeader>
-                        <CardContent>
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Size</TableHead>
-                                        <TableHead>Chest (inches)</TableHead>
-                                        <TableHead>Length (inches)</TableHead>
-                                        <TableHead>Shoulder (inches)</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {tshirtSizes.map((size) => (
-                                        <TableRow key={size.size}>
-                                            <TableCell className="font-medium">{size.size}</TableCell>
-                                            <TableCell>{size.chest}</TableCell>
-                                            <TableCell>{size.length}</TableCell>
-                                            <TableCell>{size.shoulder}</TableCell>
+                        <CardContent className="p-0">
+                            <div className="overflow-x-auto custom-scrollbar">
+                                <Table>
+                                    <TableHeader className="bg-muted/50">
+                                        <TableRow>
+                                            <TableHead className="font-bold text-[11px] sm:text-xs uppercase tracking-wider">Size</TableHead>
+                                            <TableHead className="font-bold text-[11px] sm:text-xs uppercase tracking-wider">Chest (in)</TableHead>
+                                            <TableHead className="font-bold text-[11px] sm:text-xs uppercase tracking-wider">Length (in)</TableHead>
+                                            <TableHead className="font-bold text-[11px] sm:text-xs uppercase tracking-wider">Shoulder (in)</TableHead>
                                         </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {tshirtSizes.map((size) => (
+                                            <TableRow key={size.size} className="hover:bg-muted/20 transition-colors">
+                                                <TableCell className="font-black text-primary text-xs sm:text-sm">{size.size}</TableCell>
+                                                <TableCell className="text-xs sm:text-sm font-medium">{size.chest}</TableCell>
+                                                <TableCell className="text-xs sm:text-sm font-medium">{size.length}</TableCell>
+                                                <TableCell className="text-xs sm:text-sm font-medium">{size.shoulder}</TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
                         </CardContent>
                     </Card>
 
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Track Pants & Shorts</CardTitle>
-                            <CardDescription>
+                    {/* Pants Section */}
+                    <Card className="border-primary/5 shadow-sm overflow-hidden rounded-2xl">
+                        <CardHeader className="bg-muted/30 pb-4 sm:pb-6">
+                            <CardTitle className="text-lg sm:text-xl font-bold">Track Pants & Shorts</CardTitle>
+                            <CardDescription className="text-xs sm:text-sm font-medium">
                                 Measurements for waist, hip, and length
                             </CardDescription>
                         </CardHeader>
-                        <CardContent>
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Size</TableHead>
-                                        <TableHead>Waist (inches)</TableHead>
-                                        <TableHead>Hip (inches)</TableHead>
-                                        <TableHead>Length (inches)</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {pantsSizes.map((size) => (
-                                        <TableRow key={size.size}>
-                                            <TableCell className="font-medium">{size.size}</TableCell>
-                                            <TableCell>{size.waist}</TableCell>
-                                            <TableCell>{size.hip}</TableCell>
-                                            <TableCell>{size.length}</TableCell>
+                        <CardContent className="p-0">
+                            <div className="overflow-x-auto custom-scrollbar">
+                                <Table>
+                                    <TableHeader className="bg-muted/50">
+                                        <TableRow>
+                                            <TableHead className="font-bold text-[11px] sm:text-xs uppercase tracking-wider">Size</TableHead>
+                                            <TableHead className="font-bold text-[11px] sm:text-xs uppercase tracking-wider">Waist (in)</TableHead>
+                                            <TableHead className="font-bold text-[11px] sm:text-xs uppercase tracking-wider">Hip (in)</TableHead>
+                                            <TableHead className="font-bold text-[11px] sm:text-xs uppercase tracking-wider">Length (in)</TableHead>
                                         </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>How to Measure</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div>
-                                <h3 className="font-semibold mb-2">Chest</h3>
-                                <p className="text-muted-foreground">
-                                    Measure around the fullest part of your chest, keeping the tape parallel to the floor.
-                                </p>
-                            </div>
-                            <div>
-                                <h3 className="font-semibold mb-2">Length</h3>
-                                <p className="text-muted-foreground">
-                                    Measure from the highest point of the shoulder to the hem.
-                                </p>
-                            </div>
-                            <div>
-                                <h3 className="font-semibold mb-2">Shoulder</h3>
-                                <p className="text-muted-foreground">
-                                    Measure from one shoulder point to the other across the back.
-                                </p>
-                            </div>
-                            <div>
-                                <h3 className="font-semibold mb-2">Waist</h3>
-                                <p className="text-muted-foreground">
-                                    Measure around your natural waistline, keeping the tape comfortably loose.
-                                </p>
-                            </div>
-                            <div>
-                                <h3 className="font-semibold mb-2">Hip</h3>
-                                <p className="text-muted-foreground">
-                                    Measure around the fullest part of your hips.
-                                </p>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {pantsSizes.map((size) => (
+                                            <TableRow key={size.size} className="hover:bg-muted/20 transition-colors">
+                                                <TableCell className="font-black text-primary text-xs sm:text-sm">{size.size}</TableCell>
+                                                <TableCell className="text-xs sm:text-sm font-medium">{size.waist}</TableCell>
+                                                <TableCell className="text-xs sm:text-sm font-medium">{size.hip}</TableCell>
+                                                <TableCell className="text-xs sm:text-sm font-medium">{size.length}</TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
                             </div>
                         </CardContent>
                     </Card>
 
-                    <Card className="bg-muted">
-                        <CardContent className="pt-6">
-                            <p className="text-center text-sm text-muted-foreground">
-                                <strong>Tip:</strong> If you're between sizes, we recommend sizing up for a more comfortable fit.
-                                For any questions about sizing, please{" "}
-                                <a href="/contact" className="text-primary hover:underline">
-                                    contact our support team
-                                </a>
-                                .
+                    {/* Measuring Guide */}
+                    <div className="grid sm:grid-cols-2 gap-6 sm:gap-8 pt-4">
+                        <div className="space-y-4 sm:space-y-6">
+                            <h2 className="text-xl sm:text-2xl font-bold tracking-tight">How to Measure</h2>
+                            <p className="text-sm text-primary font-bold">Follow these steps to get your perfect size:</p>
+                        </div>
+                        <div className="grid gap-6">
+                            {[
+                                { title: "Chest", desc: "Measure around the fullest part of your chest, keeping the tape parallel to the floor." },
+                                { title: "Length", desc: "Measure from the highest point of the shoulder to the hem." },
+                                { title: "Waist", desc: "Measure around your natural waistline, keeping the tape comfortably loose." },
+                                { title: "Hip", desc: "Measure around the fullest part of your hips." }
+                            ].map((item, i) => (
+                                <div key={i} className="flex gap-4 group">
+                                    <span className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary font-black text-xs group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-300">
+                                        {i + 1}
+                                    </span>
+                                    <div className="space-y-1">
+                                        <h3 className="font-bold text-sm sm:text-base">{item.title}</h3>
+                                        <p className="text-[11px] sm:text-xs text-muted-foreground leading-relaxed">{item.desc}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <Card className="bg-primary/5 border-primary/10 shadow-none rounded-2xl">
+                        <CardContent className="p-4 sm:p-6 text-center">
+                            <p className="text-xs sm:text-sm text-muted-foreground font-medium">
+                                <span className="text-primary font-bold">Fit Tip:</span> If you're between sizes, we recommend sizing up for a more comfortable fit.
+                                <br className="hidden sm:block" />
+                                Still unsure? <Link to="/support" className="text-primary font-bold hover:underline">Contact our support team</Link> for sizing help.
                             </p>
                         </CardContent>
                     </Card>

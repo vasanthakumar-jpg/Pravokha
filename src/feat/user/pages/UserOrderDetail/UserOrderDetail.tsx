@@ -55,20 +55,38 @@ export default function UserOrderDetail() {
 
    const loadOrder = async () => {
       try {
-         const { data: orderData } = await apiClient.get(`/orders/${orderId}`);
-         setOrder(orderData);
+         const { data: orderResponse } = await apiClient.get(`/orders/${orderId}`);
+         const rawOrder = orderResponse.data;
 
-         // Fetch history if not included in orderData
-         // Assuming separate endpoint for consistency with other pages
+         if (rawOrder) {
+            const transformedOrder = {
+               ...rawOrder,
+               order_number: rawOrder.orderNumber,
+               order_status: rawOrder.status,
+               created_at: rawOrder.createdAt,
+               // Ensure address and payment fields are mapped correctly from camelCase
+               shipping_address: rawOrder.shippingAddress || rawOrder.shipping_address,
+               shipping_city: rawOrder.shippingCity || rawOrder.shipping_city,
+               shipping_pincode: rawOrder.shippingPincode || rawOrder.shipping_pincode,
+               payment_method: rawOrder.paymentMethod || rawOrder.payment_method,
+               payment_status: rawOrder.paymentStatus || rawOrder.payment_status,
+               customer_name: rawOrder.customerName || rawOrder.customer_name,
+               customer_phone: rawOrder.customerPhone || rawOrder.customer_phone,
+               tracking_number: rawOrder.trackingNumber || rawOrder.tracking_number,
+               total: rawOrder.total,
+            };
+            setOrder(transformedOrder);
+         } else {
+            setOrder(null);
+         }
+
+         // Fetch history if not included in rawOrder
          try {
-            // If history is included in orderData, use it. Otherwise fetch.
-            // For now, let's assume we might need to fetch or it's part of orderData.
-            // If orderData.history exists:
-            if (orderData.history) {
-               setOrderHistory(orderData.history);
+            if (rawOrder.history) {
+               setOrderHistory(rawOrder.history);
             } else {
-               const { data: historyData } = await apiClient.get(`/orders/${orderId}/history`);
-               setOrderHistory(historyData || []);
+               const { data: historyResponse } = await apiClient.get(`/orders/${orderId}/history`);
+               setOrderHistory(historyResponse.data || []);
             }
          } catch (e) {
             console.warn("Could not fetch history separately", e);
@@ -239,16 +257,16 @@ export default function UserOrderDetail() {
          {/* Header */}
          <div className="mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
             <div className="w-full">
-               <Button variant="ghost" onClick={() => navigate('/seller/orders')} className="pl-0 text-muted-foreground hover:text-foreground -ml-2 mb-2">
+               <Button variant="ghost" onClick={() => navigate('/user/orders')} className="pl-0 text-muted-foreground hover:text-foreground -ml-2 mb-2">
                   <ArrowLeft className="h-4 w-4 mr-2" />
                   Back to Orders
                </Button>
                <div className="flex items-center justify-between gap-2 w-full">
                   <h1 className="text-sm sm:text-2xl md:text-3xl font-bold tracking-tight break-all sm:break-normal">Order #{order.order_number}</h1>
                   <Badge className={cn("text-white h-5 sm:h-7 px-2 sm:px-3 text-[10px] sm:text-sm font-medium whitespace-nowrap",
-                     order.order_status === 'delivered' ? "bg-green-600" :
-                        order.order_status === 'cancelled' ? "bg-red-600" :
-                           order.order_status === 'packed' ? "bg-purple-600" :
+                     order.order_status?.toLowerCase() === 'delivered' ? "bg-green-600" :
+                        order.order_status?.toLowerCase() === 'cancelled' ? "bg-red-600" :
+                           order.order_status?.toLowerCase() === 'packed' ? "bg-purple-600" :
                               "bg-primary"
                   )}>
                      {order.order_status?.toUpperCase()}
@@ -269,7 +287,7 @@ export default function UserOrderDetail() {
                      Invoice
                   </Button>
                )}
-               {(order.order_status === 'pending' || order.order_status === 'confirmed') && (
+               {(order.order_status?.toLowerCase() === 'pending' || order.order_status?.toLowerCase() === 'confirmed') && (
                   <Button variant="destructive" size="sm" onClick={handleCancelOrder} className="h-10 w-full sm:w-auto justify-center sm:min-w-[120px]">
                      <XCircle className="h-4 w-4 mr-2" />
                      Cancel Order
@@ -293,7 +311,7 @@ export default function UserOrderDetail() {
                   </CardHeader>
                   <CardContent>
                      <OrderTimeline
-                        status={order.order_status}
+                        status={order.order_status?.toLowerCase()}
                         createdAt={order.created_at}
                         trackingUpdates={timelineUpdates}
                         onDelete={handleDeleteHistory}
@@ -420,14 +438,29 @@ export default function UserOrderDetail() {
                      </div>
 
                      <div className="pt-4 space-y-3">
-                        <div className="flex items-center justify-between text-sm p-3 bg-muted/50 rounded-lg">
-                           <div className="flex items-center gap-2">
-                              <CreditCard className="h-4 w-4 text-muted-foreground" />
-                              <span>Payment</span>
+                        <div className="flex flex-col gap-3 p-4 bg-muted/40 border border-border/50 rounded-lg">
+                           <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                 <CreditCard className="h-4 w-4 text-primary" />
+                                 <span className="font-medium text-sm">Payment Method</span>
+                              </div>
+                              <span className="capitalize text-sm font-medium">
+                                 {order.payment_method === "upi" ? "UPI" :
+                                    order.payment_method === "qr" ? "QR Code" :
+                                       order.payment_method === "cod" ? "Cash on Delivery" :
+                                          order.payment_method || "N/A"}
+                              </span>
                            </div>
-                           <Badge variant={order.payment_status === 'paid' ? 'default' : 'outline'}>
-                              {order.payment_status}
-                           </Badge>
+                           <Separator className="bg-border/50" />
+                           <div className="flex items-center justify-between">
+                              <span className="text-sm text-muted-foreground">Payment Status</span>
+                              <Badge variant={order.payment_status === 'paid' ? 'default' : 'secondary'} className={cn(
+                                 "capitalize shadow-sm",
+                                 order.payment_status === 'paid' ? "bg-green-600 hover:bg-green-700" : ""
+                              )}>
+                                 {order.payment_status || "Pending"}
+                              </Badge>
+                           </div>
                         </div>
                      </div>
                   </CardContent>

@@ -10,6 +10,7 @@ import { useAuth } from "@/core/context/AuthContext";
 import { toast } from "@/shared/hook/use-toast";
 import { cn } from "@/lib/utils";
 import { Loader2, Send, ArrowLeft, Clock, Shield, Paperclip, Lock, ShieldAlert, MessageSquare, Check, AlertCircle } from "lucide-react";
+import { ImagePreviewModal } from "@/shared/ui/ImagePreviewModal/ImagePreviewModal";
 
 interface Ticket {
     id: string;
@@ -51,6 +52,12 @@ export function TicketDetailPage() {
     const [loading, setLoading] = useState(true);
     const [sending, setSending] = useState(false);
     const [newMessage, setNewMessage] = useState("");
+
+    const [imagePreview, setImagePreview] = useState<{ isOpen: boolean; images: string[]; initialIndex: number }>({
+        isOpen: false,
+        images: [],
+        initialIndex: 0
+    });
 
     const [isAdmin, setIsAdmin] = useState(false);
     const [ticketUser, setTicketUser] = useState<any>(null);
@@ -321,22 +328,41 @@ export function TicketDetailPage() {
 
                         {ticket.evidence_urls && ticket.evidence_urls.length > 0 && (
                             <div className="pt-2">
-                                <h3 className="text-xs sm:text-sm font-bold mb-2 flex items-center gap-2">
+                                <h3 className="text-xs sm:text-sm font-bold mb-3 flex items-center gap-2">
                                     <Paperclip className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                                     Evidence Attached:
                                 </h3>
-                                <div className="flex flex-wrap gap-2">
-                                    {ticket.evidence_urls.map((url, index) => (
-                                        <a
-                                            key={index}
-                                            href={url}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-primary/5 text-primary border border-primary/10 rounded-full hover:bg-primary/10 transition-colors text-[10px] sm:text-xs font-medium"
-                                        >
-                                            Attachment {index + 1}
-                                        </a>
-                                    ))}
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                    {ticket.evidence_urls.map((url, index) => {
+                                        const isImage = /\.(jpg|jpeg|png|webp|gif|svg)$/i.test(url);
+                                        return isImage ? (
+                                            <div
+                                                key={index}
+                                                className="group relative aspect-square rounded-xl overflow-hidden border border-border shadow-sm bg-muted/30 hover:shadow-md transition-all cursor-pointer"
+                                                onClick={() => setImagePreview({ isOpen: true, images: ticket.evidence_urls!.filter(u => /\.(jpg|jpeg|png|webp|gif|svg)$/i.test(u)), initialIndex: ticket.evidence_urls!.filter(u => /\.(jpg|jpeg|png|webp|gif|svg)$/i.test(u)).indexOf(url) })}
+                                            >
+                                                <img
+                                                    src={url}
+                                                    alt={`Evidence ${index + 1}`}
+                                                    className="w-full h-full object-cover transition-transform group-hover:scale-110"
+                                                />
+                                                <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity text-white text-[10px] font-bold">
+                                                    Click to Preview
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <a
+                                                key={index}
+                                                href={url}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="flex items-center gap-2 p-3 bg-primary/5 text-primary border border-primary/10 rounded-xl hover:bg-primary/10 transition-all text-xs font-bold"
+                                            >
+                                                <Paperclip className="h-4 w-4" />
+                                                File {index + 1}
+                                            </a>
+                                        );
+                                    })}
                                 </div>
                             </div>
                         )}
@@ -475,6 +501,14 @@ export function TicketDetailPage() {
                     </CardContent>
                 </Card>
             )}
+
+            {/* Image Preview Modal */}
+            <ImagePreviewModal
+                images={imagePreview.images}
+                initialIndex={imagePreview.initialIndex}
+                isOpen={imagePreview.isOpen}
+                onClose={() => setImagePreview({ isOpen: false, images: [], initialIndex: 0 })}
+            />
         </div>
     );
 }

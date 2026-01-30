@@ -29,7 +29,7 @@ export const InteractiveStarRating = ({
     const [hoverRating, setHoverRating] = useState(0);
 
     const iconSize = {
-        sm: "h-4 w-4",
+        sm: "h-3 w-3 sm:h-4 sm:w-4",
         md: "h-6 w-6",
         lg: "h-8 w-8",
     }[size];
