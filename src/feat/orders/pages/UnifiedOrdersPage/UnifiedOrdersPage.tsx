@@ -55,6 +55,7 @@ import { format } from "date-fns";
 import { OrderCancellationReasonDialog } from "@/feat/orders/components/OrderCancellationReasonDialog";
 import { toast } from "@/shared/hook/use-toast";
 import { generateInvoicePDF } from "@/shared/util/invoiceGenerator";
+import { NoResultsFound } from "@/feat/admin/components/NoResultsFound";
 
 interface Order {
     id: string;
@@ -131,15 +132,31 @@ export default function UnifiedOrdersPage() {
     const [myOrderDeleteDialogOpen, setMyOrderDeleteDialogOpen] = useState(false);
     const [myOrderToDelete, setMyOrderToDelete] = useState<Order | null>(null);
 
+    const [debouncedSearch, setDebouncedSearch] = useState("");
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(searchQuery);
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
+
     useEffect(() => {
         checkUserRole();
     }, [user]);
 
     useEffect(() => {
         if (user && userRole) {
+            setCurrentPage(1); // Reset to first page on filter change
             fetchOrders();
         }
-    }, [user, userRole, currentPage, mainTab]);
+    }, [user, userRole, statusFilter, debouncedSearch, mainTab]);
+
+    useEffect(() => {
+        if (user && userRole) {
+            fetchOrders();
+        }
+    }, [currentPage]);
 
     useEffect(() => {
         filterOrders();
@@ -179,7 +196,9 @@ export default function UnifiedOrdersPage() {
             const params = {
                 page: currentPage,
                 limit: pageSize,
-                type: type
+                type: type,
+                search: debouncedSearch || undefined,
+                status: statusFilter !== 'all' ? statusFilter : undefined
             };
 
             const response = await apiClient.get('/orders', { params });
@@ -242,6 +261,11 @@ export default function UnifiedOrdersPage() {
         else source = platformOrders;
 
         let filtered = [...source];
+        // Server-side filtering is now active, but we keep this for immediate UI feedback if needed
+        // or simply pass the source if we trust the server response 100%
+
+        // Actually, since we fetch on every filter change now, 
+        // the source IS the filtered results.
 
         if (statusFilter !== 'all') {
             filtered = filtered.filter(order => order.status === statusFilter);
@@ -559,10 +583,14 @@ export default function UnifiedOrdersPage() {
                     {/* Mobile Card View (My Orders) */}
                     <div className="grid gap-2 sm:hidden">
                         {filteredMyOrders.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground bg-muted/20 rounded-lg border border-dashed border-muted-foreground/25">
-                                <ShoppingBag className="w-12 h-12 opacity-20 mb-2" />
-                                <p>No orders found</p>
-                            </div>
+                            <NoResultsFound
+                                searchTerm={searchQuery}
+                                onReset={() => {
+                                    setSearchQuery("");
+                                    setStatusFilter("all");
+                                }}
+                                className="my-8"
+                            />
                         ) : (
                             filteredMyOrders.map((order) => (
                                 <Card key={order.id} className="overflow-hidden border shadow-sm bg-card text-card-foreground">
@@ -623,11 +651,15 @@ export default function UnifiedOrdersPage() {
                                 <TableBody>
                                     {filteredMyOrders.length === 0 ? (
                                         <TableRow>
-                                            <TableCell colSpan={6} className="h-48 text-center bg-card">
-                                                <div className="flex flex-col items-center justify-center text-muted-foreground gap-2">
-                                                    <ShoppingBag className="w-10 h-10 opacity-20" />
-                                                    <p>No orders found</p>
-                                                </div>
+                                            <TableCell colSpan={6} className="p-0">
+                                                <NoResultsFound
+                                                    searchTerm={searchQuery}
+                                                    onReset={() => {
+                                                        setSearchQuery("");
+                                                        setStatusFilter("all");
+                                                    }}
+                                                    className="border-none bg-transparent py-12"
+                                                />
                                             </TableCell>
                                         </TableRow>
                                     ) : (
@@ -729,10 +761,14 @@ export default function UnifiedOrdersPage() {
                     {/* Mobile Card View (Customer Orders) */}
                     <div className="grid gap-2 sm:hidden">
                         {filteredCustomerOrders.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground bg-muted/20 rounded-lg border border-dashed border-muted-foreground/25">
-                                <Users className="w-12 h-12 opacity-20 mb-2" />
-                                <p>No customer orders yet</p>
-                            </div>
+                            <NoResultsFound
+                                searchTerm={searchQuery}
+                                onReset={() => {
+                                    setSearchQuery("");
+                                    setStatusFilter("all");
+                                }}
+                                className="my-8"
+                            />
                         ) : (
                             filteredCustomerOrders.map((order) => (
                                 <Card key={order.id} className="overflow-hidden border shadow-sm bg-card text-card-foreground">
@@ -787,11 +823,15 @@ export default function UnifiedOrdersPage() {
                                 <TableBody>
                                     {filteredCustomerOrders.length === 0 ? (
                                         <TableRow>
-                                            <TableCell colSpan={7} className="h-48 text-center text-muted-foreground bg-card">
-                                                <div className="flex flex-col items-center justify-center gap-2">
-                                                    <Users className="w-10 h-10 opacity-20" />
-                                                    <p>No customer orders yet</p>
-                                                </div>
+                                            <TableCell colSpan={7} className="p-0">
+                                                <NoResultsFound
+                                                    searchTerm={searchQuery}
+                                                    onReset={() => {
+                                                        setSearchQuery("");
+                                                        setStatusFilter("all");
+                                                    }}
+                                                    className="border-none bg-transparent py-12"
+                                                />
                                             </TableCell>
                                         </TableRow>
                                     ) : (
@@ -903,11 +943,15 @@ export default function UnifiedOrdersPage() {
                                     <TableBody>
                                         {filteredPlatformOrders.length === 0 ? (
                                             <TableRow>
-                                                <TableCell colSpan={7} className="h-48 text-center text-muted-foreground bg-card">
-                                                    <div className="flex flex-col items-center justify-center gap-2">
-                                                        <Package className="w-10 h-10 opacity-20" />
-                                                        <p>No Marketplace Orders Yet</p>
-                                                    </div>
+                                                <TableCell colSpan={7} className="p-0">
+                                                    <NoResultsFound
+                                                        searchTerm={searchQuery}
+                                                        onReset={() => {
+                                                            setSearchQuery("");
+                                                            setStatusFilter("all");
+                                                        }}
+                                                        className="border-none bg-transparent py-12"
+                                                    />
                                                 </TableCell>
                                             </TableRow>
                                         ) : (
