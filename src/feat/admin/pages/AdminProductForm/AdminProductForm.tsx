@@ -17,7 +17,7 @@ import { useToast } from "@/shared/hook/use-toast";
 import {
     ArrowLeft, Upload, X, Plus, Save, Loader2, Package,
     Eye, Layout, Layers, Image as ImageIcon, Briefcase, Info, TrendingUp, Trash2,
-    ShieldCheck,
+    Shield,
     XCircle
 } from "lucide-react";
 import { SIZES, COLORS } from "@/data/products";
@@ -590,7 +590,7 @@ export default function AdminProductForm() {
                                 <TabsContent value="general" className="m-0 space-y-6">
                                     <Card className="border-border/50 bg-card/60 backdrop-blur-xl rounded-3xl overflow-hidden">
                                         <CardHeader>
-                                            <CardTitle className="text-lg flex items-center gap-2 font-bold"><ShieldCheck className="h-5 w-5 text-primary" /> Authority & Status</CardTitle>
+                                            <CardTitle className="text-lg flex items-center gap-2 font-bold"><Shield className="h-5 w-5 text-primary" /> Authority & Status</CardTitle>
                                         </CardHeader>
                                         <CardContent className="space-y-6">
                                             <div className="flex items-center justify-between p-4 rounded-2xl bg-muted/20 border border-border/40">

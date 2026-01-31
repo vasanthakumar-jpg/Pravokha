@@ -34,6 +34,7 @@ import { format, subDays, startOfDay, endOfDay, eachDayOfInterval } from "date-f
 import { useAdmin } from "@/core/context/AdminContext";
 
 import { AdminSkeleton, AdminHeaderSkeleton } from "@/feat/admin/components/AdminSkeleton";
+import { NoResultsFound } from "@/feat/admin/components/NoResultsFound";
 import { StatsCard } from "@/feat/admin/components/StatsCard";
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
@@ -87,7 +88,7 @@ export default function AdminReports() {
           limit: 1000 // Ensure we get significant data for analytics
         }
       });
-      const orders = response.data.data || [];
+      const orders = response.data?.data || [];
 
       // 3. Calculate KPI Stats
       const revenue = orders?.reduce((sum: number, order: any) => sum + (order.total || 0), 0) || 0;
@@ -97,7 +98,7 @@ export default function AdminReports() {
       const sellerResponse = await apiClient.get('/users', {
         params: { role: 'DEALER' }
       });
-      const sellerCount = sellerResponse.data.count || 0;
+      const sellerCount = sellerResponse.data?.count || 0;
 
       setStats(prev => ({
         ...prev,
@@ -388,7 +389,7 @@ export default function AdminReports() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {topProducts
+              {(topProducts
                 .filter(product => {
                   if (productFilter === "all") return true;
                   if (productFilter === "high-sales") return product.sales > 10;
@@ -397,27 +398,42 @@ export default function AdminReports() {
                     return revenue > 5000;
                   }
                   return true;
-                })
-                .map((product) => (
-                  <TableRow key={product.id} className="hover:bg-primary/5 transition-colors border-border/40">
-                    <TableCell className="px-6 py-4 font-bold text-sm tracking-tight">{product.name}</TableCell>
-                    <TableCell className="text-right font-bold text-sm">{product.sales}</TableCell>
-                    <TableCell className="text-right font-bold text-sm">{product.revenue}</TableCell>
-                    <TableCell className="text-right pr-10">
-                      <Badge variant={product.growth.startsWith('+') ? 'default' : 'destructive'} className="bg-emerald-500/10 text-emerald-600 border-none shadow-none font-bold text-[10px] px-2 py-0.5 rounded-lg">
-                        {product.growth}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                })).length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={4} className="p-0">
+                    <NoResultsFound
+                      searchTerm={productFilter !== "all" ? productFilter : ""}
+                      onReset={() => setProductFilter("all")}
+                      className="border-none bg-transparent py-12"
+                    />
+                  </TableCell>
+                </TableRow>
+              ) : (
+                topProducts
+                  .filter(product => {
+                    if (productFilter === "all") return true;
+                    if (productFilter === "high-sales") return product.sales > 10;
+                    if (productFilter === "top-revenue") {
+                      const revenue = parseInt(product.revenue.replace(/[^0-9]/g, ''));
+                      return revenue > 5000;
+                    }
+                    return true;
+                  })
+                  .map((product) => (
+                    <TableRow key={product.id} className="hover:bg-primary/5 transition-colors border-border/40">
+                      <TableCell className="px-6 py-4 font-bold text-sm tracking-tight">{product.name}</TableCell>
+                      <TableCell className="text-right font-bold text-sm">{product.sales}</TableCell>
+                      <TableCell className="text-right font-bold text-sm">{product.revenue}</TableCell>
+                      <TableCell className="text-right pr-10">
+                        <Badge variant={product.growth.startsWith('+') ? 'default' : 'destructive'} className="bg-emerald-500/10 text-emerald-600 border-none shadow-none font-bold text-[10px] px-2 py-0.5 rounded-lg">
+                          {product.growth}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))
+              )}
             </TableBody>
           </Table>
-          {topProducts.length === 0 && (
-            <div className="py-20 text-center">
-              <ShoppingBag className="h-10 w-10 mx-auto mb-4 opacity-10" />
-              <p className="font-bold text-muted-foreground/30 text-sm">No transaction telemetry found</p>
-            </div>
-          )}
         </CardContent>
       </Card>
     </div>

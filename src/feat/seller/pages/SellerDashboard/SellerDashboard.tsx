@@ -45,14 +45,14 @@ export default function SellerDashboard() {
 
   // Authorization Guard
   useEffect(() => {
-    if (!authLoading && role !== 'seller' && role !== 'admin' && role !== 'DEALER') {
+    if (!authLoading && role !== 'DEALER' && role !== 'ADMIN') {
       console.warn("[SellerDashboard] Unauthorized role access attempt:", role);
       navigate("/auth");
     }
   }, [role, authLoading, navigate]);
 
   useEffect(() => {
-    if (!authLoading && (role === 'seller' || role === 'admin' || role === 'DEALER')) {
+    if (!authLoading && (role === 'DEALER' || role === 'ADMIN')) {
       fetchSellerData();
     }
   }, [user, authLoading, role]);

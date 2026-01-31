@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Star, ShoppingCart, ShieldCheck, Eye } from "lucide-react";
+import { Star, ShoppingCart, Shield, Eye } from "lucide-react";
 import { TbHeartPlus } from "react-icons/tb";
 import { CardContent } from "@/ui/Card";
 import { Badge } from "@/ui/Badge";
@@ -174,7 +174,7 @@ export function ProductCard({ product }: ProductCardProps) {
                     )}
                     {isVerified && (
                         <Badge className={styles.badgeVerified}>
-                            <ShieldCheck className="h-2 w-2" /> Verified
+                            <Shield className="h-2 w-2" /> Verified
                         </Badge>
                     )}
                 </div>

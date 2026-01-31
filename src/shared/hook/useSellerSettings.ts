@@ -25,7 +25,7 @@ export interface SellerProfile {
 }
 
 export const useSellerSettings = () => {
-    const { user } = useAuth();
+    const { user, refreshProfile } = useAuth();
     const { toast } = useToast();
     const queryClient = useQueryClient();
     const [uploading, setUploading] = useState(false);
@@ -100,11 +100,12 @@ export const useSellerSettings = () => {
             await apiClient.patch('/users/settings/dealer', newSettings);
             return newSettings;
         },
-        onSuccess: () => {
+        onSuccess: async () => {
             toast({
                 title: "Configuration Saved",
                 description: "Your store settings have been updated successfully.",
             });
+            await refreshProfile();
             queryClient.invalidateQueries({ queryKey: ["profile", user?.id] });
             queryClient.invalidateQueries({ queryKey: ["sellerSettings", user?.id] });
         },

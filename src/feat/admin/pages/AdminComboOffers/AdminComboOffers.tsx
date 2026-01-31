@@ -271,6 +271,8 @@ export default function AdminComboOffers() {
     setErrors({});
   };
 
+  console.log("[AdminComboOffers] Render - loading:", loading, "authLoading:", authLoading, "offers:", offers.length);
+
   // Show loading skeleton while auth is initializing
   if (authLoading) {
     return (

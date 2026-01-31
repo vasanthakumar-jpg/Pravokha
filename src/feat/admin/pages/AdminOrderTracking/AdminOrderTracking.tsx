@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { AdminSkeleton } from "@/feat/admin/components/AdminSkeleton";
+import { NoResultsFound } from "@/feat/admin/components/NoResultsFound";
 import { useAdmin } from "@/core/context/AdminContext";
 import { apiClient } from "@/infra/api/apiClient";
 import { toast } from "@/shared/hook/use-toast";
@@ -52,7 +53,7 @@ export default function AdminOrderTracking() {
   const loadOrders = async () => {
     try {
       setLoading(true);
-      const { data, headers } = await apiClient.get('/orders', {
+      const response = await apiClient.get('/orders', {
         params: {
           page: currentPage,
           limit: pageSize,
@@ -60,6 +61,12 @@ export default function AdminOrderTracking() {
           role: 'admin' // Ensure admin view
         }
       });
+
+      if (!response) {
+        throw new Error("Empty response from telemetry hub.");
+      }
+
+      const { data, headers } = response;
 
       // Handle response structure (standardized)
       if (data && Array.isArray(data.data)) {
@@ -72,7 +79,7 @@ export default function AdminOrderTracking() {
           order_status: o.order_status || o.status,
           total: o.total || 0,
         })));
-        setTotalCount(data.meta?.total || data.data.length);
+        setTotalCount(data.meta?.total || data.data.length || 0);
       } else if (Array.isArray(data)) {
         setOrders(data.map((o: any) => ({
           ...o,
@@ -83,7 +90,19 @@ export default function AdminOrderTracking() {
           order_status: o.order_status || o.status,
           total: o.total || 0,
         })));
-        setTotalCount(parseInt(headers['x-total-count'] || data.length.toString()));
+        setTotalCount(parseInt(headers?.['x-total-count'] || data.length.toString() || "0"));
+      } else if (data && typeof data === 'object' && data.success && Array.isArray(data.orders)) {
+        // Fallback for some endpoints returning { success, orders }
+        setOrders(data.orders.map((o: any) => ({
+          ...o,
+          order_number: o.order_number || o.orderNumber,
+          customer_name: o.customer_name || o.customerName,
+          customer_email: o.customer_email || o.customerEmail,
+          created_at: o.created_at || o.createdAt,
+          order_status: o.order_status || o.status,
+          total: o.total || 0,
+        })));
+        setTotalCount(data.count || data.orders.length || 0);
       } else {
         console.warn('Unexpected order data structure:', data);
         setOrders([]);
@@ -250,12 +269,14 @@ export default function AdminOrderTracking() {
         {loading ? (
           <AdminSkeleton variant="list" skeletonProps={{ count: 3 }} />
         ) : filteredOrders.length === 0 ? (
-          <Card className="border-border/60 bg-card">
-            <CardContent className="py-12 text-center text-muted-foreground">
-              <Package className="h-12 w-12 mx-auto mb-3 opacity-20" />
-              <p>No orders found</p>
-            </CardContent>
-          </Card>
+          <NoResultsFound
+            searchTerm={searchQuery}
+            onReset={() => {
+              setSearchQuery("");
+              setStatusFilter("all");
+            }}
+            className="my-8"
+          />
         ) : (
           filteredOrders.map((order) => (
             <Card key={order.id} className="border-border/60 bg-card overflow-hidden">
@@ -312,9 +333,15 @@ export default function AdminOrderTracking() {
                 </TableRow>
               ) : filteredOrders.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="py-24 text-center">
-                    <Package className="h-12 w-12 mx-auto text-muted-foreground/20 mb-4" />
-                    <p className="text-sm font-semibold text-muted-foreground opacity-60 italic">No tracking data matches your current filters.</p>
+                  <TableCell colSpan={5} className="p-0">
+                    <NoResultsFound
+                      searchTerm={searchQuery}
+                      onReset={() => {
+                        setSearchQuery("");
+                        setStatusFilter("all");
+                      }}
+                      className="border-none bg-transparent py-24"
+                    />
                   </TableCell>
                 </TableRow>
               ) : (

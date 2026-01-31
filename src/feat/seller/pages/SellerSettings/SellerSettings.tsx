@@ -101,7 +101,7 @@ const INITIAL_FORM_VALUES: SellerProfile = {
 };
 
 export default function SellerSettings() {
-  const { user } = useAuth();
+  const { user, refreshProfile } = useAuth();
   // Seller Store Hooks
   const { settings, loading, saving, uploading, saveSettings, uploadImage } = useSellerSettings();
   // Personal Profile Hooks
@@ -173,6 +173,7 @@ export default function SellerSettings() {
         bio: profileBio,
         date_of_birth: profileDob
       });
+      await refreshProfile();
       toast({
         title: "Profile Updated",
         description: "Your personal details have been updated successfully.",

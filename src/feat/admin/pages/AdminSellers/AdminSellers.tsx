@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
+import { NoResultsFound } from "@/feat/admin/components/NoResultsFound";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/ui/Card";
 import { Button } from "@/ui/Button";
 import { Input } from "@/ui/Input";
@@ -34,16 +35,18 @@ import {
   XCircle,
   AlertTriangle,
   ArrowLeft,
-  ShieldCheck,
+  Shield,
   FileText,
   Mail,
   MoreVertical,
   ShieldAlert,
   Calendar,
   CreditCard,
-  Briefcase
+  Briefcase,
+  TrendingUp,
+  Users
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { AdminSkeleton, AdminHeaderSkeleton } from "@/feat/admin/components/AdminSkeleton";
 import { useAdmin } from "@/core/context/AdminContext";
 import { useAuth } from "@/core/context/AuthContext";
@@ -61,23 +64,33 @@ interface Seller {
   id: string;
   userId: string;
   fullName: string;
+  storeName?: string;
   verificationStatus: string;
   rejectionReason?: string;
   totalSales: number;
   createdAt: string;
   email?: string;
   pan?: string;
+  gstin?: string;
   bankAccount?: string;
+  ifsc?: string;
+  beneficiaryName?: string;
 }
 
 export default function AdminSellers() {
   const { user } = useAuth();
   const { isAdmin, loading: adminLoading } = useAdmin();
   const navigate = useNavigate();
+  const location = useLocation();
   const [sellers, setSellers] = useState<Seller[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+
+  // Get status from URL if present (e.g. ?status=pending)
+  const queryParams = new URLSearchParams(location.search);
+  const initialStatus = queryParams.get("status") || "all";
+
+  const [statusFilter, setStatusFilter] = useState(initialStatus);
   const [selectedSeller, setSelectedSeller] = useState<Seller | null>(null);
   const [showVerifyDialog, setShowVerifyDialog] = useState(false);
   const [justification, setJustification] = useState("");
@@ -102,14 +115,18 @@ export default function AdminSellers() {
         const mappedSellers: Seller[] = (response.data.users as any[]).map(profile => ({
           id: profile.id,
           userId: profile.id,
-          fullName: profile.storeName || profile.name || "Unnamed Store",
+          fullName: profile.name || "Unnamed Seller",
+          storeName: profile.storeName || "Unnamed Store",
           verificationStatus: profile.verificationStatus || "pending",
           rejectionReason: profile.verificationComments,
           totalSales: 0,
           createdAt: profile.createdAt || new Date().toISOString(),
           email: profile.email,
           pan: profile.pan,
-          bankAccount: profile.bankAccount
+          gstin: profile.gst,
+          bankAccount: profile.bankAccount,
+          ifsc: profile.ifsc,
+          beneficiaryName: profile.beneficiaryName
         }));
         setSellers(mappedSellers);
       }
@@ -248,12 +265,14 @@ export default function AdminSellers() {
         {loading ? (
           <AdminSkeleton variant="list" skeletonProps={{ count: 3 }} />
         ) : filteredSellers.length === 0 ? (
-          <Card className="border-border/60 bg-card shadow-sm">
-            <CardContent className="py-12 text-center text-muted-foreground">
-              <ShieldAlert className="h-12 w-12 mx-auto mb-3 opacity-20" />
-              <p>No verification cases found</p>
-            </CardContent>
-          </Card>
+          <NoResultsFound
+            searchTerm={searchQuery}
+            onReset={() => {
+              setSearchQuery("");
+              setStatusFilter("all");
+            }}
+            className="my-8"
+          />
         ) : (
           filteredSellers.map((seller) => (
             <Card key={seller.id} className="border-border/60 bg-card overflow-hidden shadow-sm">
@@ -339,9 +358,15 @@ export default function AdminSellers() {
                   </TableRow>
                 ) : filteredSellers.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-24 text-muted-foreground">
-                      <ShieldAlert className="h-12 w-12 mx-auto mb-4 opacity-10" />
-                      <p className="text-sm font-medium italic">No verification cases found</p>
+                    <TableCell colSpan={5} className="p-0">
+                      <NoResultsFound
+                        searchTerm={searchQuery}
+                        onReset={() => {
+                          setSearchQuery("");
+                          setStatusFilter("all");
+                        }}
+                        className="border-none bg-transparent"
+                      />
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -349,7 +374,10 @@ export default function AdminSellers() {
                     <TableRow key={seller.id} className="group hover:bg-muted/30 transition-all border-b-border/20">
                       <TableCell className="px-4 py-4 sm:px-6 sm:py-5">
                         <div className="flex flex-col min-w-0">
-                          <span className="font-semibold text-sm tracking-tight">{seller.fullName || 'Unnamed Shop'}</span>
+                          <span className="font-semibold text-sm tracking-tight">{seller.storeName || 'Unnamed Shop'}</span>
+                          <span className="text-[11px] text-muted-foreground font-medium truncate opacity-60 mt-0.5 flex items-center gap-1.5 uppercase tracking-wide">
+                            <Store className="h-3 w-3" /> {seller.fullName}
+                          </span>
                         </div>
                       </TableCell>
                       <TableCell className="px-4 py-4 sm:px-6 sm:py-5">
@@ -412,27 +440,60 @@ export default function AdminSellers() {
           </DialogHeader>
 
           <div className="p-6 space-y-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="p-4 rounded-xl bg-muted/50 border border-border/60 hover:border-primary/30 transition-colors col-span-1 md:col-span-2">
+                <div className="flex items-center gap-2 mb-2 text-muted-foreground">
+                  <Store className="h-3.5 w-3.5" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider">Store Identity</span>
+                </div>
+                <p className="text-sm font-bold">{selectedSeller?.storeName}</p>
+              </div>
+
               <div className="p-4 rounded-xl bg-muted/50 border border-border/60 hover:border-primary/30 transition-colors">
                 <div className="flex items-center gap-2 mb-2 text-muted-foreground">
                   <CreditCard className="h-3.5 w-3.5" />
-                  <span className="text-[10px] font-bold">Business ID (PAN)</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider">Business PAN</span>
                 </div>
                 <p className="text-sm font-bold font-mono tracking-wider">{selectedSeller?.pan || 'Not Provided'}</p>
               </div>
+
               <div className="p-4 rounded-xl bg-muted/50 border border-border/60 hover:border-primary/30 transition-colors">
                 <div className="flex items-center gap-2 mb-2 text-muted-foreground">
-                  <ShieldCheck className="h-3.5 w-3.5" />
-                  <span className="text-[10px] font-bold">Payout Routing</span>
+                  <FileText className="h-3.5 w-3.5" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider">GSTIN Number</span>
                 </div>
-                <p className="text-sm font-bold font-mono tracking-wider">{selectedSeller?.bank_account || 'Not Provided'}</p>
+                <p className="text-sm font-bold font-mono tracking-wider">{selectedSeller?.gstin || 'Not Provided'}</p>
+              </div>
+
+              <div className="p-4 rounded-xl bg-muted/50 border border-border/60 hover:border-primary/30 transition-colors">
+                <div className="flex items-center gap-2 mb-2 text-muted-foreground">
+                  <Shield className="h-3.5 w-3.5" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider">Account Number</span>
+                </div>
+                <p className="text-sm font-bold font-mono tracking-wider">{selectedSeller?.bankAccount || 'Not Provided'}</p>
+              </div>
+
+              <div className="p-4 rounded-xl bg-muted/50 border border-border/60 hover:border-primary/30 transition-colors">
+                <div className="flex items-center gap-2 mb-2 text-muted-foreground">
+                  <TrendingUp className="h-3.5 w-3.5" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider">IFSC Code</span>
+                </div>
+                <p className="text-sm font-bold font-mono tracking-wider">{selectedSeller?.ifsc || 'Not Provided'}</p>
+              </div>
+
+              <div className="p-4 rounded-xl bg-muted/50 border border-border/60 hover:border-primary/30 transition-colors col-span-1 md:col-span-2">
+                <div className="flex items-center gap-2 mb-2 text-muted-foreground">
+                  <Users className="h-3.5 w-3.5" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider">Beneficiary Name</span>
+                </div>
+                <p className="text-sm font-bold">{selectedSeller?.beneficiaryName || 'Not Provided'}</p>
               </div>
             </div>
 
             <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-start gap-3">
               <AlertTriangle className="h-5 w-5 text-amber-500 mt-0.5" />
               <p className="text-[11px] leading-relaxed text-amber-900/80 dark:text-amber-300/80 font-medium">
-                Approval grants marketplace access. Please ensure documents match registered corporate details to prevent fraud.
+                Approval grants marketplace access. Please ensure documents match registered corporate details and bank records to prevent fraud.
               </p>
             </div>
 
@@ -444,7 +505,7 @@ export default function AdminSellers() {
                 </span>
               </div>
               <textarea
-                className="w-full min-h-[120px] p-4 text-sm font-medium rounded-xl border bg-muted focus:ring-4 ring-primary/5 focus:border-primary/40 transition-all outline-none resize-none shadow-sm placeholder:opacity-40"
+                className="w-full min-h-[100px] p-4 text-sm font-medium rounded-xl border bg-muted focus:ring-4 ring-primary/5 focus:border-primary/40 transition-all outline-none resize-none shadow-sm placeholder:opacity-40"
                 placeholder="Describe the reason for this verification action..."
                 value={justification}
                 onChange={(e) => setJustification(e.target.value)}

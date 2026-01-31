@@ -54,6 +54,7 @@ import { generateInvoicePDF } from "@/shared/util/invoiceGenerator";
 import { useNavigate } from "react-router-dom";
 import { AdminSkeleton } from "@/feat/admin/components/AdminSkeleton";
 import { cn } from "@/lib/utils";
+import { NoResultsFound } from "@/feat/admin/components/NoResultsFound";
 import {
   AreaChart,
   Area,
@@ -706,12 +707,11 @@ export default function AdminPayments() {
               {loading ? (
                 <AdminSkeleton variant="list" skeletonProps={{ count: 3 }} />
               ) : filteredTransactions.length === 0 ? (
-                <Card className="border-border/60 bg-card">
-                  <CardContent className="py-12 text-center text-muted-foreground">
-                    <Receipt className="h-12 w-12 mx-auto mb-3 opacity-20" />
-                    <p>No transactions found</p>
-                  </CardContent>
-                </Card>
+                <NoResultsFound
+                  searchTerm={searchQuery}
+                  onReset={() => setSearchQuery("")}
+                  className="my-8"
+                />
               ) : (
                 paginatedTransactions.map((trx) => (
                   <Card key={trx.id} className="border-border/60 bg-card overflow-hidden shadow-sm" onClick={() => handleRowClick(trx)}>
@@ -820,7 +820,15 @@ export default function AdminPayments() {
                           </TableCell>
                         </TableRow>
                       ) : transactions.length === 0 ? (
-                        <TableRow><TableCell colSpan={8} className="text-center py-10 text-muted-foreground italic">No transactions captured.</TableCell></TableRow>
+                        <TableRow>
+                          <TableCell colSpan={8} className="p-0">
+                            <NoResultsFound
+                              searchTerm={searchQuery}
+                              onReset={() => setSearchQuery("")}
+                              className="border-none bg-transparent"
+                            />
+                          </TableCell>
+                        </TableRow>
                       ) : (
                         paginatedTransactions.map((trx) => (
                           <TableRow key={trx.id} className="cursor-pointer hover:bg-primary/5 transition-colors group" onClick={() => handleRowClick(trx)}>

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { GoogleLogin } from "@react-oauth/google";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { Button } from "@/ui/Button";
@@ -18,7 +19,7 @@ const nameSchema = z.string().min(2, "Name must be at least 2 characters");
 
 export function AuthPage() {
     const navigate = useNavigate();
-    const { user, role, loading, login, register } = useAuth();
+    const { user, role, loading, login, register, googleLogin } = useAuth();
     const { toast } = useToast();
 
     const [isLogin, setIsLogin] = useState(true);
@@ -136,6 +137,31 @@ export function AuthPage() {
                             <TabsTrigger value="login">Login</TabsTrigger>
                             <TabsTrigger value="signup">Sign Up</TabsTrigger>
                         </TabsList>
+
+                        <div className="flex justify-center mb-6">
+                            <GoogleLogin
+                                onSuccess={(credentialResponse) => {
+                                    if (credentialResponse.credential) {
+                                        googleLogin(credentialResponse.credential);
+                                        toast({ title: "Google Auth Successful", description: "Logging you in..." });
+                                    }
+                                }}
+                                onError={() => {
+                                    toast({ title: "Google Login Failed", variant: "destructive" });
+                                }}
+                                useOneTap
+                                width="100%"
+                            />
+                        </div>
+
+                        <div className="relative mb-6">
+                            <div className="absolute inset-0 flex items-center">
+                                <span className="w-full border-t"></span>
+                            </div>
+                            <div className="relative flex justify-center text-xs uppercase">
+                                <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
+                            </div>
+                        </div>
 
                         <form onSubmit={handleSubmit} className="space-y-4" noValidate>
                             {!isLogin && (

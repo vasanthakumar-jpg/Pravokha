@@ -11,7 +11,7 @@ import {
   MoreHorizontal,
   Mail,
   Calendar,
-  ShieldCheck,
+  Shield,
   UserCheck,
   AlertCircle,
   FileText,
@@ -29,6 +29,7 @@ import { useAdmin } from "@/core/context/AdminContext";
 import { useNavigate } from "react-router-dom";
 import { AdminSkeleton } from "@/feat/admin/components/AdminSkeleton";
 import { cn } from "@/lib/utils";
+import { NoResultsFound } from "@/feat/admin/components/NoResultsFound";
 import { Skeleton } from "@/ui/Skeleton";
 import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import { Avatar, AvatarFallback, AvatarImage } from "@/ui/Avatar";
@@ -180,7 +181,21 @@ export default function AdminUsers() {
       const matchesSearch =
         user.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         user.name?.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesRole = roleFilter === "all" || user.role === roleFilter;
+
+      const role = user.role?.toLowerCase();
+      const filter = roleFilter.toLowerCase();
+
+      let matchesRole = filter === "all";
+      if (!matchesRole) {
+        if (filter === "admin") {
+          matchesRole = role === "admin";
+        } else if (filter === "seller") {
+          matchesRole = role === "seller" || role === "dealer";
+        } else if (filter === "user") {
+          matchesRole = role === "user";
+        }
+      }
+
       return matchesSearch && matchesRole;
     });
   }, [users, searchQuery, roleFilter]);
@@ -244,7 +259,7 @@ export default function AdminUsers() {
           <StatsCard
             title="Platform admins"
             value={stats.admins.toString()}
-            icon={ShieldCheck}
+            icon={Shield}
             color="bg-blue-600"
             description="Superuser accounts"
           />
@@ -311,9 +326,14 @@ export default function AdminUsers() {
             {loading ? (
               <AdminSkeleton variant="list" skeletonProps={{ count: 3 }} />
             ) : paginatedUsers.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground">
-                <p>No users found matching criteria</p>
-              </div>
+              <NoResultsFound
+                searchTerm={searchQuery}
+                onReset={() => {
+                  setSearchQuery("");
+                  setRoleFilter("all");
+                }}
+                className="my-8"
+              />
             ) : (
               paginatedUsers.map((user) => (
                 <Card key={user.id} className="border-border/60 bg-card overflow-hidden shadow-sm" onClick={() => { setSelectedUser(user); setShowProfileModal(true); }}>
@@ -400,101 +420,116 @@ export default function AdminUsers() {
                 <TableBody>
                   <LayoutGroup>
                     <AnimatePresence mode="popLayout">
-                      {paginatedUsers.map((user, idx) => (
-                        <motion.tr
-                          layout
-                          initial={{ opacity: 0, x: -10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          exit={{ opacity: 0, scale: 0.95 }}
-                          transition={{ delay: idx * 0.05 }}
-                          key={user.id}
-                          className="border-b border-border/20 hover:bg-white/50 dark:hover:bg-white/5 transition-colors group cursor-pointer"
-                          onClick={() => { setSelectedUser(user); setShowProfileModal(true); }}
-                        >
-                          <TableCell className="px-6 py-4">
-                            <div className="flex items-center gap-4">
-                              <Avatar className="h-10 w-10 rounded-xl border border-border/40 relative z-10">
-                                <AvatarImage src={user.avatarUrl || ""} aria-label={user.name || user.email} />
-                                <AvatarFallback className="bg-primary/5 text-primary font-bold text-xs">
-                                  {user.name?.charAt(0) || user.email.charAt(0)}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div className="flex flex-col min-w-0">
-                                <span className="font-semibold text-sm tracking-tight truncate max-w-[180px]">{user.name || 'Incognito Entity'}</span>
-                                <span className="text-[11px] text-muted-foreground truncate max-w-[180px]">{user.email}</span>
+                      {paginatedUsers.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={5} className="p-0">
+                            <NoResultsFound
+                              searchTerm={searchQuery}
+                              onReset={() => {
+                                setSearchQuery("");
+                                setRoleFilter("all");
+                              }}
+                              className="border-none bg-transparent"
+                            />
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        paginatedUsers.map((user, idx) => (
+                          <motion.tr
+                            layout
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            transition={{ delay: idx * 0.05 }}
+                            key={user.id}
+                            className="border-b border-border/20 hover:bg-white/50 dark:hover:bg-white/5 transition-colors group cursor-pointer"
+                            onClick={() => { setSelectedUser(user); setShowProfileModal(true); }}
+                          >
+                            <TableCell className="px-6 py-4">
+                              <div className="flex items-center gap-4">
+                                <Avatar className="h-10 w-10 rounded-xl border border-border/40 relative z-10">
+                                  <AvatarImage src={user.avatarUrl || ""} aria-label={user.name || user.email} />
+                                  <AvatarFallback className="bg-primary/5 text-primary font-bold text-xs">
+                                    {user.name?.charAt(0) || user.email.charAt(0)}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div className="flex flex-col min-w-0">
+                                  <span className="font-semibold text-sm tracking-tight truncate max-w-[180px]">{user.name || 'Incognito Entity'}</span>
+                                  <span className="text-[11px] text-muted-foreground truncate max-w-[180px]">{user.email}</span>
+                                </div>
                               </div>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <Badge variant="outline" className={cn(
-                              "px-3 py-0.5 rounded-full text-[10px] font-bold border-border/60 hover:bg-transparent shadow-none",
-                              user.role === 'ADMIN' || user.role === 'admin' ? "bg-primary/10 text-primary border-primary/20" :
-                                user.role === 'DEALER' || user.role === 'seller' ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" :
-                                  "bg-muted/10 text-muted-foreground"
-                            )}>
-                              {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <div className="flex flex-col items-center justify-center gap-1.5">
-                              <Badge className={cn(
-                                "border-none shadow-none font-bold text-[10px] px-2 py-0.5 rounded-lg hover:bg-transparent capitalize min-w-[70px] justify-center",
-                                user.status === 'active' ? "bg-emerald-500/10 text-emerald-600" : "bg-rose-500/10 text-rose-600"
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <Badge variant="outline" className={cn(
+                                "px-3 py-0.5 rounded-full text-[10px] font-bold border-border/60 hover:bg-transparent shadow-none",
+                                user.role === 'ADMIN' || user.role === 'admin' ? "bg-primary/10 text-primary border-primary/20" :
+                                  user.role === 'DEALER' || user.role === 'seller' ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" :
+                                    "bg-muted/10 text-muted-foreground"
                               )}>
-                                {user.status}
+                                {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
                               </Badge>
-                              {(user.role === 'DEALER' || user.role === 'seller') && (
-                                <Badge variant="outline" className={cn(
-                                  "text-[8px] font-bold px-1.5 py-0 h-4 border-none shadow-none hover:bg-transparent",
-                                  user.verificationStatus === 'verified' ? "text-emerald-500/70" :
-                                    user.verificationStatus === 'rejected' ? "text-rose-500/70" : "text-amber-500/70"
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <div className="flex flex-col items-center justify-center gap-1.5">
+                                <Badge className={cn(
+                                  "border-none shadow-none font-bold text-[10px] px-2 py-0.5 rounded-lg hover:bg-transparent capitalize min-w-[70px] justify-center",
+                                  user.status === 'active' ? "bg-emerald-500/10 text-emerald-600" : "bg-rose-500/10 text-rose-600"
                                 )}>
-                                  {user.verificationStatus === 'verified' ? 'Verified Reg.' :
-                                    user.verificationStatus === 'rejected' ? 'Restricted Reg.' : 'Pending Reg.'}
+                                  {user.status}
                                 </Badge>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <span className="text-[11px] font-medium text-muted-foreground font-mono">
-                              {new Date(user.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                            </span>
-                          </TableCell>
-                          <TableCell className="px-10 text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              <Button
-                                variant="ghost"
-                                className="h-10 w-10 rounded-xl hover:bg-primary/10 hover:text-primary transition-all p-0 border border-transparent hover:border-primary/10"
-                                onClick={(e) => { e.stopPropagation(); setSelectedUser(user); setShowProfileModal(true); }}
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                                  <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl">
-                                    <MoreHorizontal className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="rounded-2xl w-56 p-2 border-border/40">
-                                  <DropdownMenuLabel className="text-xs font-medium px-3 py-2 text-muted-foreground">Actions</DropdownMenuLabel>
-                                  <DropdownMenuItem className="rounded-xl px-3 py-2.5 cursor-pointer" onClick={(e) => { e.stopPropagation(); setSelectedUser(user); setShowRoleDialog(true); }}>
-                                    <UserCog className="mr-3 h-4 w-4 text-primary" /> Modify authorization
-                                  </DropdownMenuItem>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem
-                                    className={cn("rounded-xl px-3 py-2.5 cursor-pointer", user.id === currentUser?.id ? "opacity-50 cursor-not-allowed" : "")}
-                                    disabled={user.id === currentUser?.id}
-                                    onClick={(e) => { e.stopPropagation(); handleSuspendUser(user); }}
-                                  >
-                                    <Ban className={cn("mr-3 h-4 w-4", user.status === 'active' ? "text-rose-500" : "text-emerald-500")} />
-                                    {user.status === 'active' ? "Revoke clearance" : "Restore clearance"}
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </div>
-                          </TableCell>
-                        </motion.tr>
-                      ))}
+                                {(user.role === 'DEALER' || user.role === 'seller') && (
+                                  <Badge variant="outline" className={cn(
+                                    "text-[8px] font-bold px-1.5 py-0 h-4 border-none shadow-none hover:bg-transparent",
+                                    user.verificationStatus === 'verified' ? "text-emerald-500/70" :
+                                      user.verificationStatus === 'rejected' ? "text-rose-500/70" : "text-amber-500/70"
+                                  )}>
+                                    {user.verificationStatus === 'verified' ? 'Verified Reg.' :
+                                      user.verificationStatus === 'rejected' ? 'Restricted Reg.' : 'Pending Reg.'}
+                                  </Badge>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <span className="text-[11px] font-medium text-muted-foreground font-mono">
+                                {new Date(user.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                              </span>
+                            </TableCell>
+                            <TableCell className="px-10 text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <Button
+                                  variant="ghost"
+                                  className="h-10 w-10 rounded-xl hover:bg-primary/10 hover:text-primary transition-all p-0 border border-transparent hover:border-primary/10"
+                                  onClick={(e) => { e.stopPropagation(); setSelectedUser(user); setShowProfileModal(true); }}
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                    <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl">
+                                      <MoreHorizontal className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" className="rounded-2xl w-56 p-2 border-border/40">
+                                    <DropdownMenuLabel className="text-xs font-medium px-3 py-2 text-muted-foreground">Actions</DropdownMenuLabel>
+                                    <DropdownMenuItem className="rounded-xl px-3 py-2.5 cursor-pointer" onClick={(e) => { e.stopPropagation(); setSelectedUser(user); setShowRoleDialog(true); }}>
+                                      <UserCog className="mr-3 h-4 w-4 text-primary" /> Modify authorization
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                      className={cn("rounded-xl px-3 py-2.5 cursor-pointer", user.id === currentUser?.id ? "opacity-50 cursor-not-allowed" : "")}
+                                      disabled={user.id === currentUser?.id}
+                                      onClick={(e) => { e.stopPropagation(); handleSuspendUser(user); }}
+                                    >
+                                      <Ban className={cn("mr-3 h-4 w-4", user.status === 'active' ? "text-rose-500" : "text-emerald-500")} />
+                                      {user.status === 'active' ? "Revoke clearance" : "Restore clearance"}
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </div>
+                            </TableCell>
+                          </motion.tr>
+                        ))
+                      )}
                     </AnimatePresence>
                   </LayoutGroup>
                 </TableBody>

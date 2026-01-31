@@ -14,6 +14,7 @@ import { toast } from "@/shared/hook/use-toast";
 
 import { Pencil, Trash2, Plus, ArrowLeft, Upload, Info, ShoppingBag } from "lucide-react";
 import { LoadingSpinner } from "@/shared/ui/LoadingSpinner";
+import { NoResultsFound } from "@/feat/admin/components/NoResultsFound";
 
 interface Category {
   id: string;
@@ -144,6 +145,7 @@ export default function AdminCategories() {
 
       setDialogOpen(false);
       resetForm();
+      setSearchQuery("");
       fetchCategories();
     } catch (error: any) {
       toast({
@@ -428,54 +430,64 @@ export default function AdminCategories() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3 sm:gap-6">
-        {filteredCategories.map((category) => (
-          <Card key={category.id} className="group hover:border-primary/50 transition-all duration-300 bg-card borderFONborder/60 shadow-sm hover:shadow-md rounded-xl overflow-hidden">
-            <CardHeader className="p-4 sm:p-5 pb-2">
-              <CardTitle className="flex items-start justify-between gap-2">
-                <span className="text-sm sm:text-base font-bold tracking-tight truncate pr-2">{category.name}</span>
-                <span className={`text-xs font-medium px-2 py-0.5 rounded-full border shrink-0 capitalize ${category.status === "active" ? "bg-emerald-500/5 text-emerald-600 border-emerald-500/20" :
-                  category.status === "coming_soon" ? "bg-amber-500/5 text-amber-600 border-amber-500/20" :
-                    "bg-muted/50 text-muted-foreground border-border/50"
-                  }`}>
-                  {category.status.replace("_", " ")}
-                </span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 sm:p-5 pt-2 flex flex-col gap-4">
-              <div className="space-y-1">
-                <p className="text-xs text-muted-foreground line-clamp-2 min-h-[2.5em]">{category.description || "No description provided."}</p>
-                <div className="flex flex-col gap-1 mt-2">
-                  <div className="flex items-center justify-between text-[10px] text-muted-foreground font-mono bg-muted/30 px-2 py-1 rounded-lg">
-                    <span>Slug</span>
-                    <span className="truncate max-w-[120px]">{category.slug}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-[10px] text-muted-foreground font-mono bg-muted/30 px-2 py-1 rounded-lg">
-                    <span>Order</span>
-                    <span>#{category.display_order}</span>
+        {filteredCategories.length === 0 ? (
+          <div className="col-span-full">
+            <NoResultsFound
+              searchTerm={searchQuery}
+              onReset={() => setSearchQuery("")}
+              className="bg-card/50"
+            />
+          </div>
+        ) : (
+          filteredCategories.map((category) => (
+            <Card key={category.id} className="group hover:border-primary/50 transition-all duration-300 bg-card borderFONborder/60 shadow-sm hover:shadow-md rounded-xl overflow-hidden">
+              <CardHeader className="p-4 sm:p-5 pb-2">
+                <CardTitle className="flex items-start justify-between gap-2">
+                  <span className="text-sm sm:text-base font-bold tracking-tight truncate pr-2">{category.name}</span>
+                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full border shrink-0 capitalize ${category.status === "active" ? "bg-emerald-500/5 text-emerald-600 border-emerald-500/20" :
+                    category.status === "coming_soon" ? "bg-amber-500/5 text-amber-600 border-amber-500/20" :
+                      "bg-muted/50 text-muted-foreground border-border/50"
+                    }`}>
+                    {category.status.replace("_", " ")}
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 sm:p-5 pt-2 flex flex-col gap-4">
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground line-clamp-2 min-h-[2.5em]">{category.description || "No description provided."}</p>
+                  <div className="flex flex-col gap-1 mt-2">
+                    <div className="flex items-center justify-between text-[10px] text-muted-foreground font-mono bg-muted/30 px-2 py-1 rounded-lg">
+                      <span>Slug</span>
+                      <span className="truncate max-w-[120px]">{category.slug}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-[10px] text-muted-foreground font-mono bg-muted/30 px-2 py-1 rounded-lg">
+                      <span>Order</span>
+                      <span>#{category.display_order}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="flex gap-2 mt-auto pt-2 border-t border-border/30">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => openEditDialog(category)}
-                  className="flex-1 h-8 text-xs font-bold rounded-xl hover:bg-primary/5 hover:text-primary border-border/40"
-                >
-                  <Pencil className="h-3.5 w-3.5 mr-1.5" /> Edit
-                </Button>
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  onClick={() => handleDelete(category.id)}
-                  className="flex-1 h-8 text-xs font-bold rounded-xl shadow-sm shadow-destructive/20"
-                >
-                  <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Delete
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+                <div className="flex gap-2 mt-auto pt-2 border-t border-border/30">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => openEditDialog(category)}
+                    className="flex-1 h-8 text-xs font-bold rounded-xl hover:bg-primary/5 hover:text-primary border-border/40"
+                  >
+                    <Pencil className="h-3.5 w-3.5 mr-1.5" /> Edit
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={() => handleDelete(category.id)}
+                    className="flex-1 h-8 text-xs font-bold rounded-xl shadow-sm shadow-destructive/20"
+                  >
+                    <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Delete
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        )}
       </div>
     </div >
   );

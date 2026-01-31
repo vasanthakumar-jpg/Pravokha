@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 
 export function VerificationBanner() {
     const { verificationStatus, verificationComments, role } = useAuth();
-    const isAdmin = role === 'ADMIN' || role === 'admin';
+    const isAdmin = role === 'ADMIN';
 
     if (verificationStatus === 'verified' || isAdmin) return null;
 

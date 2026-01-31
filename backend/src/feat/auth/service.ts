@@ -11,7 +11,11 @@ export class AuthService {
             throw { statusCode: 400, message: 'Email already exists' };
         }
 
-        const hashedPassword = await bcrypt.hash(data.password, 10);
+        let hashedPassword = null;
+        if (data.password) {
+            hashedPassword = await bcrypt.hash(data.password as string, 10);
+        }
+
         const user = await prisma.user.create({
             data: {
                 ...data,
@@ -19,7 +23,7 @@ export class AuthService {
             },
         });
 
-        const token = this.generateToken(user);
+        const token = this.generateToken(user as any);
         return { user: { id: user.id, email: user.email, name: user.name, role: user.role }, token };
     }
 
@@ -29,13 +33,71 @@ export class AuthService {
             throw { statusCode: 401, message: 'Invalid credentials' };
         }
 
-        const isMatch = await bcrypt.compare(data.password, user.password);
+        if (!user.password) {
+            throw { statusCode: 401, message: 'This account uses SSO. Please login with Google.' };
+        }
+
+        if (!data.password) {
+            throw { statusCode: 400, message: 'Password is required' };
+        }
+
+        const isMatch = await bcrypt.compare(data.password as string, user.password as string);
         if (!isMatch) {
             throw { statusCode: 401, message: 'Invalid credentials' };
         }
 
         const token = this.generateToken(user);
         return { user: { id: user.id, email: user.email, name: user.name, role: user.role }, token };
+    }
+
+    static async googleLogin(googleData: { googleId: string, email: string | null | undefined, name?: string | null, picture?: string | null }) {
+        const { googleId, email, name, picture } = googleData;
+
+        if (!email) {
+            throw { statusCode: 400, message: 'Email is required from Google' };
+        }
+
+        // 1. Find user by googleId
+        let user = await prisma.user.findUnique({ where: { googleId } });
+
+        if (!user) {
+            // 2. If not found by googleId, check if email exists
+            user = await prisma.user.findUnique({ where: { email } });
+
+            if (user) {
+                // Link account if email matches
+                user = await prisma.user.update({
+                    where: { id: user.id },
+                    data: { googleId, authProvider: 'google' }
+                });
+            } else {
+                // 3. Create new user
+                user = await prisma.user.create({
+                    data: {
+                        email,
+                        name: name || email.split('@')[0],
+                        googleId,
+                        authProvider: 'google',
+                        avatarUrl: picture,
+                        role: 'USER',
+                        status: 'active',
+                        verificationStatus: 'verified' // Google confirmed email
+                    }
+                });
+            }
+        }
+
+        const token = this.generateToken(user as any);
+        return {
+            user: {
+                id: user.id,
+                email: user.email,
+                name: user.name,
+                role: user.role,
+                avatarUrl: user.avatarUrl
+            },
+            token
+        };
     }
 
     private static generateToken(user: Pick<User, 'id' | 'role'>) {

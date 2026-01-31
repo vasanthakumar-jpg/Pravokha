@@ -222,7 +222,27 @@ export class OrderService {
 
         // 2. Status Filtering
         if (options.status && options.status !== 'all') {
-            where.status = options.status.toUpperCase() as any;
+            const statusInput = options.status.toUpperCase();
+
+            // Map frontend specific/non-enum labels to backend OrderStatus
+            const statusMap: Record<string, OrderStatus> = {
+                'CONFIRMED': OrderStatus.PENDING,
+                'OUT FOR DELIVERY': OrderStatus.SHIPPED,
+                'DELIVERY ATTEMPT': OrderStatus.SHIPPED,
+                'COLLECTION CALLED': OrderStatus.SHIPPED,
+                'FAILED ATTEMPT': OrderStatus.SHIPPED
+            };
+
+            const mappedStatus = statusMap[statusInput] || (Object.values(OrderStatus).includes(statusInput as any) ? statusInput as OrderStatus : null);
+
+            if (mappedStatus) {
+                where.status = mappedStatus;
+            } else if (!Object.values(OrderStatus).includes(statusInput as any)) {
+                // If it's a search for something totally custom, we might return empty or ignore
+                // For now, we ignore invalid enums to prevent 500 error
+            } else {
+                where.status = statusInput as any;
+            }
         }
 
         // 3. Search Filtering

@@ -66,7 +66,7 @@ export default function SellerPayouts() {
   }, [user]);
 
   const handleWithdrawal = async () => {
-    if (!user || payoutStats.pendingBalance < 500) return;
+    if (!user || payoutStats.pendingBalance < payoutStats.minPayoutAmount) return;
 
     try {
       setIsRequesting(true);
@@ -128,10 +128,11 @@ export default function SellerPayouts() {
 
       setPayoutStats({
         pendingBalance: stats.pendingBalance || 0,
-        nextPayout: stats.pendingBalance > 500 ? stats.pendingBalance : 0,
+        nextPayout: stats.pendingBalance >= (stats.minPayoutAmount || 500) ? stats.pendingBalance : 0,
         totalEarnings: stats.totalEarnings || 0,
-        commissionRate: 10,
-        nextPayoutDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        commissionRate: stats.commissionRate || 10,
+        minPayoutAmount: stats.minPayoutAmount || 500,
+        nextPayoutDate: new Date(Date.now() + (stats.processingDays || 7) * 24 * 60 * 60 * 1000),
       });
 
     } catch (error) {
@@ -279,7 +280,7 @@ export default function SellerPayouts() {
             variant="default"
             className="flex-1 sm:flex-none h-11 sm:h-12 px-6 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm rounded-xl border border-emerald-500/20 transition-all active:scale-95 font-semibold"
             onClick={handleWithdrawal}
-            disabled={!isVerified || payoutStats.pendingBalance < 500 || isRequesting}
+            disabled={!isVerified || payoutStats.pendingBalance < payoutStats.minPayoutAmount || isRequesting}
           >
             {isRequesting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Wallet className="h-4 w-4 mr-2" />}
             Request payout

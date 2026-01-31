@@ -50,13 +50,13 @@ import {
   Loader2,
   PackageCheck,
   AlertCircle,
-  ShieldCheck
+  Shield
 } from "lucide-react";
 import { apiClient } from "@/infra/api/apiClient";
 import { Skeleton } from "@/ui/Skeleton";
 import { toast } from "@/shared/hook/use-toast";
 
-// ... (keep earlier imports)
+import { NoResultsFound } from "@/feat/admin/components/NoResultsFound";
 
 function StatsCard({ title, value, icon: Icon, color, description, trend }: any) {
   return (
@@ -102,7 +102,7 @@ export default function AdminProductsManagement() {
   const [loading, setLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize] = useState(12);
+  const [pageSize] = useState(10);
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -325,7 +325,7 @@ export default function AdminProductsManagement() {
               variant="outline"
               className="flex-none h-10 px-3 rounded-xl border-amber-200 bg-amber-50/50 text-amber-700 hover:bg-amber-100 font-bold text-xs"
             >
-              <ShieldCheck className="h-4 w-4 sm:mr-2" />
+              <Shield className="h-4 w-4 sm:mr-2" />
               <span className="hidden sm:inline">Update Requests</span>
               <span className="sm:hidden">Updates</span>
             </Button>
@@ -447,103 +447,115 @@ export default function AdminProductsManagement() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 className="overflow-x-auto">
-                <div className="hidden sm:block overflow-x-auto">
-                  <Table>
-                    <TableHeader className="bg-muted/30">
-                      <TableRow className="border-border/40 hover:bg-transparent">
-                        <TableHead className="w-[80px] px-6 h-12 text-[11px] font-bold tracking-wider text-muted-foreground/60">Image</TableHead>
-                        <TableHead className="text-[11px] font-bold tracking-wider text-muted-foreground/60">Intelligence</TableHead>
-                        <TableHead className="text-[11px] font-bold tracking-wider text-muted-foreground/60">Category</TableHead>
-                        <TableHead className="text-[11px] font-bold tracking-wider text-muted-foreground/60">Price matrix</TableHead>
-                        <TableHead className="text-[11px] font-bold tracking-wider text-muted-foreground/60">Governance</TableHead>
-                        <TableHead className="text-[11px] font-bold tracking-wider text-muted-foreground/60 text-right pr-10">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredProducts.map((product) => (
-                        <TableRow key={product.id} className="border-border/50 hover:bg-muted/30 transition-colors group">
-                          <TableCell>
-                            <div className="w-12 h-12 rounded-xl bg-muted overflow-hidden border border-border/50 shadow-sm transition-transform group-hover:scale-105">
-                              {product.variants?.[0]?.images?.[0] ? (
-                                <img src={product.variants[0].images[0]} className="w-full h-full object-cover" />
-                              ) : product.product_variants?.[0]?.images?.[0] ? (
-                                <img src={product.product_variants[0].images[0]} className="w-full h-full object-cover" />
-                              ) : (
-                                <Package className="w-full h-full p-3 text-muted-foreground/50" />
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex flex-col gap-1">
-                              <div className="text-sm font-bold tracking-tight text-foreground/90">{product.title}</div>
-                              <div className="text-[10px] font-mono text-muted-foreground flex items-center gap-1">
-                                SKU: {product.sku}
-                                {(product.isFeatured || product.featured) && (
-                                  <Badge className="h-3 px-1 text-[8px] bg-amber-500/10 text-amber-600 border-amber-500/20">FEATURED</Badge>
+                {filteredProducts.length === 0 ? (
+                  <NoResultsFound
+                    searchTerm={searchQuery}
+                    onReset={() => {
+                      setSearchQuery("");
+                      setCategoryFilter("all");
+                      setStatusFilter("all");
+                    }}
+                    className="m-6"
+                  />
+                ) : (
+                  <div className="hidden sm:block overflow-x-auto">
+                    <Table>
+                      <TableHeader className="bg-muted/30">
+                        <TableRow className="border-border/40 hover:bg-transparent">
+                          <TableHead className="w-[80px] px-6 h-12 text-[11px] font-bold tracking-wider text-muted-foreground/60">Image</TableHead>
+                          <TableHead className="text-[11px] font-bold tracking-wider text-muted-foreground/60">Intelligence</TableHead>
+                          <TableHead className="text-[11px] font-bold tracking-wider text-muted-foreground/60">Category</TableHead>
+                          <TableHead className="text-[11px] font-bold tracking-wider text-muted-foreground/60">Price matrix</TableHead>
+                          <TableHead className="text-[11px] font-bold tracking-wider text-muted-foreground/60">Governance</TableHead>
+                          <TableHead className="text-[11px] font-bold tracking-wider text-muted-foreground/60 text-right pr-10">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredProducts.map((product) => (
+                          <TableRow key={product.id} className="border-border/50 hover:bg-muted/30 transition-colors group">
+                            <TableCell>
+                              <div className="w-12 h-12 rounded-xl bg-muted overflow-hidden border border-border/50 shadow-sm transition-transform group-hover:scale-105">
+                                {product.variants?.[0]?.images?.[0] ? (
+                                  <img src={product.variants[0].images[0]} className="w-full h-full object-cover" />
+                                ) : product.product_variants?.[0]?.images?.[0] ? (
+                                  <img src={product.product_variants[0].images[0]} className="w-full h-full object-cover" />
+                                ) : (
+                                  <Package className="w-full h-full p-3 text-muted-foreground/50" />
                                 )}
                               </div>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className="text-[9px] font-bold rounded-lg border-border/50 bg-background/50">
-                              {((typeof product.category === 'object' ? product.category?.name : product.category) || "N/A").toUpperCase()}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex flex-col">
-                              <span className="font-bold text-sm text-foreground">₹{product.price.toLocaleString()}</span>
-                              {product.discount_price && (
-                                <span className="text-[10px] text-muted-foreground line-through decoration-rose-500/50">₹{product.discount_price.toLocaleString()}</span>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge
-                              variant={product.published ? "default" : "secondary"}
-                              className={cn(
-                                "text-[8px] font-black tracking-widest rounded-md border-none",
-                                product.published ? "bg-emerald-500" : "bg-muted text-muted-foreground"
-                              )}
-                            >
-                              {product.published ? "PUBLISHED" : "DRAFT"}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-right pr-10">
-                            <div className="flex items-center justify-end gap-1">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => navigate(`/admin/products/edit/${product.id}`)}
-                                className="h-8 w-8 rounded-lg hover:bg-primary/10 hover:text-primary"
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex flex-col gap-1">
+                                <div className="text-sm font-bold tracking-tight text-foreground/90">{product.title}</div>
+                                <div className="text-[10px] font-mono text-muted-foreground flex items-center gap-1">
+                                  SKU: {product.sku}
+                                  {(product.isFeatured || product.featured) && (
+                                    <Badge className="h-3 px-1 text-[8px] bg-amber-500/10 text-amber-600 border-amber-500/20">FEATURED</Badge>
+                                  )}
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className="text-[9px] font-bold rounded-lg border-border/50 bg-background/50">
+                                {((typeof product.category === 'object' ? product.category?.name : product.category) || "N/A").toUpperCase()}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex flex-col">
+                                <span className="font-bold text-sm text-foreground">₹{product.price.toLocaleString()}</span>
+                                {product.discount_price && (
+                                  <span className="text-[10px] text-muted-foreground line-through decoration-rose-500/50">₹{product.discount_price.toLocaleString()}</span>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge
+                                variant={product.published ? "default" : "secondary"}
+                                className={cn(
+                                  "text-[8px] font-black tracking-widest rounded-md border-none",
+                                  product.published ? "bg-emerald-500" : "bg-muted text-muted-foreground"
+                                )}
                               >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg">
-                                    <MoreHorizontal className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="w-48 bg-card/80 backdrop-blur-xl border-border/50">
-                                  <DropdownMenuLabel className="text-[10px] font-bold tracking-widest text-muted-foreground opacity-70">Governance</DropdownMenuLabel>
-                                  <DropdownMenuItem onClick={() => togglePublished(product.id, product.published)} className="cursor-pointer gap-2 text-xs font-bold">
-                                    {product.published ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                                    {product.published ? "Draft Archive" : "Publish Live"}
-                                  </DropdownMenuItem>
-                                  <DropdownMenuSeparator className="bg-border/50" />
-                                  <DropdownMenuItem onClick={() => handleDelete(product.id)} className="cursor-pointer gap-2 text-xs font-bold text-rose-500 focus:bg-rose-500 focus:text-white transition-colors">
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                    Terminate Entry
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
+                                {product.published ? "PUBLISHED" : "DRAFT"}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right pr-10">
+                              <div className="flex items-center justify-end gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => navigate(`/admin/products/edit/${product.id}`)}
+                                  className="h-8 w-8 rounded-lg hover:bg-primary/10 hover:text-primary"
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg">
+                                      <MoreHorizontal className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" className="w-48 bg-card/80 backdrop-blur-xl border-border/50">
+                                    <DropdownMenuLabel className="text-[10px] font-bold tracking-widest text-muted-foreground opacity-70">Governance</DropdownMenuLabel>
+                                    <DropdownMenuItem onClick={() => togglePublished(product.id, product.published)} className="cursor-pointer gap-2 text-xs font-bold">
+                                      {product.published ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                                      {product.published ? "Draft Archive" : "Publish Live"}
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator className="bg-border/50" />
+                                    <DropdownMenuItem onClick={() => handleDelete(product.id)} className="cursor-pointer gap-2 text-xs font-bold text-rose-500 focus:bg-rose-500 focus:text-white transition-colors">
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                      Terminate Entry
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
 
                 {/* Mobile Table View (Cards) */}
                 <div className="block sm:hidden space-y-3 p-3">
@@ -662,7 +674,7 @@ export default function AdminProductsManagement() {
                         </Badge>
                         {product.is_featured && <Badge className="text-[8px] bg-amber-500 px-2 rounded-md border-none text-white font-bold">Featured</Badge>}
                         {product.is_new && <Badge className="text-[8px] bg-sky-500 px-2 rounded-md border-none text-white font-bold">New</Badge>}
-                        {product.is_verified && <Badge className="text-[8px] bg-primary px-2 rounded-md border-none text-white font-bold flex items-center gap-1"><ShieldCheck className="h-2 w-2" /> Verified</Badge>}
+                        {product.is_verified && <Badge className="text-[8px] bg-primary px-2 rounded-md border-none text-white font-bold flex items-center gap-1"><Shield className="h-2 w-2" /> Verified</Badge>}
                       </div>
                     </div>
                     <CardHeader className="p-4 space-y-1">
@@ -695,6 +707,40 @@ export default function AdminProductsManagement() {
             )}
           </AnimatePresence>
         </CardContent>
+        {/* Pagination Footer */}
+        {!loading && totalCount > pageSize && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-6 bg-muted/30 border-t border-border/40">
+            <div className="text-sm text-muted-foreground">
+              Showing <span className="font-bold text-foreground">{((currentPage - 1) * pageSize) + 1}</span> to{' '}
+              <span className="font-bold text-foreground">{Math.min(currentPage * pageSize, totalCount)}</span> of{' '}
+              <span className="font-bold text-foreground">{totalCount}</span> products
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-9 rounded-xl"
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+              >
+                Previous
+              </Button>
+              <div className="flex items-center gap-1 px-3 py-1 rounded-lg bg-background border border-border/40">
+                <span className="text-sm font-bold">Page {currentPage}</span>
+                <span className="text-sm text-muted-foreground">of {Math.ceil(totalCount / pageSize)}</span>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-9 rounded-xl"
+                onClick={() => setCurrentPage(prev => Math.min(Math.ceil(totalCount / pageSize), prev + 1))}
+                disabled={currentPage >= Math.ceil(totalCount / pageSize)}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        )}
       </Card>
     </div >
   );

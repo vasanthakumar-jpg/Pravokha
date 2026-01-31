@@ -16,6 +16,7 @@ import { toast } from "@/shared/hook/use-toast";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { AdminHeaderSkeleton, AdminKpiSkeleton, AdminTableSkeleton } from "@/feat/admin/components/AdminSkeleton";
+import { NoResultsFound } from "@/feat/admin/components/NoResultsFound";
 import { StatsCard } from "@/feat/admin/components/StatsCard";
 import {
   Loader2,
@@ -28,7 +29,7 @@ import {
   ArrowLeft,
   AlertCircle,
   ShieldAlert,
-  ShieldCheck,
+  Shield,
   RefreshCw,
   Check,
   UserCheck,
@@ -388,7 +389,7 @@ export default function AdminTickets() {
           <StatsCard
             title="Pending"
             value={tickets.filter(t => t.status === 'pending').length.toString()}
-            icon={ShieldCheck}
+            icon={Shield}
             color="bg-blue-600"
             description="Awaiting initial triage"
           />
@@ -478,9 +479,14 @@ export default function AdminTickets() {
               {/* Mobile View: Cards */}
               <div className="grid grid-cols-1 gap-4 lg:hidden">
                 {filteredTickets.length === 0 ? (
-                  <div className="bg-card border rounded-2xl p-8 text-center text-muted-foreground italic">
-                    No support tickets currently in registry
-                  </div>
+                  <NoResultsFound
+                    searchTerm={searchQuery}
+                    onReset={() => {
+                      setSearchQuery("");
+                      setStatusFilter("all");
+                    }}
+                    className="my-8"
+                  />
                 ) : (
                   filteredTickets.map((ticket) => (
                     <Card key={ticket.id} className="border-primary/5 overflow-hidden relative group">
@@ -583,8 +589,15 @@ export default function AdminTickets() {
                     <TableBody>
                       {filteredTickets.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={8} className="text-center py-16 text-muted-foreground italic font-medium">
-                            Registry clear: No tickets pending review
+                          <TableCell colSpan={8} className="p-0">
+                            <NoResultsFound
+                              searchTerm={searchQuery}
+                              onReset={() => {
+                                setSearchQuery("");
+                                setStatusFilter("all");
+                              }}
+                              className="border-none bg-transparent"
+                            />
                           </TableCell>
                         </TableRow>
                       ) : (

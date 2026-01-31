@@ -45,11 +45,13 @@ import {
 
 interface Profile {
   id: string;
-  full_name: string;
-  created_at: string;
+  name: string;
+  createdAt: string;
   phone?: string;
   email?: string;
-  avatar_url?: string;
+  avatarUrl?: string;
+  verificationStatus?: string;
+  status?: string;
 }
 
 export default function AdminCustomers() {
@@ -148,9 +150,9 @@ export default function AdminCustomers() {
   };
 
   const filteredProfiles = profiles.filter(p =>
-    p.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    p.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    p.phone?.toLowerCase().includes(searchQuery.toLowerCase())
+    (p.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (p.email || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (p.phone || "").toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   if (adminLoading || loading) {
@@ -177,7 +179,7 @@ export default function AdminCustomers() {
               <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center flex-wrap gap-3">
                 Customer Management
                 <Badge variant="outline" className="text-xs font-medium bg-primary/5 rounded-lg border-primary/20 shrink-0 h-5 px-2">
-                  {profiles.length} Total
+                  {totalCount} Total
                 </Badge>
               </h1>
               <p className="text-xs sm:text-base text-muted-foreground mt-1">
@@ -227,23 +229,23 @@ export default function AdminCustomers() {
                 <div className="flex justify-between items-start">
                   <div className="flex items-center gap-2 max-w-[70%]">
                     <div className="h-8 w-8 rounded-full bg-primary/10 border border-primary/20 overflow-hidden flex items-center justify-center font-bold text-primary text-[10px] shrink-0">
-                      {profile.avatar_url ? (
-                        <img src={profile.avatar_url} alt={profile.full_name} className="h-full w-full object-cover" />
+                      {profile.avatarUrl ? (
+                        <img src={profile.avatarUrl} alt={profile.name} className="h-full w-full object-cover" />
                       ) : (
-                        profile.full_name?.charAt(0) || <Users className="h-3 w-3" />
+                        profile.name?.charAt(0) || <Users className="h-3 w-3" />
                       )}
                     </div>
                     <div className="flex flex-col min-w-0">
-                      <span className="font-semibold text-sm truncate text-foreground">{profile.full_name || 'Anonymous User'}</span>
+                      <span className="font-semibold text-sm truncate text-foreground">{profile.name || 'Anonymous User'}</span>
                     </div>
                   </div>
                   <Badge variant="outline" className={cn(
                     "rounded-full text-[9px] font-bold px-2 py-0 h-5 hover:bg-transparent shadow-none",
-                    (profile as any).verificationStatus === 'verified' ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" :
-                      (profile as any).verificationStatus === 'rejected' ? "bg-rose-500/10 text-rose-600 border-rose-500/20" :
+                    profile.verificationStatus === 'verified' ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" :
+                      profile.verificationStatus === 'rejected' ? "bg-rose-500/10 text-rose-600 border-rose-500/20" :
                         "bg-amber-500/10 text-amber-600 border-amber-500/20"
                   )}>
-                    {((profile as any).verificationStatus === 'verified' ? 'Verified' : (profile as any).verificationStatus === 'rejected' ? 'Restricted / Suspended' : 'Pending')}
+                    {(profile.verificationStatus === 'verified' ? 'Verified' : profile.verificationStatus === 'rejected' ? 'Restricted / Suspended' : 'Pending')}
                   </Badge>
                 </div>
               </CardHeader>
@@ -260,7 +262,7 @@ export default function AdminCustomers() {
                 )}
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-muted-foreground flex items-center gap-1.5"><Calendar className="w-3 h-3" /> Registered</span>
-                  <span className="font-medium text-foreground">{profile.created_at ? format(new Date(profile.created_at), "MMM d, yyyy") : 'N/A'}</span>
+                  <span className="font-medium text-foreground">{profile.createdAt ? format(new Date(profile.createdAt), "MMM d, yyyy") : 'N/A'}</span>
                 </div>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -316,14 +318,14 @@ export default function AdminCustomers() {
                     <TableCell className="py-4">
                       <div className="flex items-center gap-3">
                         <div className="h-10 w-10 rounded-full bg-primary/10 border border-primary/20 overflow-hidden flex items-center justify-center font-bold text-primary text-xs shrink-0">
-                          {profile.avatar_url ? (
-                            <img src={profile.avatar_url} alt={profile.full_name} className="h-full w-full object-cover" />
+                          {profile.avatarUrl ? (
+                            <img src={profile.avatarUrl} alt={profile.name} className="h-full w-full object-cover" />
                           ) : (
-                            profile.full_name?.charAt(0) || <Users className="h-4 w-4" />
+                            profile.name?.charAt(0) || <Users className="h-4 w-4" />
                           )}
                         </div>
                         <div className="flex flex-col min-w-0">
-                          <span className="font-semibold text-sm tracking-tight">{profile.full_name || 'Anonymous User'}</span>
+                          <span className="font-semibold text-sm tracking-tight">{profile.name || 'Anonymous User'}</span>
                         </div>
                       </div>
                     </TableCell>
@@ -343,15 +345,15 @@ export default function AdminCustomers() {
                       <div className="flex flex-col gap-1">
                         <Badge variant="outline" className={cn(
                           "rounded-full text-[10px] font-bold px-3 py-0.5 hover:bg-transparent shadow-none capitalize w-fit",
-                          (profile as any).verificationStatus === 'verified'
+                          profile.verificationStatus === 'verified'
                             ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
-                            : (profile as any).verificationStatus === 'rejected'
+                            : profile.verificationStatus === 'rejected'
                               ? "bg-rose-500/10 text-rose-600 border-rose-500/20"
                               : "bg-amber-500/10 text-amber-600 border-amber-500/20"
                         )}>
-                          {((profile as any).verificationStatus === 'verified' ? 'Verified' : (profile as any).verificationStatus === 'rejected' ? 'Restricted / Suspended' : 'Pending')}
+                          {(profile.verificationStatus === 'verified' ? 'Verified' : profile.verificationStatus === 'rejected' ? 'Restricted / Suspended' : 'Pending')}
                         </Badge>
-                        {(profile as any).status === 'suspended' && (
+                        {profile.status === 'suspended' && (
                           <span className="text-[9px] font-bold text-rose-500/80 ml-1 flex items-center gap-1">
                             <Ban className="h-2.5 w-2.5" /> Platform Access Revoked
                           </span>
@@ -360,7 +362,7 @@ export default function AdminCustomers() {
                     </TableCell>
                     <TableCell className="text-[11px] font-medium text-muted-foreground">
                       <div className="flex items-center gap-2">
-                        <Calendar className="h-3 w-3" /> {profile.created_at ? format(new Date(profile.created_at), "MMM d, yyyy") : 'N/A'}
+                        <Calendar className="h-3 w-3" /> {profile.createdAt ? format(new Date(profile.createdAt), "MMM d, yyyy") : 'N/A'}
                       </div>
                     </TableCell>
                     <TableCell className="text-right pr-6">

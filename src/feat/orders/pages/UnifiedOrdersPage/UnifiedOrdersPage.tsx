@@ -95,7 +95,7 @@ const paymentStatusConfig = {
 };
 
 export default function UnifiedOrdersPage() {
-    const { user } = useAuth();
+    const { user, verificationStatus } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -120,7 +120,8 @@ export default function UnifiedOrdersPage() {
     const [pageSize] = useState(10);
     const [totalCount, setTotalCount] = useState(0);
 
-    const isVerified = verificationStatus === 'verified' || (fullProfile as any)?.status === 'active';
+    const isVerified = verificationStatus === 'verified' || (user as any)?.status === 'active';
+    const isAdmin = userRole === 'ADMIN';
 
     // Dialog States
     const [cancellingOrder, setCancellingOrder] = useState<Order | null>(null);

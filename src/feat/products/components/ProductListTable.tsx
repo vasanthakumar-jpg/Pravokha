@@ -10,7 +10,7 @@ import {
 import { Badge } from "@/ui/Badge";
 import { Button } from "@/ui/Button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/ui/DropdownMenu";
-import { MoreVertical, Eye, Edit, XCircle, CheckCircle2, Trash2, ShieldCheck } from "lucide-react";
+import { MoreVertical, Eye, Edit, XCircle, CheckCircle2, Trash2, Shield } from "lucide-react";
 import { ProductImage } from "./ProductImage";
 import { ProductDomain } from "../domain/types";
 
@@ -59,7 +59,7 @@ export function ProductListTable({ products, onTogglePublish, onDelete, basePath
                                             {product.is_featured && <Badge className="bg-teal-600 text-white border-0 text-[10px] px-1.5 py-0 h-4">F</Badge>}
                                             {product.is_new && <Badge className="bg-yellow-400 text-yellow-900 border-0 text-[10px] px-1.5 py-0 h-4">N</Badge>}
                                             {!product.published && <Badge className="bg-orange-500 text-white border-0 text-[10px] px-1.5 py-0 h-4">D</Badge>}
-                                            {product.is_verified && <ShieldCheck className="h-4 w-4 text-blue-600" />}
+                                            {product.is_verified && <Shield className="h-4 w-4 text-blue-600" />}
                                         </div>
                                     </div>
                                 </TableCell>

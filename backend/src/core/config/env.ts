@@ -13,6 +13,8 @@ const envSchema = z.object({
     EMAIL_PORT: z.string().transform(Number),
     EMAIL_USER: z.string().email(),
     EMAIL_PASS: z.string(),
+    GOOGLE_CLIENT_ID: z.string().optional(),
+    GOOGLE_CLIENT_SECRET: z.string().optional(),
 });
 
 const _env = envSchema.safeParse(process.env);
@@ -34,5 +36,9 @@ export const config = {
         port: env.EMAIL_PORT,
         user: env.EMAIL_USER,
         pass: env.EMAIL_PASS,
+    },
+    google: {
+        clientId: env.GOOGLE_CLIENT_ID,
+        clientSecret: env.GOOGLE_CLIENT_SECRET,
     },
 };

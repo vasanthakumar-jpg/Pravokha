@@ -4,6 +4,7 @@ import { useAdmin } from "@/core/context/AdminContext";
 import { useAuth } from "@/core/context/AuthContext";
 import { apiClient } from "@/infra/api/apiClient";
 import { AdminSkeleton } from "@/feat/admin/components/AdminSkeleton";
+import { NoResultsFound } from "@/feat/admin/components/NoResultsFound";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/ui/Card";
 import { Button } from "@/ui/Button";
@@ -100,7 +101,7 @@ export default function AdminOrders() {
       setLoading(true);
       const response = await apiClient.get("/orders");
 
-      if (response.data.success) {
+      if (response.data?.success) {
         const transformedOrders = (response.data.data || []).map(mapOrderData);
         setOrders(transformedOrders);
       }
@@ -129,7 +130,7 @@ export default function AdminOrders() {
         trackingUpdates: [trackingUpdate]
       });
 
-      if (response.data.success) {
+      if (response.data?.success) {
         toast({
           title: "Success",
           description: "Order status updated successfully",
@@ -161,8 +162,7 @@ export default function AdminOrders() {
 
     try {
       const response = await apiClient.post(`/orders/${orderToCancel.id}/cancel`);
-
-      if (response.data.success) {
+      if (response.data?.success) {
         toast({
           title: "Order Cancelled",
           description: `Order #${orderToCancel.order_number} has been cancelled.`,
@@ -197,8 +197,7 @@ export default function AdminOrders() {
 
     try {
       const response = await apiClient.delete(`/orders/${deletedOrder.id}`);
-
-      if (response.data.success) {
+      if (response.data?.success) {
         // Remove from local state
         setOrders(prev => prev.filter(o => o.id !== deletedOrder.id));
 
@@ -234,8 +233,7 @@ export default function AdminOrders() {
   const handleUndoDelete = async (orderId: string) => {
     try {
       const response = await apiClient.post(`/orders/${orderId}/restore`);
-
-      if (response.data.success) {
+      if (response.data?.success) {
         toast({
           title: "Order Restored",
           description: "The order has been restored successfully.",
@@ -304,13 +302,10 @@ export default function AdminOrders() {
         </div>
 
         {orders.length === 0 ? (
-          <Card>
-            <CardContent className="py-16 text-center">
-              <Package className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-xl font-semibold mb-2">No Orders Yet</h3>
-              <p className="text-muted-foreground">Orders will appear here once customers start purchasing</p>
-            </CardContent>
-          </Card>
+          <NoResultsFound
+            onReset={loadOrders}
+            className="my-12"
+          />
         ) : (
           <div className="space-y-3 sm:space-y-6">
             {orders.map((order) => (

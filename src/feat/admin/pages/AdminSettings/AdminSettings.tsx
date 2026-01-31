@@ -36,7 +36,6 @@ import {
   Phone,
   MapPin,
   ExternalLink,
-  ShieldCheck,
   Plus,
   Activity,
   Database,
@@ -684,7 +683,7 @@ export default function AdminSettings() {
                           disabled={saving}
                           className="rounded-xl h-11 px-8 min-w-[180px] font-bold text-xs bg-primary hover:bg-primary/90 transition-all"
                         >
-                          {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
+                          {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Shield className="mr-2 h-4 w-4" />}
                           {saving ? "Transmitting..." : "Update identity"}
                         </Button>
                       </div>
@@ -857,7 +856,7 @@ export default function AdminSettings() {
                     <div className="flex items-center justify-between">
                       <div className="space-y-1">
                         <div className="flex items-center gap-3">
-                          <ShieldCheck className="h-4 w-4 text-primary" />
+                          <Shield className="h-4 w-4 text-primary" />
                           <span className="text-xs font-bold text-muted-foreground">Permission matrix</span>
                         </div>
                         <CardTitle className="text-xl font-bold tracking-tight">Access infrastructure</CardTitle>
@@ -868,7 +867,7 @@ export default function AdminSettings() {
                   <CardContent className="p-6 space-y-10">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       {[
-                        { title: "Super admins", count: roleCounts.super_admins, icon: ShieldCheck, color: "text-primary", bg: "bg-primary/5", border: "border-primary/10" },
+                        { title: "Super admins", count: roleCounts.super_admins, icon: Shield, color: "text-primary", bg: "bg-primary/5", border: "border-primary/10" },
                         { title: "Standard sellers", count: roleCounts.sellers, icon: Store, color: "text-emerald-500", bg: "bg-emerald-500/5", border: "border-emerald-500/10" },
                         { title: "Support staff", count: roleCounts.support, icon: Bell, color: "text-amber-500", bg: "bg-amber-500/5", border: "border-amber-500/10" },
                       ].map((role) => (
@@ -1275,7 +1274,7 @@ export default function AdminSettings() {
                       <p className="text-xs font-bold text-muted-foreground opacity-60">Environment pulse nominal</p>
                     </div>
                     <Button onClick={handleSaveSystemSettings} disabled={saving} className="rounded-xl h-11 px-8 font-bold text-xs bg-primary hover:bg-primary/90 transition-all">
-                      {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
+                      {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Shield className="mr-2 h-4 w-4" />}
                       {saving ? "Syncing..." : "Commit global changes"}
                     </Button>
                   </CardFooter>

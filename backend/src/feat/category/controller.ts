@@ -25,12 +25,24 @@ export class CategoryController {
     static createCategory = asyncHandler(async (req: any, res: Response) => {
         const { name, slug, description, image_url, imageUrl, status, display_order, displayOrder } = req.body;
 
+        if (!name) {
+            return res.status(400).json({ success: false, message: 'Category name is required' });
+        }
+
+        // Generate slug if not provided or ensure uniqueness
+        let targetSlug = slug || name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+
+        const existing = await prisma.category.findUnique({ where: { slug: targetSlug } });
+        if (existing) {
+            targetSlug = `${targetSlug}-${Date.now().toString().slice(-4)}`;
+        }
+
         const category = await prisma.category.create({
             data: {
                 name,
-                slug,
-                description,
-                imageUrl: imageUrl || image_url,
+                slug: targetSlug,
+                description: description || '',
+                imageUrl: imageUrl || image_url || null,
                 status: status || 'active',
                 displayOrder: displayOrder ?? display_order ?? 0
             }

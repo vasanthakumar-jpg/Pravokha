@@ -15,7 +15,7 @@ import { Badge } from "@/ui/Badge";
 import { useToast } from "@/shared/hook/use-toast";
 
 import {
-    ArrowLeft, Upload, X, Plus, ChevronRight, Check, DollarSign, Image as ImageIcon, Package, Tag, Loader2, ShieldAlert, ShieldCheck, AlertCircle
+    ArrowLeft, Upload, X, Plus, ChevronRight, Check, DollarSign, Image as ImageIcon, Package, Tag, Loader2, ShieldAlert, Shield, AlertCircle
 } from "lucide-react";
 import {
     AlertDialog,
@@ -108,7 +108,7 @@ export default function SellerProductForm() {
     const { id } = useParams();
     const { toast } = useToast();
     const { user, role, verificationStatus, loading: authLoading } = useAuth();
-    const isAdmin = role === 'ADMIN' || role === 'admin';
+    const isAdmin = role === 'ADMIN';
 
     const [currentStep, setCurrentStep] = useState(1);
     const [direction, setDirection] = useState(0); // 1 = forward, -1 = back
@@ -230,7 +230,7 @@ export default function SellerProductForm() {
         };
 
         if (!authLoading) {
-            if (role === 'DEALER' || role === 'seller' || role === 'ADMIN' || role === 'admin') {
+            if (role === 'DEALER' || role === 'ADMIN') {
                 fetchProduct();
             } else {
                 console.warn("[SellerProductForm] Unauthorized access attempt.");

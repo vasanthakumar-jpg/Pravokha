@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/ui/Button";
-import { ArrowLeft, Award, Users, Globe, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Award, Users, Globe, Shield } from "lucide-react";
 
 export default function AboutPage() {
     useEffect(() => {
@@ -73,7 +73,7 @@ export default function AboutPage() {
                         <p className="text-muted-foreground">Committed to reducing our footprint through responsible sourcing.</p>
                     </div>
                     <div className="p-6 bg-card border rounded-xl space-y-4">
-                        <ShieldCheck className="h-10 w-10 text-primary" />
+                        <Shield className="h-10 w-10 text-primary" />
                         <h3 className="text-xl font-semibold">Secure Shopping</h3>
                         <p className="text-muted-foreground">Your data and payments are protected with top-tier security standards.</p>
                     </div>

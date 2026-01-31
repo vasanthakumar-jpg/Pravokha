@@ -38,6 +38,7 @@ interface AuthContextType {
   role: UserRole;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
+  googleLogin: (idToken: string) => Promise<void>;
   register: (data: any) => Promise<void>;
   signOut: () => void;
   refreshProfile: () => Promise<void>;
@@ -96,10 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const response = await apiClient.get('/auth/me');
       const userData = response.data.user;
-
-      console.log('[AuthContext] initializeAuth - Raw backend data:', userData);
       const mappedUser = mapUserData(userData);
-      console.log('[AuthContext] initializeAuth - Mapped user data:', mappedUser);
 
       setUser(mappedUser);
       setRole(userData.role);
@@ -143,6 +141,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const googleLogin = async (idToken: string) => {
+    try {
+      setLoading(true);
+      const response = await apiClient.post('/auth/google-login', { idToken });
+      const { token, user } = response.data;
+
+      localStorage.setItem('pravokha_auth_token', token);
+      localStorage.setItem('pravokha_user_role', user.role);
+      localStorage.setItem('pravokha_user_id', user.id);
+
+      setUser(mapUserData(user));
+      setRole(user.role);
+      setAuthError(null);
+    } catch (error: any) {
+      const message = error.response?.data?.message || "Google login failed";
+      setAuthError(message);
+      throw new Error(message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const register = async (data: any) => {
     try {
       setLoading(true);
@@ -179,10 +199,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log('[AuthContext] refreshProfile - Forcing re-fetch from backend');
       const response = await apiClient.get('/auth/me');
       const userData = response.data.user;
-
-      console.log('[AuthContext] refreshProfile - Raw backend data:', userData);
       const mappedUser = mapUserData(userData);
-      console.log('[AuthContext] refreshProfile - Mapped user data:', mappedUser);
       setRole(userData.role);
       setUser(mappedUser);
 
@@ -197,6 +214,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     role,
     loading,
     login,
+    googleLogin,
     register,
     signOut,
     refreshProfile,

@@ -5,26 +5,31 @@ import { asyncHandler } from '../../utils/asyncHandler';
 export class UserController {
     // 1. Profile Management
     // 1. Profile Management
-    // 1. Profile Management
     static getMyProfile = asyncHandler(async (req: any, res: Response) => {
         const userId = req.user.id;
         const user = await prisma.user.findUnique({
             where: { id: userId },
+            select: {
+                id: true, email: true, name: true, phone: true, address: true,
+                avatarUrl: true, bio: true, dateOfBirth: true, role: true,
+                status: true, verificationStatus: true, verificationComments: true,
+                storeName: true, storeDescription: true, storeLogoUrl: true,
+                storeBannerUrl: true, gst: true, pan: true, bankAccount: true,
+                ifsc: true, beneficiaryName: true, vacationMode: true, autoConfirm: true
+            }
         });
 
         if (!user) {
             return res.status(404).json({ success: false, message: 'User not found' });
         }
 
-        const { password, ...safeUser } = user;
-
         res.json({
             success: true,
             user: {
-                ...safeUser,
-                full_name: safeUser.name,
-                avatar_url: safeUser.avatarUrl || safeUser.storeLogoUrl,
-                date_of_birth: safeUser.dateOfBirth,
+                ...user,
+                full_name: user.name,
+                avatar_url: user.avatarUrl || user.storeLogoUrl,
+                date_of_birth: user.dateOfBirth,
             }
         });
     });
@@ -43,8 +48,10 @@ export class UserController {
         });
     });
 
-    static getProfile = asyncHandler(async (req: Request, res: Response) => {
+    static getProfile = asyncHandler(async (req: any, res: Response) => {
         const { id } = req.params;
+        const requester = req.user;
+
         const user = await prisma.user.findUnique({
             where: { id },
         });
@@ -53,7 +60,23 @@ export class UserController {
             return res.status(404).json({ success: false, message: 'User not found' });
         }
 
-        // Strip sensitive fields
+        // SECURITY: If not Admin and not Owner, strip PII (PAN, Bank, Email, Phone, etc.)
+        if (requester.role !== 'ADMIN' && requester.id !== user.id) {
+            return res.json({
+                success: true,
+                user: {
+                    id: user.id,
+                    name: user.name,
+                    storeName: user.storeName,
+                    storeDescription: user.storeDescription,
+                    storeLogoUrl: user.storeLogoUrl,
+                    avatarUrl: user.avatarUrl,
+                    role: user.role,
+                    verificationStatus: user.verificationStatus
+                }
+            });
+        }
+
         const { password, ...safeUser } = user;
 
         res.json({
@@ -180,6 +203,44 @@ export class UserController {
             }
         }
 
+        // CRITICAL: Auto-verification logic
+        // Check if seller has completed all required verification fields
+        const currentUser = await prisma.user.findUnique({
+            where: { id: userId },
+            select: {
+                gst: true,
+                pan: true,
+                bankAccount: true,
+                ifsc: true,
+                beneficiaryName: true,
+                verificationStatus: true,
+                role: true
+            }
+        });
+
+        // Only apply to DEALER role
+        if (currentUser?.role === 'DEALER') {
+            // Merge current values with updates to get final state
+            const finalFields = {
+                gst: filteredUpdates.gst ?? currentUser?.gst,
+                pan: filteredUpdates.pan ?? currentUser?.pan,
+                bankAccount: filteredUpdates.bankAccount ?? currentUser?.bankAccount,
+                ifsc: filteredUpdates.ifsc ?? currentUser?.ifsc,
+                beneficiaryName: filteredUpdates.beneficiaryName ?? currentUser?.beneficiaryName
+            };
+
+            // Check if all required fields are filled
+            const allFieldsFilled = Object.values(finalFields).every(
+                field => field && String(field).trim() !== ''
+            );
+
+            // Auto-set to pending if all fields filled and currently unverified
+            if (allFieldsFilled && currentUser.verificationStatus === 'unverified') {
+                filteredUpdates.verificationStatus = 'pending';
+                console.log(`[AutoVerification] Setting user ${userId} to 'pending' - all required fields completed`);
+            }
+        }
+
         const updatedUser = await prisma.user.update({
             where: { id: userId },
             data: filteredUpdates,
@@ -284,6 +345,7 @@ export class UserController {
                 orderBy: { createdAt: 'desc' },
                 select: {
                     id: true,
+                    avatarUrl: true,
                     email: true,
                     name: true,
                     role: true,
@@ -295,6 +357,7 @@ export class UserController {
                     storeDescription: true,
                     storeLogoUrl: true,
                     pan: true,
+                    gst: true,
                     bankAccount: true,
                     ifsc: true,
                     beneficiaryName: true
@@ -332,9 +395,22 @@ export class UserController {
         const { id } = req.params;
         const { role } = req.body;
 
+        // Map frontend roles to backend Enum values
+        const roleMapping: Record<string, any> = {
+            'user': 'USER',
+            'seller': 'DEALER',
+            'dealer': 'DEALER',
+            'admin': 'ADMIN',
+            'USER': 'USER',
+            'DEALER': 'DEALER',
+            'ADMIN': 'ADMIN'
+        };
+
+        const backendRole = roleMapping[role.toLowerCase()] || 'USER';
+
         const user = await prisma.user.update({
             where: { id },
-            data: { role }
+            data: { role: backendRole }
         });
 
         res.json({

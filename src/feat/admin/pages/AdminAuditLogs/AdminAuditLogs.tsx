@@ -67,6 +67,7 @@ import { AdminSkeleton } from "@/feat/admin/components/AdminSkeleton";
 import { useAuth } from "@/core/context/AuthContext";
 import { useAdmin } from "@/core/context/AdminContext";
 import { cn } from "@/lib/utils";
+import { NoResultsFound } from "@/feat/admin/components/NoResultsFound";
 
 interface AuditLog {
     id: string;
@@ -477,16 +478,12 @@ export default function AdminAuditLogs() {
                                         <AnimatePresence mode="popLayout">
                                             {filteredLogs.length === 0 ? (
                                                 <TableRow>
-                                                    <TableCell colSpan={5} className="py-32 text-center">
-                                                        <div className="flex flex-col items-center gap-4">
-                                                            <div className="h-16 w-16 rounded-full bg-muted/50 flex items-center justify-center border-2 border-dashed border-border/60">
-                                                                <Database className="h-8 w-8 text-muted-foreground/30" />
-                                                            </div>
-                                                            <div>
-                                                                <p className="text-lg font-bold">No logs found</p>
-                                                                <p className="text-sm text-muted-foreground">Adjust filters to see activity.</p>
-                                                            </div>
-                                                        </div>
+                                                    <TableCell colSpan={5} className="p-0">
+                                                        <NoResultsFound
+                                                            searchTerm={searchQuery}
+                                                            onReset={resetFilters}
+                                                            className="border-none bg-transparent"
+                                                        />
                                                     </TableCell>
                                                 </TableRow>
                                             ) : (

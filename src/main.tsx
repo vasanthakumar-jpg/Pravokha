@@ -17,8 +17,12 @@ console.log(
   "color: #10b981; font-weight: bold;"
 );
 
+import { GoogleOAuthProvider } from "@react-oauth/google";
+
 createRoot(document.getElementById("root")!).render(
   <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
-    <App />
+    <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID || "PASTE_YOUR_GOOGLE_CLIENT_ID_HERE"}>
+      <App />
+    </GoogleOAuthProvider>
   </ThemeProvider>
 );

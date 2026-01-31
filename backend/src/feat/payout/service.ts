@@ -1,7 +1,6 @@
 import { PayoutStatus, Role, OrderStatus, PaymentStatus } from '@prisma/client';
 import { prisma } from '../../infra/database/client';
-import { MARKETPLACE_FEE_PERCENTAGE } from '../../../../src/lib/constants'; // This is a bit unusual to import from src to backend, but let's assume it's shared or hardcode if needed. Actually, let's just use 0.10 to avoid path issues if it's not strictly shared.
-// For robust backend service, we should probably have a constants file in backend too.
+import MarketplaceConfig from '../../shared/config/marketplace';
 
 export class PayoutService {
     static async listPayouts(role: Role, userId: string) {
@@ -38,8 +37,8 @@ export class PayoutService {
             throw new Error('Insufficient balance');
         }
 
-        if (amount < 1000) {
-            throw new Error('Minimum payout request is ₹1,000');
+        if (amount < MarketplaceConfig.payout.minAmount) {
+            throw new Error(`Minimum payout request is ₹${MarketplaceConfig.payout.minAmount}`);
         }
 
         // 2. Create payout record
@@ -71,7 +70,8 @@ export class PayoutService {
         });
 
         const totalEarnings = deliveredItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-        const commission = totalEarnings * 0.10; // MARKETPLACE_FEE_PERCENTAGE
+        const commissionRate = MarketplaceConfig.commission.defaultRate;
+        const commission = totalEarnings * commissionRate;
         const netEarnings = totalEarnings - commission;
 
         // Subtract already requested/completed payouts
@@ -93,6 +93,8 @@ export class PayoutService {
         return {
             totalEarnings,
             commission,
+            commissionRate: MarketplaceConfig.commission.defaultRate * 100, // Return as percentage (e.g., 10)
+            minPayoutAmount: MarketplaceConfig.payout.minAmount,
             netEarnings,
             totalPaidOut,
             pendingBalance
@@ -128,8 +130,8 @@ export class PayoutService {
             id: item.id,
             order_id: item.order.orderNumber,
             amount: item.price * item.quantity,
-            commission: (item.price * item.quantity) * 0.10,
-            net_amount: (item.price * item.quantity) * 0.90,
+            commission: (item.price * item.quantity) * MarketplaceConfig.commission.defaultRate,
+            net_amount: (item.price * item.quantity) * (1 - MarketplaceConfig.commission.defaultRate),
             date: item.order.createdAt,
             status: 'completed'
         }));

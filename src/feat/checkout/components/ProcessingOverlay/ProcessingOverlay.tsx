@@ -1,4 +1,4 @@
-import { Loader2, ShieldCheck, Lock } from "lucide-react";
+import { Loader2, Shield, Lock } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Progress } from "@/ui/Progress";
 import styles from "./ProcessingOverlay.module.css";
@@ -70,7 +70,7 @@ export function ProcessingOverlay({
                 <div className={styles.iconWrapper}>
                     {step === 'success' ? (
                         <div className={cn(styles.successIcon, "animate-in scale-in duration-300")}>
-                            <ShieldCheck className="w-12 h-12" />
+                            <Shield className="w-12 h-12" />
                         </div>
                     ) : (
                         <>
@@ -97,7 +97,7 @@ export function ProcessingOverlay({
                 </div>
 
                 <div className={styles.footer}>
-                    <ShieldCheck className="w-3 h-3" />
+                    <Shield className="w-3 h-3" />
                     <span>256-bit AES Encryption</span>
                 </div>
             </div>

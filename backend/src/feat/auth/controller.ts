@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { AuthService } from './service';
 import { asyncHandler } from '../../utils/asyncHandler';
+import { GoogleAuthService } from './oauth.service';
 import { AuditService, AuditAction } from '../../shared/service/audit.service';
 
 export const register = asyncHandler(async (req: Request, res: Response) => {
@@ -51,6 +52,33 @@ export const getMe = asyncHandler(async (req: any, res: Response) => {
             dateOfBirth: req.user.dateOfBirth
         }
     });
+});
+
+export const googleLogin = asyncHandler(async (req: Request, res: Response) => {
+    const { idToken } = req.body;
+    if (!idToken) {
+        return res.status(400).json({ success: false, message: 'Google ID token is required' });
+    }
+
+    const googleData = await GoogleAuthService.verifyToken(idToken);
+
+    // Ensure types match AuthService.googleLogin
+    const result = await AuthService.googleLogin({
+        googleId: googleData.googleId,
+        email: googleData.email,
+        name: googleData.name,
+        picture: googleData.picture
+    });
+
+    await AuditService.log({
+        actorId: result.user.id,
+        targetType: 'User',
+        targetId: result.user.id,
+        actionType: AuditAction.LOGIN,
+        description: `User logged in via Google: ${googleData.email}`
+    });
+
+    res.status(200).json({ success: true, ...result });
 });
 
 export const passwordReset = asyncHandler(async (req: Request, res: Response) => {

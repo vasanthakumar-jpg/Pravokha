@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/ui/Card";
 import { Button } from "@/ui/Button";
 import { Badge } from "@/ui/Badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/Tooltip";
-import { Edit, Eye, EyeOff, Trash2, ShieldCheck, Package } from "lucide-react";
+import { Edit, Eye, EyeOff, Trash2, Shield, Package } from "lucide-react";
 import { ProductImage } from "./ProductImage";
 import { ProductDomain } from "../domain/types";
 import { cn } from "@/lib/utils";
@@ -37,7 +37,7 @@ export function ProductGridDisplay({ products, onTogglePublish, onDelete, basePa
                                 {product.is_new && <Badge className="bg-yellow-400 text-yellow-900 border-0 text-[10px]">New</Badge>}
                                 {product.is_verified && (
                                     <Badge className="bg-blue-600 text-white border-0 text-[10px] flex items-center gap-1">
-                                        <ShieldCheck className="h-3 w-3" /> Verified
+                                        <Shield className="h-3 w-3" /> Verified
                                     </Badge>
                                 )}
                                 {!product.published && <Badge className="bg-orange-500 text-white border-0 text-[10px]">Draft</Badge>}

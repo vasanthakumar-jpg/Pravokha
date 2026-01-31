@@ -32,7 +32,7 @@ import { useProfile } from "@/shared/hook/useProfile";
 export default function SellerProducts() {
   const { user, role } = useAuth();
   const { profile } = useProfile(user?.id);
-  const isAdmin = role === 'ADMIN' || role === 'admin';
+  const isAdmin = role === 'ADMIN';
   const navigate = useNavigate();
   const { toast } = useToast();
   const [viewMode, setViewMode] = useState<ProductViewMode>("grid");
