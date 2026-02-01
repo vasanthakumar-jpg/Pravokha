@@ -110,8 +110,8 @@ export class ProductService {
         });
     }
 
-    static async getProducts(user?: { id: string; role: Role }, filters: { search?: string; category?: string; page?: number | string; limit?: number | string; sellerId?: string } = {}) {
-        const { search, category, sellerId } = filters;
+    static async getProducts(user?: { id: string; role: Role }, filters: { search?: string; category?: string; page?: number | string; limit?: number | string; sellerId?: string; tag?: string } = {}) {
+        const { search, category, sellerId, tag } = filters;
         const pageNum = typeof filters.page === 'string' ? parseInt(filters.page) : (Number(filters.page) || 1);
         const limitNum = typeof filters.limit === 'string' ? parseInt(filters.limit) : (Number(filters.limit) || 10);
         const skip = (pageNum - 1) * limitNum;
@@ -131,6 +131,12 @@ export class ProductService {
 
         if (sellerId) {
             where.dealerId = sellerId;
+        }
+
+        if (tag === 'new') {
+            where.isNew = true;
+        } else if (tag === 'deals') {
+            where.discountPrice = { gt: 0 };
         }
 
         const include = {

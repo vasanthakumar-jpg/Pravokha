@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { toast } from "@/shared/hook/use-toast";
 import { Check, Loader2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/ui/Card";
 import { Button } from "@/ui/Button";
@@ -68,8 +69,12 @@ export const ProfileForm = ({ profile, updateProfile, loading, strength }: Profi
               <Label>Phone Number</Label>
               <Input
                 value={formData.phone}
-                onChange={e => setFormData({ ...formData, phone: e.target.value })}
-                placeholder="e.g. +91 98765 43210"
+                onChange={e => {
+                  const val = e.target.value.replace(/\D/g, "");
+                  setFormData({ ...formData, phone: val });
+                }}
+                placeholder="e.g. 9876543210"
+                maxLength={10}
                 className="bg-background/50 h-10"
               />
             </div>
@@ -102,7 +107,29 @@ export const ProfileForm = ({ profile, updateProfile, loading, strength }: Profi
           </div>
         </CardContent>
         <CardFooter className="justify-end border-t p-4 md:p-6 pt-4">
-          <Button onClick={() => updateProfile(formData)} disabled={loading} className="w-full md:w-auto gap-2">
+          <Button
+            onClick={() => {
+              if (formData.phone && formData.phone.length !== 10) {
+                toast({
+                  title: "Validation Error",
+                  description: "Mobile number must be exactly 10 digits.",
+                  variant: "destructive"
+                });
+                return;
+              }
+              if (!formData.full_name) {
+                toast({
+                  title: "Validation Error",
+                  description: "Full name is required.",
+                  variant: "destructive"
+                });
+                return;
+              }
+              updateProfile(formData);
+            }}
+            disabled={loading}
+            className="w-full md:w-auto gap-2"
+          >
             {loading ? <Loader2 className="animate-spin h-4 w-4" /> : <Check className="h-4 w-4" />}
             Save Changes
           </Button>

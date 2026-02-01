@@ -204,7 +204,7 @@ export default function SellerPayouts() {
     return (
       <div className="container py-8 flex flex-col gap-8 animate-pulse">
         {/* Payouts Header Skeleton */}
-        <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+        <div className="flex flex-col lg:flex-row justify-between items-start gap-4">
           <div className="space-y-2">
             <div className="h-8 w-48 bg-muted rounded-lg" />
             <div className="h-4 w-72 bg-muted/60 rounded-lg" />
@@ -216,7 +216,7 @@ export default function SellerPayouts() {
           </div>
         </div>
 
-        {/* Stats Grid Skeleton */}
+        {/* Financial Pulse Grid Skeleton */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {[1, 2, 3, 4].map(i => (
             <div key={i} className="h-32 bg-muted/20 rounded-2xl border border-border/40 p-6 space-y-4">
@@ -242,8 +242,8 @@ export default function SellerPayouts() {
                 <TableRow className="border-b-border/40 h-16 bg-muted/10 transition-none">
                   <TableHead className="pl-8"><div className="h-4 w-20 bg-muted/60 rounded" /></TableHead>
                   <TableHead className="text-center"><div className="h-4 w-24 bg-muted/40 rounded mx-auto" /></TableHead>
-                  <TableHead className="text-right"><div className="h-4 w-20 bg-muted/40 rounded ml-auto" /></TableHead>
-                  <TableHead className="text-right"><div className="h-4 w-16 bg-muted/40 rounded ml-auto" /></TableHead>
+                  <TableHead className="text-right"><div className="h-4 w-24 bg-muted/40 rounded ml-auto" /></TableHead>
+                  <TableHead className="text-right"><div className="h-4 w-24 bg-muted/40 rounded ml-auto" /></TableHead>
                   <TableHead className="text-right"><div className="h-4 w-24 bg-muted/60 rounded ml-auto" /></TableHead>
                   <TableHead className="text-right pr-8"><div className="h-4 w-20 bg-muted/40 rounded ml-auto" /></TableHead>
                 </TableRow>

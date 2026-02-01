@@ -172,11 +172,12 @@ export class OrderService {
 
         if (role === Role.DEALER) {
             // DEALER can only view orders containing at least one of their products
-            const hasSellerItem = order.items.some(item => item.product.dealerId === userId);
+            const hasSellerItem = order.items.some(item => item.sellerId === userId);
             if (!hasSellerItem) {
                 throw new Error('Forbidden: This order does not contain your products');
             }
-            return order;
+            // Show only seller's items
+            order.items = order.items.filter(item => item.sellerId === userId);
         }
 
         // Regular USER/CUSTOMER can only view their own orders
@@ -592,5 +593,43 @@ export class OrderService {
         }
 
         return order.statusHistory;
+    }
+    static async updateItemStatus(orderId: string, itemId: string, userId: string, role: string, data: { status: OrderStatus; trackingNumber?: string; trackingCarrier?: string }) {
+        const item = await prisma.orderItem.findUnique({
+            where: { id: itemId },
+            include: { order: true }
+        });
+
+        if (!item || item.orderId !== orderId) {
+            throw new Error('Order item not found');
+        }
+
+        // Security check
+        if (role === Role.DEALER && item.sellerId !== userId) {
+            throw new Error('Forbidden: You do not own this order item');
+        }
+
+        const updatedItem = await prisma.orderItem.update({
+            where: { id: itemId },
+            data: {
+                status: data.status,
+                trackingNumber: data.trackingNumber,
+                trackingCarrier: data.trackingCarrier,
+                shippedAt: data.status === OrderStatus.SHIPPED ? new Date() : undefined,
+                deliveredAt: data.status === OrderStatus.DELIVERED ? new Date() : undefined,
+            }
+        });
+
+        // Add to history
+        await prisma.orderStatusHistory.create({
+            data: {
+                orderId: orderId,
+                status: data.status,
+                userId: userId,
+                notes: `Item ${item.title} status updated to ${data.status}`
+            }
+        });
+
+        return updatedItem;
     }
 }

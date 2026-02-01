@@ -154,42 +154,54 @@ export default function SellerProductForm() {
             }
             try {
                 console.log(`[SellerProductForm] Fetching product: ${id}`);
-                const { data: product } = await apiClient.get(`/products/${id}`);
+                const response = await apiClient.get(`/products/${id}`);
+                const product = response.data?.data || response.data;
 
                 const colors: ColorOption[] = [];
                 const sizes: string[] = [];
                 const existingVariantImages: Record<string, string[]> = {};
                 const sizeStockMap: Record<string, number> = {};
 
-                if (product.product_variants) {
+                // Determine category and subcategory identifiers safely
+                const categoryRaw = product.category?.slug || product.categorySlug || product.category || "";
+                const subcategoryRaw = product.subcategory?.slug || product.subcategorySlug || product.subcategory || "";
+
+                const variants = product.variants || product.product_variants || [];
+
+                if (variants) {
                     // Sort variants to ensure stable color order if possible
-                    product.product_variants.sort((a: any, b: any) => a.created_at.localeCompare(b.created_at));
+                    variants.sort((a: any, b: any) => {
+                        const dateA = a.created_at || a.createdAt || "";
+                        const dateB = b.created_at || b.createdAt || "";
+                        return dateA.localeCompare(dateB);
+                    });
 
-                    product.product_variants.forEach((v: any) => {
+                    variants.forEach((v: any) => {
                         // Create a stable ID for the color (use existing variant ID)
-                        // Note: If multiple variants share a color name, we should group them, but current model is 1 variant = 1 color usually.
-                        // We will treat each existing variant as a unique color entry for editing stability.
-
-                        // Check if color already processed (case: multiple variants with same color name?? Should not happen in current logic but be safe)
                         let colorId = v.id;
-                        const existingColor = colors.find(c => c.name === v.color_name);
+                        const existingColor = colors.find(c => c.name === v.color_name || c.name === v.colorName);
+
+                        const colorName = v.color_name || v.colorName;
+                        const colorHex = v.color_hex || v.colorHex;
 
                         if (!existingColor) {
-                            colors.push({ id: colorId, name: v.color_name, hex: v.color_hex });
+                            colors.push({ id: colorId, name: colorName, hex: colorHex });
                             existingVariantImages[colorId] = v.images || [];
                         } else {
-                            // If duplicate color name, re-use the ID (this handles the case where maybe logic was different before)
+                            // If duplicate color name, re-use the ID
                             colorId = existingColor.id;
-                            // Merge images if any (rare edge case)
+                            // Merge images if any
                             v.images?.forEach((img: string) => {
                                 if (!existingVariantImages[colorId].includes(img)) existingVariantImages[colorId].push(img);
                             });
                         }
 
-                        if (v.product_sizes) {
-                            v.product_sizes.forEach((s: any) => {
+                        const productSizes = v.sizes || v.product_sizes || [];
+
+                        if (productSizes) {
+                            productSizes.forEach((s: any) => {
                                 if (!sizes.includes(s.size)) sizes.push(s.size);
-                                const sizeKey = getStockKey(v.color_name, s.size);
+                                const sizeKey = getStockKey(colorName, s.size);
                                 sizeStockMap[sizeKey] = (sizeStockMap[sizeKey] || 0) + s.stock;
                             });
                         }
@@ -199,11 +211,11 @@ export default function SellerProductForm() {
                 setFormData({
                     title: product.title || "",
                     description: product.description || "",
-                    category: product.category || "",
-                    selectedCategoryId: product.category_id || "", // Assuming backend sends category_id in top level or we find it via slug
-                    selectedSubcategoryId: product.subcategory_id || "",
+                    category: categoryRaw,
+                    selectedCategoryId: product.categoryId || product.category_id || "",
+                    selectedSubcategoryId: product.subcategoryId || product.subcategory_id || "",
                     price: product.price?.toString() || "",
-                    discountPrice: product.discount_price?.toString() || "",
+                    discountPrice: (product.discountPrice ?? product.discount_price)?.toString() || "",
                     stockQuantity: "0",
                     selectedColors: colors,
                     selectedSizes: sizes,
@@ -243,15 +255,33 @@ export default function SellerProductForm() {
     useEffect(() => {
         if (!formData.category || dbCategories.length === 0) return;
 
-        // If we already have selectedCategoryId (e.g. from fetchProduct), don't overwrite if valid
-        if (formData.selectedCategoryId) return;
+        // Try to find the category ID if we only have the slug/name
+        const cat = dbCategories.find(c =>
+            c.slug.toLowerCase() === formData.category.toLowerCase() ||
+            c.name.toLowerCase() === formData.category.toLowerCase()
+        );
 
-        const cat = dbCategories.find(c => c.slug === formData.category);
         if (cat && cat.id !== formData.selectedCategoryId) {
-            console.log(`[SellerProductForm] Pre-populating category: ${cat.name} (${cat.id})`);
+            console.log(`[SellerProductForm] Pre-populating category ID for "${formData.category}": ${cat.name} (${cat.id})`);
             setFormData(prev => ({ ...prev, selectedCategoryId: cat.id }));
         }
     }, [dbCategories, formData.category, formData.selectedCategoryId]);
+
+    // Pre-populate subcategory ID after subcategories are loaded
+    useEffect(() => {
+        if (!formData.selectedCategoryId || dbSubcategories.length === 0) return;
+        if (formData.selectedSubcategoryId) return; // Already have it
+
+        // If we have a subcategory slug from product, find its ID
+        const subSlug = originalData?.subcategory?.slug || originalData?.subcategorySlug || (typeof originalData?.subcategory === 'string' ? originalData.subcategory : null);
+        if (subSlug) {
+            const sub = dbSubcategories.find(s => s.slug === subSlug && s.categoryId === formData.selectedCategoryId);
+            if (sub) {
+                console.log(`[SellerProductForm] Pre-populating subcategory: ${sub.name} (${sub.id})`);
+                setFormData(prev => ({ ...prev, selectedSubcategoryId: sub.id }));
+            }
+        }
+    }, [dbSubcategories, formData.selectedCategoryId, formData.selectedSubcategoryId, originalData]);
 
     // Handle category change with subcategory reset
     const handleCategoryChange = (categoryId: string) => {
@@ -265,9 +295,11 @@ export default function SellerProductForm() {
         setSubcategoryWarning("");
 
         // Check if category has subcategories
-        const hasSubcategories = dbSubcategories.some(s => s.categoryId === categoryId);
-        if (hasSubcategories) {
-            setSubcategoryWarning("This category has subcategories. Please select one for better product organization.");
+        const categorySubcategories = dbSubcategories.filter(s => s.categoryId === categoryId);
+        if (categorySubcategories.length > 0) {
+            setSubcategoryWarning("Please select a subcategory for better product organization.");
+        } else {
+            setSubcategoryWarning("Note: This category currently has no subcategories.");
         }
     };
 
@@ -676,9 +708,11 @@ export default function SellerProductForm() {
                     <div className="absolute top-4 sm:top-5 left-0 w-full h-[2px] bg-gray-200 dark:bg-gray-700 -z-20" />
 
                     {/* Progress Bar (Teal) */}
-                    <div
-                        className="absolute top-4 sm:top-5 left-0 h-[2px] bg-[#267A77] -z-10 transition-all duration-500 ease-in-out"
-                        style={{ width: `${((currentStep - 1) / (STEPS.length - 1)) * 100}%` }}
+                    <motion.div
+                        className="absolute top-4 sm:top-5 left-0 h-[2px] bg-[#267A77] -z-10"
+                        initial={{ width: 0 }}
+                        animate={{ width: `${((currentStep - 1) / (STEPS.length - 1)) * 100}%` }}
+                        transition={{ type: "spring", stiffness: 100, damping: 20 }}
                     />
 
                     {STEPS.map((step) => {
@@ -689,23 +723,44 @@ export default function SellerProductForm() {
 
                         return (
                             <div key={step.id} className="flex flex-col items-center gap-2 relative z-10 group cursor-default">
-                                <div
+                                <motion.div
+                                    initial={false}
+                                    animate={{
+                                        scale: isCurrent ? 1.2 : 1,
+                                        backgroundColor: isActive ? "#267A77" : "rgba(255, 255, 255, 1)",
+                                        borderColor: isActive ? "#267A77" : "rgba(209, 213, 219, 1)",
+                                        color: isActive ? "#ffffff" : "rgba(156, 163, 175, 1)",
+                                        boxShadow: isCurrent ? "0 0 20px rgba(38, 122, 119, 0.4)" : "none"
+                                    }}
+                                    transition={{ type: "spring", stiffness: 300, damping: 25 }}
                                     className={cn(
-                                        "w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300 bg-white dark:bg-slate-900",
-                                        isActive
-                                            ? "border-[#267A77] bg-[#267A77] text-white shadow-lg scale-110"
-                                            : "border-gray-300 dark:border-gray-600 text-gray-400 dark:text-gray-500",
-                                        isCurrent && "ring-4 ring-[#267A77]/20"
+                                        "w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300 dark:bg-slate-900"
                                     )}
                                 >
-                                    {isCompleted ? <Check className="h-4 w-4 sm:h-5 sm:w-5" /> : <Icon className="h-4 w-4 sm:h-5 sm:w-5" />}
-                                </div>
-                                <span className={cn(
-                                    "text-[10px] sm:text-xs font-bold whitespace-nowrap transition-colors duration-300 absolute -bottom-6",
-                                    isActive ? "text-[#267A77]" : "text-gray-400 dark:text-gray-500"
-                                )}>
+                                    <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
+
+                                    {isCompleted && (
+                                        <motion.div
+                                            initial={{ scale: 0 }}
+                                            animate={{ scale: 1 }}
+                                            className="absolute inset-0 bg-[#267A77] rounded-full flex items-center justify-center"
+                                        >
+                                            <Check className="h-4 w-4 sm:h-5 sm:w-5 text-white font-bold" />
+                                        </motion.div>
+                                    )}
+                                </motion.div>
+                                <motion.span
+                                    animate={{
+                                        color: isActive ? "#267A77" : "rgba(156, 163, 175, 1)",
+                                        y: isCurrent ? 5 : 0,
+                                        opacity: isActive ? 1 : 0.6
+                                    }}
+                                    className={cn(
+                                        "text-[10px] sm:text-xs font-bold whitespace-nowrap transition-colors duration-300 absolute -bottom-6"
+                                    )}
+                                >
                                     {step.title}
-                                </span>
+                                </motion.span>
                             </div>
                         );
                     })}
@@ -736,14 +791,6 @@ export default function SellerProductForm() {
                                 {currentStep === 1 && (
                                     <div className="space-y-4">
                                         <div className="grid gap-2">
-                                            <div className="flex items-center justify-between">
-                                                <Label className={cn(errors.title ? "text-destructive" : "")}>Product Title</Label>
-                                                {id && !isAdmin && (
-                                                    <Badge variant="secondary" className="text-[10px] bg-amber-50 text-amber-600 border-amber-200 transition-colors hover:bg-amber-100 hover:text-amber-700">
-                                                        Admin Managed
-                                                    </Badge>
-                                                )}
-                                            </div>
                                             <Input
                                                 value={formData.title}
                                                 onChange={e => {
@@ -752,29 +799,65 @@ export default function SellerProductForm() {
                                                 }}
                                                 placeholder="e.g. Vintage Leather Jacket"
                                                 className={cn("text-lg h-12", errors.title ? "border-destructive focus-visible:ring-destructive" : "")}
-                                                disabled={!!id && !isAdmin}
                                                 autoFocus
                                             />
-                                            {id && !isAdmin && (
-                                                <p className="text-[10px] text-muted-foreground italic -mt-1 flex items-center gap-1">
-                                                    <ShieldAlert className="w-3 h-3" /> Core identity is locked. Submit a revision request for changes.
-                                                </p>
-                                            )}
                                             {errors.title && (
                                                 <motion.p initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} className="text-xs text-destructive font-medium">
                                                     {errors.title}
                                                 </motion.p>
                                             )}
                                         </div>
+
+                                        <div className="grid gap-2">
+                                            <div className="flex items-center justify-between">
+                                                <Label className={cn(errors.sku ? "text-destructive" : "")}>Product SKU (Unique ID)</Label>
+                                                {!id && (
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="h-6 text-[10px] text-primary hover:text-primary/80 flex items-center gap-1"
+                                                        onClick={(e) => {
+                                                            e.preventDefault();
+                                                            handleChange('sku', generateSKU());
+                                                            toast({ title: "New SKU Generated", description: "You have a fresh unique identifier." });
+                                                        }}
+                                                    >
+                                                        <Plus className="w-3 h-3" /> Regenerate
+                                                    </Button>
+                                                )}
+                                            </div>
+                                            <div className="relative">
+                                                <Input
+                                                    value={formData.sku}
+                                                    onChange={e => {
+                                                        handleChange('sku', e.target.value.toUpperCase());
+                                                        if (errors.sku) setErrors(prev => ({ ...prev, sku: "" }));
+                                                    }}
+                                                    placeholder="PVK-XXXXXX"
+                                                    className={cn("font-mono tracking-widest text-sm", errors.sku ? "border-destructive" : "")}
+                                                    disabled={!!id}
+                                                />
+                                                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                                    {!!id ? <Shield className="w-4 h-4 text-muted-foreground/40" /> : <Tag className="w-4 h-4 text-muted-foreground/40" />}
+                                                </div>
+                                            </div>
+                                            <p className="text-[10px] text-muted-foreground italic">
+                                                {!!id ? "Existing product SKU cannot be changed for tracking integrity." : "A unique identifier used for inventory tracking."}
+                                            </p>
+                                            {errors.sku && (
+                                                <motion.p initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} className="text-xs text-destructive font-medium">
+                                                    {errors.sku}
+                                                </motion.p>
+                                            )}
+                                        </div>
+
                                         <div className="grid gap-2">
                                             <div className="flex items-center justify-between">
                                                 <Label className={cn(errors.category ? "text-destructive" : "")}>Category *</Label>
-                                                {id && !isAdmin && <Badge variant="secondary" className="text-[10px] bg-amber-50 text-amber-600 border-amber-200 transition-colors hover:bg-amber-100 hover:text-amber-700">Admin Managed</Badge>}
                                             </div>
                                             <Select
                                                 value={formData.selectedCategoryId}
                                                 onValueChange={handleCategoryChange}
-                                                disabled={!!id && !isAdmin}
                                             >
                                                 <SelectTrigger className={cn(
                                                     "text-lg h-12",
@@ -839,7 +922,6 @@ export default function SellerProductForm() {
                                         <div className="grid gap-2">
                                             <div className="flex items-center justify-between">
                                                 <Label className={cn(errors.description ? "text-destructive" : "")}>Story / Description</Label>
-                                                {id && !isAdmin && <Badge variant="secondary" className="text-[10px] bg-amber-50 text-amber-600 border-amber-200 transition-colors hover:bg-amber-100 hover:text-amber-700">Admin Managed</Badge>}
                                             </div>
                                             <Textarea
                                                 value={formData.description}
@@ -849,7 +931,6 @@ export default function SellerProductForm() {
                                                 }}
                                                 placeholder="Tell the customer about this product..."
                                                 className={cn("min-h-[150px] resize-none", errors.description ? "border-destructive focus-visible:ring-destructive" : "")}
-                                                disabled={!!id && !isAdmin}
                                             />
                                             {errors.description && (
                                                 <motion.p initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} className="text-xs text-destructive font-medium">

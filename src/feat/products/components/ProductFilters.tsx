@@ -19,6 +19,7 @@ interface ProductFiltersProps {
     onStatusFilterChange: (value: ProductStatusFilter) => void;
     viewMode: ProductViewMode;
     onViewModeChange: (value: ProductViewMode) => void;
+    categories?: { id: string, name: string, slug?: string }[];
 }
 
 export function ProductFilters({
@@ -30,6 +31,7 @@ export function ProductFilters({
     onStatusFilterChange,
     viewMode,
     onViewModeChange,
+    categories = [],
 }: ProductFiltersProps) {
     return (
         <div className="flex flex-col gap-3">
@@ -71,10 +73,11 @@ export function ProductFilters({
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value="all">All Categories</SelectItem>
-                        <SelectItem value="mens-tshirts">Men's T-Shirts</SelectItem>
-                        <SelectItem value="mens-track-pants">Men's Track Pants</SelectItem>
-                        <SelectItem value="womens-tshirts">Women's T-Shirts</SelectItem>
-                        <SelectItem value="kids-tshirts">Kids T-Shirts</SelectItem>
+                        {categories.map((cat) => (
+                            <SelectItem key={cat.id} value={cat.slug || cat.id}>
+                                {cat.name}
+                            </SelectItem>
+                        ))}
                     </SelectContent>
                 </Select>
 

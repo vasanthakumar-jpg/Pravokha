@@ -31,6 +31,7 @@ router.get('/dealer/:id', authenticate, authorize([Role.DEALER]), requireDealerO
 
 // Admin & Dealer Status Management
 router.patch('/:id/status', authenticate, authorize([Role.ADMIN, Role.DEALER]), requireOrderOwnership, OrderController.updateStatus);
+router.patch('/:id/items/:itemId/status', authenticate, authorize([Role.ADMIN, Role.DEALER]), OrderController.updateItemStatus);
 router.post('/:id/ship', authenticate, authorize([Role.DEALER]), requireOrderOwnership, OrderController.ship);
 
 // Admin Specific Routes

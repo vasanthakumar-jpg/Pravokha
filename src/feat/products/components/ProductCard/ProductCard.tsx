@@ -134,9 +134,9 @@ export function ProductCard({ product }: ProductCardProps) {
     };
 
     const p = product as any;
-    const isFeatured = p.featured || p.is_featured;
-    const isNew = p.newArrival || p.is_new;
-    const isVerified = p.is_verified;
+    const isFeatured = p.isFeatured || p.featured || p.is_featured;
+    const isNew = p.isNew || p.newArrival || p.is_new;
+    const isVerified = p.isVerified || p.is_verified;
 
     return (
         <div

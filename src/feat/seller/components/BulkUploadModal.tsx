@@ -78,7 +78,26 @@ export function BulkUploadModal({ isOpen, onClose, onSuccess, userId }: BulkUplo
                 const workbook = XLSX.read(data, { type: 'binary' });
                 const sheetName = workbook.SheetNames[0];
                 const sheet = workbook.Sheets[sheetName];
-                const rows = XLSX.utils.sheet_to_json(sheet) as any[];
+                const rawRows = XLSX.utils.sheet_to_json(sheet) as any[];
+
+                // Normalize headers to lowercase and underscores
+                const rows = rawRows.map(row => {
+                    const normalized: any = {};
+                    let hasData = false;
+                    Object.keys(row).forEach(key => {
+                        const val = row[key];
+                        if (val !== undefined && val !== null && val !== "") {
+                            hasData = true;
+                        }
+                        const normalizedKey = key.toLowerCase().trim().replace(/\s+/g, '_');
+                        normalized[normalizedKey] = val;
+                    });
+                    return hasData ? normalized : null;
+                }).filter(row => row !== null && row.title);
+
+                if (rows.length === 0) {
+                    throw new Error("No valid product data found in the file.");
+                }
 
                 if (rows.length > 500) {
                     throw new Error("Maximum 500 products allowed per upload.");

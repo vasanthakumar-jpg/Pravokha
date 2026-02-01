@@ -136,6 +136,9 @@ export default function SellerOrderDetail() {
         image: item.image || item.product?.variants?.[0]?.images?.[0] || '',
         colorName: item.colorName || item.color_name,
         size: item.size,
+        status: item.status || 'PENDING',
+        trackingNumber: item.trackingNumber || item.tracking_number,
+        trackingCarrier: item.trackingCarrier || item.tracking_carrier,
       })) : [],
     };
   };
@@ -222,6 +225,28 @@ export default function SellerOrderDetail() {
     }
   };
 
+  const [updatingItemStatus, setUpdatingItemStatus] = useState<string | null>(null);
+
+  const handleItemStatusUpdate = async (itemId: string, newStatus: string, trackingData?: any) => {
+    setUpdatingItemStatus(itemId);
+    try {
+      await apiClient.patch(`/orders/${orderId}/items/${itemId}/status`, {
+        status: newStatus.toUpperCase(),
+        ...trackingData
+      });
+      toast({ title: "Item Updated", description: `Item status changed to ${newStatus}` });
+      loadOrder();
+    } catch (error: any) {
+      toast({
+        title: "Update Failed",
+        description: error.response?.data?.message || "Failed to update item status",
+        variant: "destructive"
+      });
+    } finally {
+      setUpdatingItemStatus(null);
+    }
+  };
+
   const handleSaveNotes = async () => {
     setSavingNotes(true);
     try {
@@ -252,14 +277,30 @@ export default function SellerOrderDetail() {
       return;
     }
     if (!trackingNumber || !carrierName) return toast({ title: "Required", description: "Enter carrier and tracking number", variant: "destructive" });
-    try {
-      await apiClient.post(`/orders/${orderId}/ship`, {
-        trackingNumber,
-        trackingCarrier: carrierName,
-        version: order.version
-      });
 
-      toast({ title: "Shipped", description: `Order shipped via ${carrierName} (${trackingNumber})` });
+    try {
+      if (order.activeItemId) {
+        // Multi-vendor item-level status update
+        await handleItemStatusUpdate(order.activeItemId, 'shipped', {
+          trackingNumber,
+          trackingCarrier: carrierName
+        });
+
+        // Clear active item ID
+        setOrder(prev => {
+          const { activeItemId, ...rest } = prev;
+          return rest;
+        });
+      } else {
+        // Legacy/Admin whole order ship
+        await apiClient.post(`/orders/${orderId}/ship`, {
+          trackingNumber,
+          trackingCarrier: carrierName,
+          version: order.version
+        });
+      }
+
+      toast({ title: "Shipped", description: `Shipment details updated.` });
       setTrackingModalOpen(false);
       loadOrder();
     } catch (e: any) {
@@ -387,7 +428,52 @@ export default function SellerOrderDetail() {
                       <p className="text-[11px] sm:text-sm text-muted-foreground mt-1 flex flex-wrap gap-x-3 gap-y-1">
                         {item.colorName && <span className="flex items-center gap-1.5">Color: <span className="text-foreground font-medium">{item.colorName}</span></span>}
                         {item.size && <span className="flex items-center gap-1.5">Size: <span className="text-foreground font-medium">{item.size}</span></span>}
+                        <span className="flex items-center gap-1.5 italic">Status: <Badge variant="outline" className="text-[10px] py-0 h-4 uppercase">{item.status}</Badge></span>
                       </p>
+
+                      <div className="mt-4 p-3 bg-muted/30 rounded-lg space-y-3">
+                        <div className="flex flex-col sm:flex-row gap-3 items-end">
+                          <div className="flex-1 space-y-1">
+                            <Label className="text-[10px] font-bold uppercase text-muted-foreground ml-1">Update Item Status</Label>
+                            <Select
+                              value={item.status?.toLowerCase()}
+                              onValueChange={(val) => handleItemStatusUpdate(item.id, val)}
+                              disabled={isReadOnly || updatingItemStatus === item.id || (!isAdmin && verificationStatus !== 'verified')}
+                            >
+                              <SelectTrigger className="h-9 bg-background border-border text-xs">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {statusOptions.map(opt => (
+                                  <SelectItem key={opt.value} value={opt.value} className="text-xs">{opt.label}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          {item.status?.toLowerCase() === 'packed' && (
+                            <Button
+                              size="sm"
+                              className="h-9 bg-indigo-600 hover:bg-indigo-700 text-[10px] font-bold uppercase"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOrder(prev => ({ ...prev, activeItemId: item.id }));
+                                setTrackingModalOpen(true);
+                              }}
+                            >
+                              Ship Item
+                            </Button>
+                          )}
+                        </div>
+
+                        {item.trackingNumber && (
+                          <div className="text-[10px] text-muted-foreground bg-background/50 p-2 rounded-md border border-dashed border-border flex items-center justify-between">
+                            <span>Tracking: <span className="font-bold text-foreground">{item.trackingCarrier} - {item.trackingNumber}</span></span>
+                            {item.shippedAt && <span>{safeFormatDate(item.shippedAt, 'MMM dd')}</span>}
+                          </div>
+                        )}
+                      </div>
+
                       <div className="flex items-center justify-between mt-2">
                         <p className="text-[11px] sm:text-sm text-muted-foreground font-medium bg-muted/80 w-fit px-2 py-0.5 rounded-md">Qty: {item.quantity} × ₹{item.price.toLocaleString()}</p>
                         <p className="text-[10px] text-primary font-bold opacity-0 group-hover:opacity-100 transition-opacity">View Product →</p>

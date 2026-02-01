@@ -115,7 +115,8 @@ export default function UnifiedOrdersPage() {
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
     const [statusFilter, setStatusFilter] = useState<string>("all");
-    const [mainTab, setMainTab] = useState<string>("my-orders");
+    const isSellerContext = location.pathname.startsWith('/seller');
+    const [mainTab, setMainTab] = useState<string>(isSellerContext ? "customer-orders" : "my-orders");
     const [userRole, setUserRole] = useState<'ADMIN' | 'DEALER' | 'USER' | null>(null);
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize] = useState(10);
@@ -524,16 +525,18 @@ export default function UnifiedOrdersPage() {
 
                     <div className="w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
                         <TabsList className="flex w-fit sm:w-auto h-auto sm:h-9 bg-transparent p-0.5 gap-1 min-w-full sm:min-w-0">
-                            <TabsTrigger value="my-orders" className="flex-1 sm:flex-none gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm text-xs font-bold tracking-tight px-4 h-9 sm:h-auto whitespace-nowrap" title="My Purchases">
-                                <ShoppingBag className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                                <span>Purchases</span>
-                                <Badge variant="secondary" className="ml-1 bg-muted-foreground/10 text-muted-foreground h-4 px-1 min-w-[1rem] text-[9px]">
-                                    {myOrdersCount}
-                                </Badge>
-                            </TabsTrigger>
+                            {!isSellerContext && (
+                                <TabsTrigger value="my-orders" className="flex-1 sm:flex-none gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm text-xs font-bold tracking-tight px-4 h-9 sm:h-auto whitespace-nowrap" title="My Purchases">
+                                    <ShoppingBag className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                                    <span>Purchases</span>
+                                    <Badge variant="secondary" className="ml-1 bg-muted-foreground/10 text-muted-foreground h-4 px-1 min-w-[1rem] text-[9px]">
+                                        {myOrdersCount}
+                                    </Badge>
+                                </TabsTrigger>
+                            )}
                             <TabsTrigger value="customer-orders" className="flex-1 sm:flex-none gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm text-xs font-bold tracking-tight px-4 h-9 sm:h-auto whitespace-nowrap" title="Business Sales">
                                 <Users className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                                <span>Sales</span>
+                                <span>{isSellerContext ? "Orders" : "Sales"}</span>
                                 <Badge variant="secondary" className="ml-1 bg-muted-foreground/10 text-muted-foreground h-4 px-1 min-w-[1rem] text-[9px]">
                                     {businessOrdersCount}
                                 </Badge>

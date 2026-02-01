@@ -12,17 +12,15 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/ui/Avatar";
 import { Badge } from "@/ui/Badge";
 import {
-    User,
-    Settings,
-    LogOut,
-    ShoppingBag,
-    CreditCard,
-    LayoutDashboard,
-    Store,
-    DollarSign,
-    BarChart3,
     Users,
     Package,
+    Heart,
+    MapPin,
+    User,
+    ShoppingBag,
+    LayoutDashboard,
+    Store,
+    LogOut,
 } from "lucide-react";
 import styles from "./UserAccountDropdown.module.css";
 import { cn, getMediaUrl } from "@/lib/utils";
@@ -73,30 +71,25 @@ export function UserAccountDropdown() {
 
     // Menu items based on role
     const getUserMenuItems = () => [
-        { icon: User, label: "My Account", path: "/user" },
         { icon: ShoppingBag, label: "My Orders", path: "/user/orders" },
-        { icon: CreditCard, label: "Payment History", path: "/settings" },
-        { icon: Settings, label: "Settings", path: "/settings" },
+        { icon: User, label: "Profile", path: "/user/account" },
+        { icon: MapPin, label: "Addresses", path: "/user/account" },
+        { icon: Heart, label: "Wishlist", path: "/user/account" },
     ];
 
     const getSellerMenuItems = () => [
-        { icon: LayoutDashboard, label: "Dashboard", path: "/seller" },
-        { icon: Store, label: "My Store", path: "/seller/products" },
-        { icon: ShoppingBag, label: "Orders", path: "/seller/orders" },
-        { icon: DollarSign, label: "Payouts", path: "/seller/payouts" },
-        { icon: BarChart3, label: "Reports", path: "/seller/analytics" },
-        { icon: User, label: "My Account", path: "/seller/settings" },
-        { icon: Settings, label: "Store Settings", path: "/seller/settings" },
+        { icon: LayoutDashboard, label: "Seller Dashboard", path: "/seller" },
+        { icon: Store, label: "Manage Products", path: "/seller/products" },
+        { icon: ShoppingBag, label: "Sales Orders", path: "/seller/orders" },
+        { icon: User, label: "User Profile", path: "/user/account" },
     ];
 
     const getAdminMenuItems = () => [
-        { icon: LayoutDashboard, label: "Dashboard", path: "/admin" },
-        { icon: Users, label: "Users", path: "/admin/users" },
+        { icon: LayoutDashboard, label: "Admin Panel", path: "/admin" },
+        { icon: Users, label: "Users List", path: "/admin/users" },
         { icon: Package, label: "All Products", path: "/admin/products" },
         { icon: ShoppingBag, label: "All Orders", path: "/admin/orders" },
-        { icon: BarChart3, label: "Reports", path: "/admin/reports" },
-        { icon: User, label: "My Account", path: "/settings" },
-        { icon: Settings, label: "System Settings", path: "/admin/settings" },
+        { icon: User, label: "User Profile", path: "/user/account" },
     ];
 
     const getMenuItems = () => {

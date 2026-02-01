@@ -23,7 +23,7 @@ interface AddressesManagerProps {
 export const AddressesManager = ({ addresses, addAddress, updateAddress, deleteAddress, loading }: AddressesManagerProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  
+
   const [form, setForm] = useState<Omit<Address, 'id'>>({
     label: "Home",
     full_name: "",
@@ -41,22 +41,32 @@ export const AddressesManager = ({ addresses, addAddress, updateAddress, deleteA
   const handleSubmit = async () => {
     // Validation
     if (!form.full_name || !form.phone || !form.address_line1 || !form.city || !form.state || !form.pincode) {
-        toast({
-            title: "Error",
-            description: "Please fill in all required fields",
-            variant: "destructive",
-        });
-        return;
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields",
+        variant: "destructive",
+      });
+      return;
     }
 
-    // Pincode validation (assuming 6 digits for Indian pincode as per constraint likely)
+    // Phone validation (exactly 10 digits as per typical requirement, also prevents character input)
+    if (!/^\d{10}$/.test(form.phone)) {
+      toast({
+        title: "Error",
+        description: "Phone number must be exactly 10 digits",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Pincode validation (exactly 6 digits)
     if (!/^\d{6}$/.test(form.pincode)) {
-        toast({
-            title: "Error",
-            description: "Pincode must be exactly 6 digits",
-            variant: "destructive",
-        });
-        return;
+      toast({
+        title: "Error",
+        description: "Pincode must be exactly 6 digits",
+        variant: "destructive",
+      });
+      return;
     }
 
     if (editingId) {
@@ -106,7 +116,7 @@ export const AddressesManager = ({ addresses, addAddress, updateAddress, deleteA
           <h2 className="text-xl md:text-2xl font-bold">Shipping Addresses</h2>
           <p className="text-muted-foreground text-sm">Manage your shipping locations.</p>
         </div>
-        <Dialog open={isOpen} onOpenChange={(open) => { setIsOpen(open); if(!open) resetForm(); }}>
+        <Dialog open={isOpen} onOpenChange={(open) => { setIsOpen(open); if (!open) resetForm(); }}>
           <DialogTrigger asChild>
             <Button className="w-full sm:w-auto gap-2 shadow-lg shadow-primary/20">
               <Plus className="h-4 w-4" /> Add New Address
@@ -116,60 +126,64 @@ export const AddressesManager = ({ addresses, addAddress, updateAddress, deleteA
             <DialogHeader>
               <DialogTitle>{editingId ? "Edit Address" : "Add New Address"}</DialogTitle>
               <DialogDescription>
-                 Enter your delivery details below.
+                Enter your delivery details below.
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               {/* Type Selection - Scrollable on mobile */}
               <div className="space-y-3">
-                 <Label>Address Type</Label>
-                 <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-                    {['Home', 'Office', 'Other'].map(l => (
-                      <div 
-                        key={l}
-                        onClick={() => setForm({...form, label: l})}
-                        className={cn(
-                          "cursor-pointer px-4 py-2 rounded-lg border-2 flex items-center gap-2 transition-all min-w-fit",
-                          form.label === l 
-                            ? "border-primary bg-primary/5 text-primary" 
-                            : "border-muted hover:border-muted-foreground/50"
-                        )}
-                      >
-                         {l === 'Home' ? <Home className="h-4 w-4" /> : 
-                          l === 'Office' ? <Briefcase className="h-4 w-4" /> : <MapPin className="h-4 w-4" />}
-                         <span className="font-medium">{l}</span>
-                      </div>
-                    ))}
-                 </div>
+                <Label>Address Type</Label>
+                <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+                  {['Home', 'Office', 'Other'].map(l => (
+                    <div
+                      key={l}
+                      onClick={() => setForm({ ...form, label: l })}
+                      className={cn(
+                        "cursor-pointer px-4 py-2 rounded-lg border-2 flex items-center gap-2 transition-all min-w-fit",
+                        form.label === l
+                          ? "border-primary bg-primary/5 text-primary"
+                          : "border-muted hover:border-muted-foreground/50"
+                      )}
+                    >
+                      {l === 'Home' ? <Home className="h-4 w-4" /> :
+                        l === 'Office' ? <Briefcase className="h-4 w-4" /> : <MapPin className="h-4 w-4" />}
+                      <span className="font-medium">{l}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
 
               <div className="space-y-4">
                 <div className="grid md:grid-cols-2 gap-4">
-                   <div className="space-y-2">
-                     <Label>Recipient Name</Label>
-                     <Input 
-                        value={form.full_name} 
-                        onChange={e => setForm({...form, full_name: e.target.value})}
-                        placeholder="Who receives this?"
-                        className="h-10"
-                      />
-                   </div>
-                   <div className="space-y-2">
-                     <Label>Phone Number</Label>
-                     <Input 
-                        value={form.phone} 
-                        onChange={e => setForm({...form, phone: e.target.value})}
-                        placeholder="+91 98765 43210"
-                        className="h-10"
-                      />
-                   </div>
+                  <div className="space-y-2">
+                    <Label>Recipient Name</Label>
+                    <Input
+                      value={form.full_name}
+                      onChange={e => setForm({ ...form, full_name: e.target.value })}
+                      placeholder="Who receives this?"
+                      className="h-10"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Phone Number</Label>
+                    <Input
+                      value={form.phone}
+                      onChange={e => {
+                        const val = e.target.value.replace(/\D/g, "");
+                        setForm({ ...form, phone: val });
+                      }}
+                      placeholder="10-digit mobile number"
+                      maxLength={10}
+                      className="h-10"
+                    />
+                  </div>
                 </div>
 
                 <div className="space-y-2">
                   <Label>Address Line 1</Label>
-                  <Input 
-                    value={form.address_line1} 
-                    onChange={e => setForm({...form, address_line1: e.target.value})}
+                  <Input
+                    value={form.address_line1}
+                    onChange={e => setForm({ ...form, address_line1: e.target.value })}
                     placeholder="Street, House No."
                     className="h-10"
                   />
@@ -178,24 +192,32 @@ export const AddressesManager = ({ addresses, addAddress, updateAddress, deleteA
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   <div className="space-y-2 col-span-2 md:col-span-1">
                     <Label>City</Label>
-                    <Input value={form.city} onChange={e => setForm({...form, city: e.target.value})} className="h-10" />
+                    <Input value={form.city} onChange={e => setForm({ ...form, city: e.target.value })} className="h-10" />
                   </div>
                   <div className="space-y-2">
                     <Label>State</Label>
-                    <Input value={form.state} onChange={e => setForm({...form, state: e.target.value})} className="h-10" />
+                    <Input value={form.state} onChange={e => setForm({ ...form, state: e.target.value })} className="h-10" />
                   </div>
                   <div className="space-y-2">
                     <Label>Pincode</Label>
-                    <Input value={form.pincode} onChange={e => setForm({...form, pincode: e.target.value})} className="h-10" />
+                    <Input
+                      value={form.pincode}
+                      onChange={e => {
+                        const val = e.target.value.replace(/\D/g, "");
+                        setForm({ ...form, pincode: val });
+                      }}
+                      maxLength={6}
+                      className="h-10"
+                    />
                   </div>
                 </div>
 
                 <div className="flex items-center gap-3 pt-2 bg-muted/30 p-3 rounded-lg border border-dashed">
-                  <Switch 
-                    checked={form.is_default} 
-                    onCheckedChange={c => setForm({...form, is_default: c})} 
+                  <Switch
+                    checked={form.is_default}
+                    onCheckedChange={c => setForm({ ...form, is_default: c })}
                   />
-                  <Label className="font-normal cursor-pointer" onClick={() => setForm({...form, is_default: !form.is_default})}>
+                  <Label className="font-normal cursor-pointer" onClick={() => setForm({ ...form, is_default: !form.is_default })}>
                     Set as default shipping address
                   </Label>
                 </div>
@@ -235,16 +257,16 @@ export const AddressesManager = ({ addresses, addAddress, updateAddress, deleteA
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
-            
+
             <CardHeader className="p-4 md:p-6 pb-2 md:pb-3 pr-10">
               <div className="flex items-center gap-3">
                 <div className={cn(
                   "h-10 w-10 md:h-12 md:w-12 rounded-full flex items-center justify-center shrink-0",
                   addr.label === 'Home' ? "bg-blue-100 text-blue-600" :
-                  addr.label === 'Office' ? "bg-purple-100 text-purple-600" : "bg-orange-100 text-orange-600"
+                    addr.label === 'Office' ? "bg-purple-100 text-purple-600" : "bg-orange-100 text-orange-600"
                 )}>
-                  {addr.label === 'Home' ? <Home className="h-5 w-5 md:h-6 md:w-6" /> : 
-                   addr.label === 'Office' ? <Briefcase className="h-5 w-5 md:h-6 md:w-6" /> : <MapPin className="h-5 w-5 md:h-6 md:w-6" />}
+                  {addr.label === 'Home' ? <Home className="h-5 w-5 md:h-6 md:w-6" /> :
+                    addr.label === 'Office' ? <Briefcase className="h-5 w-5 md:h-6 md:w-6" /> : <MapPin className="h-5 w-5 md:h-6 md:w-6" />}
                 </div>
                 <div className="min-w-0">
                   <CardTitle className="text-base md:text-lg flex items-center gap-2">
@@ -268,10 +290,10 @@ export const AddressesManager = ({ addresses, addAddress, updateAddress, deleteA
           </Card>
         ))}
         {addresses.length === 0 && (
-           <div className="col-span-full py-12 text-center border-dashed border-2 rounded-xl bg-muted/10">
-             <MapPin className="h-10 w-10 md:h-12 md:w-12 mx-auto text-muted-foreground/30 mb-4" />
-             <p className="text-muted-foreground text-sm md:text-base">No addresses saved yet.</p>
-           </div>
+          <div className="col-span-full py-12 text-center border-dashed border-2 rounded-xl bg-muted/10">
+            <MapPin className="h-10 w-10 md:h-12 md:w-12 mx-auto text-muted-foreground/30 mb-4" />
+            <p className="text-muted-foreground text-sm md:text-base">No addresses saved yet.</p>
+          </div>
         )}
       </div>
     </div>

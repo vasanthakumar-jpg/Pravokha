@@ -145,6 +145,17 @@ export function ProfilePage() {
     const handleSave = async () => {
         if (!user) return;
 
+        // Validation
+        if (!profile.full_name.trim()) {
+            toast({ title: "Validation Error", description: "Full name is required", variant: "destructive" });
+            return;
+        }
+
+        if (profile.phone && (profile.phone.length !== 10 || !/^\d+$/.test(profile.phone))) {
+            toast({ title: "Validation Error", description: "Please enter a valid 10-digit mobile number", variant: "destructive" });
+            return;
+        }
+
         setSaving(true);
         try {
             const response = await apiClient.patch("/users/profile", {
@@ -340,7 +351,10 @@ export function ProfilePage() {
                                     <Input
                                         id="phone"
                                         value={profile.phone}
-                                        onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
+                                        onChange={(e) => {
+                                            const val = e.target.value.replace(/\D/g, "");
+                                            setProfile({ ...profile, phone: val });
+                                        }}
                                         placeholder="Enter your 10-digit phone number"
                                         className="pl-10"
                                         maxLength={10}

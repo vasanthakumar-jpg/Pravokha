@@ -63,9 +63,9 @@ export default function SellerAnalytics() {
             // Use generic orders endpoint but request all items for analysis
             const { data: orders } = await apiClient.get('/orders', {
                 params: {
-                    seller_id: user.id,
+                    sellerId: user.id,
                     after: startDate,
-                    limit: 1000 // Ensure we get enough data for analytics (pagination might be needed if volume high)
+                    limit: 1000 // Ensure we get enough data for analytics
                 }
             }).then(res => res.data); // data structure usually { data: [], meta: {} }, but mapOrders logic expects array? 
             // Note: apiClient.get returns axios response { data, status, ... }. My backend standard response is usually { data: [...], meta: ... }.
@@ -202,16 +202,22 @@ export default function SellerAnalytics() {
                 </div>
 
                 {/* Charts & Table */}
-                <div className="space-y-6">
-                    <div className="h-10 w-64 bg-muted/20 rounded-lg p-1" /> {/* Tab Switcher */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <div className="h-[400px] bg-muted/30 rounded-3xl border border-border/40 p-6 space-y-4">
-                            <div className="h-6 w-32 bg-muted rounded mb-8" />
-                            <div className="h-64 bg-muted/10 rounded-xl" />
+                <div className="space-y-8">
+                    <div className="h-14 w-full sm:w-96 bg-muted/20 rounded-xl p-1" /> {/* Tab Switcher */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <div className="h-[450px] bg-muted/20 rounded-[32px] border border-border/40 p-8 space-y-6">
+                            <div className="space-y-2">
+                                <div className="h-6 w-40 bg-muted/60 rounded-lg" />
+                                <div className="h-3 w-64 bg-muted/20 rounded-lg" />
+                            </div>
+                            <div className="h-64 bg-muted/10 rounded-[24px]" />
                         </div>
-                        <div className="h-[400px] bg-muted/30 rounded-3xl border border-border/40 p-6 space-y-4">
-                            <div className="h-6 w-32 bg-muted rounded mb-8" />
-                            <div className="h-64 bg-muted/10 rounded-xl" />
+                        <div className="h-[450px] bg-muted/20 rounded-[32px] border border-border/40 p-8 space-y-6">
+                            <div className="space-y-2">
+                                <div className="h-6 w-40 bg-muted/60 rounded-lg" />
+                                <div className="h-3 w-64 bg-muted/20 rounded-lg" />
+                            </div>
+                            <div className="h-64 bg-muted/10 rounded-[24px]" />
                         </div>
                     </div>
                 </div>

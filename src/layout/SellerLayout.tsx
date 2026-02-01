@@ -33,6 +33,7 @@ import {
     Tag,
     ChevronDown,
     Bell,
+    Search,
 } from "lucide-react";
 import { NotificationBell } from "@/shared/ui/NotificationBell";
 import {
@@ -59,47 +60,18 @@ interface NavSection {
 }
 
 const navSections: NavSection[] = [
-
     {
         title: "Main",
         links: [
-            { title: "Home", href: "/", icon: <Home className="h-4 w-4" /> },
             { title: "Dashboard", href: "/seller", icon: <LayoutDashboard className="h-4 w-4" /> },
+            { title: "Products", href: "/seller/products", icon: <ShoppingBag className="h-4 w-4" /> },
+            { title: "Orders", href: "/seller/orders", icon: <Package className="h-4 w-4" /> },
+            { title: "Bulk Upload", href: "/seller/products?bulk=true", icon: <Plus className="h-4 w-4" /> },
+            { title: "Payments", href: "/seller/payouts", icon: <DollarSign className="h-4 w-4" /> },
+            { title: "Analytics", href: "/seller/analytics", icon: <TrendingUp className="h-4 w-4" /> },
+            { title: "Settings", href: "/seller/settings", icon: <SettingsIcon className="h-4 w-4" /> },
         ]
     },
-    {
-        title: "Products",
-        links: [
-            { title: "All Products", href: "/products", icon: <ShoppingBag className="h-4 w-4" /> },
-            { title: "My Products", href: "/seller/products", icon: <Package className="h-4 w-4" /> },
-            { title: "Add Product", href: "/seller/products/add", icon: <Plus className="h-4 w-4" /> },
-        ]
-    },
-    {
-        title: "Orders",
-        links: [
-            { title: "All Orders", href: "/seller/orders", icon: <ShoppingBag className="h-4 w-4" /> },
-        ]
-    },
-    {
-        title: "Analytics",
-        links: [
-            { title: "Reports", href: "/seller/analytics", icon: <TrendingUp className="h-4 w-4" /> },
-        ]
-    },
-    {
-        title: "Payments",
-        links: [
-            { title: "Payouts", href: "/seller/payouts", icon: <DollarSign className="h-4 w-4" /> },
-        ]
-    },
-    {
-        title: "Settings",
-        links: [
-            { title: "Store Settings", href: "/seller/settings", icon: <SettingsIcon className="h-4 w-4" /> },
-        ]
-    }
-
 ];
 
 export default function SellerLayout() {
@@ -254,130 +226,40 @@ export default function SellerLayout() {
                     </div>
 
                     {/* Center: Desktop Navigation */}
-                    <nav className="hidden lg:flex items-center gap-0.5 xl:gap-1 2xl:gap-2 flex-1 justify-center overflow-hidden">
-                        {isSuspended ? (
-                            <>
-                                <Link to="/">
-                                    <Button variant="ghost" size="sm" className="group font-semibold whitespace-nowrap h-8 lg:h-9 px-2 xl:px-3">
-                                        <Home className="h-4 w-4 mr-2" /> Home
-                                    </Button>
-                                </Link>
-                                <Link to="/products">
-                                    <Button variant="ghost" size="sm" className="group font-semibold whitespace-nowrap h-8 lg:h-9 px-2 xl:px-3">
-                                        <ShoppingBag className="h-4 w-4 mr-2" /> All products
-                                    </Button>
-                                </Link>
-                                <Link to="/orders">
-                                    <Button variant="ghost" size="sm" className="group font-semibold whitespace-nowrap h-8 lg:h-9 px-2 xl:px-3 text-primary">
-                                        <Package className="h-4 w-4 mr-2" /> My orders
-                                    </Button>
-                                </Link>
-                            </>
-                        ) : (
-                            <>
-                                {/* Home Link */}
-                                <Link to="/">
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="group font-semibold whitespace-nowrap h-8 lg:h-9 px-2 xl:px-3 transition-all duration-200 overflow-hidden"
-                                    >
-                                        <Home className="h-4 w-4 xl:h-4 xl:w-4 flex-shrink-0" />
-                                        <span className="hidden xl:inline ml-2">Home</span>
-                                        <span className="xl:hidden inline max-w-0 group-hover:max-w-[100px] group-hover:ml-2 overflow-hidden transition-all duration-200 ease-in-out">Home</span>
-                                    </Button>
-                                </Link>
-
-                                {/* Dashboard Link */}
-                                <Link to="/seller">
+                    <nav className="hidden lg:flex items-center gap-1 xl:gap-2 flex-1 justify-center overflow-hidden">
+                        {navSections[0].links.map((link) => {
+                            const isActive = location.pathname === link.href ||
+                                (link.href !== '/seller' && location.pathname.startsWith(link.href));
+                            return (
+                                <Link key={link.href} to={link.href}>
                                     <Button
                                         variant="ghost"
                                         size="sm"
                                         className={cn(
-                                            "group font-semibold whitespace-nowrap h-8 lg:h-9 px-2 xl:px-3 transition-all duration-200 overflow-hidden",
-                                            location.pathname === "/seller" ? "text-[#3FA6A6]" : "text-[#263140]"
+                                            "group font-semibold whitespace-nowrap h-8 lg:h-9 px-2 xl:px-4 transition-all duration-200",
+                                            isActive ? "text-[#3FA6A6] bg-[#3FA6A6]/10" : "text-foreground hover:text-[#3FA6A6]"
                                         )}
                                     >
-                                        <LayoutDashboard className="h-4 w-4 xl:h-4 xl:w-4 flex-shrink-0" />
-                                        <span className="hidden xl:inline ml-2">Dashboard</span>
-                                        <span className="xl:hidden inline max-w-0 group-hover:max-w-[100px] group-hover:ml-2 overflow-hidden transition-all duration-200 ease-in-out">Dashboard</span>
+                                        <span className="mr-2 opacity-80 group-hover:opacity-100 transition-opacity">
+                                            {link.icon}
+                                        </span>
+                                        <span className="hidden xl:inline">{link.title}</span>
+                                        <span className="xl:hidden inline max-w-0 group-hover:max-w-[120px] transition-all duration-200 overflow-hidden ml-0 group-hover:ml-1 text-xs">
+                                            {link.title}
+                                        </span>
                                     </Button>
                                 </Link>
-
-                                {/* Products Dropdown */}
-                                <DropdownMenu open={allProductsDropdownOpen} onOpenChange={setAllProductsDropdownOpen}>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            className="group font-semibold whitespace-nowrap h-8 lg:h-9 px-2 xl:px-3 transition-all duration-200 overflow-hidden focus:outline-none focus-visible:outline-none"
-                                            onMouseEnter={() => setAllProductsDropdownOpen(true)}
-                                            onMouseLeave={() => setAllProductsDropdownOpen(false)}
-                                        >
-                                            <Package className="h-4 w-4 xl:h-4 xl:w-4 flex-shrink-0" />
-                                            <span className="hidden xl:inline ml-2">Products</span>
-                                            <span className="xl:hidden inline max-w-0 group-hover:max-w-[120px] group-hover:ml-2 overflow-hidden transition-all duration-200 ease-in-out">Products</span>
-                                            <ChevronDown className="h-3 w-3 ml-1 flex-shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180" />
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent
-                                        align="center"
-                                        className="w-48 focus:outline-none focus-visible:outline-none"
-                                        onMouseEnter={() => setAllProductsDropdownOpen(true)}
-                                        onMouseLeave={() => setAllProductsDropdownOpen(false)}
-                                    >
-                                        <Link to="/products">
-                                            <DropdownMenuItem className="cursor-pointer">
-                                                <ShoppingBag className="h-4 w-4 mr-2" />
-                                                All Products
-                                            </DropdownMenuItem>
-                                        </Link>
-                                        <Link to="/seller/products">
-                                            <DropdownMenuItem className="cursor-pointer">
-                                                <Package className="h-4 w-4 mr-2" />
-                                                My Products
-                                            </DropdownMenuItem>
-                                        </Link>
-                                        <Link to="/seller/products/add">
-                                            <DropdownMenuItem className="cursor-pointer">
-                                                <Plus className="h-4 w-4 mr-2" />
-                                                Add Product
-                                            </DropdownMenuItem>
-                                        </Link>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-
-                                {/* Remaining Links */}
-                                {navSections.flatMap(section => section.links)
-                                    .filter(link => link.title !== "Home" && link.title !== "Dashboard" && link.title !== "All Products" && link.title !== "My Products" && link.title !== "Add Product")
-                                    .map((link) => {
-                                        const isActive = location.pathname === link.href ||
-                                            location.pathname.startsWith(link.href + "/");
-                                        return (
-                                            <Link key={link.href} to={link.href}>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    className={cn(
-                                                        "group font-semibold whitespace-nowrap h-8 lg:h-9 px-2 xl:px-3 transition-all duration-200 overflow-hidden",
-                                                        isActive ? "text-[#3FA6A6]" : "text-[#263140]"
-                                                    )}
-                                                >
-                                                    <span className="[&>svg]:h-4 [&>svg]:w-4 xl:[&>svg]:h-4 xl:[&>svg]:w-4 flex-shrink-0">
-                                                        {link.icon}
-                                                    </span>
-                                                    <span className="hidden xl:inline ml-2">{link.title}</span>
-                                                    <span className="xl:hidden inline max-w-0 group-hover:max-w-[100px] group-hover:ml-2 overflow-hidden transition-all duration-200 ease-in-out">{link.title}</span>
-                                                </Button>
-                                            </Link>
-                                        );
-                                    })}
-                            </>
-                        )}
+                            );
+                        })}
                     </nav>
 
-                    {/* Right: Theme Toggle, Notifications and Avatar */}
+                    {/* Right: Actions */}
                     <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+                        {/* Search Button (Added to match design) */}
+                        <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9 text-muted-foreground hover:text-foreground">
+                            <Search className="h-4 w-4 sm:h-5 sm:w-5" />
+                        </Button>
+
                         {/* Dark Mode Toggle */}
                         <ThemeToggle />
 

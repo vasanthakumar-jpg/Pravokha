@@ -236,4 +236,25 @@ export class OrderController {
             next(error);
         }
     }
+    static async updateItemStatus(req: Request, res: Response, next: NextFunction) {
+        try {
+            const { id: orderId, itemId } = req.params;
+            const user = (req as any).user;
+            const { status, trackingNumber, trackingCarrier } = req.body;
+
+            const updatedItem = await OrderService.updateItemStatus(orderId, itemId, user.id, user.role, {
+                status,
+                trackingNumber,
+                trackingCarrier
+            });
+
+            res.status(200).json({
+                success: true,
+                message: 'Item status updated successfully',
+                data: updatedItem
+            });
+        } catch (error) {
+            next(error);
+        }
+    }
 }

@@ -1,0 +1,225 @@
+.megaMenu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background-color: hsl(var(--card));
+    border-bottom: 1px solid hsl(var(--border));
+    box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.2);
+    z-index: 45;
+    padding: 2.5rem 0;
+}
+
+:global(.dark) .megaMenu {
+    background-color: hsl(var(--card) / 0.98);
+    backdrop-filter: blur(12px);
+    box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.6);
+}
+
+.container {
+    max-width: 80rem;
+    /* 7xl */
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 3rem;
+}
+
+.categoriesSection {
+    display: flex;
+    justify-content: space-between;
+    gap: 2rem;
+}
+
+.column {
+    flex: 1;
+    min-width: 0;
+}
+
+.categoryTitle {
+    display: block;
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: hsl(var(--foreground));
+    margin-bottom: 1.25rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s ease;
+}
+
+.categoryTitle:hover {
+    color: #3FA6A6;
+    border-bottom-color: #3FA6A6;
+}
+
+.subcategoryList {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.subcategoryLink {
+    display: block;
+    font-size: 0.875rem;
+    color: hsl(var(--muted-foreground));
+    transition: all 0.2s ease;
+    text-decoration: none;
+}
+
+.subcategoryLink:hover {
+    color: hsl(var(--foreground));
+    transform: translateX(4px);
+}
+
+.viewAllLink {
+    display: flex;
+    align-items: center;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #3FA6A6;
+    margin-top: 0.5rem;
+    transition: all 0.2s ease;
+}
+
+.viewAllLink:hover {
+    opacity: 0.8;
+}
+
+.featuredSection {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.featuredCard {
+    position: relative;
+    border-radius: 1rem;
+    overflow: hidden;
+    background-color: #263140;
+    height: 380px;
+    display: flex;
+    flex-direction: column;
+}
+
+.featuredContent {
+    position: relative;
+    z-index: 2;
+    padding: 2rem;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    color: white;
+}
+
+.tag {
+    font-size: 0.75rem;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    color: #3FA6A6;
+    margin-bottom: 0.75rem;
+}
+
+.featuredContent h3 {
+    font-size: 1.75rem;
+    font-weight: 800;
+    margin-bottom: 0.75rem;
+    line-height: 1.2;
+}
+
+.featuredContent p {
+    font-size: 0.9375rem;
+    color: rgba(255, 255, 255, 0.7);
+    margin-bottom: 1.5rem;
+}
+
+.featuredIcons {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: auto;
+}
+
+.iconItem {
+    font-size: 1.5rem;
+    background: rgba(255, 255, 255, 0.1);
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+}
+
+.shopNowBtn {
+    background-color: #3FA6A6;
+    color: white;
+    font-weight: 700;
+    padding: 0 1.5rem;
+    height: 42px;
+    border-radius: 0.5rem;
+}
+
+.shopNowBtn:hover {
+    background-color: #348e8e;
+}
+
+.featuredImageWrapper {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 1;
+}
+
+.featuredImage {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0.4;
+}
+
+.featuredImageWrapper::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(to right, #263140 30%, transparent 100%);
+}
+
+.bannerFooter {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-weight: 700;
+    color: hsl(var(--foreground));
+    padding: 1rem 1.5rem;
+    background-color: hsl(var(--muted) / 0.5);
+    border-radius: 0.75rem;
+    transition: all 0.2s ease;
+}
+
+.bannerFooter:hover {
+    background-color: hsl(var(--muted));
+    color: #3FA6A6;
+}
+
+@media (max-width: 1100px) {
+    .grid {
+        grid-template-columns: 1fr;
+    }
+
+    .featuredSection {
+        display: none;
+    }
+}

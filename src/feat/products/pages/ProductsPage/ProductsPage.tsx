@@ -85,6 +85,8 @@ export function ProductsPage() {
     const categoryParam = searchParams.get("category");
     const subcategoryParam = searchParams.get("subcategory");
     const searchQuery = searchParams.get("search");
+    const filterParam = searchParams.get("filter");
+    const tagParam = searchParams.get("tag");
 
     useEffect(() => {
         if (categoryParam && categoryParam !== "all") {
@@ -139,6 +141,16 @@ export function ProductsPage() {
                     pSubSlug.endsWith(`-${target}`);
             });
         });
+    }
+
+    // Filter by Deals (from URL param)
+    if (filterParam === "deals" || tagParam === "deals") {
+        filteredProducts = filteredProducts.filter(p => (p.discountPrice || 0) < p.price && (p.discountPrice || 0) > 0);
+    }
+
+    // Filter by New Arrivals (from URL param)
+    if (filterParam === "new" || tagParam === "new") {
+        filteredProducts = filteredProducts.filter(p => (p as any).isNew);
     }
 
     // Filter by price
@@ -205,7 +217,7 @@ export function ProductsPage() {
         const currentMinDiscount = isDesktop ? minDiscount : tempMinDiscount;
         const setDiscount = isDesktop ? setMinDiscount : setTempMinDiscount;
 
-        const discountOptions = [10, 20, 30, 40, 50, 60, 70];
+        const discountOptions = [10, 20, 30, 40, 50];
 
         return (
             <div className="space-y-8">

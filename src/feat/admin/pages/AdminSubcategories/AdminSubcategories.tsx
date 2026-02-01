@@ -43,11 +43,15 @@ export default function AdminSubcategories() {
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [searchQuery, setSearchQuery] = useState("");
 
-    const filteredSubcategories = subcategories.filter(sub =>
-        sub.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        sub.slug.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (sub.categories?.name || "").toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const filteredSubcategories = (subcategories || []).filter(sub => {
+        const query = (searchQuery || "").toLowerCase();
+        const categoryName = (sub.categories?.name || sub.category?.name || "");
+        return (
+            (sub.name || "").toLowerCase().includes(query) ||
+            (sub.slug || "").toLowerCase().includes(query) ||
+            categoryName.toLowerCase().includes(query)
+        );
+    });
 
     const [formData, setFormData] = useState({
         name: "",
@@ -93,14 +97,14 @@ export default function AdminSubcategories() {
 
             // Fetch subcategories with category info
             const subResponse = await apiClient.get('/categories/subcategories');
-            const data = subResponse.data.subcategories.map((sub: any) => ({
+            const data = (subResponse.data.subcategories || []).map((sub: any) => ({
                 ...sub,
-                category_id: sub.categoryId,
-                display_order: sub.displayOrder,
-                image_url: sub.imageUrl,
-                categories: sub.category // Match the categories property name used in UI
+                category_id: sub.categoryId || sub.category_id,
+                display_order: sub.displayOrder ?? sub.display_order ?? 0,
+                image_url: sub.imageUrl || sub.image_url || null,
+                categories: sub.category // Map for legacy UI support
             }));
-            setSubcategories(data || []);
+            setSubcategories(data);
         } catch (error: any) {
             toast({
                 title: "Error",
@@ -200,6 +204,7 @@ export default function AdminSubcategories() {
         });
         setErrors({});
         setSlugManuallyEdited(false);
+        setSearchQuery(""); // Clear search to show new items
     };
 
     if (adminLoading || loading) {
@@ -360,50 +365,50 @@ export default function AdminSubcategories() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {filteredSubcategories.map((subcategory) => (
-                    <Card key={subcategory.id} className="hover:border-primary/50 transition-all">
+                    <Card key={subcategory.id} className="hover:border-primary/50 transition-all group overflow-hidden">
                         <CardHeader className="pb-3">
                             <CardTitle className="flex items-start justify-between gap-2">
-                                <span className="text-base font-bold truncate">{subcategory.name}</span>
-                                <span className={`text-xs px-2 py-0.5 rounded-full ${subcategory.status === "active" ? "bg-emerald-500/10 text-emerald-600" :
-                                    subcategory.status === "coming_soon" ? "bg-amber-500/10 text-amber-600" :
-                                        "bg-muted text-muted-foreground"
+                                <span className="text-base font-bold truncate group-hover:text-primary transition-colors">{subcategory.name}</span>
+                                <span className={`text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full ${subcategory.status === "active" ? "bg-emerald-500/10 text-emerald-600 border border-emerald-500/20" :
+                                    subcategory.status === "coming_soon" ? "bg-amber-500/10 text-amber-600 border border-amber-500/20" :
+                                        "bg-muted text-muted-foreground border border-border"
                                     }`}>
                                     {subcategory.status}
                                 </span>
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="flex flex-col gap-3">
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/30 px-2 py-1 rounded">
-                                <Tag className="h-3 w-3" />
-                                <span className="font-medium">{subcategory.categories?.name || "No Category"}</span>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/30 px-2.5 py-1.5 rounded-lg border border-border/40">
+                                <Tag className="h-3.5 w-3.5" />
+                                <span className="font-semibold text-foreground/80">{subcategory.categories?.name || subcategory.category?.name || "No Category"}</span>
                             </div>
-                            <p className="text-xs text-muted-foreground line-clamp-2 min-h-[2.5em]">
-                                {subcategory.description || "No description provided."}
+                            <p className="text-xs text-muted-foreground line-clamp-2 min-h-[2.5em] leading-relaxed">
+                                {subcategory.description || "No description provided for this subcategory."}
                             </p>
-                            <div className="flex flex-col gap-1">
-                                <div className="flex justify-between text-xs text-muted-foreground font-mono bg-muted/30 px-2 py-1 rounded">
-                                    <span>Slug</span>
-                                    <span className="truncate max-w-[120px]">{subcategory.slug}</span>
+                            <div className="flex flex-col gap-1.5 mt-1">
+                                <div className="flex justify-between text-[10px] text-muted-foreground font-mono bg-muted/20 px-2 py-1 rounded border border-border/20">
+                                    <span className="opacity-60">SLUG</span>
+                                    <span className="truncate max-w-[150px] font-medium">{subcategory.slug}</span>
                                 </div>
-                                <div className="flex justify-between text-xs text-muted-foreground font-mono bg-muted/30 px-2 py-1 rounded">
-                                    <span>Order</span>
-                                    <span>#{subcategory.display_order}</span>
+                                <div className="flex justify-between text-[10px] text-muted-foreground font-mono bg-muted/20 px-2 py-1 rounded border border-border/20">
+                                    <span className="opacity-60">SORT ORDER</span>
+                                    <span className="font-medium">#{subcategory.display_order}</span>
                                 </div>
                             </div>
-                            <div className="flex gap-2 pt-2 border-t">
+                            <div className="flex gap-2 pt-3 mt-1 border-t border-border/40">
                                 <Button
                                     size="sm"
                                     variant="outline"
                                     onClick={() => openEditDialog(subcategory)}
-                                    className="flex-1"
+                                    className="flex-1 h-9 rounded-xl hover:bg-primary/5 hover:text-primary hover:border-primary/30 transition-all"
                                 >
                                     <Pencil className="h-3.5 w-3.5 mr-1.5" /> Edit
                                 </Button>
                                 <Button
                                     size="sm"
-                                    variant="destructive"
+                                    variant="ghost"
                                     onClick={() => handleDelete(subcategory.id)}
-                                    className="flex-1"
+                                    className="flex-1 h-9 rounded-xl text-destructive hover:bg-destructive/10 hover:text-destructive transition-all"
                                 >
                                     <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Delete
                                 </Button>
@@ -412,6 +417,49 @@ export default function AdminSubcategories() {
                     </Card>
                 ))}
             </div>
+
+            {subcategories.length === 0 && !loading && (
+                <div className="flex flex-col items-center justify-center py-20 bg-muted/10 rounded-[32px] border-2 border-dashed border-border/40">
+                    <div className="bg-muted/20 p-6 rounded-full mb-4">
+                        <Tag className="h-12 w-12 text-muted-foreground/40" />
+                    </div>
+                    <h3 className="text-xl font-bold text-foreground/80">
+                        {categories.length > 0 ? "No Subcategories Configured" : "No Subcategories Yet"}
+                    </h3>
+                    <p className="text-muted-foreground mt-2 max-w-sm text-center">
+                        {categories.length > 0
+                            ? `You have ${categories.length} active categories, but no subcategories have been linked to them. Subcategories help customers filter products more effectively.`
+                            : "The subcategory management system is empty. Start by creating your first subcategory for a product category."}
+                    </p>
+                    <Button
+                        variant="link"
+                        className="mt-4 text-primary font-bold"
+                        onClick={() => setDialogOpen(true)}
+                    >
+                        Create your first subcategory
+                    </Button>
+                </div>
+            )}
+
+            {subcategories.length > 0 && filteredSubcategories.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-20 bg-muted/5 rounded-[32px] border border-border/20">
+                    <div className="bg-muted/10 p-5 rounded-full mb-4">
+                        <Tag className="h-10 w-10 text-muted-foreground/30" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-foreground/70">No Matches Found</h3>
+                    <p className="text-muted-foreground mt-2">
+                        We couldn't find any subcategories matching "<span className="font-bold text-foreground/80">{searchQuery}</span>"
+                    </p>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="mt-4 text-primary"
+                        onClick={() => setSearchQuery("")}
+                    >
+                        Clear Search
+                    </Button>
+                </div>
+            )}
         </div >
     );
 }

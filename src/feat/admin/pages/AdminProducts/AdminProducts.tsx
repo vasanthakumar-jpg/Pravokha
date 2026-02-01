@@ -22,6 +22,7 @@ import {
 
 // Unified Imports
 import { useProductInventory } from "@/feat/products/hooks/useProductInventory";
+import { useCategories } from "@/shared/hook/useCategories";
 import { ProductStats } from "@/feat/products/components/ProductStats";
 import { ProductFilters } from "@/feat/products/components/ProductFilters";
 import { ProductListTable } from "@/feat/products/components/ProductListTable";
@@ -31,6 +32,7 @@ import { ProductViewMode } from "@/feat/products/domain/types";
 export default function AdminProducts() {
   const { user } = useAuth();
   const { isAdmin, loading: adminLoading } = useAdmin();
+  const { categories } = useCategories();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [viewMode, setViewMode] = useState<ProductViewMode>("grid");
@@ -159,6 +161,7 @@ export default function AdminProducts() {
             onStatusFilterChange={setStatusFilter}
             viewMode={viewMode}
             onViewModeChange={setViewMode}
+            categories={categories}
           />
         </CardContent>
       </Card>

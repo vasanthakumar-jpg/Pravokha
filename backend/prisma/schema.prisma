@@ -301,6 +301,13 @@ model OrderItem {
   size      String?
   quantity  Int
   
+  // Item-level status for multi-vendor support
+  status            OrderStatus @default(PENDING)
+  trackingNumber    String?     @map("tracking_number")
+  trackingCarrier   String?     @map("tracking_carrier")
+  shippedAt         DateTime?   @map("shipped_at")
+  deliveredAt       DateTime?   @map("delivered_at")
+  
   @@index([sellerId])
   @@map("order_items")
 }

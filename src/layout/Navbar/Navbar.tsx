@@ -15,7 +15,14 @@ import {
     ChevronDown,
     LifeBuoy,
     ShieldAlert,
-    Bell
+    Bell,
+    Tag,
+    Zap,
+    Flame,
+    ShoppingBag,
+    Calendar,
+    UserCircle,
+    Home as HomeIcon
 } from "lucide-react";
 import {
     DropdownMenu,
@@ -24,6 +31,12 @@ import {
     DropdownMenuTrigger,
     DropdownMenuSeparator,
 } from "@/ui/DropdownMenu";
+import {
+    Accordion,
+    AccordionContent,
+    AccordionItem,
+    AccordionTrigger,
+} from "@/ui/Accordion";
 import logoLight from "@/assets/logo-light.png";
 import logoDark from "@/assets/logo-dark.png";
 import { Button } from "@/ui/Button";
@@ -31,6 +44,7 @@ import { Input } from "@/ui/Input";
 import { useCart } from "@/core/context/CartContext";
 import { useAdmin } from "@/core/context/AdminContext";
 import { Badge } from "@/ui/Badge";
+import { Separator } from "@/ui/Separator";
 // removed static categories import
 import { ThemeToggle } from "@/shared/ui/ThemeToggle";
 import { toast } from "@/shared/hook/use-toast";
@@ -58,6 +72,7 @@ import { NotificationBell } from "@/shared/ui/NotificationBell";
 import { UserAccountDropdown } from "@/shared/ui/UserAccountDropdown";
 import { useCategories } from "@/shared/hook/useCategories";
 import { apiClient } from "@/infra/api/apiClient";
+import { MegaMenu } from "./MegaMenu";
 
 interface SearchResult {
     id: string;
@@ -86,6 +101,19 @@ export function Navbar() {
     const { profile } = useProfile(user?.id);
     const { categories: dynamicCategories } = useCategories();
     const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+    const [isShopMenuOpen, setIsShopMenuOpen] = useState(false);
+    const shopMenuTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    const handleShopMouseEnter = () => {
+        if (shopMenuTimeoutRef.current) clearTimeout(shopMenuTimeoutRef.current);
+        setIsShopMenuOpen(true);
+    };
+
+    const handleShopMouseLeave = () => {
+        shopMenuTimeoutRef.current = setTimeout(() => {
+            setIsShopMenuOpen(false);
+        }, 300); // Slightly larger delay for better UX
+    };
     const [sellerProductsDropdownOpen, setSellerProductsDropdownOpen] = useState(false);
 
     const debouncedSearch = useCallback(
@@ -243,50 +271,94 @@ export function Navbar() {
                                 <ScrollArea className="flex-1 -mx-6 px-6">
                                     <nav className="mt-6 flex flex-col gap-2 pb-4">
                                         <Link to="/" onClick={closeMobileMenu}>
-                                            <Button variant="ghost" className="w-full justify-start">Home</Button>
-                                        </Link>
-                                        {dynamicCategories.map((category) => (
-                                            <Link key={category.id} to={`/products?category=${category.slug}`} onClick={closeMobileMenu}>
-                                                <Button variant="ghost" className="w-full justify-start">{category.name}</Button>
-                                            </Link>
-                                        ))}
-                                        {user && (role === "ADMIN" || role === "admin") && (
-                                            <Link to="/admin" onClick={closeMobileMenu}>
-                                                <Button variant="ghost" className="w-full justify-start font-semibold text-primary">
-                                                    <LayoutDashboard className="mr-2 h-4 w-4" />
-                                                    Admin Dashboard
-                                                </Button>
-                                            </Link>
-                                        )}
-                                        {user && (role === "DEALER" || role === "seller") && !isSuspended && (
-                                            <Link to="/seller" onClick={closeMobileMenu}>
-                                                <Button variant="ghost" className="w-full justify-start font-semibold text-primary">
-                                                    <Store className="mr-2 h-4 w-4" />
-                                                    Seller Dashboard
-                                                </Button>
-                                            </Link>
-                                        )}
-                                        {user && (role === "USER" || role === "user" || isSuspended) && (
-                                            <>
-                                                <Link to="/user" onClick={closeMobileMenu}>
-                                                    <Button variant="ghost" className="w-full justify-start">My Account</Button>
-                                                </Link>
-                                                <Link to="/orders" onClick={closeMobileMenu}>
-                                                    <Button variant="ghost" className="w-full justify-start">My Orders</Button>
-                                                </Link>
-                                            </>
-                                        )}
-                                        {user ? (
-                                            <Button variant="ghost" className="w-full justify-start" onClick={() => { handleLogout(); closeMobileMenu(); }}>
-                                                <LogOut className="h-4 w-4 mr-2" />Logout
+                                            <Button variant="ghost" className="w-full justify-start text-sm font-medium">
+                                                <HomeIcon className="mr-3 h-5 w-5" /> Home
                                             </Button>
+                                        </Link>
+
+                                        <Accordion type="single" collapsible className="w-full">
+                                            <AccordionItem value="shop" className="border-none">
+                                                <AccordionTrigger className="hover:no-underline py-2 text-sm font-medium px-4">
+                                                    <div className="flex items-center">
+                                                        <ShoppingBag className="mr-3 h-5 w-5" /> Shop
+                                                    </div>
+                                                </AccordionTrigger>
+                                                <AccordionContent className="pb-2">
+                                                    <div className="flex flex-col gap-1 pl-11">
+                                                        <Link to="/products" onClick={closeMobileMenu}>
+                                                            <Button variant="link" className="w-full justify-start text-xs h-8 text-muted-foreground p-0">All Products</Button>
+                                                        </Link>
+                                                        {dynamicCategories.map((category) => (
+                                                            <div key={category.id} className="flex flex-col gap-0.5 mt-2">
+                                                                <Link to={`/products?category=${category.slug}`} onClick={closeMobileMenu}>
+                                                                    <span className="text-xs font-bold block mb-1">{category.name}</span>
+                                                                </Link>
+                                                                <div className="flex flex-col gap-1 pl-2">
+                                                                    {category.subcategories?.map(sub => (
+                                                                        <Link key={sub.id} to={`/products?subcategory=${sub.slug}`} onClick={closeMobileMenu}>
+                                                                            <span className="text-[11px] text-muted-foreground hover:text-primary transition-colors">{sub.name}</span>
+                                                                        </Link>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </AccordionContent>
+                                            </AccordionItem>
+                                        </Accordion>
+
+                                        <Link to="/products?tag=deals" onClick={closeMobileMenu}>
+                                            <Button variant="ghost" className="w-full justify-start text-sm font-medium">
+                                                <Flame className="mr-3 h-5 w-5 text-orange-500" /> Hot Deals
+                                            </Button>
+                                        </Link>
+
+                                        <Link to="/products?tag=new" onClick={closeMobileMenu}>
+                                            <Button variant="ghost" className="w-full justify-start text-sm font-medium">
+                                                <Calendar className="mr-3 h-5 w-5" /> New Arrivals
+                                            </Button>
+                                        </Link>
+
+                                        {user && (role === "DEALER" || role === "seller") ? (
+                                            <Link to="/seller" onClick={closeMobileMenu}>
+                                                <Button variant="ghost" className="w-full justify-start text-sm font-bold text-primary">
+                                                    <LayoutDashboard className="mr-3 h-5 w-5" /> Seller Dashboard
+                                                </Button>
+                                            </Link>
                                         ) : (
-                                            <Link to="/auth" onClick={closeMobileMenu}>
-                                                <Button variant="ghost" className="w-full justify-start">
-                                                    <User className="h-4 w-4 mr-2" />Login
+                                            <Link to="/seller" onClick={closeMobileMenu}>
+                                                <Button variant="ghost" className="w-full justify-start text-sm font-medium">
+                                                    <Store className="mr-3 h-5 w-5" /> Become a Seller
                                                 </Button>
                                             </Link>
                                         )}
+
+                                        <Separator className="my-2" />
+
+                                        <div className="px-4 py-2">
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 mb-3 ml-1">Account Actions</p>
+                                            <div className="grid grid-cols-1 gap-2">
+                                                {user ? (
+                                                    <>
+                                                        <Link to="/user/orders" onClick={closeMobileMenu} className="flex items-center gap-3 px-1 py-1 text-sm font-medium hover:text-primary transition-colors">
+                                                            <Package className="h-4 w-4" /> My Orders
+                                                        </Link>
+                                                        <Link to="/user" onClick={closeMobileMenu} className="flex items-center gap-3 px-1 py-1 text-sm font-medium hover:text-primary transition-colors">
+                                                            <User className="h-4 w-4" /> Profile
+                                                        </Link>
+                                                        <Button variant="ghost" className="w-full justify-start px-1 h-8 text-destructive hover:bg-destructive/10" onClick={() => { handleLogout(); closeMobileMenu(); }}>
+                                                            <LogOut className="h-4 w-4 mr-3" /> Logout
+                                                        </Button>
+                                                    </>
+                                                ) : (
+                                                    <Link to="/auth" onClick={closeMobileMenu}>
+                                                        <Button variant="default" className="w-full justify-center rounded-xl font-bold uppercase text-xs h-10 tracking-widest shadow-lg shadow-primary/20">
+                                                            Login / Sign Up
+                                                        </Button>
+                                                    </Link>
+                                                )}
+                                            </div>
+                                        </div>
                                     </nav>
                                 </ScrollArea>
                             </SheetContent>
@@ -306,159 +378,55 @@ export function Navbar() {
                     {/* Center: Desktop Navigation */}
                     <nav className={styles.centerSection}>
                         <Link to="/">
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                className={styles.navButton}
-                            >
-                                <LayoutDashboard className={cn("h-4 w-4 flex-shrink-0", styles.navButtonIcon)} />
-                                <span className={cn("hidden xl:inline", styles.navButtonText)}>Home</span>
+                            <Button variant="ghost" size="sm" className={styles.navButton}>
+                                <HomeIcon className={cn("h-4 w-4 flex-shrink-0", styles.navButtonIcon)} />
+                                <span className={cn("hidden lg:inline", styles.navButtonText)}>Home</span>
                             </Button>
                         </Link>
 
-                        {(!user || role === "USER" || role === "user" || isSuspended) ? (
-                            <Link to="/products">
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className={styles.navButton}
-                                >
-                                    <Package className={cn("h-4 w-4 flex-shrink-0", styles.navButtonIcon)} />
-                                    <span className={cn("hidden xl:inline", styles.navButtonText)}>All products</span>
-                                </Button>
-                            </Link>
-                        ) : (
-                            <DropdownMenu open={sellerProductsDropdownOpen} onOpenChange={setSellerProductsDropdownOpen}>
-                                <DropdownMenuTrigger asChild>
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className={styles.navButton}
-                                        onMouseEnter={() => setSellerProductsDropdownOpen(true)}
-                                        onMouseLeave={() => setSellerProductsDropdownOpen(false)}
-                                    >
-                                        <Package className={cn("h-4 w-4 flex-shrink-0", styles.navButtonIcon)} />
-                                        <span className={cn("hidden xl:inline", styles.navButtonText)}>Products</span>
-                                        <ChevronDown className="h-3 w-3 ml-1 flex-shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180" />
-                                    </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent
-                                    align="center"
-                                    className="w-56 focus:outline-none focus-visible:outline-none"
-                                    onMouseEnter={() => setSellerProductsDropdownOpen(true)}
-                                    onMouseLeave={() => setSellerProductsDropdownOpen(false)}
-                                >
-                                    <Link to="/products">
-                                        <DropdownMenuItem className="cursor-pointer">
-                                            <Package className="h-4 w-4 mr-2" />
-                                            All Products
-                                        </DropdownMenuItem>
-                                    </Link>
-                                    <Link to={(role === 'ADMIN' || role === 'admin') ? "/admin/products" : "/seller/products"}>
-                                        <DropdownMenuItem className="cursor-pointer">
-                                            <Store className="h-4 w-4 mr-2" />
-                                            My Products
-                                        </DropdownMenuItem>
-                                    </Link>
-                                    <Link to={(role === 'ADMIN' || role === 'admin') ? "/admin/products/add" : "/seller/products/add"}>
-                                        <DropdownMenuItem className="cursor-pointer">
-                                            <Plus className="h-4 w-4 mr-2" />
-                                            Add Product
-                                        </DropdownMenuItem>
-                                    </Link>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
-                        )}
+                        {/* Shop Mega Menu */}
+                        <div
+                            onMouseEnter={handleShopMouseEnter}
+                            onMouseLeave={handleShopMouseLeave}
+                            className="flex items-center h-full"
+                        >
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className={cn(styles.navButton, isShopMenuOpen && "bg-accent/50")}
+                            >
+                                <ShoppingBag className={cn("h-4 w-4 flex-shrink-0", styles.navButtonIcon)} />
+                                <span className={cn("hidden lg:inline", styles.navButtonText)}>Shop</span>
+                                <ChevronDown className={cn("h-3 w-3 ml-1 transition-transform duration-300", isShopMenuOpen && "rotate-180")} />
+                            </Button>
 
-                        {dynamicCategories.map((category) => {
-                            const CategoryIcon = category.slug.includes('men') ? MensIcon :
-                                category.slug.includes('women') ? WomensIcon :
-                                    category.slug.includes('kids') ? KidsIcon : Package;
+                            <MegaMenu
+                                isOpen={isShopMenuOpen}
+                                onClose={() => setIsShopMenuOpen(false)}
+                                categories={dynamicCategories}
+                            />
+                        </div>
 
-                            return (
-                                <DropdownMenu
-                                    key={category.id}
-                                    open={openDropdownId === category.id}
-                                    onOpenChange={(open) => setOpenDropdownId(open ? category.id : null)}
-                                >
-                                    <DropdownMenuTrigger asChild>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            className={styles.navButton}
-                                            onMouseEnter={() => setOpenDropdownId(category.id)}
-                                            onMouseLeave={() => setOpenDropdownId(null)}
-                                        >
-                                            <CategoryIcon className={cn("h-4 w-4 flex-shrink-0", styles.navButtonIcon)} />
-                                            <span className={cn("hidden xl:inline", styles.navButtonText)}>{category.name}</span>
-                                            <ChevronDown className="h-3 w-3 ml-1 flex-shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180" />
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent
-                                        align="center"
-                                        className="w-48 focus:outline-none focus-visible:outline-none"
-                                        onMouseEnter={() => setOpenDropdownId(category.id)}
-                                        onMouseLeave={() => setOpenDropdownId(null)}
-                                    >
-                                        <Link to={`/products?category=${category.slug}`}>
-                                            <DropdownMenuItem className="cursor-pointer font-bold border-b">
-                                                <CategoryIcon className="h-4 w-4 mr-2" />
-                                                All {category.name}
-                                            </DropdownMenuItem>
-                                        </Link>
-                                        {category.subcategories?.map(sub => {
-                                            const SubIcon = sub.slug.includes('tshirt') ? TShirtIcon :
-                                                sub.slug.includes('pant') ? PantsIcon :
-                                                    sub.slug.includes('short') ? ShortsIcon : Package;
+                        <Link to="/products?tag=new">
+                            <Button variant="ghost" size="sm" className={styles.navButton}>
+                                <Calendar className={cn("h-4 w-4 flex-shrink-0", styles.navButtonIcon)} />
+                                <span className={cn("hidden lg:inline", styles.navButtonText)}>New Arrivals</span>
+                            </Button>
+                        </Link>
 
-                                            return (
-                                                <Link key={sub.id} to={`/products?subcategory=${sub.slug}`}>
-                                                    <DropdownMenuItem className="cursor-pointer">
-                                                        <SubIcon className="h-4 w-4 mr-2" />
-                                                        {sub.name}
-                                                    </DropdownMenuItem>
-                                                </Link>
-                                            );
-                                        })}
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                            );
-                        })}
+                        <Link to="/user/orders">
+                            <Button variant="ghost" size="sm" className={styles.navButton}>
+                                <Package className={cn("h-4 w-4 flex-shrink-0", styles.navButtonIcon)} />
+                                <span className={cn("hidden lg:inline", styles.navButtonText)}>Orders</span>
+                            </Button>
+                        </Link>
 
-                        {user && (role === "ADMIN" || role === "admin") && (
-                            <Link to="/admin">
-                                <Button variant="ghost" size="sm" className={styles.navButton}>
-                                    <LayoutDashboard className={cn("h-4 w-4 mr-1.5", styles.navButtonIcon)} />
-                                    <span className={styles.navButtonText}>Admin</span>
-                                </Button>
-                            </Link>
-                        )}
-                        {user && (role === "DEALER" || role === "seller") && !isSuspended && (
-                            <Link to="/seller/dashboard">
-                                <Button variant="ghost" size="sm" className={styles.navButton}>
-                                    <Store className={cn("h-4 w-4 mr-1.5", styles.navButtonIcon)} />
-                                    <span className={styles.navButtonText}>Seller</span>
-                                </Button>
-                            </Link>
-                        )}
-                        {user && (role === "USER" || role === "user" || isSuspended) && (
-                            <>
-                                <Link to={isSuspended ? "/tickets" : "/user/home"}>
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className={cn(styles.navButton, isSuspended && "text-destructive hover:text-white hover:bg-destructive")}
-                                    >
-                                        {isSuspended ? (
-                                            <ShieldAlert className={cn("h-4 w-4", styles.navButtonIcon)} />
-                                        ) : (
-                                            <User className={cn("h-4 w-4", styles.navButtonIcon)} />
-                                        )}
-                                        <span className={cn("hidden xl:inline", styles.navButtonText)}>{isSuspended ? "Support" : "Account"}</span>
-                                    </Button>
-                                </Link>
-                            </>
-                        )}
+                        <Link to="/account">
+                            <Button variant="ghost" size="sm" className={styles.navButton}>
+                                <UserCircle className={cn("h-4 w-4 flex-shrink-0", styles.navButtonIcon)} />
+                                <span className={cn("hidden lg:inline", styles.navButtonText)}>My Account</span>
+                            </Button>
+                        </Link>
                     </nav>
 
                     {/* Right: Actions */}
@@ -490,47 +458,49 @@ export function Navbar() {
                             </Link>
                         )}
                     </div>
-                </div>
+                </div >
 
-                {searchOpen && (
-                    <div className="border-t bg-background/98 py-3 animate-in slide-in-from-top-2" ref={searchRef}>
-                        <div className="relative">
-                            <Input
-                                ref={searchInputRef}
-                                type="text"
-                                placeholder="Search products..."
-                                value={searchQuery}
-                                onChange={(e) => handleSearchInput(e.target.value)}
-                                onKeyDown={(e) => e.key === "Enter" && handleSearchSubmit()}
-                                className="w-full text-sm focus-visible:ring-0 focus-visible:ring-offset-0 border-primary pr-20"
-                            />
-                            {searchQuery && (
+                {
+                    searchOpen && (
+                        <div className="border-t bg-background/98 py-3 animate-in slide-in-from-top-2" ref={searchRef}>
+                            <div className="relative">
+                                <Input
+                                    ref={searchInputRef}
+                                    type="text"
+                                    placeholder="Search products..."
+                                    value={searchQuery}
+                                    onChange={(e) => handleSearchInput(e.target.value)}
+                                    onKeyDown={(e) => e.key === "Enter" && handleSearchSubmit()}
+                                    className="w-full text-sm focus-visible:ring-0 focus-visible:ring-offset-0 border-primary pr-20"
+                                />
+                                {searchQuery && (
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="absolute right-10 top-1/2 -translate-y-1/2 h-8 w-8"
+                                        onClick={() => {
+                                            setSearchQuery("");
+                                            setSearchResults([]);
+                                        }}
+                                    >
+                                        <X className="h-4 w-4" />
+                                    </Button>
+                                )}
                                 <Button
                                     type="button"
                                     variant="ghost"
                                     size="icon"
-                                    className="absolute right-10 top-1/2 -translate-y-1/2 h-8 w-8"
-                                    onClick={() => {
-                                        setSearchQuery("");
-                                        setSearchResults([]);
-                                    }}
+                                    className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
+                                    onClick={toggleSearch}
                                 >
                                     <X className="h-4 w-4" />
                                 </Button>
-                            )}
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
-                                onClick={toggleSearch}
-                            >
-                                <X className="h-4 w-4" />
-                            </Button>
+                            </div>
                         </div>
-                    </div>
-                )}
-            </div>
-        </header>
+                    )
+                }
+            </div >
+        </header >
     );
 }

@@ -279,50 +279,57 @@ export default function SellerSettings() {
 
   if (loading) {
     return (
-      <div className="container py-8 max-w-6xl animate-pulse space-y-8">
+      <div className="w-full mx-auto py-4 sm:py-6 lg:py-8 px-2 sm:px-4 lg:px-6 xl:px-8 max-w-7xl animate-pulse space-y-8">
         {/* Header Skeleton */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 p-7 border border-border/40 rounded-2xl bg-card/10">
-          <div className="space-y-3">
-            <div className="h-8 w-48 bg-muted rounded-xl" />
+        <div className="mb-4 sm:mb-8 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 bg-card p-4 sm:p-7 rounded-2xl border border-border/60 shadow-sm">
+          <div className="space-y-3 w-full lg:w-auto">
+            <div className="h-9 w-48 bg-muted rounded-xl" />
             <div className="h-4 w-72 bg-muted/60 rounded-lg" />
           </div>
-          <div className="h-12 w-40 bg-muted rounded-xl" />
+          <div className="h-12 w-full lg:w-44 bg-muted rounded-xl shadow-lg" />
         </div>
 
-        <div className="flex flex-col md:flex-row gap-8">
+        <div className="flex flex-col lg:flex-row gap-4 sm:gap-8">
           {/* Sidebar Skeleton */}
-          <div className="hidden md:block w-64 space-y-2">
-            {[1, 2, 3, 4, 5].map(i => (
-              <div key={i} className="h-11 w-full bg-muted/40 rounded-lg mb-1" />
-            ))}
-          </div>
+          <aside className="w-full lg:w-64 xl:w-72 shrink-0 space-y-4">
+            <div className="lg:hidden h-12 w-full bg-muted/30 rounded-xl border border-primary/20" />
+            <div className="hidden lg:block bg-card rounded-2xl border border-border/40 p-2 shadow-sm space-y-2">
+              {[1, 2, 3, 4, 5].map(i => (
+                <div key={i} className="h-14 w-full bg-muted/40 rounded-xl" />
+              ))}
+            </div>
+          </aside>
 
-          {/* Content Skeleton - Mimicking Branding & Basic Info */}
-          <div className="flex-1 space-y-6">
-            {/* Branding Card */}
-            <div className="rounded-xl border border-border/40 p-6 space-y-6">
-              <div className="h-6 w-32 bg-muted rounded mb-4" />
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="h-40 bg-muted/30 rounded-xl border-2 border-dashed border-border/60" />
-                <div className="h-40 bg-muted/30 rounded-xl border-2 border-dashed border-border/60" />
+          {/* Content Area Skeleton */}
+          <div className="flex-1 space-y-8">
+            <div className="rounded-xl border border-border/40 p-6 space-y-6 bg-card shadow-sm">
+              <div className="h-6 w-32 bg-muted rounded mb-6" />
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                <div className="h-40 bg-muted/20 rounded-xl border-2 border-dashed border-border/40" />
+                <div className="h-40 bg-muted/20 rounded-xl border-2 border-dashed border-border/40" />
               </div>
             </div>
 
-            {/* Basic Info Card */}
-            <div className="rounded-xl border border-border/40 p-6 space-y-6">
-              <div className="h-6 w-40 bg-muted rounded mb-4" />
-              <div className="space-y-4">
+            <div className="rounded-xl border border-border/40 p-6 space-y-8 bg-card shadow-sm">
+              <div className="h-6 w-40 bg-muted rounded mb-6" />
+              <div className="space-y-6">
                 <div className="space-y-2">
                   <div className="h-4 w-24 bg-muted/60 rounded" />
-                  <div className="h-10 w-full bg-muted/40 rounded-lg" />
+                  <div className="h-11 w-full bg-muted/40 rounded-xl" />
                 </div>
                 <div className="space-y-2">
-                  <div className="h-4 w-24 bg-muted/60 rounded" />
-                  <div className="h-24 w-full bg-muted/40 rounded-lg" />
+                  <div className="h-4 w-28 bg-muted/60 rounded" />
+                  <div className="h-32 w-full bg-muted/40 rounded-xl" />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="h-10 w-full bg-muted/40 rounded-lg" />
-                  <div className="h-10 w-full bg-muted/40 rounded-lg" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <div className="h-4 w-32 bg-muted/60 rounded" />
+                    <div className="h-11 w-full bg-muted/40 rounded-xl" />
+                  </div>
+                  <div className="space-y-2">
+                    <div className="h-4 w-32 bg-muted/60 rounded" />
+                    <div className="h-11 w-full bg-muted/40 rounded-xl" />
+                  </div>
                 </div>
               </div>
             </div>
