@@ -1,115 +1,79 @@
-
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { config } from '../../core/config/env';
 import { prisma } from '../../infra/database/client';
 import { Role } from '@prisma/client';
 
-interface JwtPayload {
-    id: string;
-    role: Role;
+export interface AuthRequest extends Request {
+    user?: {
+        id: string;
+        role: Role;
+        email: string;
+        name?: string;
+        phone?: string | null;
+        status?: string;
+        verificationStatus?: string | null;
+        verificationComments?: string | null;
+        avatarUrl?: string | null;
+        bio?: string | null;
+        dateOfBirth?: Date | null;
+    };
 }
 
-// Extend Request interface
-declare module 'express-serve-static-core' {
-    interface Request {
-        user?: {
-            id: string;
-            role: Role;
-            email: string;
-            name: string | null;
-            avatarUrl: string | null;
-            verificationStatus: string | null;
-            verificationComments: string | null;
-            dateOfBirth: Date | string | null;
-            phone: string | null;
-            bio: string | null;
-            status: string;
-        };
-    }
-}
-
-/**
- * Authentication Middleware: Verifies the JWT and attaches the user to the request.
- */
-export const authenticate = async (req: Request, res: Response, next: NextFunction) => {
+export const authenticate = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
         const authHeader = req.headers.authorization;
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            return res.status(401).json({ success: false, message: 'Authentication required: No token provided' });
+            return res.status(401).json({ message: 'Authorization token required' });
         }
 
         const token = authHeader.split(' ')[1];
-        const decoded = jwt.verify(token, config.jwtSecret) as JwtPayload;
+        const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { id: string };
 
         const user = await prisma.user.findUnique({
             where: { id: decoded.id },
             select: {
                 id: true,
-                role: true,
-                status: true,
                 email: true,
                 name: true,
+                role: true,
+                phoneNumber: true,
+                status: true,
                 avatarUrl: true,
-                verificationStatus: true,
-                verificationComments: true,
+                bio: true,
                 dateOfBirth: true,
-                phone: true,
-                bio: true
-            },
+                vendor: {
+                    select: {
+                        status: true,
+                        storeName: true
+                    }
+                }
+            }
         });
 
         if (!user) {
-            return res.status(401).json({ success: false, message: 'Invalid authentication: User no longer exists' });
-        }
-
-        if (user.status === 'suspended') {
-            return res.status(403).json({ success: false, message: 'Access denied: Your account has been suspended' });
+            return res.status(401).json({ message: 'User not found' });
         }
 
         req.user = {
             id: user.id,
-            role: user.role as Role,
             email: user.email,
-            name: user.name,
+            name: user.name || undefined,
+            role: user.role,
+            phone: user.phoneNumber,
+            status: user.status,
+            verificationStatus: user.vendor?.status || null,
             avatarUrl: user.avatarUrl,
-            verificationStatus: user.verificationStatus,
-            verificationComments: user.verificationComments,
-            dateOfBirth: user.dateOfBirth,
-            phone: user.phone,
             bio: user.bio,
-            status: user.status
+            dateOfBirth: user.dateOfBirth
         };
+
         next();
     } catch (error) {
-        return res.status(401).json({ success: false, message: 'Authentication failed: Invalid or expired token' });
+        return res.status(401).json({ message: 'Invalid or expired token' });
     }
 };
 
-/**
- * Authorization Middleware: Enforces Role-Based Access Control (RBAC).
- */
-export const authorize = (roles: Role[]) => {
-    return (req: Request, res: Response, next: NextFunction) => {
-        if (!req.user) {
-            return res.status(401).json({ success: false, message: 'User context missing: Authentication required' });
-        }
-
-        if (!roles.includes(req.user.role)) {
-            return res.status(403).json({
-                success: false,
-                message: `Forbidden: This action requires one of the following roles: ${roles.join(', ')}`
-            });
-        }
-
-        next();
-    };
-};
-
-/**
- * Optional Authentication Middleware: Attempts to verify JWT but doesn't fail if token is missing.
- */
-export const optionalAuthenticate = async (req: Request, res: Response, next: NextFunction) => {
+export const optionalAuthenticate = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
         const authHeader = req.headers.authorization;
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -117,44 +81,80 @@ export const optionalAuthenticate = async (req: Request, res: Response, next: Ne
         }
 
         const token = authHeader.split(' ')[1];
-        const decoded = jwt.verify(token, config.jwtSecret) as JwtPayload;
+        const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { id: string };
 
         const user = await prisma.user.findUnique({
             where: { id: decoded.id },
             select: {
                 id: true,
-                role: true,
-                status: true,
                 email: true,
                 name: true,
+                role: true,
+                phoneNumber: true,
+                status: true,
                 avatarUrl: true,
-                verificationStatus: true,
-                verificationComments: true,
+                bio: true,
                 dateOfBirth: true,
-                phone: true,
-                bio: true
-            },
+                vendor: {
+                    select: {
+                        status: true,
+                        storeName: true
+                    }
+                }
+            }
         });
 
-        if (user && user.status !== 'suspended') {
+        if (user) {
             req.user = {
                 id: user.id,
-                role: user.role as Role,
                 email: user.email,
-                name: user.name,
+                name: user.name || undefined,
+                role: user.role,
+                phone: user.phoneNumber,
+                status: user.status,
+                verificationStatus: user.vendor?.status || null,
                 avatarUrl: user.avatarUrl,
-                verificationStatus: user.verificationStatus,
-                verificationComments: user.verificationComments,
-                dateOfBirth: user.dateOfBirth,
-                phone: user.phone,
                 bio: user.bio,
-                status: user.status
+                dateOfBirth: user.dateOfBirth
             };
         }
 
         next();
     } catch (error) {
-        // Just proceed without user context if token is invalid
+        // Continue without user
         next();
     }
+};
+
+export const authorize = (roles: Role[]) => {
+    return (req: AuthRequest, res: Response, next: NextFunction) => {
+        if (!req.user) {
+            return res.status(401).json({ message: 'Authentication required' });
+        }
+
+        if (!roles.includes(req.user.role)) {
+            return res.status(403).json({ message: 'Permission denied: Insufficient role' });
+        }
+
+        next();
+    };
+};
+
+/**
+ * Middleware to block users if their account status is not 'active'
+ */
+export const checkAccountStatus = (req: AuthRequest, res: Response, next: NextFunction) => {
+    if (!req.user) {
+        return res.status(401).json({ message: 'Authentication required' });
+    }
+
+    if (req.user.status?.toLowerCase() === 'suspended') {
+        return res.status(403).json({
+            success: false,
+            message: 'Your account has been suspended. Please contact support for more information.',
+            code: 'ACCOUNT_SUSPENDED'
+        });
+    }
+
+    next();
 };

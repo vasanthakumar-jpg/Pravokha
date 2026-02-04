@@ -7,12 +7,12 @@ export class AnalyticsController {
         try {
             const user = (req as any).user;
 
-            if (user.role === Role.ADMIN) {
+            if (user.role === Role.SUPER_ADMIN || user.role === Role.ADMIN) {
                 const stats = await AnalyticsService.getPlatformStats();
                 return res.status(200).json({ success: true, data: stats });
             }
 
-            if (user.role === Role.DEALER) {
+            if (user.role === Role.SELLER) {
                 const stats = await AnalyticsService.getSellerStats(user.id);
                 return res.status(200).json({ success: true, data: stats });
             }

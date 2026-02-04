@@ -39,8 +39,10 @@ export default function AdminCategories() {
   const [searchQuery, setSearchQuery] = useState("");
 
   const filteredCategories = categories.filter(cat =>
-    cat.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    cat.slug.toLowerCase().includes(searchQuery.toLowerCase())
+    cat.status !== 'inactive' && (
+      cat.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      cat.slug.toLowerCase().includes(searchQuery.toLowerCase())
+    )
   );
 
   const [formData, setFormData] = useState({
@@ -77,12 +79,12 @@ export default function AdminCategories() {
 
   const fetchCategories = async () => {
     try {
-      const response = await apiClient.get('/categories');
+      const response = await apiClient.get('/categories/admin/all');
       // Map camelCase from backend to snake_case for frontend
       const data = response.data.categories.map((cat: any) => ({
         ...cat,
-        image_url: cat.imageUrl,
-        display_order: cat.displayOrder
+        image_url: cat.image, // Fixed: Prisma field is 'image'
+        display_order: cat.displayOrder ? Number(cat.displayOrder) : 0
       }));
       setCategories(data || []);
     } catch (error: any) {
@@ -133,7 +135,15 @@ export default function AdminCategories() {
         imageUrl = uploadResponse.data.url;
       }
 
-      const categoryData = { ...formData, image_url: imageUrl };
+      const categoryData = {
+        name: formData.name,
+        slug: formData.slug,
+        description: formData.description,
+        image: imageUrl, // Match backend 'image'
+        status: formData.status,
+        displayOrder: formData.display_order, // Match backend 'displayOrder'
+        parentId: null
+      };
 
       if (editingCategory) {
         await apiClient.patch(`/categories/${editingCategory.id}`, categoryData);
@@ -180,8 +190,7 @@ export default function AdminCategories() {
       name: category.name,
       slug: category.slug,
       description: category.description || "",
-      image_url: category.image_url || "",
-      status: category.status,
+      status: (category.status || 'active').toLowerCase(),
       display_order: category.display_order,
     });
     setImagePreview(category.image_url || null);
@@ -366,7 +375,7 @@ export default function AdminCategories() {
                             onValueChange={(value: any) => setFormData({ ...formData, status: value })}
                           >
                             <SelectTrigger className="bg-background">
-                              <SelectValue />
+                              <SelectValue placeholder="Select status" />
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="active">

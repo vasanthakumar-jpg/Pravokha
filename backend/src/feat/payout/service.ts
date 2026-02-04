@@ -3,35 +3,41 @@ import { prisma } from '../../infra/database/client';
 import MarketplaceConfig from '../../shared/config/marketplace';
 
 export class PayoutService {
-    static async listPayouts(role: Role, userId: string) {
+    static async listPayouts(role: Role, userId: string, skip: number = 0, take: number = 10) {
         let where = {};
 
-        if (role === Role.DEALER) {
-            where = { sellerId: userId };
-        } else if (role !== Role.ADMIN) {
+        if (role === Role.SELLER) {
+            const vendor = await prisma.vendor.findUnique({ where: { ownerId: userId } });
+            if (!vendor) return [];
+            where = { vendorId: vendor.id };
+        } else if (role !== Role.SUPER_ADMIN && role !== Role.ADMIN) {
             throw new Error('Unauthorized');
         }
 
         return await prisma.payout.findMany({
             where,
+            skip,
+            take,
             orderBy: { createdAt: 'desc' },
             include: {
-                seller: {
+                vendor: {
                     select: {
                         storeName: true,
-                        email: true,
-                        bankAccount: true,
-                        ifsc: true,
-                        beneficiaryName: true
+                        bankAccountNumber: true,
+                        bankIfscCode: true,
+                        beneficiaryName: true,
+                        owner: {
+                            select: { email: true, name: true }
+                        }
                     }
                 }
             }
         });
     }
 
-    static async createPayoutRequest(sellerId: string, amount: number) {
+    static async createPayoutRequest(vendorId: string, amount: number) {
         // 1. Calculate current balance
-        const balanceInfo = await this.getSellerBalance(sellerId);
+        const balanceInfo = await this.getVendorBalance(vendorId);
 
         if (amount > balanceInfo.pendingBalance) {
             throw new Error('Insufficient balance');
@@ -44,42 +50,34 @@ export class PayoutService {
         // 2. Create payout record
         return await prisma.payout.create({
             data: {
-                sellerId,
+                vendorId: vendorId,
                 amount,
-                status: PayoutStatus.PENDING,
-                periodStart: new Date(), // Logic for periods can be more complex, but for now simple
-                periodEnd: new Date(),
+                status: PayoutStatus.PENDING
             }
         });
     }
 
-    static async getSellerBalance(sellerId: string) {
-        // Find all order items for this seller that are part of delivered and paid orders
-        const deliveredItems = await prisma.orderItem.findMany({
+    static async getVendorBalance(vendorId: string) {
+        // Find all orders for this vendor that are delivered and paid
+        const orders = await prisma.order.findMany({
             where: {
-                sellerId,
-                order: {
-                    status: OrderStatus.DELIVERED,
-                    paymentStatus: PaymentStatus.PAID,
-                }
+                vendorId,
+                status: OrderStatus.DELIVERED,
+                paymentStatus: PaymentStatus.PAID
             },
             select: {
-                price: true,
-                quantity: true
+                vendorEarnings: true
             }
         });
 
-        const totalEarnings = deliveredItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-        const commissionRate = MarketplaceConfig.commission.defaultRate;
-        const commission = totalEarnings * commissionRate;
-        const netEarnings = totalEarnings - commission;
+        const totalNetEarnings = orders.reduce((sum, o) => sum + (o.vendorEarnings || 0), 0);
 
         // Subtract already requested/completed payouts
         const payouts = await prisma.payout.findMany({
             where: {
-                sellerId,
+                vendorId,
                 status: {
-                    in: [PayoutStatus.PENDING, PayoutStatus.PROCESSING, PayoutStatus.COMPLETED]
+                    in: [PayoutStatus.PENDING, PayoutStatus.PROCESSING, PayoutStatus.PAID, PayoutStatus.COMPLETED]
                 }
             },
             select: {
@@ -88,57 +86,45 @@ export class PayoutService {
         });
 
         const totalPaidOut = payouts.reduce((sum, p) => sum + p.amount, 0);
-        const pendingBalance = Math.max(0, netEarnings - totalPaidOut);
+        const pendingBalance = Math.max(0, totalNetEarnings - totalPaidOut);
+
+        const vendor = await prisma.vendor.findUnique({ where: { id: vendorId } });
 
         return {
-            totalEarnings,
-            commission,
-            commissionRate: MarketplaceConfig.commission.defaultRate * 100, // Return as percentage (e.g., 10)
+            totalEarnings: totalNetEarnings, // Already net in Order model
+            commissionRate: vendor?.commissionRate || 10,
             minPayoutAmount: MarketplaceConfig.payout.minAmount,
-            netEarnings,
             totalPaidOut,
             pendingBalance
         };
     }
 
-    static async getTransactions(sellerId: string) {
-        // Virtual ledger combining Order earnings and Payout withdrawals
-        const deliveredItems = await prisma.orderItem.findMany({
+    static async getTransactions(vendorId: string) {
+        // Fetch delivered orders as "earnings" transactions
+        const orders = await prisma.order.findMany({
             where: {
-                sellerId,
-                order: {
-                    status: OrderStatus.DELIVERED,
-                    paymentStatus: PaymentStatus.PAID,
-                }
-            },
-            include: {
-                order: {
-                    select: {
-                        orderNumber: true,
-                        createdAt: true
-                    }
-                }
+                vendorId,
+                status: OrderStatus.DELIVERED,
+                paymentStatus: PaymentStatus.PAID
             },
             orderBy: {
-                order: {
-                    createdAt: 'desc'
-                }
+                createdAt: 'desc'
             }
         });
 
-        return deliveredItems.map(item => ({
-            id: item.id,
-            order_id: item.order.orderNumber,
-            amount: item.price * item.quantity,
-            commission: (item.price * item.quantity) * MarketplaceConfig.commission.defaultRate,
-            net_amount: (item.price * item.quantity) * (1 - MarketplaceConfig.commission.defaultRate),
-            date: item.order.createdAt,
+        return orders.map(order => ({
+            id: order.id,
+            order_id: order.orderNumber,
+            amount: order.totalAmount,
+            commission: order.platformFee,
+            net_amount: order.vendorEarnings,
+            date: order.createdAt,
             status: 'completed'
         }));
     }
 
     static async updatePayoutStatus(id: string, status: PayoutStatus, rejectionReason: string | null, role: Role) {
-        if (role !== Role.ADMIN) {
+        if (role !== Role.SUPER_ADMIN && role !== Role.ADMIN) {
             throw new Error('Unauthorized');
         }
 
@@ -146,17 +132,20 @@ export class PayoutService {
             where: { id },
             data: {
                 status,
-                rejectionReason: rejectionReason || undefined
+                rejectionReason: rejectionReason || null,
+                paidAt: (status === PayoutStatus.PAID || status === PayoutStatus.COMPLETED) ? new Date() : undefined
             }
         });
     }
 
     static async getPayoutStats(role: Role, userId?: string) {
-        if (role === Role.DEALER && userId) {
-            return await this.getSellerBalance(userId);
+        if (role === Role.SELLER && userId) {
+            const vendor = await prisma.vendor.findUnique({ where: { ownerId: userId } });
+            if (!vendor) throw new Error('Vendor not found');
+            return await this.getVendorBalance(vendor.id);
         }
 
-        if (role !== Role.ADMIN) {
+        if (role !== Role.SUPER_ADMIN && role !== Role.ADMIN) {
             throw new Error('Unauthorized');
         }
 
@@ -170,7 +159,7 @@ export class PayoutService {
             pendingPayoutCount,
             pendingPayoutAmount,
             totalPayouts: payouts.length,
-            completedPayouts: payouts.filter(r => r.status === PayoutStatus.COMPLETED).length
+            completedPayouts: payouts.filter(r => r.status === PayoutStatus.PAID || r.status === PayoutStatus.COMPLETED).length
         };
     }
 }

@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect, ReactNode, useMemo, use
 import { useNavigate } from "react-router-dom";
 import { apiClient } from "@/infra/api/apiClient";
 
-export type UserRole = "ADMIN" | "DEALER" | "USER" | "admin" | "seller" | "user" | null;
+export type UserRole = "SUPER_ADMIN" | "ADMIN" | "SELLER" | "CUSTOMER" | "super_admin" | "admin" | "seller" | "customer" | null;
 
 // CRITICAL: This interface must match what AuthContext provides
 // Backend sends camelCase, AuthContext maps to snake_case
@@ -31,6 +31,18 @@ export interface User {
   createdAt?: string;
   updatedAt?: string;
   _lastFetchedAt?: number; // Added by AuthContext to force re-renders
+
+  // RBAC
+  admin_permissions?: any; // Mapped from adminPermission
+  vendor?: {
+    id: string;
+    status: string;
+    businessName?: string;
+    storeName?: string;
+    pan?: string;
+    bankAccount?: string;
+    bankAccountNumber?: string;
+  };
 }
 
 interface AuthContextType {
@@ -76,10 +88,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       name: userData.name || userData.fullName || userData.full_name || null,
       // DOB: backend sends dateOfBirth
       date_of_birth: userData.dateOfBirth || userData.date_of_birth || null,
-      // Verification Status
-      verificationStatus: userData.verificationStatus || userData.verification_status || 'unverified',
-      verificationComments: userData.verificationComments || userData.verification_comments || null,
-      verification_comments: userData.verificationComments || userData.verification_comments || null,
+      // Verification Status: Standardize to 'verified' for active accounts
+      verificationStatus: (() => {
+        // Standardize any variants of "verified" or "active" to the 'verified' flag
+        const rawV = (userData.verificationStatus || "").toLowerCase();
+        const vendorV = (userData.vendor?.status || "").toLowerCase();
+        const userStatus = (userData.status || "").toLowerCase();
+
+        const isVerified =
+          rawV === 'verified' ||
+          vendorV === 'active' ||
+          userStatus === 'active';
+
+        const vStatus = isVerified ? 'verified' : (userData.verificationStatus || userData.vendor?.status || 'unverified');
+
+        console.log(`[AuthContext] Mapping verification status for ${userData.id}:`, {
+          rawUserV: userData.verificationStatus,
+          vendorStatus: userData.vendor?.status,
+          userStatus: userData.status,
+          mappedStatus: vStatus
+        });
+
+        return vStatus;
+      })(),
+      verificationComments: userData.verificationComments || userData.vendor?.verificationComments || null,
+      verification_comments: userData.verificationComments || userData.vendor?.verificationComments || null,
+      // Permissions
+      admin_permissions: userData.adminPermission || userData.admin_permissions || null,
+      // Vendor Info
+      vendor: userData.vendor || null,
       // Force new object creation with timestamp
       _lastFetchedAt: Date.now()
     };

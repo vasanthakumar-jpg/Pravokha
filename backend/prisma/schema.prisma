@@ -7,498 +7,522 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum Role {
-  ADMIN
-  DEALER
-  USER
-}
-
-enum OrderStatus {
-  PENDING
-  PROCESSING
-  PACKED
-  SHIPPED
-  DELIVERED
-  CANCELLED
-}
-
-enum PaymentStatus {
-  PENDING
-  PAID
-  FAILED
-  REFUNDED
-}
-
-enum PayoutStatus {
-  PENDING
-  PROCESSING
-  COMPLETED
-  FAILED
-}
-
 model User {
-  id                   String   @id @default(uuid())
-  email                String   @unique
-  password             String?
-  googleId             String?  @unique @map("google_id")
-  authProvider         String   @default("local") @map("auth_provider")
-  name                 String?
-  phone                String?
-  address              String?
-  avatarUrl            String?
-  bio                  String?
-  dateOfBirth          DateTime?
-  role                 Role     @default(USER)
-  status               String   @default("active")
-  verificationStatus   String   @default("unverified")
-  verificationComments String?
-
-  // ... (rest of the fields)
-
-  // Dealer / Seller Info
-  storeName           String?
-  storeDescription    String?
-  storeLogoUrl        String?
-  storeBannerUrl      String?
-  gst                 String?
-  pan                 String?
-  bankAccount         String?
-  ifsc                String?
-  beneficiaryName     String?
-  vacationMode        Boolean  @default(false)
-  autoConfirm         Boolean  @default(true)
-  returnPolicy        String?
-  metaTitle           String?
-  metaDescription     String?
-  
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
-
-  products             Product[]
-  orders               Order[]   @relation("UserOrders")
-  orderItems           OrderItem[] @relation("SellerOrderItems")
-  notifications        Notification[]
-  tickets              SupportTicket[]
-  addresses            Address[]
-  paymentMethods       PaymentMethod[]
-  preferences          UserPreference?
-  auditLogs            AuditLog[]
-  ticketMessages       TicketMessage[]
-  supportConversations SupportConversation[]
-  supportMessages      SupportMessage[]
-  wishlist             Wishlist[]
-  productReviews       ProductReview[]
-  adminNotificationSettings AdminNotificationSetting?
-  productUpdateRequests ProductUpdateRequest[] @relation("SellerUpdateRequests")
-  payouts              Payout[]
-  shippedOrders        Order[]   @relation("SellerShippedOrders")
-  statusUpdates        OrderStatusHistory[]
+  id                    String                 @id @default(uuid())
+  email                 String                 @unique
+  password              String?
+  name                  String
+  role                  Role                   @default(CUSTOMER)
+  googleId              String?                @unique @map("google_id")
+  avatarUrl             String?                @map("avatar_url")
+  phoneNumber           String?                @map("phone_number")
+  dateOfBirth           DateTime?              @map("date_of_birth")
+  bio                   String?                @db.LongText
+  status                String                 @default("active")
+  suspendedBy           String?                @map("suspended_by")
+  suspendedAt           DateTime?              @map("suspended_at")
+  suspensionReason      String?                @map("suspension_reason")
+  suspensionExpiresAt   DateTime?              @map("suspension_expires_at")
+  createdAt             DateTime               @default(now()) @map("created_at")
+  updatedAt             DateTime               @updatedAt @map("updated_at")
+  verificationStatus    String                 @default("unverified") @map("verification_status")
+  addresses             Address[]
+  adminPermission       AdminPermission?
+  auditLogs             AuditLog[]             @relation("PerformedActions")
+  notifications         Notification[]
+  orders                Order[]                @relation("CustomerOrders")
+  paymentMethods        PaymentMethod[]
+  payouts               Payout[]
+  reviews               ProductReview[]
+  productUpdateRequests ProductUpdateRequest[] @relation("SellerRequests")
+  supportConversations  SupportConversation[]
+  supportMessages       SupportMessage[]
+  supportTickets        SupportTicket[]
+  ticketMessages        TicketMessage[]        @relation("TicketMessages")
+  preferences           UserPreference?
+  vendor                Vendor?
+  wishlist              Wishlist[]
 
   @@map("users")
 }
 
-model Address {
-  id            String   @id @default(uuid())
-  userId        String
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  label         String   // Home, Work, etc.
-  fullName      String
-  phone         String
-  addressLine1  String
-  addressLine2  String?
-  city          String
-  state         String
-  pincode       String
-  isDefault     Boolean  @default(false)
-  
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+model Vendor {
+  id                String    @id @default(uuid())
+  ownerId           String    @unique @map("owner_id")
+  storeName         String    @unique @map("store_name")
+  slug              String    @unique
+  description       String?   @db.LongText
+  logoUrl           String?   @map("logo_url")
+  bannerUrl         String?   @map("banner_url")
+  gstNumber         String?   @map("gst_number")
+  panNumber         String?   @map("pan_number")
+  businessAddress   String?   @map("business_address") @db.LongText
+  beneficiaryName   String?   @map("beneficiary_name")
+  autoConfirm       Boolean   @default(false) @map("auto_confirm")
+  returnPolicy      String?   @map("return_policy") @db.LongText
+  bankAccountName   String?   @map("bank_account_name")
+  bankAccountNumber String?   @map("bank_account_number")
+  bankIfscCode      String?   @map("bank_ifsc_code")
+  bankName          String?   @map("bank_name")
+  status            String    @default("PENDING")
+  commissionRate    Float     @default(10) @map("commission_rate")
+  supportEmail      String?   @map("support_email")
+  supportPhone      String?   @map("support_phone")
+  payoutSettings    String?   @map("payout_settings") @db.LongText
+  rating            Float     @default(0)
+  reviewCount       Int       @default(0) @map("review_count")
+  totalSales        Float     @default(0) @map("total_sales")
+  totalOrders       Int       @default(0) @map("total_orders")
+  approvedAt        DateTime? @map("approved_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  metaDescription   String?   @map("meta_description") @db.LongText
+  metaTitle         String?   @map("meta_title")
+  vacationMode      Boolean   @default(false) @map("vacation_mode")
+  orders            Order[]   @relation("VendorOrders")
+  payouts           Payout[]  @relation("VendorPayouts")
+  products          Product[]
+  owner             User      @relation(fields: [ownerId], references: [id])
 
+  @@map("vendors")
+}
+
+model AdminPermission {
+  id                  String   @id @default(uuid())
+  adminId             String   @unique @map("admin_id")
+  canManagePlatform   Boolean  @default(false)
+  canManageVendors    Boolean  @default(false)
+  canManageUsers      Boolean  @default(false)
+  canManageFinancials Boolean  @default(false)
+  canAccessAuditLogs  Boolean  @default(false)
+  canApproveProducts  Boolean  @default(false)
+  canEditAnyProduct   Boolean  @default(false)
+  canDeleteAnyProduct Boolean  @default(false)
+  canManageCategories Boolean  @default(false)
+  canSuspendUsers     Boolean  @default(false)
+  canVerifyVendors    Boolean  @default(false)
+  canChangeUserRoles  Boolean  @default(false)
+  canViewAllOrders    Boolean  @default(false)
+  canCancelAnyOrder   Boolean  @default(false)
+  canIssueRefunds     Boolean  @default(false)
+  canApprovePayouts   Boolean  @default(false)
+  canViewFinancials   Boolean  @default(false)
+  canModifyCommission Boolean  @default(false)
+  canManageAdmins     Boolean  @default(false)
+  canChangeSettings   Boolean  @default(false)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  admin               User     @relation(fields: [adminId], references: [id])
+
+  @@map("admin_permissions")
+}
+
+model Address {
+  id           String   @id @default(uuid())
+  userId       String   @map("user_id")
+  name         String
+  phoneNumber  String   @map("phone_number")
+  addressLine1 String   @map("address_line1")
+  addressLine2 String?  @map("address_line2")
+  city         String
+  state        String
+  pincode      String
+  isDefault    Boolean  @default(false) @map("is_default")
+  type         String   @default("HOME")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId], map: "addresses_user_id_fkey")
   @@map("addresses")
 }
 
 model Category {
-  id          String        @id @default(uuid())
-  name        String
-  slug        String        @unique
-  description String?
-  imageUrl    String?
-  status      String        @default("active")
-  displayOrder Int          @default(0)
-  createdAt   DateTime      @default(now())
-  
-  subcategories Subcategory[]
+  id            String     @id @default(uuid())
+  name          String
+  slug          String     @unique
+  parentId      String?    @map("parent_id")
+  image         String?    @map("image_url")
+  description   String?    @db.LongText
+  status        String     @default("active")
+  displayOrder  Int        @default(0) @map("display_order")
+  createdAt     DateTime   @default(now()) @map("created_at")
+  updatedAt     DateTime   @updatedAt @map("updated_at")
+  parent        Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  subcategories Category[] @relation("CategoryHierarchy")
   products      Product[]
 
+  @@index([parentId], map: "categories_parent_id_fkey")
   @@map("categories")
 }
 
-model Subcategory {
-  id          String    @id @default(uuid())
-  name        String
-  slug        String    @unique
-  description String?
-  categoryId  String
-  category    Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  status      String    @default("active")
-  displayOrder Int      @default(0) @map("display_order")
-  createdAt   DateTime  @default(now())
-  
-  products    Product[]
-
-  @@map("subcategories")
-}
-
 model Product {
-  id            String      @id @default(uuid())
-  title         String
-  slug          String      @unique
-  description   String
-  price         Float
-  discountPrice Float?
-  stock         Int         @default(0)
-  published     Boolean     @default(false)
-  isFeatured    Boolean     @default(false)
-  isNew         Boolean     @default(false)
-  rating        Float       @default(0.0)
-  reviews       Int         @default(0)
-  sku           String?     @unique
-  isVerified    Boolean     @default(false)
-  
-  categoryId    String?
-  category      Category?   @relation(fields: [categoryId], references: [id])
-  subcategoryId String?
-  subcategory   Subcategory? @relation(fields: [subcategoryId], references: [id])
-  
-  dealerId      String
-  dealer        User        @relation(fields: [dealerId], references: [id])
-  
-  updateRequests ProductUpdateRequest[]
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-  deletedAt     DateTime?
+  id                    String                 @id @default(uuid())
+  title                 String
+  slug                  String                 @unique
+  description           String                 @db.LongText
+  price                 Float
+  compareAtPrice        Float?                 @map("compare_at_price")
+  stock                 Int                    @default(0)
+  sku                   String?                @unique
+  categoryId            String                 @map("category_id")
+  vendorId              String                 @map("vendor_id")
+  status                String                 @default("DRAFT")
+  tags                  String?
+  rating                Float                  @default(0)
+  reviewCount           Int                    @default(0) @map("review_count")
+  isVerified            Boolean                @default(false) @map("is_verified")
+  isFeatured            Boolean                @default(false) @map("is_featured")
+  isBlocked             Boolean                @default(false) @map("is_blocked")
+  adminNotes            String?                @map("admin_notes") @db.LongText
+  commissionRate        Float?                 @map("commission_rate")
+  verifiedBy            String?                @map("verified_by")
+  verifiedAt            DateTime?              @map("verified_at")
+  blockedReason         String?                @map("blocked_reason")
+  createdAt             DateTime               @default(now()) @map("created_at")
+  updatedAt             DateTime               @updatedAt @map("updated_at")
+  deletedAt             DateTime?              @map("deleted_at")
+  orderItems            OrderItem[]
+  images                ProductImage[]
+  reviews               ProductReview[]
+  productUpdateRequests ProductUpdateRequest[]
+  variants              ProductVariant[]
+  category              Category               @relation(fields: [categoryId], references: [id])
+  vendor                Vendor                 @relation(fields: [vendorId], references: [id])
+  wishlist              Wishlist[]
 
-  variants      ProductVariant[]
-  orderItems    OrderItem[]
-  wishlist      Wishlist[]
-  productReviews ProductReview[]
-
+  @@index([categoryId], map: "products_category_id_fkey")
+  @@index([vendorId], map: "products_vendor_id_fkey")
   @@map("products")
 }
 
-model ProductVariant {
-  id          String   @id @default(uuid())
-  productId   String
-  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  colorName   String?
-  colorHex    String?
-  images      Json?    // Array of image URLs
-  
-  sizes       ProductSize[]
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+model ProductImage {
+  id        String  @id @default(uuid())
+  productId String  @map("product_id")
+  url       String
+  order     Int     @default(0)
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
+  @@index([productId], map: "product_images_product_id_fkey")
+  @@map("product_images")
+}
+
+model ProductUpdateRequest {
+  id               String   @id @default(uuid())
+  productId        String   @map("product_id")
+  sellerId         String   @map("seller_id")
+  requestedChanges String   @map("requested_changes") @db.LongText
+  status           String   @default("pending")
+  adminNotes       String?  @map("admin_notes")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+  product          Product  @relation(fields: [productId], references: [id])
+  seller           User     @relation("SellerRequests", fields: [sellerId], references: [id])
+
+  @@index([productId], map: "product_update_requests_product_id_fkey")
+  @@index([sellerId], map: "product_update_requests_seller_id_fkey")
+  @@map("product_update_requests")
+}
+
+model ProductVariant {
+  id        String        @id @default(uuid())
+  productId String        @map("product_id")
+  name      String
+  sku       String?       @unique
+  price     Float?
+  stock     Int           @default(0)
+  colorName String?       @map("color_name")
+  colorHex  String?       @map("color_hex")
+  images    String?       @db.LongText
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  sizes     ProductSize[]
+  product   Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId], map: "product_variants_product_id_fkey")
   @@map("product_variants")
 }
 
 model ProductSize {
-  id          String         @id @default(uuid())
-  variantId   String
-  variant     ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
-  size        String
-  stock       Int            @default(0)
-  
+  id        String         @id @default(uuid())
+  variantId String
+  size      String
+  stock     Int            @default(0)
+  variant   ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  @@index([variantId], map: "product_sizes_variantId_fkey")
   @@map("product_sizes")
 }
 
+model WebhookEvent {
+  id            String    @id @default(uuid())
+  stripeEventId String    @unique @map("stripe_event_id")
+  eventType     String    @map("event_type")
+  payload       String    @db.LongText
+  processed     Boolean   @default(false)
+  processedAt   DateTime? @map("processed_at")
+  retryCount    Int       @default(0) @map("retry_count")
+  errorMessage  String?   @map("error_message") @db.LongText
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  @@index([stripeEventId])
+  @@index([processed])
+  @@index([eventType])
+  @@map("webhook_events")
+}
+
 model Order {
-  id            String      @id @default(uuid())
-  orderNumber   String      @unique
-  total         Float
-  status        OrderStatus @default(PENDING)
-  paymentStatus PaymentStatus @default(PENDING)
-  paymentMethod String?
-  stripeIntentId String?    @unique
-  
-  // Shipping details
-  customerName    String
-  customerEmail   String
-  customerPhone   String
-  shippingAddress String
-  shippingCity    String
-  shippingPincode String
-  
-  userId        String?
-  user          User?       @relation("UserOrders", fields: [userId], references: [id])
-  
-  items         OrderItem[]
-  
-  // Operational fields for 10/10 flow
-  trackingNumber    String?   @map("tracking_number")
-  trackingCarrier   String?   @map("tracking_carrier")
-  shippedAt         DateTime? @map("shipped_at")
-  deliveredAt       DateTime? @map("delivered_at")
-  version           Int       @default(0)
-  packingNotes      String?   @map("packing_notes") @db.Text
-  shippedBySellerId String?   @map("shipped_by_seller_id")
-  shippedBySeller   User?     @relation("SellerShippedOrders", fields: [shippedBySellerId], references: [id])
+  id                   String               @id @default(uuid())
+  orderNumber          String               @unique @map("order_number")
+  customerId           String?              @map("customer_id")
+  vendorId             String               @map("vendor_id")
+  totalAmount          Float                @map("total_amount")
+  platformFee          Float                @default(0) @map("platform_fee")
+  vendorEarnings       Float                @default(0) @map("vendor_earnings")
+  status               OrderStatus          @default(PENDING)
+  paymentStatus        PaymentStatus        @default(UNPAID)
+  paymentMethod        String               @map("payment_method")
+  stripeIntentId       String?              @map("stripe_intent_id")
+  customerName         String?              @map("customer_name")
+  customerEmail        String?              @map("customer_email")
+  customerPhone        String?              @map("customer_phone")
+  refundedAmount       Float?               @map("refunded_amount")
+  refundReason         String?              @map("refund_reason")
+  refundedAt           DateTime?            @map("refunded_at")
+  paidAt               DateTime?            @map("paid_at")
+  shippingAddress      String               @map("shipping_address") @db.LongText
+  trackingNumber       String?              @map("tracking_number")
+  trackingCarrier      String?              @map("tracking_carrier")
+  shippedAt            DateTime?            @map("shipped_at")
+  deliveredAt          DateTime?            @map("delivered_at")
+  notes                String?              @db.LongText
+  version              Int                  @default(1)
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  deletedAt            DateTime?            @map("deleted_at")
+  paymentFailureReason PaymentFailureReason @default(NONE) @map("payment_failure_reason")
+  shippingFee          Float                @default(0) @map("shipping_fee")
+  taxAmount            Float                @default(0) @map("tax_amount")
+  items                OrderItem[]
+  statusHistory        OrderStatusHistory[]
+  customer             User?                @relation("CustomerOrders", fields: [customerId], references: [id])
+  vendor               Vendor               @relation("VendorOrders", fields: [vendorId], references: [id])
 
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-  deletedAt     DateTime?   @map("deleted_at")
-  trackingUpdates Json?     @map("tracking_updates")
-  statusHistory OrderStatusHistory[]
-
+  @@index([customerId], map: "orders_customer_id_fkey")
+  @@index([vendorId], map: "orders_vendor_id_fkey")
   @@map("orders")
+}
+
+model OrderItem {
+  id              String  @id @default(uuid())
+  orderId         String
+  productId       String
+  priceAtPurchase Float   @map("price_at_purchase")
+  quantity        Int
+  subtotal        Float
+  variantId       String? @map("variant_id")
+  color           String?
+  size            String?
+  order           Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product         Product @relation(fields: [productId], references: [id])
+
+  @@index([orderId], map: "order_items_orderId_fkey")
+  @@index([productId], map: "order_items_productId_fkey")
+  @@map("order_items")
 }
 
 model OrderStatusHistory {
   id        String      @id @default(uuid())
   orderId   String      @map("order_id")
-  order     Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
   status    OrderStatus
-  userId    String?     @map("user_id")
-  user      User?       @relation(fields: [userId], references: [id])
-  notes     String?     @db.Text
+  notes     String?     @db.LongText
   createdAt DateTime    @default(now()) @map("created_at")
+  order     Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
+  @@index([orderId], map: "order_status_history_order_id_fkey")
   @@map("order_status_history")
 }
 
 model Payout {
   id              String       @id @default(uuid())
-  sellerId        String       @map("seller_id")
-  seller          User         @relation(fields: [sellerId], references: [id])
+  vendorId        String       @map("vendor_id")
+  userId          String?      @map("user_id")
   amount          Float
   status          PayoutStatus @default(PENDING)
-  periodStart     DateTime     @map("period_start")
-  periodEnd       DateTime     @map("period_end")
   transactionId   String?      @map("transaction_id")
-  rejectionReason String?      @map("rejection_reason") @db.Text
-  
+  paidAt          DateTime?    @map("paid_at")
+  rejectionReason String?      @map("rejection_reason")
   createdAt       DateTime     @default(now()) @map("created_at")
   updatedAt       DateTime     @updatedAt @map("updated_at")
+  user            User?        @relation(fields: [userId], references: [id])
+  vendor          Vendor       @relation("VendorPayouts", fields: [vendorId], references: [id])
 
+  @@index([userId], map: "payouts_user_id_fkey")
+  @@index([vendorId], map: "payouts_vendor_id_fkey")
   @@map("payouts")
-}
-
-model OrderItem {
-  id        String  @id @default(uuid())
-  orderId   String
-  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  productId String
-  product   Product @relation(fields: [productId], references: [id])
-  
-  // Multi-vendor tracking: which seller owns this order item
-  sellerId  String  @map("seller_id")
-  seller    User    @relation("SellerOrderItems", fields: [sellerId], references: [id])
-  
-  title     String
-  price     Float
-  variantId String? @map("variant_id")
-  color     String?
-  size      String?
-  quantity  Int
-  
-  // Item-level status for multi-vendor support
-  status            OrderStatus @default(PENDING)
-  trackingNumber    String?     @map("tracking_number")
-  trackingCarrier   String?     @map("tracking_carrier")
-  shippedAt         DateTime?   @map("shipped_at")
-  deliveredAt       DateTime?   @map("delivered_at")
-  
-  @@index([sellerId])
-  @@map("order_items")
 }
 
 model Notification {
   id        String   @id @default(uuid())
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  link      String?
   title     String
   message   String
-  type      String   // order, info, alert
+  metadata  String?  @db.LongText
   isRead    Boolean  @default(false)
-  link      String?
-  metadata  Json?
   createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId], map: "notifications_userId_fkey")
   @@map("notifications")
 }
 
 model SupportTicket {
-  id           String   @id @default(uuid())
-  ticketNumber String   @unique
-  userId       String
-  user         User     @relation(fields: [userId], references: [id])
-  type         String
-  subject      String
-  description  String   @db.Text
-  priority           String   @default("medium")
-  status             String   @default("open")
-  isSuspendedSeller  Boolean  @default(false) @map("suspended_seller")
-  isHighPriority     Boolean  @default(false) @map("is_high_priority")
-  evidenceUrls       Json?    // Array of strings
-  
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
-  messages     TicketMessage[]
+  id                String          @id @default(uuid())
+  ticketNumber      String          @unique
+  userId            String
+  type              String
+  subject           String
+  description       String          @db.LongText
+  priority          String          @default("medium")
+  status            String          @default("open")
+  isSuspendedSeller Boolean         @default(false) @map("is_suspended_seller")
+  evidenceUrls      String?         @map("evidence_urls") @db.LongText
+  createdAt         DateTime        @default(now()) @map("created_at")
+  updatedAt         DateTime        @updatedAt @map("updated_at")
+  user              User            @relation(fields: [userId], references: [id])
+  messages          TicketMessage[]
 
+  @@index([userId], map: "support_tickets_userId_fkey")
   @@map("support_tickets")
 }
 
 model TicketMessage {
-  id          String        @id @default(uuid())
-  ticketId    String        @map("ticket_id")
-  ticket      SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  senderId    String        @map("sender_id")
-  sender      User          @relation(fields: [senderId], references: [id])
-  message     String        @db.Text
-  isRead      Boolean       @default(false) @map("is_read")
-  isInternal  Boolean       @default(false) @map("is_internal")
-  createdAt   DateTime      @default(now()) @map("created_at")
+  id         String        @id @default(uuid())
+  ticketId   String        @map("ticket_id")
+  senderId   String        @map("sender_id")
+  message    String        @db.LongText
+  isRead     Boolean       @default(false)
+  isInternal Boolean       @default(false) @map("is_internal")
+  createdAt  DateTime      @default(now()) @map("created_at")
+  sender     User          @relation("TicketMessages", fields: [senderId], references: [id])
+  ticket     SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
 
+  @@index([senderId], map: "ticket_messages_sender_id_fkey")
+  @@index([ticketId], map: "ticket_messages_ticket_id_fkey")
   @@map("ticket_messages")
 }
 
 model AuditLog {
-  id          String   @id @default(uuid())
-  actorId     String?  @map("actor_id")
-  actor       User?    @relation(fields: [actorId], references: [id])
-  targetId    String?  @map("target_id")
-  targetType  String   @map("target_type")
-  actionType  String   @map("action_type")
-  severity    String?  @default("info")
-  description String?  @db.Text
-  metadata    Json?
-  createdAt   DateTime @default(now()) @map("created_at")
+  id             String   @id @default(uuid())
+  performedBy    String?  @map("performed_by")
+  performerRole  Role     @default(CUSTOMER) @map("performer_role")
+  performerEmail String?  @map("performer_email")
+  action         String
+  entity         String
+  entityId       String
+  changes        String?  @db.LongText
+  reason         String?
+  ipAddress      String?  @map("ip_address")
+  userAgent      String?  @map("user_agent")
+  createdAt      DateTime @default(now())
+  user           User?    @relation("PerformedActions", fields: [performedBy], references: [id])
 
+  @@index([performedBy], map: "audit_logs_performed_by_fkey")
   @@map("audit_logs")
 }
 
 model PaymentMethod {
   id             String   @id @default(uuid())
-  userId         String
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  cardLast4      String
-  cardBrand      String
-  cardExpMonth   Int
-  cardExpYear    Int
-  cardHolderName String
-  isDefault      Boolean  @default(false)
+  userId         String   @map("user_id")
   type           String   @default("card")
-  label          String   @default("Personal")
-  details        Json?    // Extra gateway info
-  
+  label          String?
+  cardLast4      String?  @map("card_last_4")
+  cardBrand      String?  @map("card_brand")
+  cardExpMonth   Int?     @map("card_exp_month")
+  cardExpYear    Int?     @map("card_exp_year")
+  cardHolderName String?  @map("card_holder_name")
+  isDefault      Boolean  @default(false) @map("is_default")
+  details        String?  @db.LongText
   createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId], map: "payment_methods_user_id_fkey")
   @@map("payment_methods")
 }
 
 model UserPreference {
   id                 String   @id @default(uuid())
   userId             String   @unique
-  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   emailNotifications Boolean  @default(true)
-  orderUpdates       Boolean  @default(true)
-  marketingEmails    Boolean  @default(false)
-  smsNotifications   Boolean  @default(false)
-  theme              String   @default("system")
-  language           String   @default("en")
-  currency           String   @default("INR")
-  twoFactorAuth      Boolean  @default(false)
-  
+  orderUpdates       Boolean  @default(true) @map("order_updates")
+  marketingEmails    Boolean  @default(false) @map("marketing_emails")
   updatedAt          DateTime @updatedAt
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("user_preferences")
 }
 
 model SupportConversation {
-  id            String   @id @default(uuid())
+  id            String           @id @default(uuid())
   subject       String
-  status        String   @default("open")
-  userId        String   @map("user_id")
-  user          User     @relation(fields: [userId], references: [id])
-  lastMessageAt DateTime @default(now()) @map("last_message_at")
-  createdAt     DateTime @default(now()) @map("created_at")
+  status        String           @default("open")
+  userId        String           @map("user_id")
+  lastMessageAt DateTime         @default(now()) @map("last_message_at")
+  createdAt     DateTime         @default(now()) @map("created_at")
+  user          User             @relation(fields: [userId], references: [id])
   messages      SupportMessage[]
 
+  @@index([userId], map: "support_conversations_user_id_fkey")
   @@map("support_conversations")
 }
 
 model SupportMessage {
   id             String              @id @default(uuid())
   conversationId String              @map("conversation_id")
-  conversation   SupportConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   userId         String              @map("user_id")
-  user           User                @relation(fields: [userId], references: [id])
-  message        String              @db.Text
-  isAdmin        Boolean             @default(false) @map("is_admin")
+  message        String              @db.LongText
+  isAdmin        Boolean             @default(false)
   createdAt      DateTime            @default(now()) @map("created_at")
+  conversation   SupportConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user           User                @relation(fields: [userId], references: [id])
 
+  @@index([conversationId], map: "support_messages_conversation_id_fkey")
+  @@index([userId], map: "support_messages_user_id_fkey")
   @@map("support_messages")
 }
 
 model Wishlist {
   id        String   @id @default(uuid())
   userId    String   @map("user_id")
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   productId String   @map("product_id")
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now()) @map("created_at")
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, productId])
+  @@index([productId], map: "wishlist_product_id_fkey")
   @@map("wishlist")
 }
 
-model ProductUpdateRequest {
-  id               String   @id @default(uuid())
-  productId        String   @map("product_id")
-  product          Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  sellerId         String   @map("seller_id")
-  seller           User     @relation("SellerUpdateRequests", fields: [sellerId], references: [id])
-  requestedChanges Json     @map("requested_changes")
-  status           String   @default("pending") // pending, approved, rejected
-  adminNotes       String?  @map("admin_notes") @db.Text
-  createdAt        DateTime @default(now()) @map("created_at")
-  updatedAt        DateTime @updatedAt @map("updated_at")
+model ProductReview {
+  id        String   @id @default(uuid())
+  productId String   @map("product_id")
+  userId    String   @map("user_id")
+  rating    Float
+  title     String?
+  comment   String?  @db.LongText
+  images    String?  @db.LongText
+  status    String   @default("published")
+  createdAt DateTime @default(now()) @map("created_at")
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@map("product_update_requests")
-}
-
-model SiteSetting {
-  id                      String   @id @default("primary")
-  storeName               String   @default("Pravokha") @map("store_name")
-  storeUrl                String   @default("https://pravokha.com") @map("store_url")
-  maintenanceMode         Boolean  @default(false) @map("maintenance_mode")
-  autoConfirmOrders       Boolean  @default(true) @map("auto_confirm_orders")
-  logoUrl                 String?  @map("logo_url")
-  bannerUrl               String?  @map("banner_url")
-  currency                String   @default("INR")
-  timezone                String   @default("IST")
-  analyticsEnabled        Boolean  @default(true) @map("analytics_enabled")
-  aiInsightsEnabled       Boolean  @default(false) @map("ai_insights_enabled")
-  payoutAutomationEnabled Boolean  @default(true) @map("payout_automation_enabled")
-  sessionTrackingEnabled  Boolean  @default(true) @map("session_tracking_enabled")
-  dataAnonymizationEnabled Boolean @default(false) @map("data_anonymization_enabled")
-  publicIndexingEnabled   Boolean  @default(false) @map("public_indexing_enabled")
-  updatedAt               DateTime @updatedAt @map("updated_at")
-
-  @@map("site_settings")
-}
-
-model AdminNotificationSetting {
-  id                   String   @id @default(uuid())
-  adminId              String   @unique @map("admin_id")
-  admin                User     @relation(fields: [adminId], references: [id])
-  governanceAlerts     Boolean  @default(true) @map("governance_alerts")
-  revenueTelemetry     Boolean  @default(true) @map("revenue_telemetry")
-  inventoryCriticality Boolean  @default(false) @map("inventory_criticality")
-  updatedAt            DateTime @updatedAt @map("updated_at")
-
-  @@map("admin_notification_settings")
+  @@index([productId], map: "product_reviews_product_id_fkey")
+  @@index([userId], map: "product_reviews_user_id_fkey")
+  @@map("product_reviews")
 }
 
 model NewsletterSubscription {
@@ -512,47 +536,81 @@ model NewsletterSubscription {
 model ComboOffer {
   id                 String    @id @default(uuid())
   title              String
-  description        String?   @db.Text
-  productIds        Json?     @map("product_ids") // Array of string product slugs/IDs
-  originalPrice     Float?    @map("original_price")
-  comboPrice        Float     @map("combo_price")
-  discountPercentage Int?     @map("discount_percentage")
-  active             Boolean   @default(true)
+  description        String?   @db.LongText
+  productIds         String?   @map("product_ids") @db.LongText
+  originalPrice      Float?    @map("original_price")
+  comboPrice         Float     @map("combo_price")
+  discountPercentage Int?      @map("discount_percentage")
   imageUrl           String?   @map("image_url")
+  active             Boolean   @default(true)
   startDate          DateTime? @map("start_date")
   endDate            DateTime? @map("end_date")
   createdAt          DateTime  @default(now()) @map("created_at")
-  updatedAt          DateTime  @updatedAt @map("updated_at")
 
   @@map("combo_offers")
 }
 
-model ProductReview {
-  id        String   @id @default(uuid())
-  productId String   @map("product_id")
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  userId    String   @map("user_id")
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  rating    Float
-  title     String?
-  comment   String?  @db.Text
-  images    Json?    // Array of image URLs
-  status    String   @default("pending") // pending, approved, rejected
-  
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+model SiteSetting {
+  id                   String   @id @default("primary")
+  storeName            String   @default("Pravokha") @map("store_name")
+  commissionRate       Float    @default(10) @map("commission_rate")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+  autoConfirmOrders    Boolean  @default(true) @map("auto_confirm_orders")
+  bannerUrl            String?  @map("banner_url")
+  logoUrl              String?  @map("logo_url")
+  maintenanceMode      Boolean  @default(false) @map("maintenance_mode")
+  notificationSettings String?  @map("notification_settings") @db.LongText
+  storeUrl             String   @default("https://pravokha.com") @map("store_url")
+  systemSettings       String?  @map("system_settings") @db.LongText
+  defaultShippingFee   Float    @default(99) @map("shipping_fee")
+  taxRate              Float    @default(18) @map("tax_rate")
 
-  @@map("product_reviews")
+  @@map("site_settings")
 }
 
-model MigrationAudit {
-  id          String   @id @default(uuid())
-  entityType  String   // e.g., 'Subcategory'
-  entityId    String
-  oldData     Json
-  newData     Json
-  migrationId String   // identifier for the migration run
-  createdAt   DateTime @default(now())
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  SELLER
+  CUSTOMER
+}
 
-  @@map("migration_audit")
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PROCESSING
+  PACKED
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentStatus {
+  UNPAID
+  PROCESSING
+  PAID
+  FAILED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+enum PayoutStatus {
+  PENDING
+  PROCESSING
+  PAID
+  COMPLETED
+  REJECTED
+}
+
+enum PaymentFailureReason {
+  NONE
+  EXPIRED_CARD
+  INSUFFICIENT_FUNDS
+  AUTHENTICATION_REQUIRED
+  DECLINED
+  NETWORK_ERROR
+  FRAUD_SUSPECTED
+  INVALID_CARD
+  CARD_NOT_SUPPORTED
 }

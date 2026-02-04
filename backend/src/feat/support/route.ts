@@ -18,17 +18,17 @@ router.get('/conversations', authenticate, SupportController.listUserConversatio
 router.post('/conversations', authenticate, SupportController.createConversation);
 
 // Admin routes
-router.get('/admin/tickets', authenticate, authorize([Role.ADMIN]), SupportController.listAllTickets);
-router.patch('/tickets/:id/status', authenticate, authorize([Role.ADMIN]), SupportController.updateStatus);
+router.get('/admin/tickets', authenticate, authorize([Role.SUPER_ADMIN, Role.ADMIN]), SupportController.listAllTickets);
+router.patch('/tickets/:id/status', authenticate, authorize([Role.SUPER_ADMIN, Role.ADMIN]), SupportController.updateStatus);
 
 // Shared/Messaging routes
 router.get('/tickets/:id/messages', authenticate, SupportController.getTicketMessages);
 router.post('/tickets/:id/reply', authenticate, SupportController.replyToTicket);
 
 // Conversation/Chat routes
-router.get('/admin/conversations', authenticate, authorize([Role.ADMIN]), SupportController.listConversations);
+router.get('/admin/conversations', authenticate, authorize([Role.SUPER_ADMIN, Role.ADMIN]), SupportController.listConversations);
 router.get('/conversations/:id/messages', authenticate, SupportController.getConversationMessages);
 router.post('/conversations/:id/messages', authenticate, SupportController.sendConversationMessage);
-router.patch('/conversations/:id/status', authenticate, authorize([Role.ADMIN]), SupportController.updateConversationStatus);
+router.patch('/conversations/:id/status', authenticate, authorize([Role.SUPER_ADMIN, Role.ADMIN]), SupportController.updateConversationStatus);
 
 export default router;

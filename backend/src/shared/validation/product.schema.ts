@@ -15,11 +15,10 @@ export const createProductSchema = z.object({
     published: z.boolean().optional().default(false),
     isFeatured: z.boolean().optional().default(false),
     is_featured: z.boolean().optional(),
-    isNew: z.boolean().optional().default(false),
-    is_new: z.boolean().optional(),
     is_verified: z.boolean().optional(),
     seller_id: z.string().optional(),
     variants: z.array(z.any()).optional(), // Will be handled in service
+    adminEditReason: z.string().optional(),
 });
 
 export const updateProductSchema = createProductSchema.partial();

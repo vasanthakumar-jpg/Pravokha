@@ -44,6 +44,11 @@ const ForgotPassword = lazy(() => import("./feat/auth/pages/ForgotPasswordPage")
 const About = lazy(() => import("./feat/info/pages/AboutPage/AboutPage"));
 const PolicyPage = lazy(() => import("./feat/info/pages/PolicyPage/PolicyPage"));
 
+// Payment pages
+const PaymentConfirmation = lazy(() => import("./feat/checkout/pages/PaymentConfirmationPage"));
+const PaymentSuccess = lazy(() => import("./feat/checkout/pages/PaymentSuccessPage"));
+const PaymentFailed = lazy(() => import("./feat/checkout/pages/PaymentFailedPage"));
+
 // Admin pages
 const AdminDashboard = lazy(() => import("./feat/admin/pages/AdminDashboard"));
 const AdminOrders = lazy(() => import("./feat/admin/pages/AdminOrders"));
@@ -63,6 +68,10 @@ const AdminComboOffers = lazy(() => import("./feat/admin/pages/AdminComboOffers"
 const Profile = lazy(() => import("./feat/user/pages/ProfilePage"));
 
 // New admin pages
+const SuperAdminDashboard = lazy(() => import("./feat/admin/pages/SuperAdminDashboard/SuperAdminDashboard"));
+const StaffDashboard = lazy(() => import("./feat/admin/pages/StaffDashboard/StaffDashboard"));
+const StaffSettings = lazy(() => import("./feat/admin/pages/StaffSettings/StaffSettings"));
+
 const AdminUsers = lazy(() => import("./feat/admin/pages/AdminUsers"));
 const AdminSellers = lazy(() => import("./feat/admin/pages/AdminSellers"));
 const AdminPayments = lazy(() => import("./feat/admin/pages/AdminPayments"));
@@ -71,6 +80,7 @@ const AdminSettings = lazy(() => import("./feat/admin/pages/AdminSettings"));
 const AdminMessages = lazy(() => import("./feat/admin/pages/AdminMessages"));
 const AdminReviews = lazy(() => import("./feat/admin/pages/AdminReviews"));
 const AdminRoleManagement = lazy(() => import("./feat/admin/pages/AdminRoleManagement"));
+const AdminPermissions = lazy(() => import("./feat/admin/pages/AdminPermissionsPage")); // Add this
 // const AdminAuditLogs = lazy(() => import("./feat/admin/pages/AdminAuditLogs"));
 
 // Unified Orders Page (for both Admin and Seller)
@@ -142,6 +152,14 @@ const NavigateToOrderDetail = () => {
   return <Navigate to={`/user/orders/detail/${orderId}`} replace />;
 };
 
+// Internal Router to dispatch Admin to correct Dashboard
+const AdminDashboardRouter = () => {
+  const { role } = useAuth();
+  if (role === 'SUPER_ADMIN') return <Navigate to="/admin/super-dashboard" replace />;
+  if (role === 'ADMIN') return <Navigate to="/admin/staff-dashboard" replace />;
+  return <Navigate to="/unauthorized" replace />;
+};
+
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -177,6 +195,24 @@ export default function App() {
                               <Checkout />
                             </Suspense>
                           } />
+
+                          {/* Payment Routes */}
+                          <Route path="/payment/confirm" element={
+                            <Suspense fallback={<LoadingFallback />}>
+                              <PaymentConfirmation />
+                            </Suspense>
+                          } />
+                          <Route path="/payment/success" element={
+                            <Suspense fallback={<LoadingFallback />}>
+                              <PaymentSuccess />
+                            </Suspense>
+                          } />
+                          <Route path="/payment/failed" element={
+                            <Suspense fallback={<LoadingFallback />}>
+                              <PaymentFailed />
+                            </Suspense>
+                          } />
+
                           <Route path="/auth" element={
                             <Suspense fallback={<LoadingFallback />}>
                               <AuthUnified />
@@ -282,14 +318,27 @@ export default function App() {
 
                           {/* Admin Routes */}
                           <Route path="/admin" element={
-                            <ProtectedRoute allowedRoles={["ADMIN"]}>
+                            <ProtectedRoute allowedRoles={["SUPER_ADMIN", "ADMIN"]}>
                               <AdminLayout />
                             </ProtectedRoute>
                           }>
-                            <Route index element={
-                              <Suspense fallback={<LoadingFallback />}>
-                                <AdminDashboard />
-                              </Suspense>
+                            <Route index element={<Navigate to="dashboard" replace />} />
+                            <Route path="dashboard" element={
+                              <AdminDashboardRouter />
+                            } />
+                            <Route path="super-dashboard" element={
+                              <ProtectedRoute allowedRoles={["SUPER_ADMIN"]}>
+                                <Suspense fallback={<LoadingFallback />}>
+                                  <SuperAdminDashboard />
+                                </Suspense>
+                              </ProtectedRoute>
+                            } />
+                            <Route path="staff-dashboard" element={
+                              <ProtectedRoute allowedRoles={["ADMIN", "SUPER_ADMIN"]}>
+                                <Suspense fallback={<LoadingFallback />}>
+                                  <StaffDashboard />
+                                </Suspense>
+                              </ProtectedRoute>
                             } />
                             <Route path="analytics" element={
                               <Suspense fallback={<LoadingFallback />}>
@@ -347,9 +396,11 @@ export default function App() {
                               </Suspense>
                             } />
                             <Route path="payments" element={
-                              <Suspense fallback={<LoadingFallback />}>
-                                <AdminPayments />
-                              </Suspense>
+                              <ProtectedRoute allowedRoles={["SUPER_ADMIN"]}>
+                                <Suspense fallback={<LoadingFallback />}>
+                                  <AdminPayments />
+                                </Suspense>
+                              </ProtectedRoute>
                             } />
                             <Route path="reports" element={
                               <Suspense fallback={<LoadingFallback />}>
@@ -357,9 +408,18 @@ export default function App() {
                               </Suspense>
                             } />
                             <Route path="settings" element={
-                              <Suspense fallback={<LoadingFallback />}>
-                                <AdminSettings />
-                              </Suspense>
+                              <ProtectedRoute allowedRoles={["SUPER_ADMIN"]}>
+                                <Suspense fallback={<LoadingFallback />}>
+                                  <AdminSettings />
+                                </Suspense>
+                              </ProtectedRoute>
+                            } />
+                            <Route path="profile-settings" element={
+                              <ProtectedRoute allowedRoles={["ADMIN", "SUPER_ADMIN"]}>
+                                <Suspense fallback={<LoadingFallback />}>
+                                  <StaffSettings />
+                                </Suspense>
+                              </ProtectedRoute>
                             } />
                             <Route path="tickets" element={
                               <Suspense fallback={<LoadingFallback />}>
@@ -377,8 +437,15 @@ export default function App() {
                               </Suspense>
                             } />
                             <Route path="roles" element={
+                              <ProtectedRoute allowedRoles={["SUPER_ADMIN"]}>
+                                <Suspense fallback={<LoadingFallback />}>
+                                  <AdminRoleManagement />
+                                </Suspense>
+                              </ProtectedRoute>
+                            } />
+                            <Route path="roles/:adminId/permissions" element={
                               <Suspense fallback={<LoadingFallback />}>
-                                <AdminRoleManagement />
+                                <AdminPermissions />
                               </Suspense>
                             } />
                             <Route path="categories" element={
@@ -407,15 +474,17 @@ export default function App() {
                               </Suspense>
                             } />
                             <Route path="audit-logs" element={
-                              <Suspense fallback={<LoadingFallback />}>
-                                <AdminAuditLogs />
-                              </Suspense>
+                              <ProtectedRoute allowedRoles={["SUPER_ADMIN"]}>
+                                <Suspense fallback={<LoadingFallback />}>
+                                  <AdminAuditLogs />
+                                </Suspense>
+                              </ProtectedRoute>
                             } />
                           </Route>
 
                           {/* Seller Routes */}
                           <Route path="/seller" element={
-                            <ProtectedRoute allowedRoles={["DEALER"]}>
+                            <ProtectedRoute allowedRoles={["SELLER"]}>
                               <SellerLayout />
                             </ProtectedRoute>
                           }>
@@ -484,7 +553,7 @@ export default function App() {
 
                           {/* User Routes */}
                           <Route path="/user/*" element={
-                            <ProtectedRoute allowedRoles={["USER"]}>
+                            <ProtectedRoute allowedRoles={["CUSTOMER"]}>
                               <Suspense fallback={<LoadingFallback />}>
                                 <Routes>
                                   <Route index element={
@@ -526,6 +595,11 @@ export default function App() {
 
                           {/* Access Denied Route */}
                           <Route path="/access-denied" element={
+                            <Suspense fallback={<LoadingFallback />}>
+                              <AccessDenied />
+                            </Suspense>
+                          } />
+                          <Route path="/unauthorized" element={
                             <Suspense fallback={<LoadingFallback />}>
                               <AccessDenied />
                             </Suspense>

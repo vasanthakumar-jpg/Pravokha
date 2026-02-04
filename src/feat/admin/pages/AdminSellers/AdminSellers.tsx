@@ -106,29 +106,50 @@ export default function AdminSellers() {
     fetchSellers();
   }, []);
 
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const LIMIT = 10;
+
+  useEffect(() => {
+    fetchSellers();
+  }, [page, searchQuery, statusFilter]); // Re-fetch on dependencies change
+
   const fetchSellers = async () => {
     try {
       setLoading(true);
 
-      const response = await apiClient.get('/users?role=DEALER');
+      const skip = (page - 1) * LIMIT;
+      // Construct query URL with pagination
+      let url = `/users?role=SELLER&take=${LIMIT}&skip=${skip}`;
+      if (statusFilter !== 'all') {
+        url += `&verificationStatus=${encodeURIComponent(statusFilter)}`;
+      }
+      if (searchQuery) {
+        url += `&searchQuery=${encodeURIComponent(searchQuery)}`;
+      }
+
+      const response = await apiClient.get(url);
+
       if (response.data.success) {
         const mappedSellers: Seller[] = (response.data.users as any[]).map(profile => ({
           id: profile.id,
           userId: profile.id,
           fullName: profile.name || "Unnamed Seller",
-          storeName: profile.storeName || "Unnamed Store",
+          storeName: profile.vendor?.storeName || "Unnamed Store",
           verificationStatus: profile.verificationStatus || "pending",
           rejectionReason: profile.verificationComments,
           totalSales: 0,
           createdAt: profile.createdAt || new Date().toISOString(),
           email: profile.email,
-          pan: profile.pan,
-          gstin: profile.gst,
-          bankAccount: profile.bankAccount,
-          ifsc: profile.ifsc,
-          beneficiaryName: profile.beneficiaryName
+          pan: profile.vendor?.panNumber || profile.vendor?.pan,
+          gstin: profile.vendor?.gstNumber || profile.vendor?.gst,
+          bankAccount: profile.vendor?.bankAccountNumber || profile.vendor?.bankAccount,
+          ifsc: profile.vendor?.bankIfscCode || profile.vendor?.ifsc,
+          beneficiaryName: profile.vendor?.beneficiaryName
         }));
+
         setSellers(mappedSellers);
+        setTotalPages(Math.ceil((response.data.count || 0) / LIMIT));
       }
     } catch (error) {
       console.error("Error fetching sellers:", error);
@@ -422,6 +443,31 @@ export default function AdminSellers() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Pagination Controls */}
+      <div className="flex items-center justify-between py-4">
+        <div className="text-sm text-muted-foreground">
+          Page {page} of {totalPages || 1}
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+            disabled={page === 1}
+          >
+            Previous
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+            disabled={page >= totalPages}
+          >
+            Next
+          </Button>
+        </div>
+      </div>
 
       <Dialog open={showVerifyDialog} onOpenChange={setShowVerifyDialog}>
         <DialogContent className="sm:max-w-[550px] p-0 overflow-hidden border-border/60 shadow-xl rounded-2xl bg-card">

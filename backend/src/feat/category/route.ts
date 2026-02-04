@@ -7,14 +7,13 @@ const router = Router();
 
 // Category routes
 router.get('/', CategoryController.listCategories);
-router.post('/', authenticate, authorize([Role.ADMIN]), CategoryController.createCategory);
-router.patch('/:id', authenticate, authorize([Role.ADMIN]), CategoryController.updateCategory);
-router.delete('/:id', authenticate, authorize([Role.ADMIN]), CategoryController.deleteCategory);
-
-// Subcategory routes
-router.get('/subcategories', CategoryController.listSubcategories);
-router.post('/subcategories', authenticate, authorize([Role.ADMIN]), CategoryController.createSubcategory);
-router.patch('/subcategories/:id', authenticate, authorize([Role.ADMIN]), CategoryController.updateSubcategory);
-router.delete('/subcategories/:id', authenticate, authorize([Role.ADMIN]), CategoryController.deleteSubcategory);
+router.get('/admin/all', authenticate, authorize([Role.SUPER_ADMIN, Role.ADMIN]), CategoryController.listAllCategories);
+router.post('/', authenticate, authorize([Role.SUPER_ADMIN, Role.ADMIN]), CategoryController.createCategory);
+router.patch('/:id', authenticate, authorize([Role.SUPER_ADMIN, Role.ADMIN]), CategoryController.updateCategory);
+router.delete('/:id', authenticate, authorize([Role.SUPER_ADMIN, Role.ADMIN]), CategoryController.deleteCategory);
+router.get('/subcategories', CategoryController.listAllSubcategories);
+router.post('/subcategories', authenticate, authorize([Role.SUPER_ADMIN, Role.ADMIN]), CategoryController.createSubcategory);
+router.patch('/subcategories/:id', authenticate, authorize([Role.SUPER_ADMIN, Role.ADMIN]), CategoryController.updateSubcategory);
+router.delete('/subcategories/:id', authenticate, authorize([Role.SUPER_ADMIN, Role.ADMIN]), CategoryController.deleteSubcategory);
 
 export default router;

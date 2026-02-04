@@ -1,25 +1,49 @@
 import { Router } from 'express';
-import { AdminController } from './controller';
 import { authenticate, authorize } from '../../shared/middleware/auth';
+import { requirePermission } from '../../shared/middleware/permission';
+import {
+    updateAdminPermissions,
+    getAdminPermissions,
+    suspendUser,
+    activateUser,
+    getAuditLogs,
+    getDashboardStats,
+    getSiteSettings,
+    updateSiteSettings,
+    getNotificationSettings,
+    updateNotificationSettings,
+    updateSystemSettings,
+    getProductUpdateRequests,
+    updateProductRequestStatus
+} from './controller';
 
 const router = Router();
 
-router.get('/stats', authenticate, authorize(['ADMIN']), AdminController.getStats);
-router.get('/reports', authenticate, authorize(['ADMIN']), AdminController.getReports);
-router.get('/settings/site', authenticate, authorize(['ADMIN']), AdminController.getSiteSettings);
-router.patch('/settings/site', authenticate, authorize(['ADMIN']), AdminController.updateSiteSettings);
-router.put('/settings/site', authenticate, authorize(['ADMIN']), AdminController.updateSiteSettings);
+router.use(authenticate);
 
-router.get('/settings/notifications', authenticate, authorize(['ADMIN']), AdminController.getNotificationSettings);
-router.patch('/settings/notifications', authenticate, authorize(['ADMIN']), AdminController.updateNotificationSettings);
-router.put('/settings/notifications', authenticate, authorize(['ADMIN']), AdminController.updateNotificationSettings);
+// Dashboard Stats
+router.get('/stats', requirePermission('VIEW_ANALYTICS', 'SYSTEM'), getDashboardStats);
 
-router.get('/settings/system', authenticate, authorize(['ADMIN']), AdminController.getSystemSettings);
-router.patch('/settings/system', authenticate, authorize(['ADMIN']), AdminController.updateSystemSettings);
-router.put('/settings/system', authenticate, authorize(['ADMIN']), AdminController.updateSystemSettings);
+// Site Settings
+router.get('/settings/site', requirePermission('MANAGE_SETTINGS', 'SYSTEM'), getSiteSettings);
+router.put('/settings/site', requirePermission('MANAGE_SETTINGS', 'SYSTEM'), updateSiteSettings);
+router.get('/settings/notifications', requirePermission('MANAGE_SETTINGS', 'SYSTEM'), getNotificationSettings);
+router.put('/settings/notifications', requirePermission('MANAGE_SETTINGS', 'SYSTEM'), updateNotificationSettings);
+router.put('/settings/system', requirePermission('MANAGE_SETTINGS', 'SYSTEM'), updateSystemSettings);
 
-router.get('/roles/counts', authenticate, authorize(['ADMIN']), AdminController.getRoleCounts);
-router.get('/product-updates', authenticate, authorize(['ADMIN']), AdminController.listProductUpdateRequests);
-router.patch('/product-updates/:id', authenticate, authorize(['ADMIN']), AdminController.handleProductUpdateRequest);
+// Product Update Requests (Governance)
+router.get('/product-updates', requirePermission('MANAGE_PRODUCTS', 'MARKETPLACE'), getProductUpdateRequests);
+router.patch('/product-updates/:id', requirePermission('MANAGE_PRODUCTS', 'MARKETPLACE'), updateProductRequestStatus);
+
+// Permission Management (Restricted to SUPER_ADMIN internally)
+router.post('/permissions/:adminId', updateAdminPermissions);
+router.get('/permissions/:adminId', getAdminPermissions);
+
+// User Management
+router.post('/users/:userId/suspend', requirePermission('SUSPEND_USER', 'USER'), suspendUser);
+router.post('/users/:userId/activate', requirePermission('ACTIVATE_USER', 'USER'), activateUser);
+
+// Audit Logs
+router.get('/audit-logs', requirePermission('VIEW_AUDIT_LOGS', 'SYSTEM'), getAuditLogs);
 
 export default router;

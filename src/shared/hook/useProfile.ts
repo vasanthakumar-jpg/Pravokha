@@ -39,27 +39,29 @@ export function useProfile(userId: string | undefined) {
       const data = response.data.user;
 
       // Map backend camelCase to frontend snake_case/legacy keys
+      const vendor = data.vendor || {};
+
       return {
         id: data.id,
         full_name: data.name,
-        phone: data.phone,
+        phone: data.phone || data.phoneNumber,
         address: data.address,
         avatar_url: data.avatarUrl,
         email: data.email,
         bio: data.bio,
         date_of_birth: data.dateOfBirth,
         status: data.status,
-        verificationStatus: data.verificationStatus,
+        verificationStatus: (data.verificationStatus === 'verified' || vendor.status === 'ACTIVE') ? 'verified' : (data.verificationStatus || 'unverified'),
         verificationComments: data.verificationComments,
-        bankAccount: data.bankAccount,
-        ifsc: data.ifsc,
-        beneficiaryName: data.beneficiaryName,
-        gst: data.gst,
-        pan: data.pan,
-        storeName: data.storeName,
-        storeDescription: data.storeDescription,
-        storeLogoUrl: data.storeLogoUrl,
-        storeBannerUrl: data.storeBannerUrl
+        bankAccount: vendor.bankAccountNumber || vendor.bankAccount,
+        ifsc: vendor.bankIfscCode || vendor.ifsc,
+        beneficiaryName: vendor.beneficiaryName,
+        gst: vendor.gstNumber || vendor.gst,
+        pan: vendor.panNumber || vendor.pan,
+        storeName: vendor.storeName,
+        storeDescription: vendor.description || vendor.storeDescription,
+        storeLogoUrl: vendor.logoUrl || vendor.storeLogoUrl,
+        storeBannerUrl: vendor.bannerUrl || vendor.storeBannerUrl
       } as Profile;
     },
 
@@ -81,9 +83,9 @@ export function useProfile(userId: string | undefined) {
       if (updates.bio !== undefined) backendUpdates.bio = updates.bio;
 
       // Handle both formats for robustness
-      if (updates.date_of_birth !== undefined) {
+      if (updates.date_of_birth !== undefined && updates.date_of_birth !== null && updates.date_of_birth !== '') {
         backendUpdates.dateOfBirth = updates.date_of_birth;
-      } else if ((updates as any).dateOfBirth !== undefined) {
+      } else if ((updates as any).dateOfBirth !== undefined && (updates as any).dateOfBirth !== null && (updates as any).dateOfBirth !== '') {
         backendUpdates.dateOfBirth = (updates as any).dateOfBirth;
       }
 

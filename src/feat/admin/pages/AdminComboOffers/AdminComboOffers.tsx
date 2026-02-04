@@ -60,7 +60,7 @@ export default function AdminComboOffers() {
 
   useEffect(() => {
     // Only fetch offers after auth is complete and user is an admin
-    if (!authLoading && user && (role === 'ADMIN' || role === 'admin')) {
+    if (!authLoading && user && ['ADMIN', 'admin', 'SUPER_ADMIN', 'super_admin'].includes(role || '')) {
       fetchOffers();
     }
   }, [authLoading, user, role]);

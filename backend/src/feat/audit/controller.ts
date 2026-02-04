@@ -1,6 +1,6 @@
 import { Response } from 'express';
 import { asyncHandler } from '../../utils/asyncHandler';
-import { AuditService } from './service';
+import { AuditService } from '../../shared/service/audit.service';
 
 export class AuditController {
     static listLogs = asyncHandler(async (req: any, res: Response) => {

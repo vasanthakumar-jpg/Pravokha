@@ -12,9 +12,10 @@ import { Textarea } from "@/ui/Textarea";
 import { Switch } from "@/ui/Switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/ui/Tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/Select";
-import { Upload, Store, FileText, Shield, ShieldAlert, Clock, AlertTriangle, Loader2, Save, BadgeCheck, Building2, CreditCard, Settings, Image as ImageIcon, User, Camera } from "lucide-react";
+import { Upload, Store, FileText, Shield, ShieldAlert, Clock, AlertTriangle, Loader2, Save, BadgeCheck, Building2, CreditCard, Settings, Image as ImageIcon, User, Camera, Bell, Mail, MessageSquare, Megaphone } from "lucide-react";
 import { useSellerSettings, SellerProfile } from "@/shared/hook/useSellerSettings";
 import { useProfile } from "@/shared/hook/useProfile";
+import { usePreferences } from "@/shared/hook/usePreferences";
 import { useAuth } from "@/core/context/AuthContext";
 import {
   Form,
@@ -30,15 +31,15 @@ import { Separator } from "@/ui/Separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/ui/Avatar";
 import { apiClient } from "@/infra/api/apiClient";
 import { Badge } from "@/ui/Badge";
-import { getMediaUrl } from "@/lib/utils";
+import { cn, getMediaUrl } from "@/lib/utils";
 
 // Validation Schema (Seller Store)
 const formSchema = z.object({
   storeName: z.string().min(3, "Store name must be at least 3 characters").max(50),
   storeDescription: z.string().max(300, "Description is too long"),
   email: z.string().email("Invalid email address"),
-  phone: z.string().regex(/^[0-9+\s-]{10,}$/, "Invalid phone number"),
-  address: z.string().min(10, "Address is too short (min 10 characters)"),
+  phone: z.string().regex(/^[0-9]{10}$/, "Mobile number must be exactly 10 digits"),
+  address: z.string().min(5, "Address must be at least 5 characters").or(z.literal("")),
 
   // Business - Validation Logic
   gst: z.string()
@@ -106,6 +107,8 @@ export default function SellerSettings() {
   const { settings, loading, saving, uploading, saveSettings, uploadImage } = useSellerSettings();
   // Personal Profile Hooks
   const { profile, updateProfile } = useProfile(user?.id);
+  // Notification Preferences Hook
+  const { preferences, isLoading: prefsLoading, updatePreferences, isUpdating: prefsUpdating } = usePreferences(user?.id);
 
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "general");
@@ -143,7 +146,7 @@ export default function SellerSettings() {
 
   // Sync hook data to form when loaded
   useEffect(() => {
-    if (!loading && settings) {
+    if (!loading && settings && !form.formState.isDirty) {
       form.reset(settings);
     }
   }, [loading, settings, form]);
@@ -163,6 +166,10 @@ export default function SellerSettings() {
   const handleProfileSave = async () => {
     if (!profileName.trim()) {
       toast({ title: "Name Required", description: "Please enter your full name.", variant: "destructive" });
+      return;
+    }
+    if (!/^[0-9]{10}$/.test(profilePhone)) {
+      toast({ title: "Invalid Phone", description: "Mobile number must be exactly 10 digits.", variant: "destructive" });
       return;
     }
     setUpdatingProfile(true);
@@ -187,6 +194,14 @@ export default function SellerSettings() {
       });
     } finally {
       setUpdatingProfile(false);
+    }
+  };
+
+  const handlePreferencesSave = async (data: any) => {
+    try {
+      await updatePreferences(data);
+    } catch (error) {
+      // toast handled in hook
     }
   };
 
@@ -343,6 +358,7 @@ export default function SellerSettings() {
   const tabs = [
     { id: "general", label: "General", icon: Store, description: "Store name, branding & contact" },
     { id: "profile", label: "My Profile", icon: User, description: "Personal details & Avatar" },
+    { id: "notifications", label: "Notifications", icon: Bell, description: "Email & App alerts" },
     { id: "business", label: "Business Details", icon: Building2, description: "GSTIN, PAN & Address" },
     { id: "payment", label: "Bank & Payout", icon: CreditCard, description: "Account details for payouts" },
     { id: "policies", label: "Policies & Config", icon: Settings, description: "Returns, Logic & Vacation" },
@@ -556,9 +572,30 @@ export default function SellerSettings() {
                             <FormItem className="space-y-3">
                               <FormLabel className="text-base font-semibold">One-tap Contact</FormLabel>
                               <FormControl>
-                                <Input placeholder="Mobile number" {...field} className="h-11" />
+                                <Input
+                                  placeholder="Enter your mobile number"
+                                  {...field}
+                                  maxLength={10}
+                                  className={cn(
+                                    "h-11",
+                                    (form.formState.errors.phone || (field.value && !/^[0-9]{10}$/.test(field.value))) && "border-red-500 focus-visible:ring-red-500 shadow-[0_0_0_1px_rgba(239,68,68,0.2)]"
+                                  )}
+                                  onChange={(e) => {
+                                    const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                                    field.onChange(val);
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      e.preventDefault();
+                                      form.handleSubmit(onAllSaves, handleValidationErrors)();
+                                    }
+                                  }}
+                                />
                               </FormControl>
                               <FormMessage className="text-red-500" />
+                              {(field.value && !/^[0-9]{10}$/.test(field.value) && !form.formState.errors.phone) && (
+                                <p className="text-[10px] text-red-500 font-medium mt-1">Please enter exactly 10 digits</p>
+                              )}
                             </FormItem>
                           )}
                         />
@@ -570,7 +607,21 @@ export default function SellerSettings() {
                           <FormItem className="space-y-3">
                             <FormLabel className="text-base font-semibold">Warehouse Address</FormLabel>
                             <FormControl>
-                              <Textarea placeholder="Building, Street, City, State, Zip" {...field} rows={3} className="resize-none" />
+                              <Textarea
+                                placeholder="Building, Street, City, State, Zip"
+                                {...field}
+                                rows={3}
+                                className={cn(
+                                  "resize-none h-auto min-h-[100px]",
+                                  form.formState.errors.address && "border-red-500 focus-visible:ring-red-500"
+                                )}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter' && !e.shiftKey) {
+                                    e.preventDefault();
+                                    form.handleSubmit(onAllSaves, handleValidationErrors)();
+                                  }
+                                }}
+                              />
                             </FormControl>
                             <FormMessage className="text-red-500" />
                           </FormItem>
@@ -668,7 +719,16 @@ export default function SellerSettings() {
                                 value={profileName}
                                 onChange={(e) => setProfileName(e.target.value)}
                                 placeholder="E.g. John Doe"
-                                className="h-11 rounded-xl"
+                                className={cn(
+                                  "h-11 rounded-xl",
+                                  profileName.trim() === "" && "border-red-500 focus-visible:ring-red-500"
+                                )}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    handleProfileSave();
+                                  }
+                                }}
                               />
                             </div>
                             <div className="space-y-1.5">
@@ -687,9 +747,21 @@ export default function SellerSettings() {
                               <Input
                                 value={profilePhone}
                                 onChange={(e) => setProfilePhone(e.target.value)}
-                                placeholder="+91 ..."
-                                className="h-11 rounded-xl"
+                                placeholder="Enter your mobile number"
+                                className={cn(
+                                  "h-11 rounded-xl",
+                                  (!/^[0-9]{10}$/.test(profilePhone) && profilePhone !== "") && "border-red-500 focus-visible:ring-red-500 shadow-[0_0_0_1px_rgba(239,68,68,0.5)]"
+                                )}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    handleProfileSave();
+                                  }
+                                }}
                               />
+                              {(!/^[0-9]{10}$/.test(profilePhone) && profilePhone !== "") && (
+                                <p className="text-[10px] text-red-500 font-medium mt-1">Mobile number must be exactly 10 digits</p>
+                              )}
                             </div>
                             <div className="space-y-1.5">
                               <Label className="responsive-label text-muted-foreground">Date of birth</Label>
@@ -714,6 +786,76 @@ export default function SellerSettings() {
                           </div>
                         </div>
                       </div>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
+                {/* ================= NOTIFICATIONS ================= */}
+                <TabsContent value="notifications" className="mt-0 space-y-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="responsive-h4">Notification settings</CardTitle>
+                      <CardDescription className="responsive-body">Control how and when you want to be notified about your store activity.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between p-4 border rounded-2xl hover:bg-muted/30 transition-all">
+                          <div className="flex items-center gap-4">
+                            <div className="bg-primary/10 p-2.5 rounded-xl">
+                              <Mail className="w-5 h-5 text-primary" />
+                            </div>
+                            <div>
+                              <p className="font-bold text-base leading-tight">Email notifications</p>
+                              <p className="text-xs text-muted-foreground mt-1">Receive account and security alerts via email.</p>
+                            </div>
+                          </div>
+                          <Switch
+                            checked={preferences?.emailNotifications}
+                            onCheckedChange={(checked) => handlePreferencesSave({ emailNotifications: checked })}
+                            disabled={prefsLoading || prefsUpdating}
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between p-4 border rounded-2xl hover:bg-muted/30 transition-all">
+                          <div className="flex items-center gap-4">
+                            <div className="bg-indigo-500/10 p-2.5 rounded-xl">
+                              <MessageSquare className="w-5 h-5 text-indigo-500" />
+                            </div>
+                            <div>
+                              <p className="font-bold text-base leading-tight">Order updates</p>
+                              <p className="text-xs text-muted-foreground mt-1">Get notified about new orders and status changes.</p>
+                            </div>
+                          </div>
+                          <Switch
+                            checked={preferences?.orderUpdates}
+                            onCheckedChange={(checked) => handlePreferencesSave({ orderUpdates: checked })}
+                            disabled={prefsLoading || prefsUpdating}
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between p-4 border rounded-2xl hover:bg-muted/30 transition-all">
+                          <div className="flex items-center gap-4">
+                            <div className="bg-amber-500/10 p-2.5 rounded-xl">
+                              <Megaphone className="w-5 h-5 text-amber-500" />
+                            </div>
+                            <div>
+                              <p className="font-bold text-base leading-tight">Marketing & Offers</p>
+                              <p className="text-xs text-muted-foreground mt-1">Stay updated with platform news and promotional deals.</p>
+                            </div>
+                          </div>
+                          <Switch
+                            checked={preferences?.marketingEmails}
+                            onCheckedChange={(checked) => handlePreferencesSave({ marketingEmails: checked })}
+                            disabled={prefsLoading || prefsUpdating}
+                          />
+                        </div>
+                      </div>
+
+                      {prefsUpdating && (
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground animate-pulse">
+                          <Loader2 className="w-3 h-3 animate-spin" /> Saving preferences...
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 </TabsContent>

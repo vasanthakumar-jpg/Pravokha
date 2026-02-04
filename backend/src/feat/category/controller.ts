@@ -1,12 +1,12 @@
-import { Response } from 'express';
+import { Request, Response } from 'express';
 import { prisma } from '../../infra/database/client';
 import { asyncHandler } from '../../utils/asyncHandler';
 
 export class CategoryController {
-    // Categories
-    static listCategories = asyncHandler(async (req: any, res: Response) => {
+    // 1. Category Management
+    static listCategories = asyncHandler(async (req: Request, res: Response) => {
         const categories = await prisma.category.findMany({
-            where: { status: 'active' },
+            where: { parentId: null, status: 'active' },
             include: {
                 subcategories: {
                     where: { status: 'active' },
@@ -16,22 +16,36 @@ export class CategoryController {
             orderBy: { displayOrder: 'asc' }
         });
 
-        res.json({
-            success: true,
-            categories
-        });
+        res.json({ success: true, categories });
     });
 
-    static createCategory = asyncHandler(async (req: any, res: Response) => {
-        const { name, slug, description, image_url, imageUrl, status, display_order, displayOrder } = req.body;
+    static getCategory = asyncHandler(async (req: Request, res: Response) => {
+        const { id } = req.params;
+        const category = await prisma.category.findUnique({
+            where: { id },
+            include: {
+                subcategories: {
+                    where: { status: 'active' },
+                    orderBy: { displayOrder: 'asc' }
+                }
+            }
+        });
+
+        if (!category) {
+            return res.status(404).json({ success: false, message: 'Category not found' });
+        }
+
+        res.json({ success: true, category });
+    });
+
+    static createCategory = asyncHandler(async (req: Request, res: Response) => {
+        const { name, slug, description, image, parentId, status, displayOrder } = req.body;
 
         if (!name) {
             return res.status(400).json({ success: false, message: 'Category name is required' });
         }
 
-        // Generate slug if not provided or ensure uniqueness
         let targetSlug = slug || name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-
         const existing = await prisma.category.findUnique({ where: { slug: targetSlug } });
         if (existing) {
             targetSlug = `${targetSlug}-${Date.now().toString().slice(-4)}`;
@@ -41,22 +55,20 @@ export class CategoryController {
             data: {
                 name,
                 slug: targetSlug,
-                description: description || '',
-                imageUrl: imageUrl || image_url || null,
+                description,
+                image: image || null,
+                parentId: parentId || null,
                 status: status || 'active',
-                displayOrder: displayOrder ?? display_order ?? 0
+                displayOrder: displayOrder ?? 0
             }
         });
 
-        res.status(201).json({
-            success: true,
-            category
-        });
+        res.status(201).json({ success: true, category });
     });
 
-    static updateCategory = asyncHandler(async (req: any, res: Response) => {
+    static updateCategory = asyncHandler(async (req: Request, res: Response) => {
         const { id } = req.params;
-        const { name, slug, description, image_url, imageUrl, status, display_order, displayOrder } = req.body;
+        const { name, slug, description, image, parentId, status, displayOrder } = req.body;
 
         const category = await prisma.category.update({
             where: { id },
@@ -64,133 +76,138 @@ export class CategoryController {
                 name,
                 slug,
                 description,
-                imageUrl: imageUrl || image_url,
+                image,
+                parentId: parentId || null,
                 status,
-                displayOrder: displayOrder ?? display_order
+                displayOrder: displayOrder ?? undefined
             }
         });
 
-        res.json({
-            success: true,
-            category
-        });
+        res.json({ success: true, category });
     });
 
-    static deleteCategory = asyncHandler(async (req: any, res: Response) => {
+    static deleteCategory = asyncHandler(async (req: Request, res: Response) => {
         const { id } = req.params;
 
-        await prisma.category.delete({
-            where: { id }
-        });
+        // Check if category has products
+        const productsCount = await prisma.product.count({ where: { categoryId: id } });
 
-        res.json({
-            success: true,
-            message: 'Category deleted successfully'
-        });
-    });
-
-    // Subcategories
-    static listSubcategories = asyncHandler(async (req: any, res: Response) => {
-        const { category } = req.query;
-        const where: any = {};
-
-        if (category) {
-            where.category = {
-                slug: Array.isArray(category) ? { in: category } : category
-            };
+        if (productsCount > 0) {
+            // Soft delete: mark as inactive instead of deleting
+            await prisma.category.update({
+                where: { id },
+                data: { status: 'inactive' }
+            });
+            return res.json({
+                success: true,
+                message: `Category has ${productsCount} products. It has been set to INACTIVE instead of deleted to preserve data.`,
+                soft_delete: true
+            });
         }
 
-        const subcategories = await prisma.subcategory.findMany({
-            where,
-            include: {
-                category: {
-                    select: {
-                        name: true,
-                        slug: true
-                    }
-                }
+        // Hard delete if no dependencies
+        await prisma.category.delete({ where: { id } });
+        res.json({ success: true, message: 'Category deleted successfully' });
+    });
+
+    // 2. Admin List (All categories including inactive and nested)
+    static listAllCategories = asyncHandler(async (req: Request, res: Response) => {
+        const categories = await prisma.category.findMany({
+            where: { parentId: null, status: 'active' }, // Only active top-level categories for dropdowns/managed lists
+            include: { parent: { select: { name: true } } },
+            orderBy: { createdAt: 'desc' }
+        });
+        res.json({ success: true, categories });
+    });
+
+    // 3. Subcategories List (All subcategories for admin)
+    static listAllSubcategories = asyncHandler(async (req: Request, res: Response) => {
+        const subcategories = await prisma.category.findMany({
+            where: {
+                parentId: { not: null },
+                status: 'active'
             },
-            orderBy: { displayOrder: 'asc' }
+            include: {
+                parent: { select: { name: true, slug: true } }
+            },
+            orderBy: { createdAt: 'desc' }
         });
-
-        res.json({
-            success: true,
-            subcategories
-        });
+        const data = subcategories.map((sub: any) => ({
+            ...sub,
+            categoryId: sub.parentId, // camelCase compat
+            category_id: sub.parentId  // snake_case compat
+        }));
+        res.json({ success: true, subcategories: data });
     });
 
-    static createSubcategory = asyncHandler(async (req: any, res: Response) => {
-        const { name, categoryId, category_id, description, status, displayOrder, display_order } = req.body;
-        const targetCategoryId = categoryId || category_id;
+    // 4. Create Subcategory
+    static createSubcategory = asyncHandler(async (req: Request, res: Response) => {
+        const { name, slug, description, image_url, category_id, status, display_order } = req.body;
 
-        const category = await prisma.category.findUnique({
-            where: { id: targetCategoryId }
-        });
-
-        if (!category) {
-            return res.status(404).json({ success: false, message: 'Category not found' });
-        }
-
-        // Generate scoped slug
-        const parentSlug = category.slug;
-        const subNameSlug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-        let slug = `${parentSlug}-${subNameSlug}`;
-
-        // Ensure uniqueness
-        const existing = await prisma.subcategory.findUnique({ where: { slug } });
-        if (existing) {
-            slug = `${slug}-${Date.now().toString().slice(-4)}`;
-        }
-
-        const subcategory = await prisma.subcategory.create({
+        const subcategory = await prisma.category.create({
             data: {
                 name,
-                slug,
-                description,
-                categoryId: targetCategoryId,
+                slug: slug || name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+                description: description || null,
+                image: image_url || null,
+                parentId: category_id,
                 status: status || 'active',
-                displayOrder: displayOrder ?? display_order ?? 0
+                displayOrder: display_order ?? 0
+            },
+            include: {
+                parent: { select: { name: true, slug: true } }
             }
         });
 
-        res.status(201).json({
-            success: true,
-            subcategory
-        });
+        res.status(201).json({ success: true, subcategory });
     });
 
-    static updateSubcategory = asyncHandler(async (req: any, res: Response) => {
+    // 5. Update Subcategory
+    static updateSubcategory = asyncHandler(async (req: Request, res: Response) => {
         const { id } = req.params;
-        const { name, slug, description, category_id, categoryId, status, display_order, displayOrder } = req.body;
+        const { name, slug, description, image_url, category_id, status, display_order } = req.body;
 
-        const subcategory = await prisma.subcategory.update({
+        const subcategory = await prisma.category.update({
             where: { id },
             data: {
                 name,
                 slug,
-                description,
-                categoryId: categoryId || category_id,
+                description: description || null,
+                image: image_url || null,
+                parentId: category_id,
                 status,
-                displayOrder: displayOrder ?? display_order
+                displayOrder: display_order
+            },
+            include: {
+                parent: { select: { name: true, slug: true } }
             }
         });
 
-        res.json({
-            success: true,
-            subcategory
-        });
+        res.json({ success: true, subcategory });
     });
 
-    static deleteSubcategory = asyncHandler(async (req: any, res: Response) => {
+    // 6. Delete Subcategory
+    static deleteSubcategory = asyncHandler(async (req: Request, res: Response) => {
         const { id } = req.params;
 
-        await prisma.subcategory.delete({
-            where: { id }
-        });
+        // Check if any products are linked to this subcategory
+        const productsCount = await prisma.product.count({ where: { categoryId: id } });
 
-        res.json({
-            success: true,
-            message: 'Subcategory deleted successfully'
-        });
+        if (productsCount > 0) {
+            // Soft delete - mark as inactive
+            await prisma.category.update({
+                where: { id },
+                data: { status: 'inactive' }
+            });
+            return res.json({
+                success: true,
+                message: `Subcategory has ${productsCount} products. Marked as inactive instead of deleting.`,
+                soft_delete: true
+            });
+        }
+
+        // Hard delete if no products
+        await prisma.category.delete({ where: { id } });
+        res.json({ success: true, message: 'Subcategory deleted successfully' });
     });
 }

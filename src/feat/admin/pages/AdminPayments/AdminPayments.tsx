@@ -199,7 +199,7 @@ export default function AdminPayments() {
 
   const mapPayoutRequest = (payout: any): PayoutRequest => ({
     id: payout.id,
-    seller_id: payout.sellerId,
+    seller_id: payout.vendorId, // Updated from sellerId
     amount: payout.amount,
     status: payout.status.toLowerCase(),
     created_at: payout.createdAt,
@@ -207,25 +207,30 @@ export default function AdminPayments() {
     period_end: payout.periodEnd,
     transaction_id: payout.transactionId,
     rejection_reason: payout.rejectionReason,
-    seller: payout.seller ? {
-      name: payout.seller.name,
-      email: payout.seller.email,
-      bankAccount: payout.seller.bankAccount,
-      ifsc: payout.seller.ifsc,
-      beneficiaryName: payout.seller.beneficiaryName
+    seller: payout.vendor ? {
+      name: payout.vendor.storeName || payout.vendor.owner?.name,
+      email: payout.vendor.owner?.email,
+      bankAccount: payout.vendor.bankAccountNumber,
+      ifsc: payout.vendor.bankIfscCode,
+      beneficiaryName: payout.vendor.beneficiaryName
     } : undefined
   });
 
   const fetchData = async () => {
     try {
       setLoading(true);
+      const skip = (currentPage - 1) * itemsPerPage;
+      const take = itemsPerPage;
+
       if (activeTab === "transactions") {
-        const response = await apiClient.get("/orders");
+        const response = await apiClient.get(`/orders?skip=${skip}&take=${take}`);
         const mappedData = response.data.data.map(mapTransaction);
         setTransactions(mappedData);
         calculateTransactionStats(mappedData);
+        // Note: We need the total count from backend to set total pages correctly
+        // Assuming response.data.meta.total exists or similar
       } else {
-        const response = await apiClient.get("/payouts");
+        const response = await apiClient.get(`/payouts?skip=${skip}&take=${take}`);
         const mappedData = response.data.data.map(mapPayoutRequest);
         setPayoutRequests(mappedData);
         calculatePayoutStats(mappedData);

@@ -23,7 +23,7 @@ export function useProductInventory({ sellerId, isAdmin }: UseProductInventoryPr
 
         try {
             const response = await apiClient.get('/products', {
-                params: { sellerId }
+                params: { sellerId, scope: sellerId ? 'vendor' : undefined }
             });
 
             console.log(`[useProductInventory] API Response:`, response.data);

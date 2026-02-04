@@ -99,7 +99,7 @@ export default function AdminOrders() {
   const loadOrders = async () => {
     try {
       setLoading(true);
-      const response = await apiClient.get("/orders");
+      const response = await apiClient.get("/orders", { params: { take: 5000 } });
 
       if (response.data?.success) {
         const transformedOrders = (response.data.data || []).map(mapOrderData);

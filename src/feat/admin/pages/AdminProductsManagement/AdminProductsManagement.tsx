@@ -94,9 +94,13 @@ function StatsCard({ title, value, icon: Icon, color, description, trend }: any)
   );
 }
 
+import { usePermission } from "@/core/hooks/usePermission";
+
 export default function AdminProductsManagement() {
   const navigate = useNavigate();
   const { isAdmin, loading: adminLoading } = useAdmin();
+  const { can } = usePermission();
+
 
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -132,14 +136,14 @@ export default function AdminProductsManagement() {
   // Update stats based on products
   useEffect(() => {
     if (products.length > 0) {
-      const publishedCount = products.filter(p => p.published).length;
-      const stock = products.reduce((acc, p) => acc + (p.total_stock || 0), 0);
+      const liveCount = products.filter(p => p.status === 'ACTIVE').length;
+      const stock = products.reduce((acc, p) => acc + (p.stock || 0), 0);
       setStats({
         total: totalCount || products.length,
-        active: publishedCount,
-        draft: products.length - publishedCount,
+        active: liveCount,
+        draft: products.filter(p => p.status === 'DRAFT').length,
         totalStock: stock,
-        published: publishedCount
+        published: liveCount
       });
     }
   }, [products, totalCount]);
@@ -206,7 +210,7 @@ export default function AdminProductsManagement() {
       });
     }
     if (statusFilter !== "all") {
-      filtered = filtered.filter(p => statusFilter === "published" ? p.published : !p.published);
+      filtered = filtered.filter(p => statusFilter === "published" ? p.status === 'ACTIVE' : p.status !== 'ACTIVE');
     }
 
     // Sort
@@ -231,8 +235,8 @@ export default function AdminProductsManagement() {
       `"${(p.title || "No Title").replace(/"/g, '""')}"`,
       typeof p.category === 'object' ? p.category?.name : (p.category || "Uncategorized"),
       p.price || 0,
-      p.total_stock || 0,
-      p.published ? "Live" : "Draft",
+      p.stock || 0,
+      p.status,
       p.created_at ? new Date(p.created_at).toLocaleDateString() : 'N/A'
     ]);
 
@@ -253,11 +257,11 @@ export default function AdminProductsManagement() {
 
   // ...
 
-  const togglePublished = async (id: string, current: boolean) => {
+  const togglePublished = async (id: string, currentStatus: string) => {
     try {
-      await apiClient.patch(`/products/${id}`, { published: !current });
-      // product_variants update will be handled by backend if needed, or we just rely on product-level published flag
-      setProducts(prev => prev.map(p => p.id === id ? { ...p, published: !current } : p));
+      const newStatus = currentStatus === 'ACTIVE' ? 'DRAFT' : 'ACTIVE';
+      await apiClient.patch(`/products/${id}`, { status: newStatus });
+      setProducts(prev => prev.map(p => p.id === id ? { ...p, status: newStatus } : p));
       toast({ title: "Visibility Updated", description: "Product status shifted successfully." });
     } catch (err) {
       console.error(err);
@@ -320,23 +324,27 @@ export default function AdminProductsManagement() {
               <span className="hidden sm:inline">Export CSV</span>
               <span className="sm:hidden">CSV</span>
             </Button>
-            <Button
-              onClick={() => navigate("/admin/products/updates")}
-              variant="outline"
-              className="flex-none h-10 px-3 rounded-xl border-amber-200 bg-amber-50/50 text-amber-700 hover:bg-amber-100 font-bold text-xs"
-            >
-              <Shield className="h-4 w-4 sm:mr-2" />
-              <span className="hidden sm:inline">Update Requests</span>
-              <span className="sm:hidden">Updates</span>
-            </Button>
-            <Button
-              onClick={() => navigate("/admin/products/add")}
-              className="flex-1 sm:flex-none h-10 px-4 rounded-xl font-bold text-xs bg-primary hover:bg-primary/90 shadow-md shadow-primary/20 whitespace-nowrap"
-            >
-              <Plus className="h-4 w-4 sm:mr-2" />
-              <span className="hidden sm:inline">Initialisation</span>
-              <span className="sm:hidden">Add</span>
-            </Button>
+            {can('APPROVE_PRODUCT') && (
+              <Button
+                onClick={() => navigate("/admin/products/updates")}
+                variant="outline"
+                className="flex-none h-10 px-3 rounded-xl border-amber-200 bg-amber-50/50 text-amber-700 hover:bg-amber-100 font-bold text-xs"
+              >
+                <Shield className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Update Requests</span>
+                <span className="sm:hidden">Updates</span>
+              </Button>
+            )}
+            {can('CREATE_PRODUCT') && (
+              <Button
+                onClick={() => navigate("/admin/products/add")}
+                className="flex-1 sm:flex-none h-10 px-4 rounded-xl font-bold text-xs bg-primary hover:bg-primary/90 shadow-md shadow-primary/20 whitespace-nowrap"
+              >
+                <Plus className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Initialisation</span>
+                <span className="sm:hidden">Add</span>
+              </Button>
+            )}
           </div>
         </div>
 
@@ -510,25 +518,27 @@ export default function AdminProductsManagement() {
                             </TableCell>
                             <TableCell>
                               <Badge
-                                variant={product.published ? "default" : "secondary"}
+                                variant={product.status === 'ACTIVE' ? "default" : "secondary"}
                                 className={cn(
                                   "text-[8px] font-black tracking-widest rounded-md border-none",
-                                  product.published ? "bg-emerald-500" : "bg-muted text-muted-foreground"
+                                  product.status === 'ACTIVE' ? "bg-emerald-500" : "bg-muted text-muted-foreground"
                                 )}
                               >
-                                {product.published ? "PUBLISHED" : "DRAFT"}
+                                {product.status}
                               </Badge>
                             </TableCell>
                             <TableCell className="text-right pr-10">
                               <div className="flex items-center justify-end gap-1">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => navigate(`/admin/products/edit/${product.id}`)}
-                                  className="h-8 w-8 rounded-lg hover:bg-primary/10 hover:text-primary"
-                                >
-                                  <Pencil className="h-4 w-4" />
-                                </Button>
+                                {can('EDIT_ANY_PRODUCT') && (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => navigate(`/admin/products/edit/${product.id}`)}
+                                    className="h-8 w-8 rounded-lg hover:bg-primary/10 hover:text-primary"
+                                  >
+                                    <Pencil className="h-4 w-4" />
+                                  </Button>
+                                )}
                                 <DropdownMenu>
                                   <DropdownMenuTrigger asChild>
                                     <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg">
@@ -537,15 +547,19 @@ export default function AdminProductsManagement() {
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="end" className="w-48 bg-card/80 backdrop-blur-xl border-border/50">
                                     <DropdownMenuLabel className="text-[10px] font-bold tracking-widest text-muted-foreground opacity-70">Governance</DropdownMenuLabel>
-                                    <DropdownMenuItem onClick={() => togglePublished(product.id, product.published)} className="cursor-pointer gap-2 text-xs font-bold">
-                                      {product.published ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                                      {product.published ? "Draft Archive" : "Publish Live"}
-                                    </DropdownMenuItem>
+                                    {can('APPROVE_PRODUCT') && (
+                                      <DropdownMenuItem onClick={() => togglePublished(product.id, product.status)} className="cursor-pointer gap-2 text-xs font-bold">
+                                        {product.status === 'ACTIVE' ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                                        {product.status === 'ACTIVE' ? "Draft Archive" : "Publish Live"}
+                                      </DropdownMenuItem>
+                                    )}
                                     <DropdownMenuSeparator className="bg-border/50" />
-                                    <DropdownMenuItem onClick={() => handleDelete(product.id)} className="cursor-pointer gap-2 text-xs font-bold text-rose-500 focus:bg-rose-500 focus:text-white transition-colors">
-                                      <Trash2 className="h-3.5 w-3.5" />
-                                      Terminate Entry
-                                    </DropdownMenuItem>
+                                    {can('DELETE_ANY_PRODUCT') && (
+                                      <DropdownMenuItem onClick={() => handleDelete(product.id)} className="cursor-pointer gap-2 text-xs font-bold text-rose-500 focus:bg-rose-500 focus:text-white transition-colors">
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                        Terminate Entry
+                                      </DropdownMenuItem>
+                                    )}
                                   </DropdownMenuContent>
                                 </DropdownMenu>
                               </div>
@@ -585,17 +599,23 @@ export default function AdminProductsManagement() {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end" className="w-48 bg-card/90 backdrop-blur-xl border-border/50">
-                                <DropdownMenuItem onClick={() => navigate(`/admin/products/edit/${product.id}`)}>
-                                  <Pencil className="mr-2 h-3.5 w-3.5" /> Edit Details
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => togglePublished(product.id, product.published)}>
-                                  {product.published ? <EyeOff className="mr-2 h-3.5 w-3.5" /> : <Eye className="mr-2 h-3.5 w-3.5" />}
-                                  {product.published ? "Unpublish" : "Publish"}
-                                </DropdownMenuItem>
+                                {can('EDIT_ANY_PRODUCT') && (
+                                  <DropdownMenuItem onClick={() => navigate(`/admin/products/edit/${product.id}`)}>
+                                    <Pencil className="mr-2 h-3.5 w-3.5" /> Edit Details
+                                  </DropdownMenuItem>
+                                )}
+                                {can('APPROVE_PRODUCT') && (
+                                  <DropdownMenuItem onClick={() => togglePublished(product.id, product.status)}>
+                                    {product.status === 'ACTIVE' ? <EyeOff className="mr-2 h-3.5 w-3.5" /> : <Eye className="mr-2 h-3.5 w-3.5" />}
+                                    {product.status === 'ACTIVE' ? "Unpublish" : "Publish"}
+                                  </DropdownMenuItem>
+                                )}
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem onClick={() => handleDelete(product.id)} className="text-rose-500">
-                                  <Trash2 className="mr-2 h-3.5 w-3.5" /> Delete
-                                </DropdownMenuItem>
+                                {can('DELETE_ANY_PRODUCT') && (
+                                  <DropdownMenuItem onClick={() => handleDelete(product.id)} className="text-rose-500">
+                                    <Trash2 className="mr-2 h-3.5 w-3.5" /> Delete
+                                  </DropdownMenuItem>
+                                )}
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </div>
@@ -609,10 +629,10 @@ export default function AdminProductsManagement() {
                             <span className="font-bold text-sm">₹{(product.price || 0).toLocaleString()}</span>
                           </div>
                           <Badge
-                            variant={product.published ? "default" : "secondary"}
-                            className={cn("text-[8px] h-4 px-1.5", product.published ? "bg-emerald-500 text-white" : "bg-muted text-muted-foreground")}
+                            variant={product.status === 'ACTIVE' ? "default" : "secondary"}
+                            className={cn("text-[8px] h-4 px-1.5", product.status === 'ACTIVE' ? "bg-emerald-500 text-white" : "bg-muted text-muted-foreground")}
                           >
-                            {product.published ? "LIVE" : "DRAFT"}
+                            {product.status}
                           </Badge>
                         </div>
                       </div>
@@ -632,7 +652,7 @@ export default function AdminProductsManagement() {
                   <Card
                     key={product.id}
                     className="group relative overflow-hidden bg-card border-border/60 hover:border-primary/40 transition-all duration-500 rounded-xl shadow-sm cursor-pointer"
-                    onClick={() => navigate(`/admin/products/edit/${product.id}`)}
+                    onClick={() => can('EDIT_ANY_PRODUCT') && navigate(`/admin/products/edit/${product.id}`)}
                   >
                     <div className="aspect-[4/5] bg-muted relative overflow-hidden">
                       {(() => {
@@ -647,34 +667,35 @@ export default function AdminProductsManagement() {
                       })()}
 
                       {/* Top Right: Edit Action (Permanently Visible) */}
-                      <div className="absolute top-3 right-3 z-20">
-                        <Button
-                          variant="secondary"
-                          size="icon"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(`/admin/products/edit/${product.id}`);
-                          }}
-                          className="h-8 w-8 rounded-xl bg-card shadow-lg border border-border/60 hover:scale-110 active:scale-95 transition-all text-primary"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                      </div>
+                      {can('EDIT_ANY_PRODUCT') && (
+                        <div className="absolute top-3 right-3 z-20">
+                          <Button
+                            variant="secondary"
+                            size="icon"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/admin/products/edit/${product.id}`);
+                            }}
+                            className="h-8 w-8 rounded-xl bg-card shadow-lg border border-border/60 hover:scale-110 active:scale-95 transition-all text-primary"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
 
                       {/* Top Left: Badges */}
                       <div className="absolute top-3 left-3 flex flex-col gap-1.5 z-10 items-start">
                         <Badge
-                          variant={product.published ? "default" : "secondary"}
+                          variant={product.status === 'ACTIVE' ? "default" : "secondary"}
                           className={cn(
                             "text-[8px] font-black tracking-widest rounded-md border-none px-2",
-                            product.published ? "bg-emerald-500/90 text-white" : "bg-black/40 text-white"
+                            product.status === 'ACTIVE' ? "bg-emerald-500/90 text-white" : "bg-black/40 text-white"
                           )}
                         >
-                          {product.published ? "Live" : "Draft"}
+                          {product.status}
                         </Badge>
-                        {product.is_featured && <Badge className="text-[8px] bg-amber-500 px-2 rounded-md border-none text-white font-bold">Featured</Badge>}
-                        {product.is_new && <Badge className="text-[8px] bg-sky-500 px-2 rounded-md border-none text-white font-bold">New</Badge>}
-                        {product.is_verified && <Badge className="text-[8px] bg-primary px-2 rounded-md border-none text-white font-bold flex items-center gap-1"><Shield className="h-2 w-2" /> Verified</Badge>}
+                        {product.isFeatured && <Badge className="text-[8px] bg-amber-500 px-2 rounded-md border-none text-white font-bold">Featured</Badge>}
+                        {product.isVerified && <Badge className="text-[8px] bg-primary px-2 rounded-md border-none text-white font-bold flex items-center gap-1"><Shield className="h-2 w-2" /> Verified</Badge>}
                       </div>
                     </div>
                     <CardHeader className="p-4 space-y-1">

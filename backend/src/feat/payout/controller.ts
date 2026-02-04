@@ -5,7 +5,13 @@ export class PayoutController {
     static async listPayouts(req: Request, res: Response, next: NextFunction) {
         try {
             const user = (req as any).user;
-            const payouts = await PayoutService.listPayouts(user.role, user.id);
+            const { skip, take } = req.query;
+            const payouts = await PayoutService.listPayouts(
+                user.role,
+                user.id,
+                skip ? parseInt(skip as string) : 0,
+                take ? parseInt(take as string) : 10
+            );
 
             res.status(200).json({
                 success: true,

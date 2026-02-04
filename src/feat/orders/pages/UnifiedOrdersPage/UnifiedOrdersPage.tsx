@@ -70,8 +70,8 @@ interface Order {
     subtotal?: number;
     tax?: number;
     shipping?: number;
-    status: 'pending' | 'confirmed' | 'packed' | 'shipped' | 'delivered' | 'cancelled';
-    payment_status: 'pending' | 'paid' | 'failed' | 'refunded' | 'refund_pending';
+    status: 'pending' | 'confirmed' | 'processing' | 'packed' | 'shipped' | 'delivered' | 'cancelled' | 'refunded';
+    payment_status: 'unpaid' | 'processing' | 'paid' | 'failed' | 'refunded' | 'partially_refunded';
     payment_method?: string;
     created_at: string;
     items_count: number;
@@ -79,20 +79,23 @@ interface Order {
 }
 
 const statusConfig = {
-    pending: { label: 'Pending', icon: Clock, color: 'bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-200' },
-    confirmed: { label: 'Confirmed', icon: CheckCircle2, color: 'bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-200' },
-    packed: { label: 'Packed', icon: Package, color: 'bg-purple-100 text-purple-800 border-purple-200 hover:bg-purple-200' },
-    shipped: { label: 'Shipped', icon: Truck, color: 'bg-indigo-100 text-indigo-800 border-indigo-200 hover:bg-indigo-200' },
-    delivered: { label: 'Delivered', icon: CheckCircle2, color: 'bg-green-100 text-green-800 border-green-200 hover:bg-green-200' },
-    cancelled: { label: 'Cancelled', icon: Ban, color: 'bg-red-100 text-red-800 border-red-200 hover:bg-red-200' },
+    pending: { label: 'Pending', icon: Clock, color: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
+    confirmed: { label: 'Confirmed', icon: CheckCircle2, color: 'bg-blue-100 text-blue-800 border-blue-200' },
+    processing: { label: 'Processing', icon: Clock, color: 'bg-orange-100 text-orange-800 border-orange-200' },
+    packed: { label: 'Packed', icon: Package, color: 'bg-purple-100 text-purple-800 border-purple-200' },
+    shipped: { label: 'Shipped', icon: Truck, color: 'bg-indigo-100 text-indigo-800 border-indigo-200' },
+    delivered: { label: 'Delivered', icon: CheckCircle2, color: 'bg-green-100 text-green-800 border-green-200' },
+    cancelled: { label: 'Cancelled', icon: Ban, color: 'bg-red-100 text-red-800 border-red-200' },
+    refunded: { label: 'Refunded', icon: RotateCcw, color: 'bg-orange-100 text-orange-800 border-orange-200' },
 };
 
 const paymentStatusConfig = {
-    pending: { label: 'Pending', color: 'bg-gray-100 text-gray-800 border-gray-200' },
+    unpaid: { label: 'Unpaid', color: 'bg-gray-100 text-gray-800 border-gray-200' },
+    processing: { label: 'Processing', color: 'bg-blue-100 text-blue-800 border-blue-200' },
     paid: { label: 'Paid', color: 'bg-green-100 text-green-800 border-green-200' },
     failed: { label: 'Failed', color: 'bg-red-100 text-red-800 border-red-200' },
     refunded: { label: 'Refunded', color: 'bg-orange-100 text-orange-800 border-orange-200' },
-    refund_pending: { label: 'Refund Pending', color: 'bg-orange-50 text-orange-700 border-orange-200' },
+    partially_refunded: { label: 'Partial Refund', color: 'bg-orange-50 text-orange-700 border-orange-200' },
 };
 
 export default function UnifiedOrdersPage() {

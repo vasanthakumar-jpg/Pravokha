@@ -100,9 +100,14 @@ interface User {
   address?: string | null;
 }
 
+import { usePermission } from "@/core/hooks/usePermission";
+
+// ... existing imports ...
+
 export default function AdminUsers() {
   const { user: currentUser } = useAuth();
   const { isAdmin, loading: adminLoading } = useAdmin();
+  const { can } = usePermission(); // Use permission hook
   const navigate = useNavigate();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -113,18 +118,29 @@ export default function AdminUsers() {
   const [showRoleDialog, setShowRoleDialog] = useState(false);
   const [newRole, setNewRole] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const ITEMS_PER_PAGE = 10;
+  const ITEMS_PER_PAGE = 8;
 
   // CRITICAL: Authentication check to prevent unauthorized access
+  // Updated to check for MANAGE_USERS permission
   useEffect(() => {
     if (!adminLoading && !isAdmin) {
       navigate("/auth");
+      return;
     }
-  }, [isAdmin, adminLoading, navigate]);
+    // Optional: stricter check
+    // if (!adminLoading && !can('MANAGE_USERS')) {
+    //   toast({ title: "Access Denied", description: "You cannot manage users.", variant: "destructive" });
+    //   navigate("/admin");
+    // }
+  }, [isAdmin, adminLoading, navigate, can]);
 
   useEffect(() => {
-    fetchUsers();
-  }, []);
+    if (can('MANAGE_USERS')) {
+      fetchUsers();
+    } else {
+      setLoading(false); // Stop loading if no permission to fetch
+    }
+  }, [can]);
 
   const fetchUsers = async () => {
     try {
@@ -182,17 +198,17 @@ export default function AdminUsers() {
         user.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         user.name?.toLowerCase().includes(searchQuery.toLowerCase());
 
-      const role = user.role?.toLowerCase();
-      const filter = roleFilter.toLowerCase();
+      const role = user.role?.toUpperCase();
+      const filter = roleFilter.toUpperCase();
 
-      let matchesRole = filter === "all";
+      let matchesRole = filter === "ALL";
       if (!matchesRole) {
-        if (filter === "admin") {
-          matchesRole = role === "admin";
-        } else if (filter === "seller") {
-          matchesRole = role === "seller" || role === "dealer";
-        } else if (filter === "user") {
-          matchesRole = role === "user";
+        if (filter === "ADMIN") {
+          matchesRole = role === "SUPER_ADMIN";
+        } else if (filter === "SELLER") {
+          matchesRole = role === "ADMIN";
+        } else if (filter === "USER") {
+          matchesRole = role === "CUSTOMER";
         }
       }
 
@@ -203,8 +219,9 @@ export default function AdminUsers() {
   const stats = useMemo(() => {
     return {
       total: users.length,
-      admins: users.filter(u => u.role === 'ADMIN' || u.role === 'admin').length,
-      sellers: users.filter(u => u.role === 'DEALER' || u.role === 'seller').length,
+      superAdmins: users.filter(u => u.role === 'SUPER_ADMIN').length,
+      vendors: users.filter(u => u.role === 'ADMIN').length,
+      customers: users.filter(u => u.role === 'CUSTOMER').length,
       suspended: users.filter(u => u.status === 'suspended').length
     };
   }, [users]);
@@ -257,18 +274,18 @@ export default function AdminUsers() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-6">
           <StatsCard
-            title="Platform admins"
-            value={stats.admins.toString()}
+            title="Super Admins"
+            value={stats.superAdmins.toString()}
             icon={Shield}
             color="bg-blue-600"
-            description="Superuser accounts"
+            description="Platform controllers"
           />
           <StatsCard
-            title="Verified sellers"
-            value={stats.sellers.toString()}
+            title="Active Vendors"
+            value={stats.vendors.toString()}
             icon={UserCheck}
             color="bg-emerald-500"
-            description="Authorized merchant nodes"
+            description="Authorized merchant accounts"
           />
           <StatsCard
             title="Active accounts"
@@ -312,9 +329,9 @@ export default function AdminUsers() {
                   </SelectTrigger>
                   <SelectContent className="rounded-xl border-border/40">
                     <SelectItem value="all" className="text-sm font-medium">All roles</SelectItem>
-                    <SelectItem value="user" className="text-sm font-medium">Users</SelectItem>
-                    <SelectItem value="seller" className="text-sm font-medium">Sellers</SelectItem>
-                    <SelectItem value="admin" className="text-sm font-bold text-primary">Admins</SelectItem>
+                    <SelectItem value="user" className="text-sm font-medium">Customers</SelectItem>
+                    <SelectItem value="seller" className="text-sm font-medium">Vendors</SelectItem>
+                    <SelectItem value="admin" className="text-sm font-bold text-primary">Super Admins</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -352,11 +369,11 @@ export default function AdminUsers() {
                     </div>
                     <Badge variant="outline" className={cn(
                       "px-2 py-0.5 rounded-full text-[9px] font-bold border-border/60 ml-2 shrink-0 self-start hover:bg-transparent shadow-none capitalize",
-                      user.role === 'ADMIN' || user.role === 'admin' ? "bg-primary/10 text-primary border-primary/20" :
-                        user.role === 'DEALER' || user.role === 'seller' ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" :
+                      user.role === 'SUPER_ADMIN' ? "bg-primary/10 text-primary border-primary/20" :
+                        user.role === 'ADMIN' ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" :
                           "bg-muted/10 text-muted-foreground"
                     )}>
-                      {user.role}
+                      {user.role.replace('_', ' ')}
                     </Badge>
                   </CardHeader>
                   <CardContent className="p-3 pt-3 flex items-center justify-between">
@@ -384,18 +401,22 @@ export default function AdminUsers() {
                           <DropdownMenuItem className="cursor-pointer" onClick={(e) => { e.stopPropagation(); setSelectedUser(user); setShowProfileModal(true); }}>
                             <Eye className="mr-2 h-3.5 w-3.5 text-primary" /> View dossier
                           </DropdownMenuItem>
-                          <DropdownMenuItem className="cursor-pointer" onClick={(e) => { e.stopPropagation(); setSelectedUser(user); setShowRoleDialog(true); }}>
-                            <UserCog className="mr-2 h-3.5 w-3.5 text-primary" /> Modify Role
-                          </DropdownMenuItem>
+                          {can('MANAGE_USERS') && (
+                            <DropdownMenuItem className="cursor-pointer" onClick={(e) => { e.stopPropagation(); setSelectedUser(user); setShowRoleDialog(true); }}>
+                              <UserCog className="mr-2 h-3.5 w-3.5 text-primary" /> Modify Role
+                            </DropdownMenuItem>
+                          )}
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            className={cn("cursor-pointer", user.id === currentUser?.id ? "opacity-50 cursor-not-allowed" : "")}
-                            disabled={user.id === currentUser?.id}
-                            onClick={(e) => { e.stopPropagation(); handleSuspendUser(user); }}
-                          >
-                            <Ban className={cn("mr-2 h-3.5 w-3.5", user.status === 'active' ? "text-rose-500" : "text-emerald-500")} />
-                            {user.status === 'active' ? "Revoke Access" : "Restore Access"}
-                          </DropdownMenuItem>
+                          {can('SUSPEND_USERS') && (
+                            <DropdownMenuItem
+                              className={cn("cursor-pointer", user.id === currentUser?.id ? "opacity-50 cursor-not-allowed" : "")}
+                              disabled={user.id === currentUser?.id}
+                              onClick={(e) => { e.stopPropagation(); handleSuspendUser(user); }}
+                            >
+                              <Ban className={cn("mr-2 h-3.5 w-3.5", user.status === 'active' ? "text-rose-500" : "text-emerald-500")} />
+                              {user.status === 'active' ? "Revoke Access" : "Restore Access"}
+                            </DropdownMenuItem>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
@@ -462,11 +483,11 @@ export default function AdminUsers() {
                             <TableCell className="text-center">
                               <Badge variant="outline" className={cn(
                                 "px-3 py-0.5 rounded-full text-[10px] font-bold border-border/60 hover:bg-transparent shadow-none",
-                                user.role === 'ADMIN' || user.role === 'admin' ? "bg-primary/10 text-primary border-primary/20" :
-                                  user.role === 'DEALER' || user.role === 'seller' ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" :
+                                user.role === 'SUPER_ADMIN' ? "bg-primary/10 text-primary border-primary/20" :
+                                  user.role === 'ADMIN' ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" :
                                     "bg-muted/10 text-muted-foreground"
                               )}>
-                                {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                                {user.role === 'SUPER_ADMIN' ? 'Super Admin' : user.role === 'ADMIN' ? 'Vendor' : 'Customer'}
                               </Badge>
                             </TableCell>
                             <TableCell className="text-center">
@@ -477,14 +498,14 @@ export default function AdminUsers() {
                                 )}>
                                   {user.status}
                                 </Badge>
-                                {(user.role === 'DEALER' || user.role === 'seller') && (
+                                {user.role === 'ADMIN' && (
                                   <Badge variant="outline" className={cn(
                                     "text-[8px] font-bold px-1.5 py-0 h-4 border-none shadow-none hover:bg-transparent",
                                     user.verificationStatus === 'verified' ? "text-emerald-500/70" :
                                       user.verificationStatus === 'rejected' ? "text-rose-500/70" : "text-amber-500/70"
                                   )}>
-                                    {user.verificationStatus === 'verified' ? 'Verified Reg.' :
-                                      user.verificationStatus === 'rejected' ? 'Restricted Reg.' : 'Pending Reg.'}
+                                    {user.verificationStatus === 'verified' ? 'Verified Vendor' :
+                                      user.verificationStatus === 'rejected' ? 'Restricted Vendor' : 'Pending Reg.'}
                                   </Badge>
                                 )}
                               </div>
@@ -704,9 +725,9 @@ export default function AdminUsers() {
                     <SelectValue placeholder="Select role" />
                   </SelectTrigger>
                   <SelectContent className="rounded-xl p-1" >
-                    <SelectItem value="user" className="rounded-lg font-medium" > Marketplace User </SelectItem>
-                    <SelectItem value="seller" className="rounded-lg font-medium" > Verified Seller </SelectItem>
-                    <SelectItem value="admin" className="rounded-lg font-bold text-primary" > Platform Admin </SelectItem>
+                    <SelectItem value="CUSTOMER" className="rounded-lg font-medium" > Marketplace Customer </SelectItem>
+                    <SelectItem value="ADMIN" className="rounded-lg font-medium" > Platform Vendor </SelectItem>
+                    <SelectItem value="SUPER_ADMIN" className="rounded-lg font-bold text-primary" > Platform Admin (Super) </SelectItem>
                   </SelectContent>
                 </Select>
               </div>

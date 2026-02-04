@@ -2,63 +2,96 @@ import { prisma } from '../../infra/database/client';
 import { Product, Role } from '@prisma/client';
 
 export class ProductService {
-    private static mapProductData(data: any) {
-        console.log("[ProductService] Raw data input to mapProductData:", JSON.stringify(data, null, 2));
-        const {
-            discount_price,
-            is_featured,
-            is_new,
-            variants,
-            category,
-            is_verified,
-            seller_id,
-            stock,
-            category_id,
-            subcategory_id,
-            categoryId,
-            subcategoryId,
-            dealerId,
-            ...rest
-        } = data;
+    public static transformProduct(product: any) {
+        if (!product) return product;
 
+        // Inject 'published' boolean for frontend UI compatibility
+        product.published = product.status === 'ACTIVE';
+
+        if (product.variants) {
+            product.variants = product.variants.map((v: any) => {
+                if (typeof v.images === 'string') {
+                    try {
+                        v.images = JSON.parse(v.images);
+                    } catch (e) {
+                        v.images = [];
+                    }
+                }
+                return v;
+            });
+        }
+        return product;
+    }
+
+    private static mapProductData(data: any) {
+        // Explicitly pick only the scalar fields that belong to the Product model
+        // This prevents Prisma errors from passing relation fields (like 'category') as strings
         const mappedData: any = {
-            ...rest,
-            discountPrice: discount_price !== undefined ? discount_price : data.discountPrice,
-            isFeatured: is_featured !== undefined ? is_featured : data.isFeatured,
-            isNew: is_new !== undefined ? is_new : data.isNew,
-            isVerified: is_verified !== undefined ? is_verified : (data.isVerified !== undefined ? data.isVerified : data.is_verified),
-            dealerId: seller_id !== undefined ? seller_id : (data.dealerId || rest.dealerId),
-            categoryId: category_id !== undefined ? category_id : (categoryId || rest.categoryId),
-            subcategoryId: subcategory_id !== undefined ? subcategory_id : (subcategoryId || rest.subcategoryId),
+            title: data.title,
+            slug: data.slug,
+            description: data.description,
+            sku: data.sku,
+            tags: data.tags,
+            commissionRate: data.commissionRate !== undefined ? Number(data.commissionRate) : undefined,
+            adminNotes: data.adminNotes,
         };
 
-        // CRITICAL: Strip primary keys and metadata that shouldn't be updated or could cause Prisma errors
-        delete mappedData.id;
-        delete mappedData.uuid;
-        delete mappedData.createdAt;
-        delete mappedData.updatedAt;
-        delete mappedData.deletedAt;
-        delete mappedData.actorId;
-        delete mappedData.product_variants;
-        delete mappedData.product_sizes;
-        delete mappedData.category_id;
-        delete mappedData.subcategory_id;
-        delete mappedData.seller_id;
-        delete mappedData.is_verified;
-        delete mappedData.discount_price;
-        delete mappedData.is_featured;
-        delete mappedData.is_new;
+        // Handle Price logic
+        const finalDiscountPrice = data.discountPrice !== undefined ? data.discountPrice : data.discount_price;
+        const finalBasePrice = Number(data.price);
 
-        if (variants && Array.isArray(variants)) {
-            console.log("[ProductService] Mapping variants:", variants.length);
+        if (!isNaN(finalBasePrice)) {
+            mappedData.price = finalDiscountPrice ? Number(finalDiscountPrice) : finalBasePrice;
+            mappedData.compareAtPrice = finalDiscountPrice ? finalBasePrice : (data.compareAtPrice !== undefined ? Number(data.compareAtPrice) : null);
+        }
+
+        // Handle Status and Toggles
+        // Priority: 1. data.status (string), 2. data.published (boolean), 3. Default DRAFT
+        if (data.status !== undefined) {
+            mappedData.status = data.status;
+        } else if (data.published !== undefined) {
+            mappedData.status = data.published === true ? 'ACTIVE' : 'DRAFT';
+        } else {
+            mappedData.status = 'DRAFT';
+        }
+
+        if (data.isVerified !== undefined) mappedData.isVerified = !!data.isVerified;
+        else if (data.is_verified !== undefined) mappedData.isVerified = !!data.is_verified;
+
+        if (data.isFeatured !== undefined) mappedData.isFeatured = !!data.isFeatured;
+        else if (data.is_featured !== undefined) mappedData.isFeatured = !!data.is_featured;
+
+        if (data.isBlocked !== undefined) mappedData.isBlocked = !!data.isBlocked;
+        else if (data.is_blocked !== undefined) mappedData.isBlocked = !!data.is_blocked;
+
+        console.log(`[ProductService] Mapped Governance Flags:`, {
+            isVerified: mappedData.isVerified,
+            isFeatured: mappedData.isFeatured,
+            isBlocked: mappedData.isBlocked,
+            originalData: {
+                isFeatured: data.isFeatured,
+                is_featured: data.is_featured,
+                isVerified: data.isVerified,
+                is_verified: data.is_verified
+            }
+        });
+        // Removed is_new toggle as per instruction
+
+        // Handle Category
+        const cId = data.category_id || data.categoryId;
+        if (cId) mappedData.categoryId = cId;
+
+        // Handle Variants if present
+        if (data.variants && Array.isArray(data.variants)) {
             let totalStock = 0;
             mappedData.variants = {
-                create: variants.map((v: any) => ({
-                    colorName: v.color_name,
-                    colorHex: v.color_hex,
-                    images: v.images,
+                create: data.variants.map((v: any) => ({
+                    name: v.color_name || v.colorName || "Standard",
+                    colorName: v.color_name || v.colorName,
+                    colorHex: v.color_hex || v.colorHex,
+                    images: Array.isArray(v.images) ? JSON.stringify(v.images) : (v.images || "[]"),
                     sizes: {
-                        create: v.sizes.map((s: any) => {
+                        create: (v.sizes || []).map((s: any) => {
                             totalStock += (s.stock || 0);
                             return {
                                 size: s.size,
@@ -69,34 +102,52 @@ export class ProductService {
                 }))
             };
             mappedData.stock = totalStock;
-        } else if (stock !== undefined) {
-            mappedData.stock = stock;
+        } else if (data.stock !== undefined) {
+            mappedData.stock = Number(data.stock);
         }
 
-        console.log("[ProductService] Mapped Payload for Prisma:", JSON.stringify(mappedData, null, 2));
         return mappedData;
     }
 
-    static async createProduct(dealerId: string, data: any) {
+    static async createProduct(userId: string, data: any) {
         const mappedData = this.mapProductData(data);
 
-        // Security: Ensure dealer is verified (Admins bypass)
-        // Only enforce if attempting to publish
-        if (mappedData.published === true) {
-            const user = await prisma.user.findUnique({ where: { id: dealerId } });
-            if (!user) throw { statusCode: 404, message: "User not found" };
+        // Fetch Vendor record for this user
+        let vendor = await prisma.vendor.findUnique({
+            where: { ownerId: userId }
+        });
 
-            if (user.role !== Role.ADMIN && user.verificationStatus !== 'verified') {
-                throw {
-                    statusCode: 403,
-                    message: "Verification Required: Your account must be verified to publish products live. You can still save drafts."
-                };
-            }
+        // Auto-create vendor profile for Super Admin if missing
+        const user = await prisma.user.findUnique({ where: { id: userId } });
+        if (!vendor && user?.role === Role.SUPER_ADMIN) {
+            vendor = await prisma.vendor.create({
+                data: {
+                    ownerId: userId,
+                    storeName: "Official Platform Store",
+                    slug: `official-store-${Date.now()}`,
+                    status: 'ACTIVE',
+                    supportEmail: user.email
+                }
+            });
         }
-        return await prisma.product.create({
+
+        if (!vendor) throw { statusCode: 403, message: "Only registered vendors can create products. Please create a Seller Profile first." };
+
+        const vendorId = vendor.id;
+
+        // Security: Ensure vendor is active to publish
+        const isPlatformAdmin = user?.role === Role.SUPER_ADMIN || user?.role === Role.ADMIN;
+
+        if (mappedData.status === 'ACTIVE' && vendor.status !== 'ACTIVE' && !isPlatformAdmin) {
+            // Auto-convert to DRAFT for unverified sellers so they can still create products
+            console.log(`[ProductService] Vendor ${vendor.id} is not ACTIVE (status: ${vendor.status}). Forcing product to DRAFT.`);
+            mappedData.status = 'DRAFT';
+        }
+
+        const newProduct = await prisma.product.create({
             data: {
                 ...mappedData,
-                dealerId,
+                vendorId,
             },
             include: {
                 variants: {
@@ -105,38 +156,36 @@ export class ProductService {
                     }
                 },
                 category: true,
-                subcategory: true
+                vendor: true
             }
         });
+        return this.transformProduct(newProduct);
     }
 
-    static async getProducts(user?: { id: string; role: Role }, filters: { search?: string; category?: string; page?: number | string; limit?: number | string; sellerId?: string; tag?: string } = {}) {
-        const { search, category, sellerId, tag } = filters;
+    static async getProducts(user?: { id: string; role: Role }, filters: { search?: string; category?: string; page?: number | string; limit?: number | string; vendorId?: string; tag?: string; scope?: string } = {}) {
         const pageNum = typeof filters.page === 'string' ? parseInt(filters.page) : (Number(filters.page) || 1);
         const limitNum = typeof filters.limit === 'string' ? parseInt(filters.limit) : (Number(filters.limit) || 10);
         const skip = (pageNum - 1) * limitNum;
 
         const where: any = { deletedAt: null };
 
-        if (search) {
+        if (filters.search) {
             where.OR = [
-                { title: { contains: search } },
-                { description: { contains: search } }
+                { title: { contains: filters.search } },
+                { description: { contains: filters.search } }
             ];
         }
 
-        if (category) {
-            where.category = { slug: category };
+        if (filters.category) {
+            where.category = { slug: filters.category };
         }
 
-        if (sellerId) {
-            where.dealerId = sellerId;
+        if (filters.vendorId) {
+            where.vendorId = filters.vendorId;
         }
 
-        if (tag === 'new') {
-            where.isNew = true;
-        } else if (tag === 'deals') {
-            where.discountPrice = { gt: 0 };
+        if (filters.tag === 'deals') {
+            where.compareAtPrice = { not: null };
         }
 
         const include = {
@@ -145,27 +194,29 @@ export class ProductService {
                     sizes: true
                 }
             },
-            dealer: {
+            vendor: {
                 select: {
-                    name: true,
-                    email: true
+                    storeName: true,
+                    slug: true,
+                    supportEmail: true
                 }
             },
             category: true,
-            subcategory: true
         };
 
         if (!user) {
-            where.published = true;
-        } else if (user.role === Role.ADMIN) {
-        } else if (user.role === Role.DEALER) {
-            if (!sellerId) {
-                where.published = true;
-            } else if (sellerId !== user.id) {
-                where.published = true;
+            where.status = 'ACTIVE';
+        } else if (user.role === Role.SUPER_ADMIN || user.role === Role.ADMIN) {
+            // No extra filters for platform admins
+        } else if (user.role === Role.SELLER) {
+            const vendor = await prisma.vendor.findUnique({ where: { ownerId: user.id } });
+            if (vendor && (filters.vendorId === vendor.id || filters.scope === 'vendor')) {
+                if (filters.scope === 'vendor') where.vendorId = vendor.id;
+            } else {
+                where.status = 'ACTIVE';
             }
         } else {
-            where.published = true;
+            where.status = 'ACTIVE';
         }
 
         const [products, total] = await Promise.all([
@@ -179,7 +230,9 @@ export class ProductService {
             prisma.product.count({ where })
         ]);
 
-        return { products, total, page: pageNum, limit: limitNum, totalPages: Math.ceil(total / limitNum) };
+        const transformedProducts = products.map(p => this.transformProduct(p));
+
+        return { products: transformedProducts, total, page: pageNum, limit: limitNum, totalPages: Math.ceil(total / limitNum) };
     }
 
     static async getProductById(idOrSlug: string, user?: { id: string; role: Role }) {
@@ -189,14 +242,17 @@ export class ProductService {
                     sizes: true
                 }
             },
-            dealer: {
-                select: {
-                    name: true,
-                    email: true
+            vendor: {
+                include: {
+                    owner: {
+                        select: {
+                            name: true,
+                            email: true,
+                        }
+                    }
                 }
             },
             category: true,
-            subcategory: true
         };
 
         const product = await prisma.product.findFirst({
@@ -214,32 +270,33 @@ export class ProductService {
             throw { statusCode: 404, message: 'Product not found' };
         }
 
-        if (user && user.role === Role.ADMIN) return product;
+        if (user && (user.role === Role.SUPER_ADMIN || user.role === Role.ADMIN)) return product;
 
-        if (!product.published && (!user || product.dealerId !== user.id)) {
-            throw { statusCode: 403, message: 'Forbidden' };
+        if (product.status !== 'ACTIVE') {
+            if (!user) throw { statusCode: 403, message: 'Forbidden' };
+            const vendor = await prisma.vendor.findUnique({ where: { ownerId: user.id } });
+            if (!vendor || product.vendorId !== vendor.id) {
+                throw { statusCode: 403, message: 'Forbidden' };
+            }
         }
 
-        return product;
+        return this.transformProduct(product);
     }
 
     static async updateProduct(id: string, user: { id: string; role: Role }, data: any) {
-        console.log("[ProductService] updateProduct called for ID:", id);
         const product = await prisma.product.findUnique({
             where: { id },
-            select: { id: true, dealerId: true, title: true, published: true, deletedAt: true }
+            select: { id: true, vendorId: true, status: true, deletedAt: true }
         });
 
-        if (!product) {
-            console.error("[ProductService] Product not found:", id);
+        if (!product || product.deletedAt) {
             throw { statusCode: 404, message: 'Product not found' };
         }
 
-        if (product.deletedAt) {
-            throw { statusCode: 404, message: 'Product has been deleted' };
-        }
+        const isPlatformAdmin = user.role === Role.SUPER_ADMIN || user.role === Role.ADMIN;
+        const vendor = await prisma.vendor.findUnique({ where: { ownerId: user.id } });
 
-        if (user.role === Role.DEALER && product.dealerId !== user.id) {
+        if (!isPlatformAdmin && (!vendor || product.vendorId !== vendor.id)) {
             throw {
                 statusCode: 403,
                 message: 'Forbidden: You can only update your own products'
@@ -248,30 +305,21 @@ export class ProductService {
 
         const mappedData = this.mapProductData(data);
 
-        // Security: Ensure dealer is verified (Admins bypass)
-        // Only enforce if attempting to publish
-        if (mappedData.published === true) {
-            const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
-            if (!dbUser) throw { statusCode: 404, message: "User not found" };
-
-            if (dbUser.role !== Role.ADMIN && dbUser.verificationStatus !== 'verified') {
-                throw {
-                    statusCode: 403,
-                    message: "Verification Required: Your account must be verified to publish products live. You can still save drafts."
-                };
-            }
+        // Security: Ensure vendor is active to publish
+        if (mappedData.status === 'ACTIVE' && (!vendor || vendor.status !== 'ACTIVE') && !isPlatformAdmin) {
+            // Auto-convert to DRAFT for unverified sellers
+            console.log(`[ProductService] Vendor ${vendor?.id || 'unknown'} is not ACTIVE (status: ${vendor?.status || 'missing'}). Forcing product update to DRAFT.`);
+            mappedData.status = 'DRAFT';
         }
 
         return await prisma.$transaction(async (tx) => {
             if (mappedData.variants) {
-                console.log("[ProductService] Replacing variants for:", id);
                 await tx.productVariant.deleteMany({
                     where: { productId: id }
                 });
             }
 
-            console.log("[ProductService] Calling prisma.product.update for ID:", id);
-            const updated = await tx.product.update({
+            const updatedProduct = await tx.product.update({
                 where: { id },
                 data: mappedData,
                 include: {
@@ -281,29 +329,26 @@ export class ProductService {
                         }
                     },
                     category: true,
-                    subcategory: true
                 }
             });
-            console.log("[ProductService] Database update successful.");
-            return updated;
+            return this.transformProduct(updatedProduct);
         });
     }
 
     static async deleteProduct(id: string, user: { id: string; role: Role }) {
         const product = await prisma.product.findUnique({
             where: { id },
-            select: { id: true, dealerId: true, title: true, deletedAt: true }
+            select: { id: true, vendorId: true, deletedAt: true }
         });
 
-        if (!product) {
+        if (!product || product.deletedAt) {
             throw { statusCode: 404, message: 'Product not found' };
         }
 
-        if (product.deletedAt) {
-            throw { statusCode: 404, message: 'Product already deleted' };
-        }
+        const isPlatformAdmin = user.role === Role.SUPER_ADMIN || user.role === Role.ADMIN;
+        const vendor = await prisma.vendor.findUnique({ where: { ownerId: user.id } });
 
-        if (user.role === Role.DEALER && product.dealerId !== user.id) {
+        if (!isPlatformAdmin && (!vendor || product.vendorId !== vendor.id)) {
             throw {
                 statusCode: 403,
                 message: 'Forbidden: You can only delete your own products'
@@ -312,7 +357,7 @@ export class ProductService {
 
         return await prisma.product.update({
             where: { id },
-            data: { deletedAt: new Date() } as any
+            data: { deletedAt: new Date() }
         });
     }
 

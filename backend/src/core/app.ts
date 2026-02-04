@@ -44,8 +44,21 @@ app.use('/uploads', express.static(path.join(__dirname, '../../../uploads'), {
 // Rate Limiting
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    limit: 500, // Increased limit for dev/staging
+    limit: 5000,
 });
+
+const paymentLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000, // 1 hour
+    limit: 50, // 50 attempts per hour for payments
+    message: 'Too many payment attempts, please try again later'
+});
+
+const checkoutLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    limit: 10, // 10 checkouts per 15 mins
+    message: 'Too many checkout attempts, please try again later'
+});
+
 app.use(limiter);
 
 // Webhook endpoint (MUST be before express.json())
@@ -55,6 +68,9 @@ app.post('/api/webhook/stripe', express.raw({ type: 'application/json' }), Webho
 app.use(express.json());
 
 // Routes
+app.get('/api/orders/:id/history', (req, res, next) => next()); // Specific exclusion if needed, but the move below is better
+app.use('/api/payments', paymentLimiter);
+app.post('/api/orders', checkoutLimiter);
 app.get('/', (req, res) => {
     res.send('Pravokha Backend is running securely.');
 });

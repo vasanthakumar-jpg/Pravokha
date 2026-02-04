@@ -1,5 +1,5 @@
 import { createProduct, getProducts, getProductById, updateProduct, deleteProduct, checkSku } from './controller';
-import { authenticate, authorize, optionalAuthenticate } from '../../shared/middleware/auth';
+import { authenticate, authorize, optionalAuthenticate, checkAccountStatus } from '../../shared/middleware/auth';
 import { requireProductOwnership } from '../../shared/middleware/ownership';
 import { validate } from '../../shared/middleware/validation';
 import { createProductSchema, updateProductSchema } from '../../shared/validation/product.schema';
@@ -15,10 +15,10 @@ router.get('/:id', optionalAuthenticate, getProductById);
 // Protected routes
 router.use(authenticate);
 
-router.post('/check-sku', checkSku);
-router.post('/', authorize([Role.DEALER, Role.ADMIN]), validate({ body: createProductSchema }), createProduct);
-router.put('/:id', authorize([Role.DEALER, Role.ADMIN]), requireProductOwnership, validate({ body: updateProductSchema }), updateProduct);
-router.patch('/:id', authorize([Role.DEALER, Role.ADMIN]), requireProductOwnership, validate({ body: updateProductSchema }), updateProduct);
-router.delete('/:id', authorize([Role.DEALER, Role.ADMIN]), requireProductOwnership, deleteProduct);
+router.post('/check-sku', checkAccountStatus, checkSku);
+router.post('/', authorize([Role.ADMIN, Role.SUPER_ADMIN, Role.SELLER]), checkAccountStatus, validate({ body: createProductSchema }), createProduct);
+router.put('/:id', authorize([Role.ADMIN, Role.SUPER_ADMIN, Role.SELLER]), checkAccountStatus, requireProductOwnership, validate({ body: updateProductSchema }), updateProduct);
+router.patch('/:id', authorize([Role.ADMIN, Role.SUPER_ADMIN, Role.SELLER]), checkAccountStatus, requireProductOwnership, validate({ body: updateProductSchema }), updateProduct);
+router.delete('/:id', authorize([Role.ADMIN, Role.SUPER_ADMIN, Role.SELLER]), checkAccountStatus, requireProductOwnership, deleteProduct);
 
 export default router;

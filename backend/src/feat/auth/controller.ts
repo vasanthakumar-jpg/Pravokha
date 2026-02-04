@@ -8,12 +8,14 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
     // Data is already validated by middleware
     const result = await AuthService.register(req.body);
 
-    await AuditService.log({
-        actorId: result.user.id,
-        targetType: 'User',
-        targetId: result.user.id,
-        actionType: AuditAction.CREATE,
-        description: `New user registered: ${req.body.email}`
+    await AuditService.logAction({
+        performedBy: result.user.id,
+        performerRole: result.user.role,
+        performerEmail: result.user.email,
+        entity: 'User',
+        entityId: result.user.id,
+        action: AuditAction.CREATE,
+        reason: `New user registered: ${req.body.email}`
     });
 
     res.status(201).json({ success: true, ...result });
@@ -23,12 +25,14 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
     // Data is already validated by middleware
     const result = await AuthService.login(req.body);
 
-    await AuditService.log({
-        actorId: result.user.id,
-        targetType: 'User',
-        targetId: result.user.id,
-        actionType: AuditAction.LOGIN,
-        description: `User logged in: ${req.body.email}`
+    await AuditService.logAction({
+        performedBy: result.user.id,
+        performerRole: result.user.role,
+        performerEmail: result.user.email,
+        entity: 'User',
+        entityId: result.user.id,
+        action: AuditAction.LOGIN,
+        reason: `User logged in: ${req.body.email}`
     });
 
     res.status(200).json({ success: true, ...result });
@@ -70,12 +74,14 @@ export const googleLogin = asyncHandler(async (req: Request, res: Response) => {
         picture: googleData.picture
     });
 
-    await AuditService.log({
-        actorId: result.user.id,
-        targetType: 'User',
-        targetId: result.user.id,
-        actionType: AuditAction.LOGIN,
-        description: `User logged in via Google: ${googleData.email}`
+    await AuditService.logAction({
+        performedBy: result.user.id,
+        performerRole: result.user.role,
+        performerEmail: result.user.email,
+        entity: 'User',
+        entityId: result.user.id,
+        action: AuditAction.LOGIN,
+        reason: `User logged in via Google: ${googleData.email}`
     });
 
     res.status(200).json({ success: true, ...result });

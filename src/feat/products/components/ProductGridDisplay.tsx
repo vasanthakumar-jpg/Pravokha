@@ -55,7 +55,7 @@ export function ProductGridDisplay({ products, onTogglePublish, onDelete, basePa
                                 </div>
                                 <div className="flex justify-between items-center">
                                     <span className="text-muted-foreground">Category</span>
-                                    <span className="capitalize text-xs">{product.category?.replace(/-/g, " ")}</span>
+                                    <span className="capitalize text-xs">{typeof product.category === 'string' ? product.category?.replace(/-/g, " ") : product.category?.name || product.category?.slug?.replace(/-/g, " ") || 'N/A'}</span>
                                 </div>
                             </div>
 

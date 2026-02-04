@@ -96,7 +96,7 @@ export default function AdminReports() {
 
       // 4. Fetch Active Sellers (via users endpoint with filter)
       const sellerResponse = await apiClient.get('/users', {
-        params: { role: 'DEALER' }
+        params: { role: 'SELLER' }
       });
       const sellerCount = sellerResponse.data?.count || 0;
 

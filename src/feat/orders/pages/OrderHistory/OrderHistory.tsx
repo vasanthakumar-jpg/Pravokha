@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+const API_BASE = 'http://localhost:5000';
 import { useNavigate, useParams } from "react-router-dom";
 import { useOrderNotifications } from "@/shared/hook/useOrderNotifications";
 import { apiClient } from "@/infra/api/apiClient";
@@ -106,23 +107,35 @@ export default function OrderHistory() {
       if (response.data.success) {
         const orders = response.data.data || [];
         // Transform data to match expected interface
-        const transformedOrders = orders.map((order: any) => ({
-          id: order.id,
-          order_number: order.orderNumber,
-          created_at: order.createdAt,
-          total: order.total,
-          order_status: order.status,
-          payment_status: order.paymentStatus,
-          payment_method: order.paymentMethod,
-          items: order.items,
-          shipping_address: order.shippingAddress,
-          shipping_city: order.shippingCity,
-          shipping_pincode: order.shippingPincode,
-          customer_name: order.customerName,
-          customer_phone: order.customerPhone,
-          tracking_updates: order.trackingUpdates,
-          tracking_number: order.trackingNumber,
-        }));
+        const transformedOrders = orders.map((order: any) => {
+          let parsedAddress: any = {};
+          try {
+            parsedAddress = order.shippingAddress ? JSON.parse(order.shippingAddress) : {};
+          } catch (e) {
+            console.error("Failed to parse shipping address", e);
+            parsedAddress = { address: order.shippingAddress };
+          }
+
+          return {
+            id: order.id,
+            order_number: order.orderNumber,
+            created_at: order.createdAt,
+            total: order.totalAmount || 0,
+            order_status: order.status?.toLowerCase(),
+            payment_status: order.paymentStatus?.toLowerCase(),
+            payment_method: order.paymentMethod,
+            items: order.items,
+            shipping_address: parsedAddress.address || order.shippingAddress,
+            shipping_city: parsedAddress.city || order.shippingCity,
+            shipping_pincode: parsedAddress.pincode || order.shippingPincode,
+            customer_name: order.customerName,
+            customer_phone: order.customerPhone,
+            tracking_updates: order.trackingUpdates,
+            tracking_number: order.trackingNumber,
+            tax_amount: order.taxAmount || 0,
+            shipping_charge: order.shippingFee || 0,
+          };
+        });
         setOrders(transformedOrders);
         setTotalCount(response.data.total || orders.length);
       }
@@ -206,13 +219,13 @@ export default function OrderHistory() {
         sum + ((item.price || 0) * (item.quantity || 1)), 0
       );
 
-      // Get values from database
+      // Use values directly from database
       const actualTotal = order.total || 0;
       const shippingCharge = (order as any).shipping_charge || 0;
+      const taxAmount = (order as any).tax_amount || 0;
 
-      // Calculate: subtotal = items total, tax = total - subtotal - shipping
-      const subtotal = itemsTotal;
-      const tax = Math.max(0, actualTotal - subtotal - shippingCharge);
+      // Subtotal is what remains
+      const subtotal = actualTotal - shippingCharge - taxAmount;
 
       const invoiceItems = items.map((item: any) => ({
         title: item.title || "Product",
@@ -233,7 +246,7 @@ export default function OrderHistory() {
         shippingPincode: order.shipping_pincode || "",
         items: invoiceItems,
         subtotal: subtotal,
-        tax: tax,
+        tax: taxAmount,
         shipping: shippingCharge,
         total: actualTotal,
         paymentMethod: order.payment_method || 'N/A',
@@ -365,7 +378,7 @@ export default function OrderHistory() {
                       {items.slice(0, 3).map((item: any, idx: number) => (
                         <div
                           key={idx}
-                          className="flex gap-4 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors cursor-pointer"
+                          className="flex gap-4 p-3 rounded-lg border bg-card hover:bg-primary/5 transition-colors cursor-pointer"
                           onClick={() => {
                             const slug = item.product?.slug || item.productId || item.product_id || item.id;
                             navigate(`/product/${slug}`);
@@ -373,21 +386,38 @@ export default function OrderHistory() {
                         >
 
                           <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg border overflow-hidden bg-muted flex-shrink-0">
-                            <img
-                              src={item.image || item.product?.variants?.[0]?.images?.[0] || '/placeholder-product.jpg'}
-                              alt={item.title}
-                              className="w-full h-full object-cover"
-                            />
+                            {(() => {
+                              const rawVariantImgs = item.product?.variants?.[0]?.images;
+                              let variantImgs = [];
+                              if (Array.isArray(rawVariantImgs)) variantImgs = rawVariantImgs;
+                              else if (typeof rawVariantImgs === 'string') {
+                                try { variantImgs = JSON.parse(rawVariantImgs); } catch (e) { variantImgs = []; }
+                              }
+
+                              const imgPath = item.product?.images?.[0]?.url || item.image || variantImgs?.[0];
+                              const fullImgUrl = imgPath ? (imgPath.startsWith('http') ? imgPath : `${API_BASE}${imgPath}`) : null;
+                              return fullImgUrl ? (
+                                <img
+                                  src={fullImgUrl}
+                                  alt={item.product?.title || item.title}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <div className="flex h-full w-full items-center justify-center bg-gray-100">
+                                  <ShoppingBag className="h-6 w-6 text-gray-400" />
+                                </div>
+                              );
+                            })()}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="responsive-body font-semibold line-clamp-1">{item.title}</p>
+                            <p className="responsive-body font-semibold line-clamp-1">{item.product?.title || item.title}</p>
                             <p className="responsive-small text-muted-foreground mt-1">
                               {item.colorName && <span>{item.colorName}</span>}
                               {item.colorName && item.size && <span> • </span>}
                               {item.size && <span>Size: {item.size}</span>}
                               <span> • Qty: {item.quantity}</span>
                             </p>
-                            <p className="responsive-body font-bold mt-2 text-primary">₹{(item.price * item.quantity).toLocaleString()}</p>
+                            <p className="responsive-body font-bold mt-2 text-primary">₹{(item.priceAtPurchase * item.quantity).toLocaleString()}</p>
                           </div>
                         </div>
                       ))}
@@ -450,30 +480,43 @@ export default function OrderHistory() {
                   <Separator />
 
                   {/* Total and Actions */}
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                    <div className="space-y-1">
-                      <p className="responsive-small text-muted-foreground">Total amount</p>
-                      <p className="responsive-h1 text-primary">₹{order.total.toLocaleString()}</p>
+                  <div className="pt-6 border-t border-border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+                    <div className="flex flex-row items-center justify-between sm:justify-start sm:gap-12 w-full sm:w-auto">
+                      <div className="space-y-1">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60">Subtotal</p>
+                        <p className="text-base font-bold">₹{(order.total - (order as any).tax_amount - (order as any).shipping_charge).toLocaleString()}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60">Tax</p>
+                        <p className="text-base font-bold">₹{(order as any).tax_amount.toLocaleString()}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60">Shipping</p>
+                        <p className="text-base font-bold">₹{(order as any).shipping_charge.toLocaleString()}</p>
+                      </div>
+                      <div className="space-y-1 sm:ml-4">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-primary">Total</p>
+                        <p className="text-2xl font-black text-primary">₹{order.total.toLocaleString()}</p>
+                      </div>
                     </div>
 
-                    {order.order_status === "pending" && (
-                      <Button
-                        variant="destructive"
-                        onClick={() => handleCancelClick(order)}
-                        size="lg"
-                        className="responsive-button"
-                      >
-                        <XCircle className="h-4 w-4 mr-2" />
-                        Cancel order
-                      </Button>
-                    )}
-
-                    {order.order_status === "delivered" && (
-                      <Button variant="outline" size="lg" className="responsive-button">
-                        <Package className="h-4 w-4 mr-2" />
-                        Re-order items
-                      </Button>
-                    )}
+                    <div className="flex gap-3 w-full sm:w-auto">
+                      {order.order_status === "pending" && (
+                        <Button
+                          variant="destructive"
+                          onClick={() => handleCancelClick(order)}
+                          size="sm"
+                          className="flex-1 sm:flex-none h-10 px-6 font-bold"
+                        >
+                          Cancel order
+                        </Button>
+                      )}
+                      {order.order_status === "delivered" && (
+                        <Button variant="outline" size="sm" className="flex-1 sm:flex-none h-10 px-6 font-bold">
+                          Re-order
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </CardContent>
               </Card>

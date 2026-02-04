@@ -9,16 +9,17 @@ export interface StateTransition {
 
 export const ORDER_TRANSITIONS: StateTransition[] = [
     // From PENDING
-    { from: OrderStatus.PENDING, to: OrderStatus.PROCESSING, allowedRoles: [Role.ADMIN, Role.DEALER] },
-    { from: OrderStatus.PENDING, to: OrderStatus.CANCELLED, allowedRoles: [Role.ADMIN, Role.USER] },
+    { from: OrderStatus.PENDING, to: OrderStatus.PROCESSING, allowedRoles: [Role.SUPER_ADMIN, Role.ADMIN, Role.SELLER] },
+    { from: OrderStatus.PENDING, to: OrderStatus.CANCELLED, allowedRoles: [Role.SUPER_ADMIN, Role.ADMIN, Role.CUSTOMER, Role.SELLER] },
 
-    // From PROCESSING (Confirmed/Packed in UI)
-    { from: OrderStatus.PROCESSING, to: OrderStatus.SHIPPED, allowedRoles: [Role.ADMIN, Role.DEALER], requiredFields: ['trackingNumber'] },
-    { from: OrderStatus.PROCESSING, to: OrderStatus.CANCELLED, allowedRoles: [Role.ADMIN] },
-    { from: OrderStatus.PROCESSING, to: OrderStatus.PENDING, allowedRoles: [Role.ADMIN, Role.DEALER] }, // Unpacking/Mistake
+    // From PROCESSING
+    { from: OrderStatus.PROCESSING, to: OrderStatus.SHIPPED, allowedRoles: [Role.SUPER_ADMIN, Role.ADMIN, Role.SELLER], requiredFields: ['trackingNumber'] },
+    { from: OrderStatus.PROCESSING, to: OrderStatus.CANCELLED, allowedRoles: [Role.SUPER_ADMIN, Role.ADMIN, Role.SELLER] },
+    { from: OrderStatus.PROCESSING, to: OrderStatus.PENDING, allowedRoles: [Role.SUPER_ADMIN, Role.ADMIN, Role.SELLER] },
 
     // From SHIPPED
-    { from: OrderStatus.SHIPPED, to: OrderStatus.DELIVERED, allowedRoles: [Role.ADMIN] },
+    { from: OrderStatus.SHIPPED, to: OrderStatus.DELIVERED, allowedRoles: [Role.SUPER_ADMIN, Role.ADMIN, Role.SELLER] },
+    { from: OrderStatus.SHIPPED, to: OrderStatus.CANCELLED, allowedRoles: [Role.SUPER_ADMIN, Role.ADMIN, Role.SELLER] },
 
     // Terminal states: DELIVERED, CANCELLED
 ];
@@ -27,9 +28,8 @@ export const ORDER_TRANSITIONS: StateTransition[] = [
  * Validates if an order can transition from one state to another based on role.
  */
 export const isValidTransition = (currentStatus: OrderStatus, newStatus: OrderStatus, role: Role): boolean => {
-    // Admin can perform any transition for operational flexibility, 
-    // while other roles follow strict state machine rules.
-    if (role === Role.ADMIN) return true;
+    // SUPER_ADMIN can perform any transition
+    if (role === Role.SUPER_ADMIN) return true;
 
     const transition = ORDER_TRANSITIONS.find(t =>
         t.from === currentStatus &&

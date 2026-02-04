@@ -319,7 +319,7 @@ export function Navbar() {
                                             </Button>
                                         </Link>
 
-                                        {user && (role === "DEALER" || role === "seller") ? (
+                                        {user && role === "ADMIN" ? (
                                             <Link to="/seller" onClick={closeMobileMenu}>
                                                 <Button variant="ghost" className="w-full justify-start text-sm font-bold text-primary">
                                                     <LayoutDashboard className="mr-3 h-5 w-5" /> Seller Dashboard

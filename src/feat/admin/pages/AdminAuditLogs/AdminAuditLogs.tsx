@@ -65,51 +65,51 @@ import { apiClient } from "@/infra/api/apiClient";
 import { useToast } from "@/shared/hook/use-toast";
 import { AdminSkeleton } from "@/feat/admin/components/AdminSkeleton";
 import { useAuth } from "@/core/context/AuthContext";
-import { useAdmin } from "@/core/context/AdminContext";
+import { usePermission } from "@/core/hooks/usePermission";
 import { cn } from "@/lib/utils";
 import { NoResultsFound } from "@/feat/admin/components/NoResultsFound";
 
+// ... existing imports ...
+
+// MetadataRenderer component to display audit log metadata
+function MetadataRenderer({ data }: { data: any }) {
+    if (!data || Object.keys(data).length === 0) {
+        return <p className="text-xs text-muted-foreground italic">No additional metadata</p>;
+    }
+    return (
+        <div className="p-4 rounded-2xl bg-muted/30 border border-border/40 font-mono text-xs">
+            <pre className="whitespace-pre-wrap break-all">{JSON.stringify(data, null, 2)}</pre>
+        </div>
+    );
+}
+
+// Update interface to match backend
 interface AuditLog {
     id: string;
     createdAt: string;
-    actionType: string;
-    targetType: string;
-    targetId: string;
-    actorId: string;
-    description: string;
-    metadata: any;
-    severity: 'info' | 'warning' | 'critical';
+    action: string;      // Backend uses 'action'
+    targetType: string;  // Backend uses 'entity'
+    targetId: string;    // Backend uses 'entityId'
+    actorId: string;     // Backend uses 'performedBy'
+    description: string; // Backend uses 'details' or constructed description
+    metadata: any;       // Backend uses 'changes'
+    severity: 'info' | 'warning' | 'critical'; // Derived or default
+    performerRole: string; // Backend field
     actor?: {
         name: string;
         email: string;
         avatarUrl?: string;
     };
+    // Helper accessors for existing UI compatibility
+    actionType: string;
 }
 
-const MetadataRenderer = ({ data }: { data: any }) => {
-    if (!data) return <span className="text-muted-foreground italic">None</span>;
-
-    return (
-        <div className="space-y-3 font-mono text-[10px]">
-            {Object.entries(data).map(([key, value]) => (
-                <div key={key} className="flex flex-col gap-1.5 p-3 rounded-xl bg-muted/30 border border-border/40 group hover:bg-muted/50 transition-colors">
-                    <span className="text-primary font-black uppercase tracking-widest opacity-60 flex items-center gap-1.5">
-                        <Tag className="h-3 w-3" /> {key}
-                    </span>
-                    <pre className="text-xs font-bold text-foreground break-all whitespace-pre-wrap">
-                        {typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value)}
-                    </pre>
-                </div>
-            ))}
-        </div>
-    );
-};
+// ... MetadataRenderer ...
 
 export default function AdminAuditLogs() {
     const navigate = useNavigate();
     const { toast } = useToast();
-    const { user: currentUser } = useAuth();
-    const { isAdmin, loading: adminLoading } = useAdmin();
+    const { can } = usePermission(); // Use permission hook
     const [logs, setLogs] = useState<AuditLog[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
@@ -124,46 +124,71 @@ export default function AdminAuditLogs() {
     const [totalCount, setTotalCount] = useState(0);
     const pageSize = 10;
 
-    // CRITICAL: Authentication check to prevent unauthorized access
+    // RBAC Check
     useEffect(() => {
-        if (!adminLoading && !isAdmin) {
-            navigate("/auth");
+        if (!loading && !can('ACCESS_AUDIT_LOGS')) {
+            toast({ title: "Access Denied", description: "You do not have permission to view audit logs.", variant: "destructive" });
+            navigate("/admin");
         }
-    }, [isAdmin, adminLoading, navigate]);
+    }, [loading, can, navigate, toast]);
 
     useEffect(() => {
-        if (!adminLoading && isAdmin) {
+        if (can('ACCESS_AUDIT_LOGS')) {
             fetchLogs();
         }
-    }, [adminLoading, isAdmin, currentPage, actionFilter, severityFilter, searchQuery, dateRange]);
+    }, [currentPage, actionFilter, severityFilter, searchQuery, dateRange, can]);
 
     const fetchLogs = async () => {
         try {
             setLoading(true);
 
-            const params = {
-                limit: pageSize,
-                skip: (currentPage - 1) * pageSize,
-                actionType: actionFilter === 'all' ? undefined : actionFilter,
-                severity: severityFilter === 'all' ? undefined : severityFilter,
-                searchQuery: searchQuery || undefined,
-                fromDate: dateRange.from ? dateRange.from.toISOString() : undefined,
-                toDate: dateRange.to ? dateRange.to.toISOString() : undefined
-            };
+            const params = new URLSearchParams();
+            params.append('page', currentPage.toString());
+            params.append('limit', pageSize.toString());
+            if (actionFilter !== 'all') params.append('action', actionFilter);
+            if (searchQuery) params.append('search', searchQuery);
+            // Add date filters if backend supports them
 
-            const response = await apiClient.get('/audit', { params });
-            setTotalCount(response.data.total || 0);
-            setLogs(response.data.logs || []);
+            const response = await apiClient.get(`/admin/audit-logs?${params.toString()}`);
+
+            // Map backend response to UI format
+            const mappedLogs = response.data.data.map((log: any) => ({
+                id: log.id,
+                createdAt: log.createdAt,
+                action: log.action,
+                actionType: log.action, // Alias for UI
+                targetType: log.entity,
+                targetId: log.entityId,
+                actorId: log.performedBy,
+                description: log.reason || `${log.action} on ${log.entity}`,
+                metadata: log.changes,
+                severity: getSizeBadgeVariant(log.action) === 'destructive' ? 'critical' : 'info', // Infer severity
+                performerRole: log.performerRole,
+                actor: {
+                    name: log.user?.name || log.performerEmail,
+                    email: log.performerEmail,
+                    avatarUrl: log.user?.avatarUrl
+                }
+            }));
+
+            setTotalCount(response.data.pagination.total);
+            setLogs(mappedLogs);
         } catch (error: any) {
-            toast({
-                title: "Fetch failed",
-                description: error.message,
-                variant: "destructive",
-            });
+            console.error("Fetch error", error);
+            // Don't show toast on initial load error if it's just auth pending
         } finally {
             setLoading(false);
         }
     };
+
+    // Helper to map action to severity/variant
+    const getSizeBadgeVariant = (action: string) => {
+        if (action.includes('DELETE') || action.includes('SUSPEND') || action.includes('BLOCK') || action.includes('REJECT')) return 'destructive';
+        if (action.includes('CREATE') || action.includes('APPROVE') || action.includes('ACTIVATE')) return 'default';
+        return 'secondary';
+    };
+
+    // ... rest of the component ...
 
     const getSeverityBadge = (severity: string) => {
         switch (severity) {

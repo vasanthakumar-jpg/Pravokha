@@ -80,7 +80,6 @@ export default function SellerOrders() {
       setLoading(true);
 
       const params: any = {
-        sellerId: user?.id,
         page: currentPage,
         limit: pageSize
       };

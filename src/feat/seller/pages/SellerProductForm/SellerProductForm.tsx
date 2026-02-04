@@ -121,7 +121,7 @@ export default function SellerProductForm() {
     const [isRequestDialogOpen, setIsRequestDialogOpen] = useState(false);
     const [requestReason, setRequestReason] = useState("");
     const [dbCategories, setDbCategories] = useState<{ id: string; name: string; slug: string }[]>([]);
-    const [dbSubcategories, setDbSubcategories] = useState<{ id: string; name: string; slug: string; categoryId: string }[]>([]);
+    const [dbSubcategories, setDbSubcategories] = useState<{ id: string; name: string; slug: string; categoryId: string; parentId?: string }[]>([]);
     const [isLoadingSubcategories, setIsLoadingSubcategories] = useState(false);
     const [subcategoryWarning, setSubcategoryWarning] = useState("");
 
@@ -137,7 +137,12 @@ export default function SellerProductForm() {
                 // Assuming an endpoint exists or we extract from categories if nested
                 // For now, let's assume a separate endpoint or query
                 const { data: subs } = await apiClient.get("/categories/subcategories");
-                setDbSubcategories(subs.subcategories || []);
+                const subData = (subs.subcategories || []).map((sub: any) => ({
+                    ...sub,
+                    categoryId: sub.categoryId || sub.category_id || sub.parentId,
+                    parentId: sub.parentId || sub.category_id || sub.categoryId
+                }));
+                setDbSubcategories(subData);
             } catch (err) {
                 console.error("[SellerProductForm] Error fetching hierarchy:", err);
             }
@@ -208,14 +213,25 @@ export default function SellerProductForm() {
                     });
                 }
 
+                // Reconstruction of Category/Subcategory hierarchy
+                // If product.category has a parentId, it's a subcategory.
+                const prodCatId = product.categoryId || product.category_id || product.category?.id || "";
+                const prodParentId = product.category?.parentId || product.category?.parent_id || null;
+
+                const selectedCatId = prodParentId ? prodParentId : prodCatId;
+                const selectedSubCatId = prodParentId ? prodCatId : "";
+
+                const basePrice = product.compareAtPrice || product.compare_at_price || product.price;
+                const salePrice = (product.compareAtPrice || product.compare_at_price) ? product.price : null;
+
                 setFormData({
                     title: product.title || "",
                     description: product.description || "",
                     category: categoryRaw,
-                    selectedCategoryId: product.categoryId || product.category_id || "",
-                    selectedSubcategoryId: product.subcategoryId || product.subcategory_id || "",
-                    price: product.price?.toString() || "",
-                    discountPrice: (product.discountPrice ?? product.discount_price)?.toString() || "",
+                    selectedCategoryId: selectedCatId,
+                    selectedSubcategoryId: selectedSubCatId,
+                    price: basePrice?.toString() || "",
+                    discountPrice: salePrice?.toString() || "",
                     stockQuantity: "0",
                     selectedColors: colors,
                     selectedSizes: sizes,
@@ -242,11 +258,12 @@ export default function SellerProductForm() {
         };
 
         if (!authLoading) {
-            if (role === 'DEALER' || role === 'ADMIN') {
+            // Both Sellers and Admins can access this form (Admins as proxies)
+            if (role === 'SELLER' || role === 'ADMIN' || role === 'SUPER_ADMIN') {
                 fetchProduct();
             } else {
-                console.warn("[SellerProductForm] Unauthorized access attempt.");
-                navigate("/auth");
+                console.warn("[SellerProductForm] Unauthorized access attempt:", role);
+                navigate("/dashboard"); // Redirect to a safe dashboard instead of auth if already logged in
             }
         }
     }, [id, authLoading, role, navigate, toast]);
@@ -295,7 +312,7 @@ export default function SellerProductForm() {
         setSubcategoryWarning("");
 
         // Check if category has subcategories
-        const categorySubcategories = dbSubcategories.filter(s => s.categoryId === categoryId);
+        const categorySubcategories = dbSubcategories.filter(s => (s.categoryId === categoryId || s.parentId === categoryId));
         if (categorySubcategories.length > 0) {
             setSubcategoryWarning("Please select a subcategory for better product organization.");
         } else {
@@ -304,14 +321,7 @@ export default function SellerProductForm() {
     };
 
     const handleSave = async (isPublished: boolean = true) => {
-        if (isPublished && !isAdmin && verificationStatus !== 'verified') {
-            toast({
-                title: "Verification Required",
-                description: "You must be a verified seller to list products. Please check your settings.",
-                variant: "destructive"
-            });
-            return;
-        }
+        // Backend will auto-convert to DRAFT if seller is unverified
 
         // Final Validation Check
         if (!validateStep(1) || !validateStep(4)) return;
@@ -368,18 +378,15 @@ export default function SellerProductForm() {
                 });
             }
 
-            const productPayload = {
+            const productPayload: any = {
                 title: formData.title,
                 slug: formData.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + (id ? '' : `-${Date.now()}`),
                 description: formData.description,
                 category: formData.category, // Legacy slug, but also sending IDs
-                category_id: formData.selectedCategoryId,
-                subcategory_id: formData.selectedSubcategoryId || null,
+                categoryId: formData.selectedSubcategoryId || formData.selectedCategoryId, // Most specific ID
                 price: Number(formData.price),
                 discount_price: formData.discountPrice ? Number(formData.discountPrice) : null,
                 published: isPublished,
-                is_featured: formData.isFeatured,
-                is_new: formData.isNew,
                 sku: formData.sku,
                 seller_id: user?.id,
                 variants: variantsData // Send nested variants to be handled by backend
@@ -900,7 +907,7 @@ export default function SellerProductForm() {
                                                     </SelectTrigger>
                                                     <SelectContent>
                                                         {dbSubcategories
-                                                            .filter(sub => sub.categoryId === formData.selectedCategoryId)
+                                                            .filter(sub => (sub.categoryId === formData.selectedCategoryId || sub.parentId === formData.selectedCategoryId))
                                                             .map(sub => (
                                                                 <SelectItem key={sub.id} value={sub.id}>{sub.name}</SelectItem>
                                                             ))
@@ -1524,9 +1531,11 @@ export default function SellerProductForm() {
                                         </div>
 
                                         <div className="bg-yellow-50 border border-yellow-100 p-4 rounded-lg">
-                                            <h4 className="font-semibold text-yellow-800 text-sm mb-1">Ready to Publish?</h4>
+                                            <h4 className="font-semibold text-yellow-800 text-sm mb-1">{isAdmin ? "Ready to Publish?" : "Ready for Approval?"}</h4>
                                             <p className="text-xs text-yellow-700">
-                                                Your product will be instantly available on the marketplace. You can always edit strict details later from the dashboard.
+                                                {isAdmin
+                                                    ? "Your product will be instantly available on the marketplace. You can always edit strict details later from the dashboard."
+                                                    : "Your product will be submitted for quality verification. Once approved, it will go live on the marketplace."}
                                             </p>
                                         </div>
                                     </div>
@@ -1575,8 +1584,8 @@ export default function SellerProductForm() {
                                     disabled={isSaving}
                                     className="w-full sm:w-40 bg-primary hover:bg-primary/90 shadow-lg gap-2"
                                 >
-                                    {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                                    Publish Now
+                                    {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : (isAdmin ? <Upload className="w-4 h-4" /> : <ShieldAlert className="w-4 h-4" />)}
+                                    {isAdmin ? "Publish Now" : "Submit for Review"}
                                 </Button>
                             </>
                         ) : (
@@ -1689,11 +1698,10 @@ export default function SellerProductForm() {
                                     }
 
                                     // 2. Perform safe update for Allowed fields (Price, Stock)
-                                    const safePayload = {
+                                    const safePayload: any = {
                                         price: Number(formData.price),
                                         discount_price: formData.discountPrice ? Number(formData.discountPrice) : null,
-                                        is_featured: formData.isFeatured,
-                                        is_new: formData.isNew,
+                                        // is_featured and is_new are managed by system/admins
                                         // We keep the original restricted values to ensure no bypass
                                         title: originalData.title,
                                         description: originalData.description,
@@ -1701,6 +1709,9 @@ export default function SellerProductForm() {
                                         subcategory_id: originalData.subcategory_id,
                                         slug: originalData.slug
                                     };
+
+
+
 
                                     await apiClient.put(`/products/${id}`, safePayload);
 

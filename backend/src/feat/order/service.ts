@@ -1,6 +1,7 @@
 import { OrderStatus, PaymentStatus, Role } from '@prisma/client';
 import { stripe } from '../../infra/stripe';
 import { prisma } from '../../infra/database/client';
+import { ProductService } from '../product/service';
 
 export class OrderService {
     static async createOrder(data: {
@@ -23,230 +24,233 @@ export class OrderService {
         paymentStatus?: string;
         stripeIntentId?: string;
     }) {
-        const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substring(2, 5).toUpperCase()}`;
+        const orderNumberBase = `ORD-${Date.now()}-${Math.random().toString(36).substring(2, 5).toUpperCase()}`;
+        const { userId, items } = data;
+
+        const shippingAddressJson = {
+            address: data.shippingAddress,
+            city: data.shippingCity,
+            pincode: data.shippingPincode
+        };
 
         return await prisma.$transaction(async (tx) => {
-            let subtotal = 0;
-            const orderItems = [];
-            let tshirtCount = 0;
+            const productIds = items.map((i) => i.productId);
+            const products = await tx.product.findMany({
+                where: { id: { in: productIds } },
+                include: { vendor: true }
+            });
 
-            // 1. Validate Stock and Calculate Subtotal
-            for (const item of data.items) {
-                const product = await tx.product.findUnique({
-                    where: { id: item.productId },
-                });
-
-                if (!product) throw new Error(`Product with ID ${item.productId} not found`);
+            // 1. Group items by Vendor and validate stock
+            const vendorGroups = new Map<string, any[]>();
+            for (const item of items) {
+                const product = products.find(p => p.id === item.productId);
+                if (!product) throw new Error(`Product ${item.productId} not found`);
                 if (product.stock < item.quantity) throw new Error(`Insufficient stock for ${product.title}`);
+
+                const vId = product.vendorId;
+                if (!vId) throw new Error(`Product ${product.title} has no vendor assigned`);
+
+                if (!vendorGroups.has(vId)) vendorGroups.set(vId, []);
+                vendorGroups.get(vId)!.push({ item, product });
 
                 // Atomic stock decrement
                 await tx.product.update({
                     where: { id: item.productId },
                     data: { stock: { decrement: item.quantity } },
                 });
-
-                if (product.price === 325) {
-                    tshirtCount += item.quantity;
-                }
-
-                subtotal += product.price * item.quantity;
-                orderItems.push({
-                    productId: product.id,
-                    sellerId: product.dealerId,
-                    title: product.title,
-                    price: product.price,
-                    quantity: item.quantity,
-                    variantId: item.variantId,
-                    color: item.color,
-                    size: item.size,
-                });
             }
 
-            // 2. Apply Combo Offer (3 T-shirts for 949)
-            const comboSets = Math.floor(tshirtCount / 3);
-            const comboSavings = comboSets * (3 * 325 - 949);
+            // 3. Create Orders (Split by Vendor)
+            const createdOrders: any[] = [];
+            let grandTotal = 0;
+            let counter = 1;
 
-            const shipping = 99;
-            const discountedSubtotal = subtotal - comboSavings;
-            const tax = Math.round(discountedSubtotal * 0.18);
-            const totalTotal = discountedSubtotal + shipping + tax;
+            for (const [vId, group] of vendorGroups) {
+                const vendorSubtotal = group.reduce((sum, g) => sum + (g.product.price * g.item.quantity), 0);
 
-            // 3. Map Statuses (Handle FE's "CONFIRMED")
-            let orderStatus: OrderStatus = OrderStatus.PENDING;
-            if (data.status === 'CONFIRMED') orderStatus = OrderStatus.PENDING; // Map to PENDING until reviewed or automated
+                // Get dynamic tax rate (fallback to 18)
+                const settings = await tx.siteSetting.findUnique({ where: { id: 'primary' } });
+                const taxRate = settings?.taxRate || 18;
 
-            let paymentStatus: PaymentStatus = PaymentStatus.PENDING;
-            if (data.paymentStatus === 'PAID') paymentStatus = PaymentStatus.PAID;
+                // Calculate shipping eligibility
+                const baseShippingFee = 50;
+                let applicableShipping = 0;
+                if (userId && counter === 1) { // Only add shipping to the first vendor order if applicable
+                    const orderCount = await tx.order.count({ where: { customerId: userId } });
+                    if (orderCount >= 3) {
+                        applicableShipping = baseShippingFee;
+                    }
+                }
 
-            // 4. Create Order
-            const order = await tx.order.create({
-                data: {
-                    orderNumber,
-                    total: totalTotal,
-                    status: orderStatus,
-                    paymentStatus: paymentStatus,
-                    paymentMethod: data.paymentMethod || 'stripe',
-                    stripeIntentId: data.stripeIntentId,
-                    customerName: data.customerName,
-                    customerEmail: data.customerEmail,
-                    customerPhone: data.customerPhone,
-                    shippingAddress: data.shippingAddress,
-                    shippingCity: data.shippingCity,
-                    shippingPincode: data.shippingPincode,
-                    userId: data.userId,
-                    items: { create: orderItems }
-                },
-                include: { items: true }
-            });
+                const vendorTax = Math.round((vendorSubtotal + applicableShipping) * (taxRate / 100));
+                const vendorTotal = vendorSubtotal + vendorTax + applicableShipping;
 
-            // 5. Stripe Integration (Optional if not COD/already paid)
+                const vendor = group[0].product.vendor;
+                const commissionRate = vendor?.commissionRate || settings?.commissionRate || 10;
+                const platformFee = (vendorTotal * commissionRate) / 100;
+                const vendorEarnings = vendorTotal - platformFee;
+
+                const order = await tx.order.create({
+                    data: {
+                        orderNumber: `${orderNumberBase}-${counter++}`,
+                        customerId: userId || null,
+                        vendorId: vId,
+                        totalAmount: vendorTotal,
+                        platformFee,
+                        vendorEarnings,
+                        shippingFee: applicableShipping,
+                        taxAmount: vendorTax,
+                        status: (data.status as OrderStatus) || OrderStatus.PENDING,
+                        paymentStatus: (data.paymentStatus as PaymentStatus) || PaymentStatus.UNPAID,
+                        paymentMethod: data.paymentMethod || 'COD',
+                        customerName: data.customerName,
+                        customerEmail: data.customerEmail,
+                        customerPhone: data.customerPhone,
+                        shippingAddress: JSON.stringify(shippingAddressJson),
+                        stripeIntentId: data.stripeIntentId,
+                        items: {
+                            create: group.map(g => ({
+                                productId: g.product.id,
+                                quantity: g.item.quantity,
+                                priceAtPurchase: g.product.price,
+                                subtotal: g.product.price * g.item.quantity,
+                                variantId: g.item.variantId,
+                                color: g.item.color,
+                                size: g.item.size
+                            }))
+                        },
+                        statusHistory: {
+                            create: {
+                                status: (data.status as OrderStatus) || OrderStatus.PENDING,
+                                notes: 'Order created'
+                            }
+                        }
+                    },
+                    include: { items: true }
+                });
+
+                createdOrders.push(order);
+                grandTotal += vendorTotal;
+            }
+
+            // 4. Stripe Integration
             let clientSecret = null;
-            if (data.paymentMethod === 'stripe' && !data.stripeIntentId) {
+            if (data.paymentMethod === 'stripe' && !data.stripeIntentId && createdOrders.length > 0) {
                 const paymentIntent = await stripe.paymentIntents.create({
-                    amount: Math.round(totalTotal * 100),
+                    amount: Math.round(grandTotal * 100),
                     currency: 'inr',
-                    metadata: { orderId: order.id, orderNumber: order.orderNumber },
+                    metadata: {
+                        customerEmail: data.customerEmail,
+                        orderNumbers: createdOrders.map(o => o.orderNumber).join(',')
+                    },
                     receipt_email: data.customerEmail,
                 });
 
-                await tx.order.update({
-                    where: { id: order.id },
-                    data: { stripeIntentId: paymentIntent.id }
-                });
+                for (const o of createdOrders) {
+                    await tx.order.update({
+                        where: { id: o.id },
+                        data: { stripeIntentId: paymentIntent.id }
+                    });
+                }
                 clientSecret = paymentIntent.client_secret;
             }
 
-            // 6. Notify Sellers
-            const sellerIds = Array.from(new Set(orderItems.map(item => item.sellerId)));
+            // 5. Notifications
             const { NotificationService } = await import('../notification/service');
-            for (const sellerId of sellerIds) {
-                // Get first product for this seller to show in notification
-                const sellerItem = orderItems.find(item => item.sellerId === sellerId);
-                const productName = sellerItem?.title || 'Product';
-                const sellerTotal = orderItems
-                    .filter(item => item.sellerId === sellerId)
-                    .reduce((sum, item) => sum + (item.price * item.quantity), 0);
-
-                await NotificationService.notifyNewOrder(
-                    sellerId,
-                    orderNumber,
-                    order.id,
-                    productName,
-                    sellerTotal
-                ).catch(e => console.error("Notification failed:", e));
+            for (const order of createdOrders) {
+                await NotificationService.createNotification({
+                    userId: order.vendorId,
+                    title: 'New Order Received',
+                    message: `You have a new order ${order.orderNumber}. Total: ₹${order.totalAmount}`,
+                    type: 'order',
+                    link: `/seller/orders/${order.id}`,
+                }).catch(e => console.error("Notification failed:", e));
             }
 
-            return { order, clientSecret };
+            return { orders: createdOrders, clientSecret, grandTotal };
         });
     }
 
-    static async getOrderById(id: string, userId?: string, role?: string) {
+    static async getOrderById(id: string, userId: string, role: string) {
         const order = await prisma.order.findUnique({
             where: { id },
             include: {
+                vendor: true,
                 items: {
                     include: {
                         product: {
-                            select: {
-                                title: true,
-                                slug: true,
-                                dealerId: true,
-                                variants: {
-                                    take: 1,
-                                    select: { images: true }
-                                }
+                            include: {
+                                images: true,
+                                variants: true
                             }
                         }
                     }
+                },
+                statusHistory: {
+                    orderBy: { createdAt: 'desc' }
                 }
             }
         });
 
         if (!order) return null;
 
-        // Access Control - Strict data isolation
-        if (role === Role.ADMIN) {
-            // Admin can view all orders
-            return order;
+        // Transform product images for each item
+        if (order.items) {
+            order.items = order.items.map((item: any) => {
+                if (item.product) {
+                    item.product = (ProductService as any).transformProduct(item.product);
+                }
+                return item;
+            });
         }
 
-        if (role === Role.DEALER) {
-            // DEALER can only view orders containing at least one of their products
-            const hasSellerItem = order.items.some(item => item.sellerId === userId);
-            if (!hasSellerItem) {
-                throw new Error('Forbidden: This order does not contain your products');
-            }
-            // Show only seller's items
-            order.items = order.items.filter(item => item.sellerId === userId);
-        }
-
-        // Regular USER/CUSTOMER can only view their own orders
-        if (order.userId !== userId) {
-            throw new Error('Unauthorized access to order');
+        // Access Control
+        if (role === Role.CUSTOMER && order.customerId !== userId) return null;
+        if (role === Role.SELLER) {
+            const vendor = await prisma.vendor.findUnique({ where: { ownerId: userId } });
+            if (order.vendorId !== vendor?.id) return null;
         }
 
         return order;
     }
 
-    static async listOrders(userId?: string, role?: string, options: {
+    static async listOrders(userId: string, role: string, options: {
         page?: number;
         limit?: number;
-        type?: string;
         status?: string;
+        vendorId?: string;
+        customerId?: string;
         search?: string;
         after?: string;
-    } = {}) {
-        const page = options.page || 1;
-        const limit = options.limit || 20;
+        type?: string;
+    }) {
+        const { page = 1, limit = 10 } = options;
         const skip = (page - 1) * limit;
-        const take = limit;
 
-        let where: any = {};
-
-        // 1. Role/Type Context Filtering
-        const contextType = options.type || (role === Role.ADMIN ? 'admin' : (role === Role.DEALER ? 'seller' : 'buyer'));
-
-        if (contextType === 'admin') {
-            if (role !== Role.ADMIN) throw new Error('Unauthorized context for admin');
-            // No base filter for admin
-        } else if (contextType === 'seller') {
-            // Filter orders containing items from this seller
-            where.items = {
-                some: {
-                    sellerId: role === Role.ADMIN && options.type === 'seller' ? undefined : userId
-                }
-            };
-        } else {
-            // Default to buyer context
-            where.userId = userId;
-        }
-
-        // 2. Status Filtering
-        if (options.status && options.status !== 'all') {
-            const statusInput = options.status.toUpperCase();
-
-            // Map frontend specific/non-enum labels to backend OrderStatus
-            const statusMap: Record<string, OrderStatus> = {
-                'CONFIRMED': OrderStatus.PENDING,
-                'OUT FOR DELIVERY': OrderStatus.SHIPPED,
-                'DELIVERY ATTEMPT': OrderStatus.SHIPPED,
-                'COLLECTION CALLED': OrderStatus.SHIPPED,
-                'FAILED ATTEMPT': OrderStatus.SHIPPED
-            };
-
-            const mappedStatus = statusMap[statusInput] || (Object.values(OrderStatus).includes(statusInput as any) ? statusInput as OrderStatus : null);
-
-            if (mappedStatus) {
-                where.status = mappedStatus;
-            } else if (!Object.values(OrderStatus).includes(statusInput as any)) {
-                // If it's a search for something totally custom, we might return empty or ignore
-                // For now, we ignore invalid enums to prevent 500 error
+        const where: any = {};
+        if (role === Role.CUSTOMER) where.customerId = userId;
+        if (role === Role.SELLER) {
+            const vendor = await prisma.vendor.findUnique({ where: { ownerId: userId } });
+            if (vendor) {
+                where.vendorId = vendor.id;
             } else {
-                where.status = statusInput as any;
+                console.warn(`[OrderService.listOrders] Role is SELLER but no vendor found for user ${userId}`);
+                // If they are a seller but have no vendor record, they shouldn't see any orders
+                where.vendorId = 'non_existent_id';
             }
         }
 
-        // 3. Search Filtering
+        if (options.status) {
+            const statusUpper = options.status.toUpperCase();
+            // Safer check for valid status
+            const validStatuses = Object.keys(OrderStatus);
+            if (validStatuses.includes(statusUpper)) {
+                where.status = statusUpper as OrderStatus;
+            }
+        }
+        if (options.vendorId) where.vendorId = options.vendorId;
+        if (options.customerId) where.customerId = options.customerId;
+
         if (options.search) {
             where.OR = [
                 { orderNumber: { contains: options.search } },
@@ -255,63 +259,74 @@ export class OrderService {
             ];
         }
 
-        // 4. Date Filtering
-        if (options.after) {
-            where.createdAt = { gte: new Date(options.after) };
-        }
-
-        const [orders, total] = await Promise.all([
-            prisma.order.findMany({
-                where,
-                skip,
-                take,
-                orderBy: { createdAt: 'desc' },
-                include: {
-                    items: {
-                        include: {
-                            product: {
-                                select: {
-                                    title: true,
-                                    slug: true,
-                                    variants: {
-                                        take: 1,
-                                        select: { images: true }
+        try {
+            const [orders, total] = await Promise.all([
+                prisma.order.findMany({
+                    where,
+                    skip,
+                    take: limit,
+                    orderBy: { createdAt: 'desc' },
+                    include: {
+                        items: {
+                            include: {
+                                product: {
+                                    include: {
+                                        images: true,
+                                        variants: true
                                     }
                                 }
                             }
-                        }
+                        },
+                        vendor: true
                     }
-                }
-            }),
-            prisma.order.count({ where: where as any })
-        ]);
+                }),
+                prisma.order.count({ where })
+            ]);
 
-        return { orders, total };
+            // Transform product images for each item in each order
+            const transformedOrders = orders.map((order: any) => {
+                if (order.items) {
+                    order.items = order.items.map((item: any) => {
+                        if (item.product) {
+                            item.product = (ProductService as any).transformProduct(item.product);
+                        }
+                        return item;
+                    });
+                }
+                return order;
+            });
+
+            return { orders: transformedOrders, total };
+        } catch (error: any) {
+            console.error('[OrderService.listOrders] Error:', error.message);
+            throw error;
+        }
     }
 
     static async getOrderStats(userId: string, role: string) {
         const stats: any = {
-            buyerCount: 0,
-            sellerCount: 0,
-            adminCount: 0
+            totalOrders: 0,
+            pendingOrders: 0,
+            deliveredOrders: 0,
+            totalRevenue: 0
         };
 
-        // 1. Buyer Stats
-        stats.buyerCount = await prisma.order.count({ where: { userId } });
-
-        // 2. Seller Stats (if applicable)
-        if (role === Role.DEALER || role === Role.ADMIN) {
-            const sellerOrders = await prisma.orderItem.groupBy({
-                by: ['orderId'],
-                where: { sellerId: userId }
-            });
-            stats.sellerCount = sellerOrders.length;
+        const where: any = {};
+        if (role === Role.CUSTOMER) where.customerId = userId;
+        if (role === Role.SELLER) {
+            const vendor = await prisma.vendor.findUnique({ where: { ownerId: userId } });
+            where.vendorId = vendor?.id;
         }
 
-        // 3. Admin Stats (if applicable)
-        if (role === Role.ADMIN) {
-            stats.adminCount = await prisma.order.count();
-        }
+        stats.totalOrders = await prisma.order.count({ where });
+        stats.pendingOrders = await prisma.order.count({ where: { ...where, status: OrderStatus.PENDING } });
+        stats.deliveredOrders = await prisma.order.count({ where: { ...where, status: OrderStatus.DELIVERED } });
+
+        const revenueResult = await prisma.order.aggregate({
+            where: { ...where, paymentStatus: PaymentStatus.PAID },
+            _sum: { totalAmount: true }
+        });
+        stats.totalRevenue = revenueResult._sum.totalAmount || 0;
 
         return stats;
     }
@@ -325,19 +340,25 @@ export class OrderService {
 
             if (!order) throw new Error('Order not found');
 
-            // Access Control: Only ADMIN or the owner can cancel
-            if (role !== Role.ADMIN && order.userId !== userId) {
+            const isSuperAdmin = role === Role.SUPER_ADMIN;
+            const isCustomer = role === Role.CUSTOMER && order.customerId === userId;
+
+            let isVendor = false;
+            if (role === Role.SELLER) {
+                const vendor = await tx.vendor.findUnique({ where: { ownerId: userId } });
+                isVendor = vendor?.id === order.vendorId;
+            }
+
+            if (!isSuperAdmin && !isCustomer && !isVendor) {
                 throw new Error('Unauthorized');
             }
 
-            // Business Logic: Cannot cancel if already shipped/delivered or already cancelled
             if (order.status === OrderStatus.SHIPPED ||
                 order.status === OrderStatus.DELIVERED ||
                 order.status === OrderStatus.CANCELLED) {
                 throw new Error(`Cannot cancel order in ${order.status} status`);
             }
 
-            // 1. Restore Stock
             for (const item of order.items) {
                 await tx.product.update({
                     where: { id: item.productId },
@@ -345,35 +366,31 @@ export class OrderService {
                 });
             }
 
-            // 2. Handle Stripe Refund if paid
             if (order.paymentStatus === PaymentStatus.PAID && order.stripeIntentId) {
                 try {
-                    await stripe.refunds.create({
+                    const refund = await stripe.refunds.create({
                         payment_intent: order.stripeIntentId,
+                        reason: 'requested_by_customer'
                     });
-                } catch (stripeError) {
-                    console.error('Stripe refund failed:', stripeError);
-                    // We might not want to block cancellation if refund fails, 
-                    // or we might want to flag it for manual review.
+                    console.log(`[OrderService] Stripe refund successful for intent ${order.stripeIntentId}: ${refund.id}`);
+                } catch (stripeError: any) {
+                    console.error('[OrderService] Stripe refund failed during cancellation:', stripeError.message);
+                    // We continue the cancellation even if automated refund fails; 
+                    // Manual intervention might be required if Stripe is down or intent is too old.
                 }
             }
 
-            // 3. Update Order Status
             return await tx.order.update({
                 where: { id },
                 data: {
                     status: OrderStatus.CANCELLED,
                     paymentStatus: order.paymentStatus === PaymentStatus.PAID ? PaymentStatus.REFUNDED : order.paymentStatus,
-                    trackingUpdates: [
-                        ...(order.trackingUpdates as any[] || []),
-                        {
+                    statusHistory: {
+                        create: {
                             status: OrderStatus.CANCELLED,
-                            timestamp: new Date().toISOString(),
-                            message: reason ? `Cancelled: ${reason}${comments ? ` (${comments})` : ''}` : 'Order Cancelled',
-                            actorId: userId,
-                            actorRole: role
+                            notes: reason ? `Cancelled: ${reason}${comments ? ` (${comments})` : ''}` : 'Order Cancelled'
                         }
-                    ]
+                    }
                 },
                 include: { items: true }
             });
@@ -382,114 +399,100 @@ export class OrderService {
 
     static async updateOrderStatus(id: string, newStatus: OrderStatus, options: {
         userId: string;
-        role: Role;
+        role: string;
         trackingNumber?: string;
         trackingCarrier?: string;
-        trackingUpdates?: any;
         packingNotes?: string;
         version?: number;
     }) {
-        const { isValidTransition, getRequiredFieldsForTransition } = await import('./stateMachine');
-
         return await prisma.$transaction(async (tx) => {
             const currentOrder = await tx.order.findUnique({
-                where: { id },
-                include: { items: { select: { sellerId: true } } }
+                where: { id }
             });
 
             if (!currentOrder) throw new Error('Order not found');
 
-            // 1. Authorization: ADMIN (All), DEALER (Owned items)
-            if (options.role === Role.DEALER) {
-                const ownsOrder = currentOrder.items.some(item => item.sellerId === options.userId);
-                if (!ownsOrder) throw new Error('Unauthorized: You do not own any products in this order');
-            } else if (options.role !== Role.ADMIN) {
+            // Access Control
+            if (options.role === Role.SELLER) {
+                const vendor = await tx.vendor.findUnique({ where: { ownerId: options.userId } });
+                if (!vendor || currentOrder.vendorId !== vendor.id) {
+                    throw new Error('Forbidden: You can only update orders for your own vendor');
+                }
+            } else if (options.role !== Role.SUPER_ADMIN && options.role !== Role.ADMIN) {
                 throw new Error('Unauthorized');
             }
 
-            // 2. Concurrency Control: Optimistic Locking
             if (options.version !== undefined && currentOrder.version !== options.version) {
-                throw new Error('Concurrency conflict: The order has been updated by another user. Please refresh and try again.');
+                throw new Error(`Concurrency conflict: Order has been updated (Local: ${options.version}, DB: ${currentOrder.version})`);
             }
 
-            // 3. State Machine Validation - ONLY if a new status is provided
-            if (newStatus && !isValidTransition(currentOrder.status, newStatus, options.role)) {
-                throw new Error(`Invalid status transition from ${currentOrder.status} to ${newStatus} for role ${options.role}`);
-            }
-
-            // 4. Missing Field Validation - ONLY if a new status is provided
-            if (newStatus) {
-                const requiredFields = getRequiredFieldsForTransition(currentOrder.status, newStatus);
-                for (const field of requiredFields) {
-                    if (!(options as any)[field]) {
-                        throw new Error(`Required field missing for transition to ${newStatus}: ${field}`);
-                    }
-                }
-            }
-
-            // 5. Build Update Data
             const updateData: any = {
                 status: newStatus,
-                version: { increment: 1 },
-                trackingUpdates: options.trackingUpdates || (currentOrder.trackingUpdates as any || []),
+                version: { increment: 1 }
             };
-
-            if (options.packingNotes !== undefined) updateData.packingNotes = options.packingNotes;
 
             if (options.trackingNumber) updateData.trackingNumber = options.trackingNumber;
             if (options.trackingCarrier) updateData.trackingCarrier = options.trackingCarrier;
+            if (newStatus === OrderStatus.SHIPPED) updateData.shippedAt = new Date();
+            if (newStatus === OrderStatus.DELIVERED) updateData.deliveredAt = new Date();
 
-            // Set timestamps for milestones
-            if (newStatus === OrderStatus.SHIPPED) {
-                updateData.shippedAt = new Date();
-                updateData.shippedBySellerId = options.role === Role.DEALER ? options.userId : null;
-            } else if (newStatus === OrderStatus.DELIVERED) {
-                updateData.deliveredAt = new Date();
-            }
-
-            // Add new tracking marker if not present
-            const marker = {
-                status: newStatus,
-                timestamp: new Date().toISOString(),
-                actorId: options.userId,
-                actorRole: options.role
-            };
-
-            if (Array.isArray(updateData.trackingUpdates)) {
-                updateData.trackingUpdates.push(marker);
-            } else {
-                updateData.trackingUpdates = [marker];
-            }
-
-            // 6. Execute Update
             const updatedOrder = await tx.order.update({
-                where: {
-                    id,
-                    version: options.version // Triple safety
+                where: { id },
+                data: {
+                    ...updateData,
+                    statusHistory: {
+                        create: {
+                            status: newStatus,
+                            notes: options.packingNotes || `Status updated to ${newStatus}`
+                        }
+                    }
                 },
-                data: updateData,
                 include: { items: true }
             });
-
-            // 7. Trigger Notification
-            const { NotificationService } = await import('../notification/service');
-            if (updatedOrder.userId) {
-                let additionalInfo = '';
-                if (newStatus === OrderStatus.SHIPPED && options.trackingNumber) {
-                    additionalInfo = `Tracking Number: ${options.trackingNumber}`;
-                }
-                await NotificationService.notifyOrderUpdate(updatedOrder.userId, updatedOrder.orderNumber, newStatus, additionalInfo).catch(e => console.error("Notification failed:", e));
-            }
 
             return updatedOrder;
         });
     }
 
-    static async deleteOrder(id: string, role: Role) {
-        if (role !== Role.ADMIN) {
-            throw new Error('Unauthorized');
-        }
+    static async markOrderAsShipped(id: string, data: {
+        vendorId: string;
+        trackingNumber: string;
+        trackingCarrier?: string;
+        version?: number;
+    }) {
+        // Find owner of vendor to get correct userId for updateOrderStatus access check
+        const vendor = await prisma.vendor.findUnique({ where: { id: data.vendorId } });
+        if (!vendor) throw new Error('Vendor not found');
 
+        return await this.updateOrderStatus(id, OrderStatus.SHIPPED, {
+            userId: vendor.ownerId,
+            role: Role.SELLER,
+            trackingNumber: data.trackingNumber,
+            trackingCarrier: data.trackingCarrier,
+            version: data.version
+        });
+    }
+
+    static async getOrderHistory(id: string, userId: string, role: string) {
+        const order = await this.getOrderById(id, userId, role);
+        if (!order) throw new Error('Order not found or access denied');
+        return order.statusHistory;
+    }
+
+    static async updateItemStatus(orderId: string, itemId: string, userId: string, role: string, data: any) {
+        // In this architecture, status is primarily per-order since orders are already split by vendor
+        // But we can update individual item status if we had that field. 
+        // For now, let's just update the order status if it's the only item or intended for all.
+        return this.updateOrderStatus(orderId, data.status as OrderStatus, {
+            userId,
+            role,
+            trackingNumber: data.trackingNumber,
+            trackingCarrier: data.trackingCarrier
+        });
+    }
+
+    static async deleteOrder(id: string, role: Role) {
+        if (role !== Role.SUPER_ADMIN) throw new Error('Unauthorized');
         return await prisma.order.update({
             where: { id },
             data: { deletedAt: new Date() }
@@ -497,139 +500,94 @@ export class OrderService {
     }
 
     static async restoreOrder(id: string, role: Role) {
-        if (role !== Role.ADMIN) {
-            throw new Error('Unauthorized');
-        }
-
+        if (role !== Role.SUPER_ADMIN) throw new Error('Unauthorized');
         return await prisma.order.update({
             where: { id },
             data: { deletedAt: null }
         });
     }
 
-    static async refundOrder(id: string, role: Role) {
-        if (role !== Role.ADMIN) {
-            throw new Error('Unauthorized');
-        }
-
-        const order = await prisma.order.findUnique({
-            where: { id }
-        });
-
-        if (!order) throw new Error('Order not found');
-
-        // Stripe Refund if paid
-        if (order.paymentStatus === PaymentStatus.PAID && order.stripeIntentId) {
-            try {
-                await stripe.refunds.create({
-                    payment_intent: order.stripeIntentId,
-                });
-            } catch (stripeError) {
-                console.error('Stripe refund failed:', stripeError);
-            }
-        }
-
-        return await prisma.order.update({
-            where: { id },
-            data: { paymentStatus: PaymentStatus.REFUNDED }
-        });
-    }
-
-    static async markOrderAsShipped(id: string, data: {
-        sellerId: string;
-        trackingNumber: string;
-        trackingCarrier?: string;
-        version?: number;
+    static async refundOrder(id: string, userId: string, role: string, data: {
+        amount?: number;
+        reason?: string;
+        restoreInventory?: boolean;
     }) {
-        return await this.updateOrderStatus(id, OrderStatus.SHIPPED, {
-            userId: data.sellerId,
-            role: Role.DEALER,
-            trackingNumber: data.trackingNumber,
-            trackingCarrier: data.trackingCarrier,
-            version: data.version
-        });
-    }
+        return await prisma.$transaction(async (tx) => {
+            const order = await tx.order.findUnique({
+                where: { id },
+                include: { items: true }
+            });
+            if (!order) throw new Error('Order not found');
 
-    static async verifySellerOwnsOrder(sellerId: string, orderId: string): Promise<boolean> {
-        const count = await prisma.orderItem.count({
-            where: {
-                orderId,
-                sellerId,
+            // 1. Authorization
+            const isSuperAdmin = role === Role.SUPER_ADMIN;
+            let isVendor = false;
+            if (role === Role.SELLER) {
+                const vendor = await tx.vendor.findUnique({ where: { ownerId: userId } });
+                isVendor = vendor?.id === order.vendorId;
             }
-        });
-        return count > 0;
-    }
+            if (!isSuperAdmin && !isVendor) throw new Error('Unauthorized to issue refunds');
 
-    static async getOrderHistory(orderId: string, userId: string, role: string) {
-        const order = await prisma.order.findUnique({
-            where: { id: orderId },
-            include: {
-                statusHistory: {
-                    orderBy: { createdAt: 'desc' },
-                    include: {
-                        user: {
-                            select: {
-                                name: true,
-                                email: true,
-                                avatarUrl: true,
-                                role: true
-                            }
-                        }
-                    }
+            // 2. Validation
+            if (order.paymentStatus !== PaymentStatus.PAID && order.paymentStatus !== PaymentStatus.PARTIALLY_REFUNDED) {
+                throw new Error('Can only refund paid orders');
+            }
+
+            const refundAmount = data.amount || order.totalAmount;
+            const alreadyRefunded = order.refundedAmount || 0;
+            const remainingToRefund = order.totalAmount - alreadyRefunded;
+
+            if (refundAmount > remainingToRefund) {
+                throw new Error(`Refund amount exceeds remaining balance. Max: ₹${remainingToRefund}`);
+            }
+
+            // 3. Process Stripe Refund
+            if (order.stripeIntentId) {
+                try {
+                    await stripe.refunds.create({
+                        payment_intent: order.stripeIntentId,
+                        amount: Math.round(refundAmount * 100), // convert to cents
+                        reason: 'requested_by_customer',
+                        metadata: { orderId: order.id, processedBy: userId }
+                    });
+                } catch (stripeError: any) {
+                    console.error('[OrderService] Stripe refund API call failed:', stripeError.message);
+                    throw new Error(`Stripe Refund Failed: ${stripeError.message}`);
                 }
             }
-        });
 
-        if (!order) throw new Error('Order not found');
+            // 4. Update Database
+            const isFullRefund = Math.abs(refundAmount - remainingToRefund) < 0.01;
+            const newPaymentStatus = isFullRefund ? PaymentStatus.REFUNDED : PaymentStatus.PARTIALLY_REFUNDED;
+            const newOrderStatus = isFullRefund ? OrderStatus.CANCELLED : order.status;
 
-        // Access Control (Same logic as getOrder)
-        if (role !== Role.ADMIN) {
-            if (role === Role.DEALER) {
-                const hasSellerItem = await this.verifySellerOwnsOrder(userId, orderId);
-                if (!hasSellerItem) throw new Error('Forbidden');
-            } else if (order.userId !== userId) {
-                throw new Error('Unauthorized');
+            // 5. Restore Inventory if requested
+            if (data.restoreInventory) {
+                for (const item of order.items) {
+                    await tx.product.update({
+                        where: { id: item.productId },
+                        data: { stock: { increment: item.quantity } }
+                    });
+                }
             }
-        }
 
-        return order.statusHistory;
-    }
-    static async updateItemStatus(orderId: string, itemId: string, userId: string, role: string, data: { status: OrderStatus; trackingNumber?: string; trackingCarrier?: string }) {
-        const item = await prisma.orderItem.findUnique({
-            where: { id: itemId },
-            include: { order: true }
+            return await tx.order.update({
+                where: { id },
+                data: {
+                    paymentStatus: newPaymentStatus,
+                    status: newOrderStatus,
+                    refundedAmount: (order.refundedAmount || 0) + refundAmount,
+                    refundReason: data.reason || 'Admin/Vendor processed refund',
+                    refundedAt: new Date(),
+                    statusHistory: {
+                        create: {
+                            status: newOrderStatus,
+                            notes: `Refund processed: ₹${refundAmount.toFixed(2)}. ${data.reason || ''}`
+                        }
+                    }
+                },
+                include: { items: true }
+            });
         });
-
-        if (!item || item.orderId !== orderId) {
-            throw new Error('Order item not found');
-        }
-
-        // Security check
-        if (role === Role.DEALER && item.sellerId !== userId) {
-            throw new Error('Forbidden: You do not own this order item');
-        }
-
-        const updatedItem = await prisma.orderItem.update({
-            where: { id: itemId },
-            data: {
-                status: data.status,
-                trackingNumber: data.trackingNumber,
-                trackingCarrier: data.trackingCarrier,
-                shippedAt: data.status === OrderStatus.SHIPPED ? new Date() : undefined,
-                deliveredAt: data.status === OrderStatus.DELIVERED ? new Date() : undefined,
-            }
-        });
-
-        // Add to history
-        await prisma.orderStatusHistory.create({
-            data: {
-                orderId: orderId,
-                status: data.status,
-                userId: userId,
-                notes: `Item ${item.title} status updated to ${data.status}`
-            }
-        });
-
-        return updatedItem;
     }
 }

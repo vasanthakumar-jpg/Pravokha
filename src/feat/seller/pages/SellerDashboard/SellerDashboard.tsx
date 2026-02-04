@@ -43,16 +43,16 @@ export default function SellerDashboard() {
     }
   }, [fullProfile]);
 
-  // Authorization Guard
+  // Authorization Guard - Updated for Vendor Architecture
   useEffect(() => {
-    if (!authLoading && role !== 'DEALER' && role !== 'ADMIN') {
+    if (!authLoading && role !== 'SELLER') {
       console.warn("[SellerDashboard] Unauthorized role access attempt:", role);
       navigate("/auth");
     }
   }, [role, authLoading, navigate]);
 
   useEffect(() => {
-    if (!authLoading && (role === 'DEALER' || role === 'ADMIN')) {
+    if (!authLoading && role === 'SELLER') {
       fetchSellerData();
     }
   }, [user, authLoading, role]);
@@ -65,9 +65,9 @@ export default function SellerDashboard() {
       // Simulate a small delay to make the refresh perceptible and show the spinner
       await new Promise(resolve => setTimeout(resolve, 800));
 
-      // 2. Fetch seller's products
+      // 2. Fetch vendor's products (Backend filters by vendorId automatically)
       const productsResponse = await apiClient.get('/products', {
-        params: { sellerId: user.id, includeDeleted: false }
+        params: { includeDeleted: false, scope: 'vendor' }
       });
 
       const productsData = productsResponse.data.data || [];
@@ -82,9 +82,9 @@ export default function SellerDashboard() {
         };
       });
 
-      // 3. Fetch All Seller Orders for Stats
+      // 3. Fetch All Vendor Orders (Backend filters by vendorId automatically)
       const ordersResponse = await apiClient.get('/orders', {
-        params: { sellerId: user.id, limit: 100 }
+        params: { limit: 100 }
       });
 
       const sellerOrders = ordersResponse.data.data || [];
@@ -120,37 +120,37 @@ export default function SellerDashboard() {
       sellerOrders.forEach((order: any) => {
         const orderDate = new Date(order.createdAt || order.created_at);
 
-        let orderMatched = false;
-        let sellerOrderRev = 0;
+        // With new architecture, all returned orders belong to this vendor
+        // Calculate order revenue from vendorEarnings or totalAmount
+        const orderRevenue = order.vendorEarnings || order.totalAmount || 0;
+        totalRevenue += orderRevenue;
 
+        if (order.status?.toLowerCase() === 'pending') pendingOrders++;
+
+        // Track product stats
         if (Array.isArray(order.items)) {
           order.items.forEach((item: any) => {
-            const itemSellerId = item.sellerId || item.seller_id;
-            // Only count items belonging to this seller
-            if (itemSellerId === user.id) {
-              orderMatched = true;
-              const itemRev = (item.price || 0) * (item.quantity || 1);
-              sellerOrderRev += itemRev;
+            const itemRev = (item.priceAtPurchase || item.price || 0) * (item.quantity || 1);
+            const itemProductId = item.productId || item.product_id;
 
-              const itemProductId = item.productId || item.product_id;
-              if (!productStats[itemProductId]) {
-                productStats[itemProductId] = { id: itemProductId, title: item.title || 'Product', sales: 0, revenue: 0 };
-              }
-              productStats[itemProductId].sales += (item.quantity || 1);
-              productStats[itemProductId].revenue += itemRev;
+            if (!productStats[itemProductId]) {
+              productStats[itemProductId] = {
+                id: itemProductId,
+                title: item.product?.title || item.title || 'Product',
+                sales: 0,
+                revenue: 0
+              };
             }
+            productStats[itemProductId].sales += (item.quantity || 1);
+            productStats[itemProductId].revenue += itemRev;
           });
         }
 
-        if (orderMatched) {
-          totalRevenue += sellerOrderRev;
-          if (order.status?.toLowerCase() === 'pending') pendingOrders++;
-
-          const dayName = days[orderDate.getDay()];
-          if (orderDate >= sevenDaysAgo && dailySales[dayName]) {
-            dailySales[dayName].sales += sellerOrderRev;
-            dailySales[dayName].orders += 1;
-          }
+        // Track daily sales
+        const dayName = days[orderDate.getDay()];
+        if (orderDate >= sevenDaysAgo && dailySales[dayName]) {
+          dailySales[dayName].sales += orderRevenue;
+          dailySales[dayName].orders += 1;
         }
       });
 

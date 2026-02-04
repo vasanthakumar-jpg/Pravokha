@@ -24,6 +24,7 @@ interface Subcategory {
     status: string;
     display_order: number;
     categories?: { name: string };
+    category?: { name: string; id: string };
 }
 
 interface Category {
@@ -47,9 +48,11 @@ export default function AdminSubcategories() {
         const query = (searchQuery || "").toLowerCase();
         const categoryName = (sub.categories?.name || sub.category?.name || "");
         return (
-            (sub.name || "").toLowerCase().includes(query) ||
-            (sub.slug || "").toLowerCase().includes(query) ||
-            categoryName.toLowerCase().includes(query)
+            sub.status !== 'inactive' && (
+                (sub.name || "").toLowerCase().includes(query) ||
+                (sub.slug || "").toLowerCase().includes(query) ||
+                categoryName.toLowerCase().includes(query)
+            )
         );
     });
 
@@ -91,18 +94,18 @@ export default function AdminSubcategories() {
     const fetchData = async () => {
         try {
             setLoading(true);
-            // Fetch categories
-            const catResponse = await apiClient.get('/categories');
+            // Fetch categories (admin view to see all)
+            const catResponse = await apiClient.get('/categories/admin/all');
             setCategories(catResponse.data.categories || []);
 
             // Fetch subcategories with category info
             const subResponse = await apiClient.get('/categories/subcategories');
             const data = (subResponse.data.subcategories || []).map((sub: any) => ({
                 ...sub,
-                category_id: sub.categoryId || sub.category_id,
+                category_id: sub.parentId || sub.categoryId || sub.category_id || sub.category?.id || sub.parent?.id,
                 display_order: sub.displayOrder ?? sub.display_order ?? 0,
                 image_url: sub.imageUrl || sub.image_url || null,
-                categories: sub.category // Map for legacy UI support
+                categories: sub.category || sub.parent // Map for legacy UI support
             }));
             setSubcategories(data);
         } catch (error: any) {
@@ -380,7 +383,7 @@ export default function AdminSubcategories() {
                         <CardContent className="flex flex-col gap-3">
                             <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/30 px-2.5 py-1.5 rounded-lg border border-border/40">
                                 <Tag className="h-3.5 w-3.5" />
-                                <span className="font-semibold text-foreground/80">{subcategory.categories?.name || subcategory.category?.name || "No Category"}</span>
+                                <span className="font-semibold text-foreground/80">{subcategory.parent?.name || subcategory.categories?.name || subcategory.category?.name || "No Category"}</span>
                             </div>
                             <p className="text-xs text-muted-foreground line-clamp-2 min-h-[2.5em] leading-relaxed">
                                 {subcategory.description || "No description provided for this subcategory."}

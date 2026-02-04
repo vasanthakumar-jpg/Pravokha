@@ -42,8 +42,8 @@ interface Order {
   customer_name: string;
   customer_email: string;
   total: number;
-  status: 'pending' | 'confirmed' | 'packed' | 'shipped' | 'delivered' | 'cancelled';
-  payment_status: 'pending' | 'paid' | 'failed';
+  status: 'pending' | 'confirmed' | 'processing' | 'packed' | 'shipped' | 'delivered' | 'cancelled' | 'refunded';
+  payment_status: 'unpaid' | 'processing' | 'paid' | 'failed' | 'refunded' | 'partially_refunded';
   created_at: string;
   items_count: number;
 }
@@ -51,16 +51,21 @@ interface Order {
 const statusConfig = {
   pending: { label: 'Pending', color: 'bg-yellow-100 text-yellow-800 border-yellow-300' },
   confirmed: { label: 'Confirmed', color: 'bg-blue-100 text-blue-800 border-blue-300' },
+  processing: { label: 'Processing', color: 'bg-orange-100 text-orange-800 border-orange-300' },
   packed: { label: 'Packed', color: 'bg-purple-100 text-purple-800 border-purple-300' },
   shipped: { label: 'Shipped', color: 'bg-indigo-100 text-indigo-800 border-indigo-300' },
   delivered: { label: 'Delivered', color: 'bg-green-100 text-green-800 border-green-300' },
   cancelled: { label: 'Cancelled', color: 'bg-red-100 text-red-800 border-red-300' },
+  refunded: { label: 'Refunded', color: 'bg-orange-100 text-orange-800 border-orange-300' },
 };
 
 const paymentStatusConfig = {
-  pending: { label: 'Pending', color: 'bg-gray-100 text-gray-800' },
-  paid: { label: 'Paid', color: 'bg-green-100 text-green-800' },
-  failed: { label: 'Failed', color: 'bg-red-100 text-red-800' },
+  unpaid: { label: 'Unpaid', color: 'bg-gray-100 text-gray-800 border-gray-200' },
+  processing: { label: 'Processing', color: 'bg-blue-100 text-blue-800 border-blue-200' },
+  paid: { label: 'Paid', color: 'bg-green-100 text-green-800 border-green-200' },
+  failed: { label: 'Failed', color: 'bg-red-100 text-red-800 border-red-200' },
+  refunded: { label: 'Refunded', color: 'bg-orange-100 text-orange-800 border-orange-200' },
+  partially_refunded: { label: 'Partial Refund', color: 'bg-orange-50 text-orange-700 border-orange-200' },
 };
 
 export default function SellerOrdersPage() {

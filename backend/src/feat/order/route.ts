@@ -1,42 +1,41 @@
 import { OrderController } from './controller';
-import { authenticate, authorize } from '../../shared/middleware/auth';
+import { authenticate, authorize, checkAccountStatus } from '../../shared/middleware/auth';
 import { requireDealerOrderAccess, requireOrderOwnership } from '../../shared/middleware/ownership';
 import { Role } from '@prisma/client';
 import { Router } from 'express';
 
 const router = Router();
 
-// Create Order (Protected)
-router.post('/', authenticate, OrderController.createOrder);
+// Protected routes (Logged in users)
+router.use(authenticate);
+router.use(checkAccountStatus);
 
-// Get order stats (Protected)
-router.get('/stats', authenticate, OrderController.getStats);
+// List orders (Filtered by role in controller)
+router.get('/', OrderController.listOrders);
 
-// Get specific order (Protected)
-router.get('/:id', authenticate, OrderController.getOrder);
+// Create order
+router.post('/', OrderController.createOrder);
 
-// Get order history (Protected)
-router.get('/:id/history', authenticate, OrderController.getHistory);
+// Get order stats
+router.get('/stats', OrderController.getStats);
 
-// List user orders (Protected)
-router.get('/', authenticate, OrderController.listOrders);
+// Get specific order
+router.get('/:id', OrderController.getOrder);
 
-// Cancel order (Protected)
-router.post('/:id/cancel', authenticate, OrderController.cancelOrder);
+// Get order history
+router.get('/:id/history', OrderController.getHistory);
 
-// Dealer Specific Order Routes (Multi-vendor isolation)
-router.get('/dealer/my-sales', authenticate, authorize([Role.DEALER]), OrderController.listOrders);
-router.get('/dealer/:id', authenticate, authorize([Role.DEALER]), requireDealerOrderAccess, OrderController.getOrder);
+// Cancel order
+router.post('/:id/cancel', OrderController.cancelOrder);
 
-
-// Admin & Dealer Status Management
-router.patch('/:id/status', authenticate, authorize([Role.ADMIN, Role.DEALER]), requireOrderOwnership, OrderController.updateStatus);
-router.patch('/:id/items/:itemId/status', authenticate, authorize([Role.ADMIN, Role.DEALER]), OrderController.updateItemStatus);
-router.post('/:id/ship', authenticate, authorize([Role.DEALER]), requireOrderOwnership, OrderController.ship);
+// Admin & Vendor Status Management
+router.patch('/:id/status', authorize([Role.SUPER_ADMIN, Role.ADMIN, Role.SELLER]), OrderController.updateStatus);
+router.patch('/:id/items/:itemId/status', authorize([Role.SUPER_ADMIN, Role.ADMIN, Role.SELLER]), OrderController.updateItemStatus);
+router.post('/:id/ship', authorize([Role.SUPER_ADMIN, Role.ADMIN, Role.SELLER]), OrderController.ship);
 
 // Admin Specific Routes
-router.patch('/:id/refund', authenticate, authorize([Role.ADMIN]), OrderController.refundOrder);
-router.delete('/:id', authenticate, authorize([Role.ADMIN]), OrderController.deleteOrder);
-router.post('/:id/restore', authenticate, authorize([Role.ADMIN]), OrderController.restoreOrder);
+router.patch('/:id/refund', authorize([Role.SUPER_ADMIN]), OrderController.refundOrder);
+router.delete('/:id', authorize([Role.SUPER_ADMIN]), OrderController.deleteOrder);
+router.post('/:id/restore', authorize([Role.SUPER_ADMIN]), OrderController.restoreOrder);
 
 export default router;

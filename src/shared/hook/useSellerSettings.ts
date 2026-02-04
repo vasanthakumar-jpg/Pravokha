@@ -36,7 +36,7 @@ export const useSellerSettings = () => {
         queryFn: async () => {
             if (!user) throw new Error("Not authenticated");
 
-            const response = await apiClient.get('/users/settings/dealer');
+            const response = await apiClient.get('/users/settings/vendor');
             const data = response.data.settings;
 
             return {
@@ -97,7 +97,7 @@ export const useSellerSettings = () => {
         mutationFn: async (newSettings: SellerProfile) => {
             if (!user) throw new Error("No user");
 
-            await apiClient.patch('/users/settings/dealer', newSettings);
+            await apiClient.patch('/users/settings/vendor', newSettings);
             return newSettings;
         },
         onSuccess: async () => {

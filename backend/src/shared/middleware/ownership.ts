@@ -9,12 +9,14 @@ import { prisma } from '../../infra/database/client';
  * by validating that a user can only access/modify resources they own.
  * 
  * ADMIN role bypasses all ownership checks (Super Admin privilege).
+ * 
+ * Update 2024: Roles have been renamed to SUPER_ADMIN (admin) and ADMIN (vendor).
  */
 
 export interface OwnershipCheckOptions {
     resourceType: 'product' | 'order' | 'orderItem';
     resourceIdParam: string;  // Name of the route param containing resource ID
-    ownerField: string;       // Field name in the resource that contains owner ID (e.g., 'dealerId')
+    ownerField: string;       // Field name in the resource that contains owner ID (e.g., 'vendorId')
 }
 
 /**
@@ -37,8 +39,8 @@ export const requireOwnership = (options: OwnershipCheckOptions) => {
                 });
             }
 
-            // ADMIN bypasses all ownership checks
-            if (req.user.role === Role.ADMIN) {
+            // SUPER_ADMIN bypasses all ownership checks
+            if (req.user.role === Role.SUPER_ADMIN) {
                 return next();
             }
 
@@ -57,21 +59,21 @@ export const requireOwnership = (options: OwnershipCheckOptions) => {
                 case 'product':
                     resource = await prisma.product.findUnique({
                         where: { id: resourceId },
-                        select: { id: true, dealerId: true }
+                        select: { id: true, vendorId: true }
                     });
                     break;
 
                 case 'order':
                     resource = await prisma.order.findUnique({
                         where: { id: resourceId },
-                        select: { id: true, userId: true, items: { select: { sellerId: true } } }
+                        select: { id: true, customerId: true, vendorId: true }
                     });
                     break;
 
                 case 'orderItem':
                     resource = await prisma.orderItem.findUnique({
                         where: { id: resourceId },
-                        select: { id: true, sellerId: true }
+                        include: { order: { select: { vendorId: true } } }
                     });
                     break;
 
@@ -92,15 +94,25 @@ export const requireOwnership = (options: OwnershipCheckOptions) => {
             // Check ownership
             const ownerId = resource[options.ownerField];
 
-            // Special case for orders: DEALER can access if ANY item belongs to them
-            if (options.resourceType === 'order' && req.user.role === Role.DEALER) {
-                const hasSellerItem = resource.items?.some((item: any) => item.sellerId === req.user!.id);
-                if (hasSellerItem) {
-                    return next();
+            // If it's a vendor (SELLER)
+            if (req.user.role === Role.SELLER) {
+                const vendor = await prisma.vendor.findUnique({ where: { ownerId: req.user.id } });
+
+                if (options.resourceType === 'product') {
+                    if (resource.vendorId === vendor?.id) return next();
+                } else if (options.resourceType === 'order') {
+                    if (resource.vendorId === vendor?.id) return next();
+                } else if (options.resourceType === 'orderItem') {
+                    if (resource.order?.vendorId === vendor?.id) return next();
                 }
+
+                return res.status(403).json({
+                    success: false,
+                    message: 'Forbidden: You do not have permission to access this resource'
+                });
             }
 
-            // Standard ownership check
+            // Standard ownership check for CUSTOMER (formerly USER)
             if (ownerId !== req.user.id) {
                 return res.status(403).json({
                     success: false,
@@ -126,7 +138,7 @@ export const requireOwnership = (options: OwnershipCheckOptions) => {
 export const requireProductOwnership = requireOwnership({
     resourceType: 'product',
     resourceIdParam: 'id',
-    ownerField: 'dealerId'
+    ownerField: 'vendorId'
 });
 
 /**
@@ -138,8 +150,8 @@ export const requireDealerOrderAccess = async (req: Request, res: Response, next
             return res.status(401).json({ success: false, message: 'Authentication required' });
         }
 
-        // ADMIN can access all orders
-        if (req.user.role === Role.ADMIN) {
+        // SUPER_ADMIN can access all orders
+        if (req.user.role === Role.SUPER_ADMIN) {
             return next();
         }
 
@@ -150,7 +162,7 @@ export const requireDealerOrderAccess = async (req: Request, res: Response, next
 
         const order = await prisma.order.findUnique({
             where: { id: orderId },
-            include: { items: { select: { sellerId: true } } }
+            select: { id: true, customerId: true, vendorId: true }
         });
 
         if (!order) {
@@ -158,8 +170,8 @@ export const requireDealerOrderAccess = async (req: Request, res: Response, next
         }
 
         // CUSTOMER can only view their own orders
-        if (req.user.role === Role.USER) {
-            if (order.userId !== req.user.id) {
+        if (req.user.role === Role.CUSTOMER) {
+            if (order.customerId !== req.user.id) {
                 return res.status(403).json({
                     success: false,
                     message: 'Forbidden: You can only view your own orders'
@@ -168,13 +180,13 @@ export const requireDealerOrderAccess = async (req: Request, res: Response, next
             return next();
         }
 
-        // DEALER can view orders containing at least one of their products
-        if (req.user.role === Role.DEALER) {
-            const hasSellerItem = order.items.some(item => item.sellerId === req.user!.id);
-            if (!hasSellerItem) {
+        // SELLER (Vendor) can view orders belonging to their store
+        if (req.user.role === Role.SELLER) {
+            const vendor = await prisma.vendor.findUnique({ where: { ownerId: req.user.id } });
+            if (order.vendorId !== vendor?.id) {
                 return res.status(403).json({
                     success: false,
-                    message: 'Forbidden: This order does not contain your products'
+                    message: 'Forbidden: This order does not belong to your store'
                 });
             }
             return next();
@@ -193,7 +205,7 @@ export const requireDealerOrderAccess = async (req: Request, res: Response, next
 };
 
 /**
- * Validates that the authenticated seller owns at least one item in the order.
+ * Validates that the authenticated seller (ADMIN) owns the order.
  */
 export const requireOrderOwnership = async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -201,8 +213,8 @@ export const requireOrderOwnership = async (req: Request, res: Response, next: N
             return res.status(401).json({ success: false, message: 'Authentication required' });
         }
 
-        // ADMIN bypasses all ownership checks
-        if (req.user.role === Role.ADMIN) {
+        // SUPER_ADMIN bypasses all ownership checks
+        if (req.user.role === Role.SUPER_ADMIN) {
             return next();
         }
 
@@ -211,19 +223,28 @@ export const requireOrderOwnership = async (req: Request, res: Response, next: N
             return res.status(400).json({ success: false, message: 'Order ID required for ownership check' });
         }
 
-        // Import OrderService dynamically or at top. Using dynamic for clean separation if needed, but OrderService is already a static class.
-        // We need to import it at the top of the file ideally.
-        const { OrderService } = await import('../../feat/order/service');
-        const ownsOrder = await OrderService.verifySellerOwnsOrder(req.user.id, orderId);
+        const order = await prisma.order.findUnique({
+            where: { id: orderId },
+            select: { id: true, vendorId: true }
+        });
 
-        if (!ownsOrder) {
-            return res.status(403).json({
-                success: false,
-                message: 'Forbidden: You do not have permission to modify this order as you do not own any items in it.'
-            });
+        if (!order) {
+            return res.status(404).json({ success: false, message: 'Order not found' });
         }
 
-        next();
+        // Check if the user is a vendor (SELLER) and owns this order
+        if (req.user.role === Role.SELLER) {
+            const vendor = await prisma.vendor.findUnique({ where: { ownerId: req.user.id } });
+            if (order.vendorId === vendor?.id) {
+                return next();
+            }
+        }
+
+        return res.status(403).json({
+            success: false,
+            message: 'Forbidden: You do not have permission to access this order'
+        });
+
     } catch (error) {
         console.error('Order ownership error:', error);
         return res.status(500).json({ success: false, message: 'Internal server error during authorization' });

@@ -65,7 +65,7 @@ export function ProductListTable({ products, onTogglePublish, onDelete, basePath
                                 </TableCell>
                                 <TableCell className="hidden md:table-cell">
                                     <Badge variant="outline" className="capitalize">
-                                        {product.category?.replace(/-/g, " ")}
+                                        {typeof product.category === 'string' ? product.category?.replace(/-/g, " ") : product.category?.name || product.category?.slug?.replace(/-/g, " ") || 'N/A'}
                                     </Badge>
                                 </TableCell>
                                 <TableCell>₹{product.price.toLocaleString()}</TableCell>

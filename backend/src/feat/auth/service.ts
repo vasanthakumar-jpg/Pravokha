@@ -68,7 +68,7 @@ export class AuthService {
                 // Link account if email matches
                 user = await prisma.user.update({
                     where: { id: user.id },
-                    data: { googleId, authProvider: 'google' }
+                    data: { googleId }
                 });
             } else {
                 // 3. Create new user
@@ -77,11 +77,9 @@ export class AuthService {
                         email,
                         name: name || email.split('@')[0],
                         googleId,
-                        authProvider: 'google',
                         avatarUrl: picture,
-                        role: 'USER',
+                        role: 'CUSTOMER',
                         status: 'active',
-                        verificationStatus: 'verified' // Google confirmed email
                     }
                 });
             }

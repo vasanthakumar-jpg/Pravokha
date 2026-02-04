@@ -10,6 +10,22 @@ export class NotificationService {
         link?: string;
         metadata?: any;
     }) {
+        // Check User Preferences
+        const prefs = await prisma.userPreference.findUnique({
+            where: { userId: data.userId }
+        });
+
+        if (prefs) {
+            if (data.type === 'order' && !prefs.orderUpdates) {
+                console.log(`[NotificationService] Skipping notification for user ${data.userId}: orderUpdates disabled`);
+                return null;
+            }
+            if (data.type === 'info' && !prefs.marketingEmails) { // Assuming info/marketing related
+                console.log(`[NotificationService] Skipping notification for user ${data.userId}: marketingEmails disabled`);
+                return null;
+            }
+        }
+
         return await prisma.notification.create({
             data: {
                 userId: data.userId,
@@ -17,28 +33,29 @@ export class NotificationService {
                 message: data.message,
                 type: data.type,
                 link: data.link,
-                metadata: data.metadata,
-                isRead: false
-            } as any
+                metadata: data.metadata ? JSON.stringify(data.metadata) : null,
+            }
         });
     }
 
     // Helper to get role-based message link
     private static getMessageLink(role: Role): string {
         switch (role) {
-            case 'ADMIN': return '/admin/messages';
-            case 'DEALER': return '/seller/messages';
-            case 'USER': return '/user/messages';
+            case Role.SUPER_ADMIN:
+            case Role.ADMIN: return '/admin/messages';
+            case Role.SELLER: return '/seller/messages';
+            case Role.CUSTOMER: return '/user/messages';
             default: return '/user/messages';
         }
     }
 
     // Helper to get role-based order link
     private static getOrderLink(role: Role, orderId?: string): string {
-        const base = role === Role.ADMIN ? '/admin/orders' : role === Role.DEALER ? '/seller/orders' : '/user/orders';
+        const isPlatformAdmin = role === Role.SUPER_ADMIN || role === Role.ADMIN;
+        const base = isPlatformAdmin ? '/admin/orders' : role === Role.SELLER ? '/seller/orders' : '/user/orders';
+
         if (orderId) {
-            // ALWAYS navigate to detail/timeline page for Users
-            if (role === Role.USER) return `/user/orders/detail/${orderId}`;
+            if (role === Role.CUSTOMER) return `/user/orders/detail/${orderId}`;
             return `${base}/${orderId}`;
         }
         return base;
@@ -52,7 +69,7 @@ export class NotificationService {
             title: 'Order Placed Successfully! 🎉',
             message: `Your order #${orderNumber} has been successfully placed! Total: ₹${total.toLocaleString()}. Expected delivery: ${expectedDelivery}.`,
             type: 'order',
-            link: this.getOrderLink(user?.role || 'USER', orderId),
+            link: this.getOrderLink(user?.role || Role.CUSTOMER, orderId),
             metadata: { orderId, orderNumber, total }
         });
     }
@@ -65,7 +82,7 @@ export class NotificationService {
             title: 'Order Cancelled',
             message: `Order #${orderNumber} has been cancelled successfully. Refund of ₹${refundAmount.toLocaleString()} will be processed within 5-7 business days.`,
             type: 'order_cancelled',
-            link: this.getOrderLink(user?.role || 'USER', orderId),
+            link: this.getOrderLink(user?.role || Role.CUSTOMER, orderId),
             metadata: { orderId, orderNumber, refundAmount }
         });
     }
@@ -78,7 +95,7 @@ export class NotificationService {
             title: 'Refund Processed ✅',
             message: `Refund of ₹${refundAmount.toLocaleString()} for order #${orderNumber} has been processed to your account. Transaction ID: ${transactionId}.`,
             type: 'order',
-            link: this.getOrderLink(user?.role || 'USER', orderId),
+            link: this.getOrderLink(user?.role || Role.CUSTOMER, orderId),
             metadata: { orderId, orderNumber, refundAmount, transactionId }
         });
     }
@@ -98,7 +115,7 @@ export class NotificationService {
             title,
             message,
             type: 'order',
-            link: this.getOrderLink(user?.role || 'USER', orderId),
+            link: this.getOrderLink(user?.role || Role.CUSTOMER, orderId),
             metadata: { orderId, orderNumber, status }
         });
     }
@@ -111,7 +128,7 @@ export class NotificationService {
             title: 'New Order Received! 📦',
             message: `New order #${orderNumber} for "${productName}". Total: ₹${total.toLocaleString()}. Prepare for shipment.`,
             type: 'order',
-            link: this.getOrderLink(seller?.role || 'DEALER', orderId),
+            link: this.getOrderLink(seller?.role || Role.SELLER, orderId),
             metadata: { orderId, orderNumber, productName }
         });
     }
@@ -128,26 +145,14 @@ export class NotificationService {
         });
     }
 
-    // CONTACT FORM - Notify Admin
-    static async notifyAdminContactForm(adminId: string, data: { name: string, email: string, phone: string, subject: string, message: string }) {
-        return this.createNotification({
-            userId: adminId,
-            title: 'New Contact Form Submission',
-            message: `Subject: ${data.subject} | From: ${data.name} (${data.email})`,
-            type: 'alert',
-            link: '/admin/messages',
-            metadata: data
-        });
-    }
-
     // NEWSLETTER - Notify Admin
     static async notifyAdminNewsletterSubscription(adminId: string, email: string) {
         return this.createNotification({
             userId: adminId,
-            title: 'New Newsletter Subscriber',
-            message: `A new user has subscribed to the newsletter: ${email}`,
+            title: 'New Newsletter Subscription',
+            message: `${email} has subscribed to the newsletter.`,
             type: 'info',
-            link: '/admin/customers',
+            link: '/admin/newsletter',
             metadata: { email }
         });
     }

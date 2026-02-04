@@ -51,6 +51,38 @@ export function CheckoutPage() {
 
     const [isProcessing, setIsProcessing] = useState(false);
     const [processingStep, setProcessingStep] = useState<'contacting' | 'verifying' | 'confirming' | 'success'>('contacting');
+    const [settings, setSettings] = useState({ taxRate: 18, shippingFee: 50 });
+    const [orderCount, setOrderCount] = useState(0);
+
+    useEffect(() => {
+        fetchSettings();
+        fetchOrderCount();
+    }, []);
+
+    const fetchOrderCount = async () => {
+        try {
+            const response = await apiClient.get('/orders', { params: { limit: 1 } });
+            if (response.data.success) {
+                setOrderCount(response.data.meta.total);
+            }
+        } catch (error) {
+            console.error("Failed to fetch order count:", error);
+        }
+    };
+
+    const fetchSettings = async () => {
+        try {
+            const response = await apiClient.get('/payments/settings');
+            if (response.data.success) {
+                setSettings({
+                    taxRate: response.data.settings.taxRate,
+                    shippingFee: response.data.settings.shippingFee
+                });
+            }
+        } catch (error) {
+            console.error("Failed to fetch settings:", error);
+        }
+    };
 
     useEffect(() => {
         checkUser();
@@ -82,8 +114,9 @@ export function CheckoutPage() {
     // actualSubtotal matches what the backend will calculate
     const actualSubtotal = rawSubtotal - comboSavings;
 
-    const shipping = 99;
-    const tax = Math.round(actualSubtotal * 0.18);
+    const isEligibleForFreeShipping = user && orderCount < 3;
+    const shipping = isEligibleForFreeShipping ? 0 : 50;
+    const tax = Math.round((actualSubtotal + shipping) * (settings.taxRate / 100));
     const total = actualSubtotal + shipping + tax;
     const discountedTotal = total; // For clarity in handlePaymentComplete if needed
 
@@ -128,48 +161,44 @@ export function CheckoutPage() {
             return;
         }
 
-        if (paymentMethod === 'netbanking' && !paymentDetails.bankName) {
-            toast({ title: "Select Bank", description: "Please search and select your bank to proceed.", variant: "destructive" });
-            return;
+        setLoading(true);
+
+        try {
+            const sanitizedItems = items.map(item => ({
+                productId: item.productId,
+                quantity: item.quantity,
+                variantId: item.variantId,
+                color: item.colorName,
+                size: item.size,
+            }));
+
+            // Call Stripe payment intent creation endpoint
+            const response = await apiClient.post('/payments/create-intent', {
+                items: sanitizedItems,
+                shippingAddress: {
+                    name: formData.name,
+                    email: formData.email,
+                    phone: formData.phone,
+                    address: formData.address,
+                    city: formData.city,
+                    pincode: formData.pincode,
+                },
+            });
+
+            const { clientSecret, orderId, orderNumber, amount, orders } = response.data;
+
+            // Navigate to payment confirmation page
+            navigate(`/payment/confirm?client_secret=${clientSecret}&order_id=${orderId}&order_number=${orderNumber}&amount=${amount}`);
+        } catch (error: any) {
+            console.error('Payment intent creation failed:', error);
+            toast({
+                title: "Error",
+                description: error.response?.data?.message || "Failed to initialize payment. Please try again.",
+                variant: "destructive",
+            });
+        } finally {
+            setLoading(false);
         }
-        if (paymentMethod === 'upi' && !paymentDetails.upiId) {
-            toast({ title: "UPI ID Missing", description: "Please enter your valid UPI ID (e.g. name@oksbi).", variant: "destructive" });
-            return;
-        }
-
-        const randomSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
-        const newOrderNumber = `ORD-${Date.now().toString().slice(-6)}-${randomSuffix}`;
-        setOrderNumber(newOrderNumber);
-
-        let transactionInfo = {
-            method: paymentMethod,
-            transactionId: `TXN-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
-            status: 'paid',
-            details: ''
-        };
-
-        if (paymentMethod === 'cod') {
-            transactionInfo.transactionId = `COD-${newOrderNumber}`;
-            transactionInfo.status = 'pending';
-            transactionInfo.details = 'Cash on Delivery';
-        } else if (paymentMethod === 'netbanking') {
-            transactionInfo.details = `Bank: ${paymentDetails.bankName}`;
-        } else if (paymentMethod === 'upi') {
-            transactionInfo.details = `UPI: ${paymentDetails.upiId}`;
-        }
-
-        if (paymentMethod !== 'cod') {
-            setIsProcessing(true);
-            setProcessingStep('contacting');
-            await new Promise(resolve => setTimeout(resolve, 2000));
-            setProcessingStep('verifying');
-            await new Promise(resolve => setTimeout(resolve, 2000));
-            setProcessingStep('confirming');
-            await new Promise(resolve => setTimeout(resolve, 1500));
-            setProcessingStep('success');
-        }
-
-        await handlePaymentComplete(transactionInfo, newOrderNumber);
     };
 
     const handlePaymentComplete = async (paymentDetails: any, orderId: string) => {
@@ -410,9 +439,14 @@ export function CheckoutPage() {
                                     </div>
                                 )}
                                 <div className="flex justify-between text-sm">
-                                    <span>Tax (18%)</span>
+                                    <span>Tax ({settings.taxRate}%)</span>
                                     <span>₹{tax}</span>
                                 </div>
+                                {isEligibleForFreeShipping && (
+                                    <p className="text-[10px] text-green-600 font-bold text-center">
+                                        🎉 Free shipping on your first 3 orders!
+                                    </p>
+                                )}
                                 <Separator />
                                 <div className="flex justify-between font-bold text-lg">
                                     <span>Total</span>

@@ -358,27 +358,179 @@ View Details: ${vars.supportUrl || 'Log in to your account'}
 ---
 Have questions? Contact our support team
   `
-});
-
 // ============================================================================
-// HELPER FUNCTION TO SEND EMAIL
+// 5. PRODUCT STATUS UPDATE
 // ============================================================================
 
-export async function sendEmail(to: string, template: EmailTemplate) {
-  // This would integrate with your email service
-  // Examples:
+export const productStatusUpdate = (vars: EmailVariables & { status: string; productName: string }): EmailTemplate => ({
+    subject: `${vars.status === 'published' ? '🎉' : '⚠️'} Product ${vars.status === 'published' ? 'Live' : 'Update'}: ${vars.productName}`,
 
-  // Option 1: Backend API Call
-  // await apiClient.post('/email/send', ...);
+    html: `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: ${vars.status === 'published' ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' : 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)'}; color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+        .content { background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; }
+        .status-box { background: ${vars.status === 'published' ? '#d1fae5' : '#fee2e2'}; border-left: 4px solid ${vars.status === 'published' ? '#10b981' : '#ef4444'}; padding: 15px; margin: 20px 0; }
+        .button { display: inline-block; background: ${vars.status === 'published' ? '#10b981' : '#333'}; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; margin: 10px 0; }
+        .footer { text-align: center; color: #999; font-size: 12px; margin-top: 30px; padding: 20px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>Product ${vars.status === 'published' ? 'Approved' : vars.status === 'rejected' ? 'Action Required' : 'Status Update'}</h1>
+        </div>
+        
+        <div class="content">
+          <p>Hello ${vars.userName},</p>
+          
+          <div class="status-box">
+            <strong>Product: ${vars.productName}</strong><br>
+            Status: <strong>${vars.status.toUpperCase()}</strong>
+          </div>
+          
+          ${vars.status === 'published' ? `
+            <p>Congratulations! Your product has been verified and is now live on the marketplace.</p>
+          ` : vars.status === 'rejected' ? `
+            <p>Unfortunately, your product submission has been rejected.</p>
+            ${vars.reason ? `<p><strong>Reason:</strong> ${vars.reason}</p>` : ''}
+            <p>Please make the necessary changes and submit for review again.</p>
+          ` : `
+            <p>Your product status has been updated to: <strong>${vars.status}</strong></p>
+             ${vars.reason ? `<p><strong>Reason:</strong> ${vars.reason}</p>` : ''}
+          `}
+          
+          <a href="${vars.dashboardUrl || '#'}" class="button">
+            Go to Products
+          </a>
+        </div>
+        
+        <div class="footer">
+          <p>This is an automated message</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `,
 
-  // Option 2: Resend
-  // await resend.emails.send({ from: 'noreply@yourapp.com', to, ...template });
+    text: `
+Product Update: ${vars.productName}
 
-  // Option 3: SendGrid
-  // await sgMail.send({ from: 'noreply@yourapp.com', to, ...template });
+Hello ${vars.userName},
 
-  console.log('Email would be sent to:', to);
-  console.log('Subject:', template.subject);
+Your product "${vars.productName}" status is now: ${vars.status.toUpperCase()}
 
-  return { success: true };
+${vars.status === 'published' ? 'Congratulations! Your product is now live.' : ''}
+${vars.status === 'rejected' && vars.reason ? `Reason: ${vars.reason}` : ''}
+
+Manage Products: ${vars.dashboardUrl || 'Login to your dashboard'}
+
+---
+Automated Message
+  `
+  });
+
+  // ============================================================================
+  // 6. PAYOUT STATUS UPDATE
+  // ============================================================================
+
+  export const payoutStatusUpdate = (vars: EmailVariables & { status: string; amount: string; date: string }): EmailTemplate => ({
+    subject: `${vars.status === 'processed' ? '💰' : 'ℹ️'} Payout ${vars.status === 'processed' ? 'Sent' : 'Update'}: ${vars.amount}`,
+
+    html: `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: ${vars.status === 'processed' ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' : 'linear-gradient(135deg, #6b7280 0%, #4b5563 100%)'}; color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+        .content { background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; }
+        .amount-box { text-align: center; padding: 20px; background: #f9fafb; border-radius: 8px; margin: 20px 0; }
+        .amount { font-size: 32px; font-weight: bold; color: #10b981; }
+        .button { display: inline-block; background: #333; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; margin: 10px 0; }
+        .footer { text-align: center; color: #999; font-size: 12px; margin-top: 30px; padding: 20px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>${vars.status === 'processed' ? 'Payout Processed' : 'Payout Update'}</h1>
+        </div>
+        
+        <div class="content">
+          <p>Hello ${vars.userName},</p>
+          
+          <div class="amount-box">
+             <div class="amount">${vars.amount}</div>
+             <div>Status: ${vars.status.toUpperCase()}</div>
+             <div style="font-size: 14px; color: #666; margin-top: 5px;">${vars.date}</div>
+          </div>
+          
+          ${vars.status === 'processed' ? `
+            <p>We've processed your payout. It should reflect in your bank account within 2-3 business days.</p>
+          ` : `
+            <p>There is an update regarding your payout request.</p>
+             ${vars.reason ? `<p><strong>Note:</strong> ${vars.reason}</p>` : ''}
+          `}
+          
+          <a href="${vars.dashboardUrl || '#'}" class="button">
+            View Payouts
+          </a>
+        </div>
+        
+        <div class="footer">
+          <p>Financial Services Team</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `,
+
+    text: `
+Payout Update: ${vars.amount}
+
+Hello ${vars.userName},
+
+Status: ${vars.status.toUpperCase()}
+Amount: ${vars.amount}
+Date: ${vars.date}
+
+${vars.status === 'processed' ? 'Funds should reflect in 2-3 business days.' : ''}
+${vars.reason ? `Note: ${vars.reason}` : ''}
+
+View Payouts: ${vars.dashboardUrl || 'Login to your dashboard'}
+
+---
+Financial Services Team
+  `
+  });
+
+  // ============================================================================
+  // HELPER FUNCTION TO SEND EMAIL
+  // ============================================================================
+
+  export async function sendEmail(to: string, template: EmailTemplate) {
+    // This would integrate with your email service
+    // Examples:
+
+    // Option 1: Backend API Call
+    // await apiClient.post('/email/send', ...);
+
+    // Option 2: Resend
+    // await resend.emails.send({ from: 'noreply@yourapp.com', to, ...template });
+
+    // Option 3: SendGrid
+    // await sgMail.send({ from: 'noreply@yourapp.com', to, ...template });
+
+    console.log('Email would be sent to:', to);
+console.log('Subject:', template.subject);
+
+return { success: true };
 }

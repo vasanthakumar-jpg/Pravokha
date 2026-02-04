@@ -20,11 +20,11 @@ export class EmailService {
             html: `
                 <h1>Thank you for your order!</h1>
                 <p>Order Number: ${orderData.orderNumber}</p>
-                <p>Total Amount: ₹${orderData.total}</p>
+                <p>Total Amount: ₹${orderData.totalAmount}</p>
                 <p>Status: ${orderData.status}</p>
                 <h3>Items:</h3>
                 <ul>
-                    ${orderData.items.map((item: any) => `<li>${item.title} x ${item.quantity} - ₹${item.price}</li>`).join('')}
+                    ${orderData.items.map((item: any) => `<li>${item.product?.title || item.title} x ${item.quantity} - ₹${item.priceAtPurchase || item.price}</li>`).join('')}
                 </ul>
             `,
         };
@@ -40,7 +40,7 @@ export class EmailService {
             html: `
                 <h1>Order Cancelled</h1>
                 <p>Your order ${orderData.orderNumber} has been successfully cancelled and a refund has been initiated (if applicable).</p>
-                <p>Total Refunded: ₹${orderData.total}</p>
+                <p>Total Refunded: ₹${orderData.totalAmount}</p>
             `,
         };
 

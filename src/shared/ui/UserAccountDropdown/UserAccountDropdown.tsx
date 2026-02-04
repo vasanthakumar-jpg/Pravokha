@@ -59,10 +59,10 @@ export function UserAccountDropdown() {
     const getRoleBadgeClass = (userRole: string) => {
         const normalizedRole = userRole?.toLowerCase();
         switch (normalizedRole) {
+            case "super_admin":
             case "admin":
                 return styles.roleBadgeAdmin;
-            case "seller":
-            case "dealer":
+            case "vendor":
                 return styles.roleBadgeSeller;
             default:
                 return styles.roleBadgeUser;
@@ -95,10 +95,9 @@ export function UserAccountDropdown() {
     const getMenuItems = () => {
         const normalizedRole = role?.toLowerCase();
         switch (normalizedRole) {
-            case "admin":
+            case "super_admin":
                 return getAdminMenuItems();
-            case "seller":
-            case "dealer":
+            case "admin":
                 return getSellerMenuItems();
             default:
                 return getUserMenuItems();

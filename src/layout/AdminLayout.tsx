@@ -69,6 +69,7 @@ interface NavLink {
   title: string;
   href: string;
   icon: React.ReactNode;
+  allowedRoles?: string[]; // Optional: if defined, restricts access
 }
 
 interface NavSection {
@@ -80,8 +81,9 @@ const navSections: NavSection[] = [
   {
     title: "Intelligence",
     links: [
-      { title: "Dashboard", href: "/admin", icon: <LayoutDashboard className="h-4 w-4" /> },
-      { title: "Analytics", href: "/admin/analytics", icon: <BarChart className="h-4 w-4" /> },
+      { title: "Owner Dashboard", href: "/admin/super-dashboard", icon: <LayoutDashboard className="h-4 w-4" />, allowedRoles: ['SUPER_ADMIN'] },
+      { title: "Staff Workspace", href: "/admin/staff-dashboard", icon: <LayoutDashboard className="h-4 w-4" />, allowedRoles: ['ADMIN'] },
+      { title: "Analytics", href: "/admin/analytics", icon: <BarChart className="h-4 w-4" /> }, // Controlled access
       { title: "Reports", href: "/admin/reports", icon: <TrendingUp className="h-4 w-4" /> },
     ]
   },
@@ -106,12 +108,14 @@ const navSections: NavSection[] = [
   {
     title: "System",
     links: [
-      { title: "Payments", href: "/admin/payments", icon: <CreditCard className="h-4 w-4" /> },
+      { title: "Payments", href: "/admin/payments", icon: <CreditCard className="h-4 w-4" />, allowedRoles: ['SUPER_ADMIN'] }, // Private Financials
       { title: "Tickets", href: "/admin/tickets", icon: <Shield className="h-4 w-4" /> },
-      { title: "Users", href: "/admin/users", icon: <UserCog className="h-4 w-4" /> },
-      { title: "Audit Logs", href: "/admin/audit-logs", icon: <Shield className="h-4 w-4" /> },
+      { title: "Users", href: "/admin/users", icon: <UserCog className="h-4 w-4" /> }, // User Management (General)
+      { title: "Admins & Roles", href: "/admin/roles", icon: <UserCog className="h-4 w-4" />, allowedRoles: ['SUPER_ADMIN'] }, // Critical Action
+      { title: "Audit Logs", href: "/admin/audit-logs", icon: <Shield className="h-4 w-4" />, allowedRoles: ['SUPER_ADMIN'] },
       { title: "Suspended Tickets", href: "/admin/tickets/suspended", icon: <ShieldAlert className="h-4 w-4" /> },
-      { title: "Settings", href: "/admin/settings", icon: <SettingsIcon className="h-4 w-4" /> },
+      { title: "System Settings", href: "/admin/settings", icon: <SettingsIcon className="h-4 w-4" />, allowedRoles: ['SUPER_ADMIN'] }, // Critical Config
+      { title: "Profile Settings", href: "/admin/profile-settings", icon: <UserCog className="h-4 w-4" />, allowedRoles: ['ADMIN'] }, // Staff Config
     ]
   }
 ];
@@ -122,7 +126,7 @@ export default function AdminLayout() {
   const [commandOpen, setCommandOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
-  const { user, signOut } = useAuth();
+  const { user, role, signOut } = useAuth(); // Get role
   const { resolvedTheme } = useTheme();
 
   useEffect(() => {
@@ -188,25 +192,30 @@ export default function AdminLayout() {
         <CommandInput placeholder="Type a command or search..." />
         <CommandList>
           <CommandEmpty>No results found.</CommandEmpty>
-          {navSections.map((section) => (
-            <CommandGroup key={section.title} heading={section.title}>
-              {section.links.map((link) => (
-                <CommandItem
-                  key={link.href}
-                  onSelect={() => {
-                    setCommandOpen(false);
-                    navigate(link.href);
-                  }}
-                  className="cursor-pointer"
-                >
-                  <Link to={link.href} className="flex items-center gap-2 w-full">
-                    {link.icon}
-                    <span>{link.title}</span>
-                  </Link>
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          ))}
+          {navSections.map((section) => {
+            const visibleLinks = section.links.filter(link => !link.allowedRoles || (role && link.allowedRoles.includes(role)));
+            if (visibleLinks.length === 0) return null;
+
+            return (
+              <CommandGroup key={section.title} heading={section.title}>
+                {visibleLinks.map((link) => (
+                  <CommandItem
+                    key={link.href}
+                    onSelect={() => {
+                      setCommandOpen(false);
+                      navigate(link.href);
+                    }}
+                    className="cursor-pointer"
+                  >
+                    <Link to={link.href} className="flex items-center gap-2 w-full">
+                      {link.icon}
+                      <span>{link.title}</span>
+                    </Link>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            );
+          })}
           <CommandSeparator />
           <CommandGroup heading="System">
             <CommandItem className="cursor-pointer" onSelect={() => handleLogout()}>
@@ -244,33 +253,38 @@ export default function AdminLayout() {
                     />
                   </div>
                   <ScrollArea className="h-[calc(100vh-80px)] px-4 py-6">
-                    {navSections.map((section) => (
-                      <div key={section.title} className="mb-6 last:mb-0">
-                        <h3 className="px-3 mb-2 text-[10px] font-semibold tracking-widest text-muted-foreground/50">
-                          {section.title}
-                        </h3>
-                        <div className="space-y-1">
-                          {section.links.map((link) => (
-                            <Link key={link.href} to={link.href} onClick={() => setMobileMenuOpen(false)}>
-                              <Button
-                                variant="ghost"
-                                className={cn(
-                                  "w-full justify-start h-11 px-3 rounded-xl transition-all",
-                                  location.pathname === link.href
-                                    ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
-                                    : "hover:bg-primary/10 hover:text-primary"
-                                )}
-                              >
-                                <span className={cn("mr-3", location.pathname === link.href ? "text-primary-foreground" : "text-muted-foreground")}>
-                                  {link.icon}
-                                </span>
-                                <span className="text-sm font-semibold">{link.title}</span>
-                              </Button>
-                            </Link>
-                          ))}
+                    {navSections.map((section) => {
+                      const visibleLinks = section.links.filter(link => !link.allowedRoles || (role && link.allowedRoles.includes(role)));
+                      if (visibleLinks.length === 0) return null;
+
+                      return (
+                        <div key={section.title} className="mb-6 last:mb-0">
+                          <h3 className="px-3 mb-2 text-[10px] font-semibold tracking-widest text-muted-foreground/50">
+                            {section.title}
+                          </h3>
+                          <div className="space-y-1">
+                            {visibleLinks.map((link) => (
+                              <Link key={link.href} to={link.href} onClick={() => setMobileMenuOpen(false)}>
+                                <Button
+                                  variant="ghost"
+                                  className={cn(
+                                    "w-full justify-start h-11 px-3 rounded-xl transition-all",
+                                    location.pathname === link.href
+                                      ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
+                                      : "hover:bg-primary/10 hover:text-primary"
+                                  )}
+                                >
+                                  <span className={cn("mr-3", location.pathname === link.href ? "text-primary-foreground" : "text-muted-foreground")}>
+                                    {link.icon}
+                                  </span>
+                                  <span className="text-sm font-semibold">{link.title}</span>
+                                </Button>
+                              </Link>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </ScrollArea>
                 </SheetContent>
               </Sheet>
@@ -366,20 +380,25 @@ export default function AdminLayout() {
 
           <ScrollArea className="flex-1">
             <div className="space-y-6 py-8 px-4">
-              {navSections.map((section) => (
-                <div key={section.title} className="space-y-2">
-                  {!sidebarCollapsed && (
-                    <h3 className="px-3 text-[10px] font-bold tracking-[0.2em] text-muted-foreground/40 uppercase">
-                      {section.title}
-                    </h3>
-                  )}
-                  <div className="space-y-1">
-                    {section.links.map((link) => (
-                      <NavItem key={link.href} link={link} collapsed={sidebarCollapsed} />
-                    ))}
+              {navSections.map((section) => {
+                const visibleLinks = section.links.filter(link => !link.allowedRoles || (role && link.allowedRoles.includes(role)));
+                if (visibleLinks.length === 0) return null;
+
+                return (
+                  <div key={section.title} className="space-y-2">
+                    {!sidebarCollapsed && (
+                      <h3 className="px-3 text-[10px] font-bold tracking-[0.2em] text-muted-foreground/40 uppercase">
+                        {section.title}
+                      </h3>
+                    )}
+                    <div className="space-y-1">
+                      {visibleLinks.map((link) => (
+                        <NavItem key={link.href} link={link} collapsed={sidebarCollapsed} />
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </ScrollArea>
 

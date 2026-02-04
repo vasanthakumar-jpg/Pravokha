@@ -213,6 +213,7 @@ export default function SellerProducts() {
               <Upload className="h-4 w-4" /> Bulk
             </Button>
             <Button
+              type="button"
               onClick={() => navigate("/seller/products/add")}
               className="flex-1 sm:flex-none h-10 rounded-xl bg-primary shadow-lg shadow-primary/20 font-bold text-xs px-3 sm:px-4"
               disabled={!isAdmin && verificationStatus !== 'verified'}

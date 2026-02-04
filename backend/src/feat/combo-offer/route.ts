@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { ComboOfferController } from './controller';
 import { authenticate, authorize } from '../../shared/middleware/auth';
+import { Role } from '@prisma/client';
 
 const router = Router();
 
@@ -8,9 +9,9 @@ const router = Router();
 router.get('/', ComboOfferController.listOffers);
 
 // Admin-only routes
-router.post('/', authenticate, authorize(['ADMIN']), ComboOfferController.createOffer);
-router.put('/:id', authenticate, authorize(['ADMIN']), ComboOfferController.updateOffer);
-router.patch('/:id/status', authenticate, authorize(['ADMIN']), ComboOfferController.toggleStatus);
-router.delete('/:id', authenticate, authorize(['ADMIN']), ComboOfferController.deleteOffer);
+router.post('/', authenticate, authorize([Role.SUPER_ADMIN, Role.ADMIN]), ComboOfferController.createOffer);
+router.put('/:id', authenticate, authorize([Role.SUPER_ADMIN, Role.ADMIN]), ComboOfferController.updateOffer);
+router.patch('/:id/status', authenticate, authorize([Role.SUPER_ADMIN, Role.ADMIN]), ComboOfferController.toggleStatus);
+router.delete('/:id', authenticate, authorize([Role.SUPER_ADMIN, Role.ADMIN]), ComboOfferController.deleteOffer);
 
 export default router;

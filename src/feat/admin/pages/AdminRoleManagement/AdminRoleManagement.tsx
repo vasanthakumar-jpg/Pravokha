@@ -13,6 +13,7 @@ import {
 import { toast } from "@/shared/hook/use-toast";
 import { useNavigate } from "react-router-dom";
 import { useAdmin } from "@/core/context/AdminContext";
+import { useAuth } from "@/core/context/AuthContext";
 import { Users, Shield, Store, User as UserIcon, ArrowLeft } from "lucide-react";
 import { AdminHeaderSkeleton, AdminTableSkeleton } from "@/feat/admin/components/AdminSkeleton";
 import { motion, AnimatePresence } from "framer-motion";
@@ -26,6 +27,7 @@ interface UserWithRole {
 
 export default function AdminRoleManagement() {
   const { isAdmin, loading: adminLoading } = useAdmin();
+  const { user: currentUser } = useAuth();
   const navigate = useNavigate();
   const [users, setUsers] = useState<UserWithRole[]>([]);
   const [loading, setLoading] = useState(true);
@@ -56,7 +58,7 @@ export default function AdminRoleManagement() {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await apiClient.get('/users');
+      const response = await apiClient.get('/users?take=5000');
 
       if (response.data.success) {
         const usersWithRoles = (response.data.users as any[]).map(u => ({
@@ -202,6 +204,7 @@ export default function AdminRoleManagement() {
                       <Select
                         value={user.role || "user"}
                         onValueChange={(value) => updateUserRole(user.id, value)}
+                        disabled={currentUser?.role !== 'SUPER_ADMIN'}
                       >
                         <SelectTrigger className="w-[140px]">
                           <SelectValue placeholder="Select role" />

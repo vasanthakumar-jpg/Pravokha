@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
+const API_BASE = 'http://localhost:5000';
 import { useParams, useNavigate } from "react-router-dom";
-import { Card, CardContent, CardHeader, CardTitle } from "@/ui/Card";
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/ui/Card";
 import { Button } from "@/ui/Button";
 import { Badge } from "@/ui/Badge";
 import { Separator } from "@/ui/Separator";
@@ -73,7 +74,9 @@ export default function UserOrderDetail() {
                customer_name: rawOrder.customerName || rawOrder.customer_name,
                customer_phone: rawOrder.customerPhone || rawOrder.customer_phone,
                tracking_number: rawOrder.trackingNumber || rawOrder.tracking_number,
-               total: rawOrder.total,
+               total: rawOrder.totalAmount || rawOrder.total,
+               tax_charge: rawOrder.taxAmount,
+               shipping_charge: rawOrder.shippingFee,
             };
             setOrder(transformedOrder);
          } else {
@@ -106,20 +109,10 @@ export default function UserOrderDetail() {
    const calculatePricing = () => {
       if (!order) return { subtotal: 0, tax: 0, shipping: 0, total: 0 };
 
-      const items = Array.isArray(order.items) ? order.items : [];
-      const subtotal = items.reduce((sum: number, item: any) =>
-         sum + (item.price * item.quantity), 0
-      );
-
-      // Tax calculation (18% GST)
-      const taxRate = 0.18;
-      const tax = Math.round(subtotal * taxRate);
-
-      // Shipping from order or default
-      const shipping = (order as any).shipping_charge || 0;
-
-      // Total
-      const total = subtotal + tax + shipping;
+      const total = order.totalAmount || order.total || 0;
+      const shipping = order.shipping_charge || 0;
+      const tax = order.tax_charge || 0;
+      const subtotal = total - shipping - tax;
 
       return { subtotal, tax, shipping, total };
    };
@@ -163,19 +156,17 @@ export default function UserOrderDetail() {
             sum + ((item.price || 0) * (item.quantity || 1)), 0
          );
 
-         // Get values from database
-         const actualTotal = order.total || 0;
-         const shippingCharge = (order as any).shipping_charge || 0;
-
-         // Calculate: subtotal = items total, tax = total - subtotal - shipping
-         const subtotal = itemsTotal;
-         const tax = Math.max(0, actualTotal - subtotal - shippingCharge);
+         // Use direct database values
+         const actualTotal = order.totalAmount || order.total || 0;
+         const shippingCharge = order.shipping_charge || 0;
+         const taxAmount = order.tax_charge || 0;
+         const subtotal = actualTotal - shippingCharge - taxAmount;
 
          // Ensure items are mapped correctly for the generator
          const invoiceItems = items.map((item: any) => ({
-            title: item.title || "Product",
+            title: item.title || item.product?.title || "Product",
             quantity: item.quantity || 1,
-            price: item.price || 0,
+            price: item.priceAtPurchase || item.price || 0,
             colorName: item.colorName || item.color || "",
             size: item.size || ""
          }));
@@ -193,7 +184,7 @@ export default function UserOrderDetail() {
             shippingPincode: order.shipping_pincode || "",
             items: invoiceItems,
             subtotal: subtotal,
-            tax: tax,
+            tax: taxAmount,
             shipping: shippingCharge,
             total: actualTotal,
             paymentMethod: order.payment_method || 'N/A',
@@ -361,18 +352,36 @@ export default function UserOrderDetail() {
                         return (
                            <div
                               key={idx}
-                              className="flex gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl border bg-card hover:bg-muted/30 transition-all cursor-pointer group"
+                              className="flex gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl border bg-card hover:bg-primary/5 transition-all cursor-pointer group"
                               onClick={() => {
                                  const slug = item.product?.slug || item.productId || item.product_id || item.id;
                                  navigate(`/product/${slug}`);
                               }}
 
                            >
-                              <div className="h-20 w-20 sm:h-24 sm:w-24 flex-shrink-0 overflow-hidden rounded-md border border-gray-200">
+                              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg border overflow-hidden bg-muted flex-shrink-0">
                                  {(() => {
-                                    const img = item.image || item.product?.variants?.[0]?.images?.[0];
-                                    return img ? (
-                                       <img src={img} alt={item.title} className="h-full w-full object-cover object-center group-hover:scale-105 transition-transform duration-300" />
+                                    // Robust image extraction: check product images, then variant images
+                                    let imgPath = item.product?.images?.[0]?.url || item.image;
+
+                                    if (!imgPath && item.product?.variants) {
+                                       // Scan all variants for an image
+                                       const variants = Array.isArray(item.product.variants) ? item.product.variants : [];
+                                       for (const v of variants) {
+                                          let variantImgs = v.images;
+                                          if (typeof variantImgs === 'string') {
+                                             try { variantImgs = JSON.parse(variantImgs); } catch (e) { variantImgs = []; }
+                                          }
+                                          if (Array.isArray(variantImgs) && variantImgs.length > 0) {
+                                             imgPath = variantImgs[0];
+                                             break;
+                                          }
+                                       }
+                                    }
+
+                                    const fullImgUrl = imgPath ? (imgPath.startsWith('http') ? imgPath : `${API_BASE}${imgPath}`) : null;
+                                    return fullImgUrl ? (
+                                       <img src={fullImgUrl} alt={item.product?.title || item.title} className="h-full w-full object-cover object-center group-hover:scale-105 transition-transform duration-300" />
                                     ) : (
                                        <div className="flex h-full w-full items-center justify-center bg-gray-100">
                                           <ShoppingBag className="h-8 w-8 text-gray-400" />
@@ -383,10 +392,10 @@ export default function UserOrderDetail() {
                               <div className="flex flex-1 flex-col min-w-0">
                                  <div className="flex flex-col sm:flex-row sm:justify-between items-start gap-1 sm:gap-4">
                                     <h3 className="text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100 line-clamp-2 group-hover:text-primary transition-colors leading-tight">
-                                       {item.title}
+                                       {item.product?.title || item.title}
                                     </h3>
                                     <p className="text-sm sm:text-base font-bold whitespace-nowrap">
-                                       ₹{(item.price * item.quantity).toLocaleString()}
+                                       ₹{(item.priceAtPurchase * item.quantity).toLocaleString()}
                                     </p>
                                  </div>
                                  <p className="mt-1 text-xs sm:text-sm text-muted-foreground truncate">
@@ -405,6 +414,28 @@ export default function UserOrderDetail() {
                         );
                      })}
                   </CardContent>
+                  <CardFooter className="bg-muted/10 border-t p-4 sm:p-6 mt-auto">
+                     <div className="flex flex-wrap items-center justify-between w-full gap-4 sm:gap-12">
+                        <div className="flex flex-row gap-6 sm:gap-16">
+                           <div className="space-y-1">
+                              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60">Subtotal</p>
+                              <p className="text-base sm:text-lg font-bold">₹{subtotal.toLocaleString()}</p>
+                           </div>
+                           <div className="space-y-1">
+                              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60">Tax</p>
+                              <p className="text-base sm:text-lg font-bold">₹{tax.toLocaleString()}</p>
+                           </div>
+                           <div className="space-y-1">
+                              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60">Shipping</p>
+                              <p className="text-base sm:text-lg font-bold">₹{shipping.toLocaleString()}</p>
+                           </div>
+                        </div>
+                        <div className="space-y-1 sm:text-right">
+                           <p className="text-[10px] font-bold uppercase tracking-wider text-primary">Total amount</p>
+                           <p className="text-2xl sm:text-3xl font-black text-primary">₹{total.toLocaleString()}</p>
+                        </div>
+                     </div>
+                  </CardFooter>
                </Card>
             </div>
 
@@ -475,15 +506,29 @@ export default function UserOrderDetail() {
                      </CardTitle>
                   </CardHeader>
                   <CardContent className="text-sm space-y-3">
-                     <div className="font-medium text-base">{order.customer_name}</div>
-                     <div className="text-muted-foreground space-y-1">
-                        <p>{order.shipping_address}</p>
-                        <p>{order.shipping_city} - {order.shipping_pincode}</p>
-                        <p>India</p>
-                        <p className="pt-2 flex items-center gap-2 text-foreground">
-                           Phone: {order.customer_phone}
-                        </p>
-                     </div>
+                     {(() => {
+                        let addr: { name: any; address: any; city: any; pincode: any; phone?: any } = { name: order.customer_name, address: order.shipping_address, city: order.shipping_city, pincode: order.shipping_pincode };
+                        try {
+                           if (order.shipping_address?.startsWith('{')) {
+                              const parsed = JSON.parse(order.shipping_address);
+                              addr = { ...addr, ...parsed };
+                           }
+                        } catch (e) { }
+
+                        return (
+                           <>
+                              <div className="font-medium text-base">{addr.name}</div>
+                              <div className="text-muted-foreground space-y-1">
+                                 <p>{addr.address}</p>
+                                 <p>{addr.city} - {addr.pincode}</p>
+                                 <p>India</p>
+                                 <p className="pt-2 flex items-center gap-2 text-foreground">
+                                    Phone: {addr.phone || order.customer_phone}
+                                 </p>
+                              </div>
+                           </>
+                        );
+                     })()}
                   </CardContent>
                </Card>
 

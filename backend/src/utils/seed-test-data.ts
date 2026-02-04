@@ -2,64 +2,86 @@
  * Test Data Seeder for Security Verification
  * 
  * Creates realistic test data including:
- * - Multiple sellers with products
+ * - Multiple vendors with products
  * - Customers with orders
  * - Mixed-vendor orders
- * - Admin user
+ * - Super Admin user
  */
 
 import { prisma } from '../infra/database/client';
 import bcrypt from 'bcryptjs';
-import { Role } from '@prisma/client';
+import { Role, OrderStatus, PaymentStatus } from '@prisma/client';
 
 export async function seedTestData() {
     console.log('🌱 Seeding test data...');
 
     // 1. Create Super Admin
-    const admin = await prisma.user.upsert({
+    const superAdmin = await prisma.user.upsert({
         where: { email: 'admin@pravokha.com' },
         update: {},
         create: {
             email: 'admin@pravokha.com',
             password: await bcrypt.hash('admin123', 10),
             name: 'Super Admin',
+            role: Role.SUPER_ADMIN,
+            status: 'active'
+        }
+    });
+    console.log('✅ Super Admin created:', superAdmin.email);
+
+    // 2. Create Vendor A User & Record
+    const vendorAUser = await prisma.user.upsert({
+        where: { email: 'vendor-a@pravokha.com' },
+        update: {},
+        create: {
+            email: 'vendor-a@pravokha.com',
+            password: await bcrypt.hash('vendor123', 10),
+            name: 'Vendor A Owner',
             role: Role.ADMIN,
             status: 'active'
         }
     });
-    console.log('✅ Admin created:', admin.email);
 
-    // 2. Create Dealer A
-    const dealerA = await prisma.user.upsert({
-        where: { email: 'dealer-a@pravokha.com' },
+    const vendorA = await prisma.vendor.upsert({
+        where: { ownerId: vendorAUser.id },
         update: {},
         create: {
-            email: 'dealer-a@pravokha.com',
-            password: await bcrypt.hash('dealer123', 10),
-            name: 'Fashion Dealer A',
-            role: Role.DEALER,
-            status: 'active',
-            storeName: 'A\'s Fashion Store',
-            storeDescription: 'Premium clothing by Dealer A'
+            ownerId: vendorAUser.id,
+            storeName: "A's Fashion Store",
+            slug: 'vendor-a-store',
+            description: "Premium clothing by Vendor A",
+            status: 'ACTIVE',
+            commissionRate: 10
         }
     });
-    console.log('✅ Dealer A created:', dealerA.email);
+    console.log('✅ Vendor A created:', vendorAUser.email);
 
-    // 3. Create Dealer B
-    const dealerB = await prisma.user.upsert({
-        where: { email: 'dealer-b@pravokha.com' },
+    // 3. Create Vendor B User & Record
+    const vendorBUser = await prisma.user.upsert({
+        where: { email: 'vendor-b@pravokha.com' },
         update: {},
         create: {
-            email: 'dealer-b@pravokha.com',
-            password: await bcrypt.hash('dealer123', 10),
-            name: 'Fashion Dealer B',
-            role: Role.DEALER,
-            status: 'active',
-            storeName: 'B\'s Clothing Hub',
-            storeDescription: 'Trendy apparel by Dealer B'
+            email: 'vendor-b@pravokha.com',
+            password: await bcrypt.hash('vendor123', 10),
+            name: 'Vendor B Owner',
+            role: Role.ADMIN,
+            status: 'active'
         }
     });
-    console.log('✅ Dealer B created:', dealerB.email);
+
+    const vendorB = await prisma.vendor.upsert({
+        where: { ownerId: vendorBUser.id },
+        update: {},
+        create: {
+            ownerId: vendorBUser.id,
+            storeName: "B's Clothing Hub",
+            slug: 'vendor-b-hub',
+            description: "Trendy apparel by Vendor B",
+            status: 'ACTIVE',
+            commissionRate: 12
+        }
+    });
+    console.log('✅ Vendor B created:', vendorBUser.email);
 
     // 4. Create Customers
     const customer1 = await prisma.user.upsert({
@@ -69,7 +91,7 @@ export async function seedTestData() {
             email: 'customer1@pravokha.com',
             password: await bcrypt.hash('customer123', 10),
             name: 'John Customer',
-            role: Role.USER,
+            role: Role.CUSTOMER,
             status: 'active'
         }
     });
@@ -81,151 +103,130 @@ export async function seedTestData() {
             email: 'customer2@pravokha.com',
             password: await bcrypt.hash('customer123', 10),
             name: 'Jane Customer',
-            role: Role.USER,
+            role: Role.CUSTOMER,
             status: 'active'
         }
     });
     console.log('✅ Customers created');
 
-    // 5. Create Products for Dealer A
+    // 5. Create Categories
+    const catFashion = await prisma.category.upsert({
+        where: { slug: 'fashion' },
+        update: {},
+        create: {
+            name: 'Fashion',
+            slug: 'fashion',
+            status: 'active'
+        }
+    });
+
+    // 6. Create Products for Vendor A
     const productA1 = await prisma.product.upsert({
-        where: { slug: 'dealer-a-tshirt' },
+        where: { slug: 'vendor-a-tshirt' },
         update: {},
         create: {
             title: 'Premium Cotton T-Shirt',
-            slug: 'dealer-a-tshirt',
-            description: 'High-quality cotton t-shirt by Dealer A',
+            slug: 'vendor-a-tshirt',
+            description: 'High-quality cotton t-shirt by Vendor A',
             price: 499,
             stock: 50,
-            published: true,
-            dealerId: dealerA.id
+            status: 'ACTIVE',
+            vendorId: vendorA.id,
+            categoryId: catFashion.id
         }
     });
 
     const productA2 = await prisma.product.upsert({
-        where: { slug: 'dealer-a-jeans' },
+        where: { slug: 'vendor-a-jeans' },
         update: {},
         create: {
             title: 'Slim Fit Jeans',
-            slug: 'dealer-a-jeans',
+            slug: 'vendor-a-jeans',
             description: 'Comfortable slim fit jeans',
             price: 1299,
             stock: 30,
-            published: true,
-            dealerId: dealerA.id
+            status: 'ACTIVE',
+            vendorId: vendorA.id,
+            categoryId: catFashion.id
         }
     });
-    console.log('✅ Dealer A products created');
+    console.log('✅ Vendor A products created');
 
-    // 6. Create Products for Dealer B
+    // 7. Create Products for Vendor B
     const productB1 = await prisma.product.upsert({
-        where: { slug: 'dealer-b-hoodie' },
+        where: { slug: 'vendor-b-hoodie' },
         update: {},
         create: {
             title: 'Casual Hoodie',
-            slug: 'dealer-b-hoodie',
+            slug: 'vendor-b-hoodie',
             description: 'Warm and stylish hoodie',
             price: 899,
             stock: 40,
-            published: true,
-            dealerId: dealerB.id
+            status: 'ACTIVE',
+            vendorId: vendorB.id,
+            categoryId: catFashion.id
         }
     });
 
     const productB2 = await prisma.product.upsert({
-        where: { slug: 'dealer-b-shorts' },
+        where: { slug: 'vendor-b-shorts' },
         update: {},
         create: {
             title: 'Sports Shorts',
-            slug: 'dealer-b-shorts',
+            slug: 'vendor-b-shorts',
             description: 'Breathable sports shorts',
             price: 399,
             stock: 60,
-            published: true,
-            dealerId: dealerB.id
+            status: 'ACTIVE',
+            vendorId: vendorB.id,
+            categoryId: catFashion.id
         }
     });
-    console.log('✅ Dealer B products created');
+    console.log('✅ Vendor B products created');
 
-    // 7. Create Mixed Order (contains products from both dealers)
-    const mixedOrder = await prisma.order.create({
+    // 8. Create Orders
+    const orderNumber = `ORD-${Date.now()}`;
+    await prisma.order.create({
         data: {
-            orderNumber: `ORD-MIXED-${Date.now()}`,
-            total: 1398, // Product A1 + Product B1
-            status: 'PROCESSING',
-            paymentStatus: 'PAID',
+            orderNumber: `${orderNumber}-1`,
+            totalAmount: 499,
+            status: OrderStatus.PENDING,
+            paymentStatus: PaymentStatus.PAID,
+            paymentMethod: 'STRIPE',
             customerName: customer1.name!,
             customerEmail: customer1.email,
             customerPhone: '9876543210',
-            shippingAddress: '123 Main Street',
-            shippingCity: 'Mumbai',
-            shippingPincode: '400001',
-            userId: customer1.id,
+            shippingAddress: { address: '123 Main Street', city: 'Mumbai', pincode: '400001' },
+            customerId: customer1.id,
+            vendorId: vendorA.id,
+            platformFee: 49.9,
+            vendorEarnings: 449.1,
             items: {
                 create: [
                     {
                         productId: productA1.id,
-                        sellerId: dealerA.id,
-                        title: productA1.title,
-                        price: productA1.price,
-                        quantity: 1
-                    },
-                    {
-                        productId: productB1.id,
-                        sellerId: dealerB.id,
-                        title: productB1.title,
-                        price: productB1.price,
+                        priceAtPurchase: productA1.price,
+                        subtotal: productA1.price,
                         quantity: 1
                     }
                 ]
+            },
+            statusHistory: {
+                create: {
+                    status: OrderStatus.PENDING,
+                    notes: 'Order seeded for testing'
+                }
             }
         }
     });
-    console.log('✅ Mixed order created:', mixedOrder.orderNumber);
-
-    // 8. Create Dealer A exclusive order
-    const dealerAOrder = await prisma.order.create({
-        data: {
-            orderNumber: `ORD-A-${Date.now()}`,
-            total: 1798, // Product A1 + Product A2
-            status: 'SHIPPED',
-            paymentStatus: 'PAID',
-            customerName: customer2.name!,
-            customerEmail: customer2.email,
-            customerPhone: '9123456780',
-            shippingAddress: '456 Park Avenue',
-            shippingCity: 'Delhi',
-            shippingPincode: '110001',
-            userId: customer2.id,
-            items: {
-                create: [
-                    {
-                        productId: productA1.id,
-                        sellerId: dealerA.id,
-                        title: productA1.title,
-                        price: productA1.price,
-                        quantity: 1
-                    },
-                    {
-                        productId: productA2.id,
-                        sellerId: dealerA.id,
-                        title: productA2.title,
-                        price: productA2.price,
-                        quantity: 1
-                    }
-                ]
-            }
-        }
-    });
-    console.log('✅ Dealer A exclusive order created:', dealerAOrder.orderNumber);
 
     console.log('\n🎉 Test data seeding complete!\n');
     console.log('📝 Test Accounts:');
-    console.log('   Admin:      admin@pravokha.com / admin123');
-    console.log('   Dealer A:   dealer-a@pravokha.com / dealer123');
-    console.log('   Dealer B:   dealer-b@pravokha.com / dealer123');
-    console.log('   Customer 1: customer1@pravokha.com / customer123');
-    console.log('   Customer 2: customer2@pravokha.com / customer123\n');
+    console.log('   Super Admin: admin@pravokha.com / admin123');
+    console.log('   Vendor A:    vendor-a@pravokha.com / vendor123');
+    console.log('   Vendor B:    vendor-b@pravokha.com / vendor123');
+    console.log('   Customer 1:  customer1@pravokha.com / customer123');
+    console.log('   Customer 2:  customer2@pravokha.com / customer123\n');
 }
 
 // Run if executed directly

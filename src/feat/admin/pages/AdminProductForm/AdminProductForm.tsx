@@ -73,7 +73,6 @@ interface ProductFormData {
     existingVariantImages: Record<string, string[]>; // Key: ColorOption.id
     imagesToDelete: string[]; // Cleanup queue
 
-    is_new?: boolean;
     is_featured?: boolean;
     is_verified?: boolean;
 }
@@ -100,7 +99,6 @@ const INITIAL_FORM_DATA: ProductFormData = {
     existingVariantImages: {},
     imagesToDelete: [],
 
-    is_new: false,
     is_featured: false,
     is_verified: false,
 };
@@ -112,14 +110,14 @@ export default function AdminProductForm() {
     const { id } = useParams();
     const { toast } = useToast();
     const { user, loading: authLoading } = useAuth();
-    const { isAdmin, loading: adminLoading } = useAdmin();
+    const { isAdmin, isSuperAdmin, loading: adminLoading } = useAdmin();
 
     const [formData, setFormData] = useState<ProductFormData>(INITIAL_FORM_DATA);
     const [isLoading, setIsLoading] = useState(true); // Always start with true while auth is loading
     const [isSaving, setIsSaving] = useState(false);
     const [activeTab, setActiveTab] = useState("general");
     const [errors, setErrors] = useState<Record<string, string>>({});
-    const [dbCategories, setDbCategories] = useState<{ id: string; name: string; slug: string }[]>([]);
+    const [dbCategories, setDbCategories] = useState<{ id: string; name: string; slug: string; parentId?: string | null }[]>([]);
     const [dbSubcategories, setDbSubcategories] = useState<{ id: string; name: string; slug: string; category_id: string }[]>([]);
     const [isLoadingSubcategories, setIsLoadingSubcategories] = useState(false);
     const [subcategoryWarning, setSubcategoryWarning] = useState("");
@@ -128,13 +126,13 @@ export default function AdminProductForm() {
     useEffect(() => {
         const fetchHierarchy = async () => {
             try {
-                const response = await apiClient.get('/categories');
+                const response = await apiClient.get('/categories/admin/all');
                 setDbCategories(response.data.categories || []);
 
                 const subResponse = await apiClient.get('/categories/subcategories');
                 const subData = (subResponse.data.subcategories || []).map((sub: any) => ({
                     ...sub,
-                    category_id: sub.categoryId || sub.category_id // Ensure compatibility
+                    category_id: sub.parentId || sub.categoryId || sub.category_id || sub.category?.id || ""
                 }));
                 setDbSubcategories(subData);
             } catch (err) {
@@ -175,13 +173,16 @@ export default function AdminProductForm() {
                     variants.forEach((v: any) => {
                         // Stable ID logic - prefer existing database IDs
                         let colorId = v.id;
-                        const existingColor = colors.find(c => c.name === v.color_name || c.name === v.colorName);
+                        const colorName = v.colorName || v.color_name;
+                        const colorHex = v.colorHex || v.color_hex;
+
+                        const existingColor = colors.find(c => c.name === colorName);
 
                         if (!existingColor) {
                             colors.push({
                                 id: colorId,
-                                name: v.color_name || v.colorName,
-                                hex: v.color_hex || v.colorHex
+                                name: colorName,
+                                hex: colorHex
                             });
                             existingVariantImages[colorId] = v.images || [];
                         } else {
@@ -194,14 +195,26 @@ export default function AdminProductForm() {
                         const sizesData = v.sizes || v.product_sizes || [];
                         if (sizesData.length > 0) {
                             sizesData.forEach((s: any) => {
-                                if (!sizes.includes(s.size)) sizes.push(s.size);
-                                const sizeKey = getStockKey(v.color_name || v.colorName, s.size);
-                                sizeStockMap[sizeKey] = (sizeStockMap[sizeKey] || 0) + s.stock;
-                                totalStock += s.stock;
+                                const sizeValue = s.size;
+                                // Filter out "One Size" as requested
+                                if (sizeValue !== "One Size") {
+                                    if (!sizes.includes(sizeValue)) sizes.push(sizeValue);
+                                    const sizeKey = getStockKey(colorName, sizeValue);
+                                    sizeStockMap[sizeKey] = (sizeStockMap[sizeKey] || 0) + s.stock;
+                                    totalStock += s.stock;
+                                }
                             });
                         }
                     });
                 }
+
+                // Reconstruction of Category/Subcategory hierarchy
+                // If product.category has a parentId, it's a subcategory.
+                const prodCatId = product.categoryId || product.category_id || product.category?.id || "";
+                const prodParentId = product.category?.parentId || product.category?.parent_id || null;
+
+                const selectedCatId = prodParentId ? prodParentId : prodCatId;
+                const selectedSubCatId = prodParentId ? prodCatId : "";
 
                 setFormData({
                     title: product.title || "",
@@ -209,13 +222,12 @@ export default function AdminProductForm() {
                     sku: product.sku || "",
                     description: product.description || "",
                     category: product.category?.slug || product.category || "",
-                    selectedCategoryId: product.categoryId || product.category_id || "",
-                    selectedSubcategoryId: product.subcategoryId || product.subcategory_id || "",
-                    price: (product.price !== undefined ? product.price : product.base_price)?.toString() || "",
-                    discountPrice: (product.discountPrice !== undefined ? product.discountPrice : product.discount_price)?.toString() || "",
+                    selectedCategoryId: selectedCatId,
+                    selectedSubcategoryId: selectedSubCatId,
+                    price: (product.compare_at_price || product.compareAtPrice || product.price || product.base_price || "").toString(),
+                    discountPrice: (product.compareAtPrice || product.compare_at_price) ? product.price.toString() : (product.discountPrice || product.discount_price || "").toString(),
                     stockQuantity: totalStock.toString(),
-                    published: product.published ?? product.is_published ?? false,
-                    is_new: product.isNew ?? product.is_new ?? false,
+                    published: product.published ?? product.is_published ?? (product.status === 'ACTIVE'),
                     is_featured: product.isFeatured ?? product.is_featured ?? false,
                     is_verified: product.isVerified ?? product.is_verified ?? false,
                     selectedColors: colors,
@@ -364,23 +376,26 @@ export default function AdminProductForm() {
         if (Number(formData.price) <= 0) {
             newErrors.price = "Economic constraint violation: Price must be greater than 0.";
         }
-        if (!formData.selectedCategoryId) {
-            newErrors.category = "Category selection is required for proper product taxonomy.";
+        // Basic validation
+        if (!formData.title) newErrors.title = "Product title is required";
+        if (!formData.price || Number(formData.price) <= 0) {
+            newErrors.price = "Price is required and must be greater than 0.";
         }
-        // Subcategory optional or required based on business rules, keeping as warning/error based on previous logic
-        // if (!formData.selectedSubcategoryId) {
-        //     newErrors.subcategory = "Subcategory is required for proper product organization.";
-        // }
-        // Changed to allow null subcategory if not strict, but user had it as required before. keeping consistent.
-        if (!formData.selectedSubcategoryId) {
-            newErrors.subcategory = "Subcategory is required for proper product organization.";
+        if (!formData.selectedCategoryId) {
+            newErrors.category = "Category is required.";
+        }
+
+        // Optional subcategory validation - only if subcategories exist for this category
+        const subcategoriesForCat = dbSubcategories.filter(s => s.category_id === formData.selectedCategoryId);
+        if (subcategoriesForCat.length > 0 && !formData.selectedSubcategoryId) {
+            newErrors.subcategory = "Please select a subcategory for better organization.";
         }
 
         if (formData.selectedColors.length === 0) {
-            newErrors.colors = "Variant Matrix Incomplete: At least one color must be selected.";
+            newErrors.colors = "At least one color must be selected.";
         }
         if (formData.selectedSizes.length === 0) {
-            newErrors.sizes = "Variant Matrix Incomplete: At least one size must be selected.";
+            newErrors.sizes = "At least one size must be selected.";
         }
 
         // Validate Images per Variant
@@ -394,7 +409,7 @@ export default function AdminProductForm() {
         });
 
         if (missingImages) {
-            newErrors.images = "Visual Assets Incomplete: Each color variant must have at least one image.";
+            newErrors.images = "Each color variant must have at least one image.";
             toast({ title: "Missing Images", description: "Each color variant must have at least one image.", variant: "destructive" });
         }
 
@@ -403,7 +418,7 @@ export default function AdminProductForm() {
             toast({ title: "Validation Error", description: "Please check the highlighted fields.", variant: "destructive" });
 
             // Auto-switch to the tab with errors
-            if (newErrors.title || newErrors.price) setActiveTab("general");
+            if (newErrors.title || newErrors.price || newErrors.category || newErrors.subcategory) setActiveTab("general");
             else if (newErrors.colors || newErrors.sizes) setActiveTab("inventory");
             else if (newErrors.images) setActiveTab("media");
 
@@ -462,16 +477,17 @@ export default function AdminProductForm() {
                 sku: formData.sku || `SKU-${Date.now()}`,
                 description: formData.description,
                 category: formData.category,
-                categoryId: formData.selectedCategoryId, // Match backend property
-                subcategoryId: formData.selectedSubcategoryId || null, // Match backend property
+                categoryId: formData.selectedSubcategoryId || formData.selectedCategoryId, // Most specific ID
                 price: Number(formData.price),
                 discount_price: formData.discountPrice ? Number(formData.discountPrice) : null,
                 published: formData.published,
-                is_new: formData.is_new,
                 is_featured: formData.is_featured,
                 is_verified: formData.is_verified,
                 seller_id: user?.id,
-                variants: variantsData
+                variants: variantsData,
+                adminEditReason: (isAdmin || isSuperAdmin || user?.role?.toUpperCase() === 'SUPER_ADMIN' || user?.role?.toUpperCase() === 'ADMIN')
+                    ? "Admin Update via Dashboard"
+                    : undefined
             };
 
             if (id) {
@@ -604,16 +620,7 @@ export default function AdminProductForm() {
                                                 />
                                             </div>
 
-                                            <div className="flex items-center justify-between p-4 rounded-2xl bg-muted/20 border border-border/40">
-                                                <div className="space-y-0.5">
-                                                    <Label className="text-sm font-bold">New Arrival</Label>
-                                                    <p className="text-[10px] text-muted-foreground font-medium">Display 'NEW' badge in marketplaces.</p>
-                                                </div>
-                                                <Switch
-                                                    checked={formData.is_new}
-                                                    onCheckedChange={v => handleChange('is_new', v)}
-                                                />
-                                            </div>
+
 
                                             <div className="flex items-center justify-between p-4 rounded-2xl bg-muted/20 border border-border/40">
                                                 <div className="space-y-0.5">
@@ -703,9 +710,11 @@ export default function AdminProductForm() {
                                                         <SelectValue placeholder="Select a category" />
                                                     </SelectTrigger>
                                                     <SelectContent>
-                                                        {dbCategories.map(cat => (
-                                                            <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
-                                                        ))}
+                                                        {dbCategories
+                                                            .filter(cat => !cat.parentId) // Only top-level categories
+                                                            .map(cat => (
+                                                                <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                                                            ))}
                                                     </SelectContent>
                                                 </Select>
                                                 {errors.category && <p className="text-[10px] font-bold text-rose-500 animate-in fade-in">{errors.category}</p>}
@@ -733,7 +742,7 @@ export default function AdminProductForm() {
                                                         </SelectTrigger>
                                                         <SelectContent>
                                                             {dbSubcategories
-                                                                .filter(sub => sub.category_id === formData.selectedCategoryId)
+                                                                .filter(sub => (sub.category_id === formData.selectedCategoryId || sub.categoryId === formData.selectedCategoryId || sub.parentId === formData.selectedCategoryId))
                                                                 .map(sub => (
                                                                     <SelectItem key={sub.id} value={sub.id}>{sub.name}</SelectItem>
                                                                 ))
@@ -849,6 +858,7 @@ export default function AdminProductForm() {
                                                 <Label className={cn("text-sm font-bold tracking-wider text-muted-foreground", errors.sizes && "text-rose-500")}>Size architecture</Label>
                                                 {errors.sizes && <p className="text-[10px] font-bold text-rose-500 -mt-2 animate-in fade-in slide-in-from-top-1">{errors.sizes}</p>}
                                                 <div className="flex flex-wrap gap-3">
+                                                    {/* Render Standard Sizes */}
                                                     {SIZES.map(size => (
                                                         <button
                                                             key={size}
@@ -867,6 +877,23 @@ export default function AdminProductForm() {
                                                             {size}
                                                         </button>
                                                     ))}
+
+                                                    {/* Render Non-Standard Sizes (e.g., 'One Size' from DB) so they can be removed */}
+                                                    {formData.selectedSizes
+                                                        .filter(s => !SIZES.includes(s))
+                                                        .map(size => (
+                                                            <button
+                                                                key={size}
+                                                                onClick={() => toggleSelection(formData.selectedSizes, size, 'selectedSizes')}
+                                                                className={cn(
+                                                                    "min-w-[48px] px-3 h-12 rounded-xl border flex items-center justify-center font-black transition-all shadow-sm",
+                                                                    "bg-primary text-primary-foreground border-primary scale-105 shadow-primary/20 ring-4 ring-primary/10"
+                                                                )}
+                                                            >
+                                                                {size}
+                                                            </button>
+                                                        ))
+                                                    }
                                                 </div>
                                             </div>
 
@@ -968,8 +995,12 @@ export default function AdminProductForm() {
                                             ) : (
                                                 <div className="space-y-8">
                                                     {formData.selectedColors.map(color => {
-                                                        const existing = formData.existingVariantImages[color.id] || [];
-                                                        const previews = formData.variantPreviews[color.id] || [];
+                                                        const existing = Array.isArray(formData.existingVariantImages[color.id])
+                                                            ? formData.existingVariantImages[color.id]
+                                                            : [];
+                                                        const previews = Array.isArray(formData.variantPreviews[color.id])
+                                                            ? formData.variantPreviews[color.id]
+                                                            : [];
                                                         const hasImages = existing.length + previews.length > 0;
 
                                                         return (
@@ -1084,7 +1115,20 @@ export default function AdminProductForm() {
                                 <div className="space-y-3 pt-2 border-t border-border/50">
                                     <div className="flex items-center justify-between">
                                         <Label className="text-[10px] font-black uppercase text-muted-foreground">Governance</Label>
-                                        <Switch checked={formData.published} onCheckedChange={v => handleChange('published', v)} className="data-[state=checked]:bg-emerald-500" />
+                                        <div className="flex flex-col gap-2">
+                                            <div className="flex items-center gap-2 justify-end">
+                                                <span className="text-[9px] font-bold text-muted-foreground">PUBLISH</span>
+                                                <Switch checked={formData.published} onCheckedChange={v => handleChange('published', v)} className="data-[state=checked]:bg-emerald-500" />
+                                            </div>
+                                            <div className="flex items-center gap-2 justify-end">
+                                                <span className="text-[9px] font-bold text-muted-foreground">FEATURED</span>
+                                                <Switch checked={formData.is_featured} onCheckedChange={v => handleChange('is_featured', v)} className="data-[state=checked]:bg-amber-500" />
+                                            </div>
+                                            <div className="flex items-center gap-2 justify-end">
+                                                <span className="text-[9px] font-bold text-muted-foreground">VERIFIED</span>
+                                                <Switch checked={formData.is_verified} onCheckedChange={v => handleChange('is_verified', v)} className="data-[state=checked]:bg-blue-500" />
+                                            </div>
+                                        </div>
                                     </div>
 
                                     <div className="space-y-4 pt-4">

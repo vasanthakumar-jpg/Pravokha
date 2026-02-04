@@ -1,24 +1,15 @@
 import { prisma } from '../../infra/database/client';
-import { Role } from '@prisma/client';
+import { Role, OrderStatus } from '@prisma/client';
 
 export class AnalyticsService {
-    static async getSellerStats(sellerId: string) {
-        // This mirrors the frontend aggregation but on the backend for performance/structure
+    static async getSellerStats(vendorId: string) {
         const [totalProducts, totalOrders, reviews] = await Promise.all([
-            prisma.product.count({ where: { dealerId: sellerId } }),
-            prisma.order.count({
-                where: {
-                    items: {
-                        some: {
-                            sellerId: sellerId
-                        }
-                    }
-                }
-            }),
+            prisma.product.count({ where: { vendorId } }),
+            prisma.order.count({ where: { vendorId } }),
             prisma.productReview.findMany({
                 where: {
                     product: {
-                        dealerId: sellerId
+                        vendorId: vendorId
                     }
                 },
                 select: { rating: true }
@@ -30,47 +21,41 @@ export class AnalyticsService {
             : 0;
 
         // Revenue aggregation
-        const orders = await prisma.order.findMany({
+        const revenueResult = await prisma.order.aggregate({
             where: {
-                items: {
-                    some: {
-                        sellerId: sellerId
-                    }
-                },
-                status: 'DELIVERED'
+                vendorId,
+                status: OrderStatus.DELIVERED
             },
-            select: { total: true }
+            _sum: { totalAmount: true }
         });
-
-        const totalRevenue = orders.reduce((sum, o) => sum + o.total, 0);
 
         return {
             totalProducts,
             totalOrders,
-            totalRevenue,
+            totalRevenue: revenueResult._sum.totalAmount || 0,
             avgRating
         };
     }
 
     static async getPlatformStats() {
-        const [totalUsers, totalSellers, totalProducts, totalOrders] = await Promise.all([
-            prisma.user.count(),
-            prisma.user.count({ where: { role: Role.DEALER } }),
+        const [totalUsers, totalVendors, totalProducts, totalOrders] = await Promise.all([
+            prisma.user.count({ where: { role: Role.CUSTOMER } }),
+            prisma.vendor.count(),
             prisma.product.count(),
             prisma.order.count()
         ]);
 
         const revenue = await prisma.order.aggregate({
-            _sum: { total: true },
-            where: { status: 'DELIVERED' }
+            _sum: { totalAmount: true },
+            where: { status: OrderStatus.DELIVERED }
         });
 
         return {
             totalUsers,
-            totalSellers,
+            totalVendors,
             totalProducts,
             totalOrders,
-            totalRevenue: revenue._sum.total || 0
+            totalRevenue: revenue._sum.totalAmount || 0
         };
     }
 }

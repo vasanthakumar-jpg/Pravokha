@@ -1,6 +1,8 @@
-import { Request, Response, NextFunction } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import { OrderService } from './service';
 import { createOrderSchema } from './schema';
+import { Role } from '@prisma/client';
+import { prisma } from '../../infra/database/client';
 
 export class OrderController {
     static async createOrder(req: Request, res: Response, next: NextFunction) {
@@ -14,12 +16,16 @@ export class OrderController {
             const result = await OrderService.createOrder({
                 ...validatedData,
                 userId,
+                // Ensure customer details are passed if not in body (optional fallback)
+                customerName: validatedData.customerName || (req as any).user?.name || 'Guest',
+                customerEmail: validatedData.customerEmail || (req as any).user?.email,
+                customerPhone: validatedData.customerPhone || (req as any).user?.phone || '0000000000',
             });
 
             res.status(201).json({
                 success: true,
-                message: 'Order created successfully. Please complete payment.',
-                data: result,
+                message: 'Orders created successfully.',
+                data: result, // { orders: [], clientSecret, grandTotal }
             });
         } catch (error) {
             next(error);
@@ -52,9 +58,18 @@ export class OrderController {
     static async listOrders(req: Request, res: Response, next: NextFunction) {
         try {
             const user = (req as any).user;
-            const page = parseInt(req.query.page as string) || 1;
-            const limit = parseInt(req.query.limit as string) || 20;
-            const { type, status, search, after } = req.query;
+            if (!user) {
+                return res.status(401).json({ success: false, message: 'Authentication required' });
+            }
+            const { type, status, search, after, skip, take } = req.query;
+            const limit = take ? parseInt(take as string) : (parseInt(req.query.limit as string) || 10);
+            const page = skip ? (Math.floor(parseInt(skip as string) / limit) + 1) : (parseInt(req.query.page as string) || 1);
+
+            let vendorId: string | undefined;
+            if (user.role === Role.SELLER) {
+                const vendor = await prisma.vendor.findUnique({ where: { ownerId: user.id } });
+                vendorId = vendor?.id;
+            }
 
             const { orders, total } = await OrderService.listOrders(user.id, user.role, {
                 page,
@@ -62,7 +77,8 @@ export class OrderController {
                 type: type as string,
                 status: status as string,
                 search: search as string,
-                after: after as string
+                after: after as string,
+                vendorId: vendorId // Added vendorId filtering
             });
 
             res.status(200).json({
@@ -123,7 +139,6 @@ export class OrderController {
                 role: user.role,
                 trackingNumber,
                 trackingCarrier,
-                trackingUpdates,
                 packingNotes,
                 version: version !== undefined ? parseInt(version.toString()) : undefined
             });
@@ -153,8 +168,11 @@ export class OrderController {
             const { trackingNumber, trackingCarrier, version } = req.body;
             const user = (req as any).user;
 
+            // In multi-vendor, ship is for a specific order (which is per vendor anyway)
+            const vendor = await prisma.vendor.findUnique({ where: { ownerId: user.id } });
+
             const order = await OrderService.markOrderAsShipped(id, {
-                sellerId: user.id,
+                vendorId: vendor?.id || '', // Use vendorId instead of sellerId
                 trackingNumber,
                 trackingCarrier,
                 version: version !== undefined ? parseInt(version.toString()) : undefined
@@ -208,13 +226,19 @@ export class OrderController {
     static async refundOrder(req: Request, res: Response, next: NextFunction) {
         try {
             const { id } = req.params;
+            const { amount, reason, restoreInventory } = req.body;
             const user = (req as any).user;
 
-            await OrderService.refundOrder(id, user.role);
+            const updatedOrder = await OrderService.refundOrder(id, user.id, user.role, {
+                amount: amount ? parseFloat(amount) : undefined,
+                reason,
+                restoreInventory: restoreInventory === true || restoreInventory === 'true'
+            });
 
             res.status(200).json({
                 success: true,
-                message: 'Order refunded successfully',
+                message: 'Refund processed successfully.',
+                data: updatedOrder
             });
         } catch (error) {
             next(error);

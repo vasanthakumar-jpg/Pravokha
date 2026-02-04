@@ -40,23 +40,35 @@ export function RoleBasedRedirect() {
             return;
         }
 
-        if (currentPath.startsWith('/admin') && (role === 'ADMIN' || role === 'admin')) {
+        if (currentPath.startsWith('/admin') && (role === 'SUPER_ADMIN')) {
             return;
         }
 
-        if (currentPath.startsWith('/seller') && (role === 'DEALER' || role === 'seller')) {
+        if (currentPath.startsWith('/seller') && (role === 'ADMIN')) {
             return;
         }
 
-        if (currentPath.startsWith('/auth') || currentPath === '/') {
-            if (role === 'ADMIN' || role === 'admin') {
-                if (currentPath !== '/admin') navigate('/admin', { replace: true });
-            } else if (role === 'DEALER' || role === 'seller') {
-                if (!currentPath.startsWith('/seller')) navigate('/seller', { replace: true });
-            } else if (currentPath.startsWith('/auth') && (role === 'USER' || role === 'user')) {
+        // Logic for redirection from Auth/Home pages based on Role
+        if (currentPath.startsWith('/auth') || (currentPath === '/' && role !== 'CUSTOMER')) {
+            if (role === 'SUPER_ADMIN') {
+                navigate('/admin/super-dashboard', { replace: true });
+            } else if (role === 'ADMIN') {
+                navigate('/admin/staff-dashboard', { replace: true }); // Staff Admin goes to Staff Panel
+            } else if (role === 'SELLER') {
+                navigate('/seller', { replace: true });
+            } else if (role === 'CUSTOMER' && currentPath.startsWith('/auth')) {
                 navigate('/', { replace: true });
             }
             return;
+        }
+
+        // Prevent cross-role access (Basic Guard in Redirector)
+        // Note: ProtectedRoute handles the hard blocks, but this helps redirect early
+        if (currentPath.startsWith('/admin') && role !== 'SUPER_ADMIN' && role !== 'ADMIN') {
+            navigate('/unauthorized', { replace: true });
+        }
+        if (currentPath.startsWith('/seller') && role !== 'SELLER') {
+            navigate('/unauthorized', { replace: true });
         }
     }, [user, role, loading, isSuspended, navigate, location.pathname]);
 

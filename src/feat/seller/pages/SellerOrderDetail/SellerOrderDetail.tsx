@@ -128,12 +128,14 @@ export default function SellerOrderDetail() {
       shipping_city: data.shipping_city || data.shippingCity,
       shipping_pincode: data.shipping_pincode || data.shippingPincode,
       payment_method: data.payment_method || data.paymentMethod,
+      tax_charge: data.tax_charge || data.taxAmount,
+      shipping_charge: data.shipping_charge || data.shippingFee,
       items: Array.isArray(data.items) ? data.items.map((item: any) => ({
         ...item,
         title: item.title || item.product?.title || 'Unknown Product',
-        price: item.price !== undefined ? item.price : 0,
+        price: item.priceAtPurchase !== undefined ? item.priceAtPurchase : (item.price !== undefined ? item.price : 0),
         quantity: item.quantity || 1,
-        image: item.image || item.product?.variants?.[0]?.images?.[0] || '',
+        image: item.product?.images?.[0]?.url || item.image || item.product?.variants?.[0]?.images?.[0] || '',
         colorName: item.colorName || item.color_name,
         size: item.size,
         status: item.status || 'PENDING',
@@ -186,11 +188,12 @@ export default function SellerOrderDetail() {
 
   const calculatePricing = () => {
     if (!order) return { subtotal: 0, tax: 0, shipping: 0, total: 0 };
-    const items = Array.isArray(order.items) ? order.items : [];
-    const subtotal = items.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0);
-    const tax = Math.round(subtotal * 0.18);
-    const shipping = (order as any).shipping_charge || 0;
-    const total = subtotal + tax + shipping;
+
+    const total = order.totalAmount || order.total || 0;
+    const shipping = order.shipping_charge || 0;
+    const tax = order.tax_charge || 0;
+    const subtotal = total - shipping - tax;
+
     return { subtotal, tax, shipping, total };
   };
 

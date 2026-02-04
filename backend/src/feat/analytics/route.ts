@@ -5,6 +5,6 @@ import { Role } from '@prisma/client';
 
 const router = Router();
 
-router.get('/', authenticate, authorize([Role.ADMIN, Role.DEALER]), AnalyticsController.getStats);
+router.get('/seller', authenticate, authorize([Role.ADMIN]), AnalyticsController.getStats);
 
 export default router;

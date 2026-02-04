@@ -6,10 +6,17 @@ import { Button } from "@/ui/Button";
 import { cn } from "@/lib/utils";
 
 export function VerificationBanner() {
-    const { verificationStatus, verificationComments, role } = useAuth();
+    const { user, verificationStatus, verificationComments, role } = useAuth();
     const isAdmin = role === 'ADMIN';
 
-    if (verificationStatus === 'verified' || isAdmin) return null;
+    const isVerified = verificationStatus?.toLowerCase() === 'verified' || verificationStatus?.toLowerCase() === 'active';
+    if (isVerified || isAdmin) return null;
+
+    // Check if profile is actually complete (Store Name, PAN, Bank Account)
+    const isProfileComplete = user?.vendor?.storeName && user?.vendor?.pan && ((user?.vendor?.bankAccount) || (user?.vendor?.bankAccountNumber));
+
+    // If unverified but profile is complete, show "Pending" instead of "Action Required"
+    const effectiveStatus = (verificationStatus === 'unverified' && isProfileComplete) ? 'pending' : verificationStatus;
 
     const config = {
         pending: {
@@ -17,8 +24,8 @@ export function VerificationBanner() {
             bg: "bg-amber-500/10 border-amber-500/20",
             text: "text-amber-700 dark:text-amber-400",
             button: "hover:bg-amber-600 hover:text-white dark:hover:bg-amber-400 dark:hover:text-amber-950 active:bg-amber-700 dark:active:bg-amber-300",
-            title: "Verification in Progress",
-            message: "Your account is being reviewed. Most features are locked until verification is complete.",
+            title: "Verification Pending Approval",
+            message: "Your profile is complete! Our team is reviewing your details. You can update your settings if needed.",
             cta: "View Status",
             href: "/seller/settings"
         },
@@ -44,7 +51,7 @@ export function VerificationBanner() {
         }
     };
 
-    const current = config[verificationStatus as keyof typeof config] || config.unverified;
+    const current = config[effectiveStatus as keyof typeof config] || config.unverified;
     const Icon = current.icon;
 
     return (
