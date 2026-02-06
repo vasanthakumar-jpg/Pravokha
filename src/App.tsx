@@ -45,7 +45,6 @@ const About = lazy(() => import("./feat/info/pages/AboutPage/AboutPage"));
 const PolicyPage = lazy(() => import("./feat/info/pages/PolicyPage/PolicyPage"));
 
 // Payment pages
-const PaymentConfirmation = lazy(() => import("./feat/checkout/pages/PaymentConfirmationPage"));
 const PaymentSuccess = lazy(() => import("./feat/checkout/pages/PaymentSuccessPage"));
 const PaymentFailed = lazy(() => import("./feat/checkout/pages/PaymentFailedPage"));
 
@@ -203,12 +202,6 @@ export default function App() {
                             </Suspense>
                           } />
 
-                          {/* Payment Routes */}
-                          <Route path="/payment/confirm" element={
-                            <Suspense fallback={<LoadingFallback />}>
-                              <PaymentConfirmation />
-                            </Suspense>
-                          } />
                           <Route path="/payment/success" element={
                             <Suspense fallback={<LoadingFallback />}>
                               <PaymentSuccess />
@@ -612,6 +605,8 @@ export default function App() {
                             </Suspense>
                           } />
 
+                          <Route path="/payment/success" element={<PaymentSuccess />} />
+                          <Route path="/payment/failed" element={<PaymentFailed />} />
                           <Route path="*" element={<NotFound />} />
                         </Routes>
                       </Suspense>

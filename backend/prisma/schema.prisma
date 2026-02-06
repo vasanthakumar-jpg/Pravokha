@@ -255,8 +255,9 @@ model ProductSize {
 }
 
 model WebhookEvent {
-  id            String    @id @default(uuid())
-  stripeEventId String    @unique @map("stripe_event_id")
+  id              String    @id @default(uuid())
+  provider        String?
+  providerEventId String?    @unique @map("provider_event_id")
   eventType     String    @map("event_type")
   payload       String    @db.LongText
   processed     Boolean   @default(false)
@@ -266,7 +267,7 @@ model WebhookEvent {
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
-  @@index([stripeEventId])
+  @@index([providerEventId])
   @@index([processed])
   @@index([eventType])
   @@map("webhook_events")
@@ -283,7 +284,6 @@ model Order {
   status               OrderStatus          @default(PENDING)
   paymentStatus        PaymentStatus        @default(UNPAID)
   paymentMethod        String               @map("payment_method")
-  stripeIntentId       String?              @map("stripe_intent_id")
   customerName         String?              @map("customer_name")
   customerEmail        String?              @map("customer_email")
   customerPhone        String?              @map("customer_phone")
@@ -306,6 +306,7 @@ model Order {
   taxAmount            Float                @default(0) @map("tax_amount")
   items                OrderItem[]
   statusHistory        OrderStatusHistory[]
+  paymentTransactions  PaymentTransaction[]
   customer             User?                @relation("CustomerOrders", fields: [customerId], references: [id])
   vendor               Vendor               @relation("VendorOrders", fields: [vendorId], references: [id])
 
@@ -566,6 +567,45 @@ model SiteSetting {
   taxRate              Float    @default(18) @map("tax_rate")
 
   @@map("site_settings")
+}
+
+model PaymentTransaction {
+  id                    String            @id @default(uuid())
+  orderId               String            @map("order_id")
+  razorpayOrderId       String?           @unique @map("razorpay_order_id")
+  razorpayPaymentId     String?           @unique @map("razorpay_payment_id")
+  razorpaySignature     String?           @map("razorpay_signature")
+  amount                Float
+  currency              String            @default("INR")
+  status                TransactionStatus @default(CREATED)
+  paymentMethod         String?           @map("payment_method")
+  paymentMethodDetails  String?           @db.LongText @map("payment_method_details")
+  errorCode             String?           @map("error_code")
+  errorDescription      String?           @map("error_description")
+  failureReason         String?           @map("failure_reason")
+  refundId              String?           @map("refund_id")
+  refundAmount          Float?            @map("refund_amount")
+  refundStatus          String?           @map("refund_status")
+  metadata              String?           @db.LongText
+  attempts              Int               @default(0)
+  lastAttemptAt         DateTime?         @map("last_attempt_at")
+  createdAt             DateTime          @default(now()) @map("created_at")
+  updatedAt             DateTime          @updatedAt @map("updated_at")
+  order                 Order             @relation(fields: [orderId], references: [id])
+
+  @@index([razorpayOrderId])
+  @@index([razorpayPaymentId])
+  @@index([orderId])
+  @@index([status])
+  @@map("payment_transactions")
+}
+
+enum TransactionStatus {
+  CREATED
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
 }
 
 enum Role {

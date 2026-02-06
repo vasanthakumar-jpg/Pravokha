@@ -15,20 +15,21 @@ export default function PaymentSuccessPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
 
-    const orderId = searchParams.get("order_id");
-    const paymentIntent = searchParams.get("payment_intent");
+    const orderId = searchParams.get("orderNumber") || searchParams.get("order_id");
 
     useEffect(() => {
         if (orderId) {
             verifyPayment();
         } else {
-            setError("Invalid payment confirmation link");
+            setError("Missing order details for confirmation");
             setLoading(false);
         }
     }, [orderId]);
 
     const verifyPayment = async () => {
         try {
+            // Support both internal orderId and orderNumber if needed
+            // For now, let's assume orderNumber is passed from CheckoutPage
             const response = await apiClient.get(`/payments/status/${orderId}`);
             const paymentData = response.data;
 

@@ -1,8 +1,9 @@
 import { Request, Response } from 'express';
 import { prisma } from '../../infra/database/client';
 import { asyncHandler } from '../../utils/asyncHandler';
-import { stripe } from '../../infra/stripe';
-import { Role, PaymentStatus, OrderStatus } from '@prisma/client';
+import { Role, PaymentStatus, OrderStatus, TransactionStatus } from '@prisma/client';
+import { RazorpayService } from './razorpay.service';
+import { verifyRazorpaySignature } from '../../infra/payment/razorpay';
 
 export class PaymentController {
     static listPaymentMethods = asyncHandler(async (req: Request, res: Response) => {
@@ -70,9 +71,8 @@ export class PaymentController {
         // Fetch dynamic settings from database
         const settings = await prisma.siteSetting.findUnique({ where: { id: 'primary' } });
         const taxRate = settings?.taxRate || 18;
-        const baseShippingFee = 50; // New Requirement: Flat ₹50
+        const baseShippingFee = 50;
 
-        // Check if user is eligible for free shipping (Loyalty Reward: >= 3 orders)
         let applicableShipping = baseShippingFee;
         if (user?.id) {
             const orderCount = await prisma.order.count({
@@ -87,7 +87,6 @@ export class PaymentController {
             let totalAmount = 0;
             const vendorGroupedItems: Record<string, any[]> = {};
 
-            // 1. Validate products and group by vendor
             for (const item of items) {
                 const product = await tx.product.findUnique({
                     where: { id: item.productId },
@@ -121,51 +120,29 @@ export class PaymentController {
                 });
             }
 
-            // 2. Add Shipping, Tax and Apply Combo Discounts
             const { ComboOfferService } = require('../combo-offer/service');
             const { totalDiscount, appliedOffers } = await ComboOfferService.calculateComboDiscount(items);
 
             const subtotalAfterCombos = totalAmount - totalDiscount;
-            const taxAmount = Math.round((subtotalAfterCombos + applicableShipping) * (taxRate / 100)); // GST on product + shipping
+            const taxAmount = Math.round((subtotalAfterCombos + applicableShipping) * (taxRate / 100));
             const grandTotal = subtotalAfterCombos + applicableShipping + taxAmount;
 
-            // 3. Validate Stripe Minimum (₹50)
-            if (grandTotal < 50) {
-                const error = new Error(`Orders below ₹50 cannot be processed online. Please add more items or choose COD.`);
-                (error as any).statusCode = 400;
-                throw error;
-            }
-
-            // 4. Create Stripe Payment Intent for full amount
-            const paymentIntent = await stripe.paymentIntents.create({
-                amount: Math.round(grandTotal * 100),
-                currency: 'inr',
-                metadata: {
-                    userId: user?.id || 'GUEST',
-                    vendorCount: Object.keys(vendorGroupedItems).length.toString()
-                }
-            });
-
-            // 4. Create Orders (Split by Vendor)
             const orders = [];
             const vendorCount = Object.keys(vendorGroupedItems).length;
-
-            // We'll distribute the shipping fee to the first vendor's order for simplicity in accounting
             let remainingShipping = applicableShipping;
 
             for (const [vendorId, vendorItems] of Object.entries(vendorGroupedItems)) {
                 const vendorSubtotal = vendorItems.reduce((sum, i) => sum + i.subtotal, 0);
                 const vendorTax = Math.round(vendorSubtotal * (taxRate / 100));
 
-                // Assign shipping fee to the first order, or keep it 0 for others
                 const orderShipping = remainingShipping;
-                remainingShipping = 0; // Only first order gets the shipping fee record
+                remainingShipping = 0;
 
                 const vendorTotal = vendorSubtotal + vendorTax + orderShipping;
                 const vendor = await tx.vendor.findUnique({ where: { id: vendorId } });
 
                 if (!vendor) {
-                    throw new Error(`Vendor not found for product (Vendor ID: ${vendorId}). Contact support.`);
+                    throw new Error(`Vendor not found for product (Vendor ID: ${vendorId})`);
                 }
 
                 const platformFee = vendorTotal * ((vendor?.commissionRate || settings?.commissionRate || 10) / 100);
@@ -183,8 +160,7 @@ export class PaymentController {
                         taxAmount: vendorTax,
                         status: OrderStatus.PENDING,
                         paymentStatus: PaymentStatus.UNPAID,
-                        paymentMethod: 'stripe',
-                        stripeIntentId: paymentIntent.id,
+                        paymentMethod: 'online', // Generic naming
                         customerName: shippingAddress.name,
                         customerEmail: shippingAddress.email,
                         customerPhone: shippingAddress.phone,
@@ -195,15 +171,29 @@ export class PaymentController {
                 orders.push(order);
             }
 
+            const razorpayOrder = await RazorpayService.createRazorpayOrder(orders[0].id, grandTotal);
+
+            // Link other orders in metadata for reconciliation
+            if (orders.length > 1) {
+                await tx.paymentTransaction.update({
+                    where: { razorpayOrderId: razorpayOrder.id },
+                    data: {
+                        metadata: JSON.stringify({
+                            otherOrderIds: orders.slice(1).map(o => o.id),
+                            itemsCount: items.length
+                        })
+                    }
+                });
+            }
+
             return {
-                clientSecret: paymentIntent.client_secret,
+                razorpayOrderId: razorpayOrder.id,
+                amount: razorpayOrder.amount,
+                currency: razorpayOrder.currency,
                 orderId: orders[0]?.id,
                 orderNumber: orders[0]?.orderNumber,
                 orders: orders.map(o => ({ id: o.id, orderNumber: o.orderNumber })),
                 totalAmount: grandTotal,
-                amount: grandTotal, // Match frontend expectations
-                subtotal: subtotalAfterCombos,
-                rawSubtotal: totalAmount,
                 discount: totalDiscount,
                 appliedOffers,
                 shipping: applicableShipping,
@@ -211,7 +201,40 @@ export class PaymentController {
             };
         });
 
-        res.json({ success: true, ...result });
+        res.json({ success: true, data: result });
+    });
+
+    static verifyPayment = asyncHandler(async (req: Request, res: Response) => {
+        const { orderId, razorpayOrderId, razorpayPaymentId, razorpaySignature } = req.body;
+
+        if (!razorpayOrderId || !razorpayPaymentId || !razorpaySignature) {
+            return res.status(400).json({ success: false, message: 'Missing payment details' });
+        }
+
+        // 1. Verify Signature
+        const isValid = verifyRazorpaySignature(razorpayOrderId, razorpayPaymentId, razorpaySignature);
+
+        if (!isValid) {
+            // Log fraud attempt
+            await prisma.paymentTransaction.update({
+                where: { razorpayOrderId: razorpayOrderId },
+                data: {
+                    status: TransactionStatus.FAILED,
+                    failureReason: 'Signature verification failed'
+                }
+            });
+            return res.status(400).json({ success: false, message: 'Invalid payment signature' });
+        }
+
+        // 2. Process Success
+        const result = await RazorpayService.handlePaymentSuccess(
+            orderId,
+            razorpayOrderId,
+            razorpayPaymentId,
+            razorpaySignature
+        );
+
+        res.json({ success: true, data: result });
     });
 
     static refundOrder = asyncHandler(async (req: Request, res: Response) => {
@@ -224,14 +247,11 @@ export class PaymentController {
         }
 
         const order = await prisma.order.findUnique({ where: { id: orderId } });
-        if (!order || !order.stripeIntentId) {
-            return res.status(404).json({ success: false, message: 'Order or payment intent not found' });
+        if (!order) {
+            return res.status(404).json({ success: false, message: 'Order not found' });
         }
 
-        const refund = await stripe.refunds.create({
-            payment_intent: order.stripeIntentId,
-            amount: amount ? Math.round(amount * 100) : undefined
-        });
+        // Refund logic for new gateway will go here
 
         const isPartial = amount && amount < order.totalAmount;
         const updatedOrder = await prisma.order.update({
@@ -244,7 +264,7 @@ export class PaymentController {
             }
         });
 
-        res.json({ success: true, order: updatedOrder, refundId: refund.id });
+        res.json({ success: true, order: updatedOrder, message: 'Refund processed in database' });
     });
 
     static getPaymentStatus = asyncHandler(async (req: Request, res: Response) => {
@@ -260,40 +280,12 @@ export class PaymentController {
             return res.status(404).json({ success: false, message: 'Order not found' });
         }
 
-        let currentStatus = order.paymentStatus;
-        let paidAt = order.paidAt;
-
-        // Proactive Sync: If DB says NOT PAID, but we have a Stripe ID, check Stripe directly
-        if (currentStatus !== PaymentStatus.PAID && order.stripeIntentId) {
-            try {
-                const intent = await stripe.paymentIntents.retrieve(order.stripeIntentId);
-                if (intent.status === 'succeeded') {
-                    console.log(`[PaymentStatus] Proactively updated order ${order.id} to PAID via Stripe check.`);
-
-                    // Update DB immediately (mimic webhook logic)
-                    const updated = await prisma.order.update({
-                        where: { id: order.id },
-                        data: {
-                            paymentStatus: PaymentStatus.PAID,
-                            status: OrderStatus.CONFIRMED,
-                            paidAt: new Date(),
-                            paymentMethod: intent.payment_method_types[0] || 'card'
-                        }
-                    });
-                    currentStatus = updated.paymentStatus;
-                    paidAt = updated.paidAt;
-                }
-            } catch (err) {
-                console.error(`[PaymentStatus] Failed to check Stripe for intent ${order.stripeIntentId}:`, err);
-            }
-        }
-
         res.json({
             success: true,
             orderNumber: order.orderNumber,
-            paymentStatus: currentStatus,
+            paymentStatus: order.paymentStatus,
             totalAmount: order.totalAmount,
-            paidAt: paidAt,
+            paidAt: order.paidAt,
             refundedAt: order.refundedAt,
             refundedAmount: order.refundedAmount
         });

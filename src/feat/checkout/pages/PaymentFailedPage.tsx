@@ -58,14 +58,7 @@ export default function PaymentFailedPage() {
 
                 <div className="space-y-3">
                     <Button
-                        onClick={() => {
-                            if (paymentIntentClientSecret && orderId) {
-                                // Retry payment with same intent
-                                navigate(`/payment/confirm?client_secret=${paymentIntentClientSecret}&order_id=${orderId}`);
-                            } else {
-                                navigate("/checkout");
-                            }
-                        }}
+                        onClick={() => navigate("/checkout")}
                         className="w-full"
                     >
                         <RefreshCcw className="w-4 h-4 mr-2" />

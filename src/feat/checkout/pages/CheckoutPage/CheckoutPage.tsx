@@ -16,6 +16,7 @@ import { z } from "zod";
 import { cn } from "@/lib/utils";
 import { emailClient } from "@/lib/services/email/EmailClient";
 import { Shield } from "lucide-react";
+import { razorpayService } from "@/services/razorpayService";
 
 const checkoutSchema = z.object({
     name: z.string().min(2, "Name must be at least 2 characters").max(100, "Name must be less than 100 characters"),
@@ -29,7 +30,7 @@ const checkoutSchema = z.object({
 export function CheckoutPage() {
     const navigate = useNavigate();
     const { user, isSuspended } = useAuth();
-    const { items, cartTotal, clearCart } = useCart();
+    const { items, cartTotal, comboSavings, clearCart } = useCart();
     const [paymentMethod, setPaymentMethod] = useState("upi");
     const [loading, setLoading] = useState(true);
     const [errors, setErrors] = useState<Record<string, string>>({});
@@ -53,24 +54,12 @@ export function CheckoutPage() {
     const [processingStep, setProcessingStep] = useState<'contacting' | 'verifying' | 'confirming' | 'success'>('contacting');
     const [settings, setSettings] = useState({ taxRate: 18, shippingFee: 50 });
     const [orderCount, setOrderCount] = useState(0);
-    const [comboOffers, setComboOffers] = useState<any[]>([]);
 
     useEffect(() => {
         fetchSettings();
         fetchOrderCount();
-        fetchComboOffers();
     }, []);
 
-    const fetchComboOffers = async () => {
-        try {
-            const response = await apiClient.get('/combo-offers');
-            if (response.data.success) {
-                setComboOffers(response.data.data || []);
-            }
-        } catch (error) {
-            console.error("Failed to fetch combo offers:", error);
-        }
-    };
 
     const fetchOrderCount = async () => {
         try {
@@ -115,44 +104,9 @@ export function CheckoutPage() {
         setLoading(false);
     };
 
-    // Calculate Combo Savings (Dynamic from API)
-    let comboSavings = 0;
-    const appliedComboOfferIds: string[] = [];
-
-    comboOffers.forEach(offer => {
-        if (!offer.active) return;
-        let productIds: string[] = [];
-        try {
-            productIds = typeof offer.productIds === 'string' ? JSON.parse(offer.productIds) : offer.productIds;
-        } catch (e) {
-            productIds = [];
-        }
-
-        if (productIds.length > 0) {
-            // Simple check: do we have all these products?
-            const cartProductIds = items.map(i => i.productId);
-            const hasAll = productIds.every(id => cartProductIds.includes(id));
-            if (hasAll) {
-                // Fetch prices of involved products to calculate real discount
-                const comboProducts = items.filter(i => productIds.includes(i.productId));
-                const originalTotal = comboProducts.reduce((sum, p) => sum + p.price * p.quantity, 0);
-
-                // For simplicity, we assume the combo covers one of each product
-                // In a real marketplace, you might handle quantity better
-                const singleSetOriginal = comboProducts.reduce((sum, p) => sum + p.price, 0);
-                const discount = singleSetOriginal - offer.comboPrice;
-
-                if (discount > 0) {
-                    comboSavings += discount;
-                    appliedComboOfferIds.push(offer.id);
-                }
-            }
-        }
-    });
 
     const hasComboOffer = comboSavings > 0;
-    const rawSubtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-    const actualSubtotal = rawSubtotal - comboSavings;
+    const actualSubtotal = cartTotal;
 
     // LOYALTY REWARD: Free shipping for customers with 3 or more orders
     const isEligibleForFreeShipping = user && orderCount >= 3;
@@ -203,37 +157,49 @@ export function CheckoutPage() {
 
         setLoading(true);
 
+        const sanitizedItems = items.map(item => ({
+            productId: item.productId,
+            quantity: item.quantity,
+            variantId: item.variantId,
+            color: item.colorName,
+            size: item.size,
+        }));
+
+        if (paymentMethod === 'cod') {
+            await handleCODPayment(total, sanitizedItems);
+        } else {
+            await handleOnlinePayment(total, sanitizedItems);
+        }
+    };
+
+    const handleCODPayment = async (amount: number, items: any[]) => {
+        setLoading(true);
         try {
-            const sanitizedItems = items.map(item => ({
-                productId: item.productId,
-                quantity: item.quantity,
-                variantId: item.variantId,
-                color: item.colorName,
-                size: item.size,
-            }));
+            const orderData = {
+                customerName: formData.name,
+                customerEmail: formData.email,
+                customerPhone: formData.phone,
+                shippingAddress: formData.address,
+                shippingCity: formData.city,
+                shippingPincode: formData.pincode,
+                items: items,
+                total: amount,
+                paymentMethod: 'COD',
+                status: "PENDING",
+                paymentStatus: "PENDING",
+            };
 
-            // Call Stripe payment intent creation endpoint
-            const response = await apiClient.post('/payments/create-intent', {
-                items: sanitizedItems,
-                shippingAddress: {
-                    name: formData.name,
-                    email: formData.email,
-                    phone: formData.phone,
-                    address: formData.address,
-                    city: formData.city,
-                    pincode: formData.pincode,
-                },
-            });
+            const response = await apiClient.post("/orders", orderData);
+            if (!response.data.success) throw new Error("Failed to create order");
 
-            const { clientSecret, orderId, orderNumber, amount, orders } = response.data;
-
-            // Navigate to payment confirmation page
-            navigate(`/payment/confirm?client_secret=${clientSecret}&order_id=${orderId}&order_number=${orderNumber}&amount=${amount}`);
+            toast({ title: "Order Placed Successfully", description: "Your order has been created." });
+            clearCart();
+            setTimeout(() => navigate("/user/orders"), 1000);
         } catch (error: any) {
-            console.error('Payment intent creation failed:', error);
+            console.error('COD Order failed:', error);
             toast({
                 title: "Error",
-                description: error.response?.data?.message || "Failed to initialize payment. Please try again.",
+                description: error.response?.data?.message || "Failed to place order. Please try again.",
                 variant: "destructive",
             });
         } finally {
@@ -241,81 +207,87 @@ export function CheckoutPage() {
         }
     };
 
-    const handlePaymentComplete = async (paymentDetails: any, orderId?: string) => {
+    const handleOnlinePayment = async (amount: number, items: any[]) => {
+        setIsProcessing(true);
+        setProcessingStep('contacting');
+
         try {
-            if (isSuspended) {
-                throw new Error("TRANSACTION_BLOCKED: Your account is suspended.");
-            }
-
-            // REDUNDANCY CHECK: 
-            // If method is 'stripe', the orders were already created in createPaymentIntent.
-            // We only need to wait for redirect or sync. 
-            // Only call POST /orders for non-stripe (e.g. COD)
-            if (paymentDetails.method === 'stripe') {
-                console.log("Stripe payment detected. Skipping duplicate order creation.");
-                clearCart();
-                setTimeout(() => navigate("/user/orders"), 1000);
-                return;
-            }
-
-            const sanitizedItems = items.map(item => ({
-                productId: item.productId,
-                quantity: item.quantity,
-                variantId: item.variantId,
-                color: item.colorName,
-                size: item.size,
-            }));
-
-            const orderData = {
-                orderNumber: orderId, // This might be used as a prefix or base
-                customerName: formData.name,
-                customerEmail: formData.email,
-                customerPhone: formData.phone,
-                shippingAddress: formData.address,
-                shippingCity: formData.city,
-                shippingPincode: formData.pincode,
-                items: sanitizedItems,
-                total: total,
-                paymentMethod: paymentDetails.method,
-                stripeIntentId: paymentDetails.transactionId,
-                status: "CONFIRMED",
-                paymentStatus: paymentDetails.method === 'cod' ? 'PENDING' : 'PAID',
-            };
-
-            const response = await apiClient.post("/orders", orderData);
-
-            if (!response.data.success) throw new Error("Backend failed to create order.");
-
-            const confirmedOrder = response.data.data.order || response.data.data.orders?.[0];
-
-            // Send confirmation email (don't let it crash the success flow)
-            try {
-                if (confirmedOrder) {
-                    await emailClient.sendOrderConfirmation(formData.email, confirmedOrder);
-                }
-            } catch (emailErr) {
-                console.error("Email confirmation failed:", emailErr);
-            }
-
-            toast({
-                title: "Order Placed Successfully",
-                description: `Your order has been confirmed.`,
+            // 1. Create Razorpay Order on Backend
+            const orderResponse = await apiClient.post("/payments/create-razorpay-order", {
+                items,
+                shippingAddress: formData,
+                total: amount
             });
 
-            clearCart();
-            setShowPaymentDialog(false);
-            setTimeout(() => navigate("/user/orders"), 1000);
+            if (!orderResponse.data.success) throw new Error("Failed to initialize payment");
+
+
+            const { razorpayOrderId, amount: rzpAmount, currency, orderId } = orderResponse.data.data || orderResponse.data;
+
+            // 2. Load SDK and Open Razorpay Modal
+            const options = {
+                key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_placeholder',
+                amount: rzpAmount,
+                currency: currency,
+                name: "Pravokha Marketplace",
+                description: `Order #${orderResponse.data.orderNumber}`,
+                order_id: razorpayOrderId,
+                handler: async (response: any) => {
+                    setProcessingStep('verifying');
+                    try {
+                        // 3. Verify Payment
+                        const verification = await razorpayService.verifyPayment({
+                            orderId: orderId,
+                            razorpayOrderId: razorpayOrderId,
+                            razorpayPaymentId: response.razorpay_payment_id,
+                            razorpaySignature: response.razorpay_signature
+                        });
+
+                        if (verification.success) {
+                            setProcessingStep('success');
+                            toast({ title: "Payment Successful", description: "Your order has been confirmed." });
+                            clearCart();
+                            setTimeout(() => {
+                                setIsProcessing(false);
+                                navigate(`/payment/success?orderNumber=${orderResponse.data.orderNumber}`);
+                            }, 2000);
+                        } else {
+                            throw new Error("Payment verification failed");
+                        }
+                    } catch (err: any) {
+                        console.error('Verification failed:', err);
+                        toast({ title: "Verification Failed", description: "Wait for order update or contact support.", variant: "destructive" });
+                        setIsProcessing(false);
+                    }
+                },
+                prefill: {
+                    name: formData.name,
+                    email: formData.email,
+                    contact: formData.phone
+                },
+                theme: { color: "#4AA3A0" },
+                modal: {
+                    ondismiss: () => {
+                        setIsProcessing(false);
+                        toast({ title: "Payment Cancelled", description: "You can try again whenever you're ready." });
+                    }
+                }
+            };
+
+            await razorpayService.openCheckout(options);
+
         } catch (error: any) {
-            console.error("Error placing order:", error);
+            console.error('Online Payment failed:', error);
             setIsProcessing(false);
-            const errorMessage = error.message || "Failed to place order. Please try again.";
             toast({
-                title: "Order Failed",
-                description: errorMessage,
+                title: "Payment Error",
+                description: error.response?.data?.message || "Failed to initialize payment. Please try again.",
                 variant: "destructive",
             });
         }
     };
+
+    // Generic handlers for future gateway extensions can go here
 
     if (loading) {
         return (
@@ -479,7 +451,7 @@ export function CheckoutPage() {
                             <div className="space-y-2">
                                 <div className="flex justify-between text-sm">
                                     <span>Subtotal</span>
-                                    <span>₹{rawSubtotal}</span>
+                                    <span>₹{actualSubtotal}</span>
                                 </div>
                                 <div className="flex justify-between text-sm">
                                     <span>Shipping</span>

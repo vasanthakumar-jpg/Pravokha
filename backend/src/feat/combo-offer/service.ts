@@ -84,6 +84,13 @@ export class ComboOfferService {
         });
     }
 
+    static async toggleStatus(id: string, active: boolean) {
+        return await prisma.comboOffer.update({
+            where: { id },
+            data: { active }
+        });
+    }
+
     static async deleteOffer(id: string) {
         return await prisma.comboOffer.delete({
             where: { id }

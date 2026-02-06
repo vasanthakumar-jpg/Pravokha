@@ -31,7 +31,7 @@ interface Category {
     name: string;
     slug: string;
     description: string | null;
-    imageUrl: string | null;
+    image: string | null;
     status: string;
 }
 
@@ -132,10 +132,31 @@ export function HomePage() {
         window.scrollTo(0, 0);
     }, []);
 
-    if (loadingCategories) {
+    if (loadingCategories || loadingProducts) {
         return (
-            <div className="flex items-center justify-center min-h-screen">
-                <p className="text-muted-foreground">Loading...</p>
+            <div className="min-h-screen flex flex-col pt-20">
+                {/* Hero Skeleton */}
+                <div className="w-full h-[300px] sm:h-[450px] bg-muted animate-pulse mb-8" />
+
+                {/* Categories Skeleton */}
+                <div className="px-4 sm:px-6 lg:px-8 mb-12">
+                    <div className="h-8 w-48 bg-muted rounded mx-auto mb-8 animate-pulse" />
+                    <div className="flex gap-4 overflow-hidden">
+                        {[1, 2, 3, 4, 5, 6].map(i => (
+                            <div key={i} className="w-40 h-40 rounded-full bg-muted flex-shrink-0 animate-pulse" />
+                        ))}
+                    </div>
+                </div>
+
+                {/* Products Skeleton */}
+                <div className="px-4 sm:px-6 lg:px-8">
+                    <div className="h-8 w-64 bg-muted rounded mx-auto mb-12 animate-pulse" />
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                        {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
+                            <div key={i} className="aspect-[3/4] rounded-xl bg-muted animate-pulse" />
+                        ))}
+                    </div>
+                </div>
             </div>
         );
     }

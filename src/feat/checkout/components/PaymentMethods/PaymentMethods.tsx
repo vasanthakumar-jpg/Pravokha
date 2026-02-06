@@ -36,8 +36,7 @@ export const PaymentMethods = ({ value, onChange, details, onDetailsChange }: Pa
                             <Label htmlFor="card" className={styles.methodLabel}>
                                 <CreditCard className={styles.methodIcon} />
                                 <div className={styles.methodInfo}>
-                                    <span className={styles.methodName}>Credit/Debit Card</span>
-                                    <p className={styles.methodDescription}>Secure payment via Stripe</p>
+                                    <p className={styles.methodDescription}>Secure online payment</p>
                                 </div>
                                 <div className={styles.cardIcons}>
                                     <span className={styles.cardIcon}>VISA</span>

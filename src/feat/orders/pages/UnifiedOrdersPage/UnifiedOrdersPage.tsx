@@ -676,7 +676,7 @@ export default function UnifiedOrdersPage() {
                                                 <TableCell>
                                                     <div className="flex flex-col">
                                                         <span className="font-semibold text-sm tracking-tight break-all font-mono">#{order.order_number || order.id.slice(0, 8)}</span>
-                                                        <span className="text-[10px] text-muted-foreground">{order.items?.[0]?.product_variants?.products?.title || 'Retail product'}</span>
+                                                        <span className="text-[10px] text-muted-foreground">{order.items?.[0]?.product?.title || order.items?.[0]?.product_title || 'Product'}</span>
                                                     </div>
                                                 </TableCell>
                                                 <TableCell className="text-sm text-muted-foreground">

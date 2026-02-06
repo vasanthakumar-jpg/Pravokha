@@ -62,7 +62,7 @@ const checkoutLimiter = rateLimit({
 app.use(limiter);
 
 // Webhook endpoint (MUST be before express.json())
-app.post('/api/webhook/stripe', express.raw({ type: 'application/json' }), WebhookController.handleStripeWebhook);
+app.post('/api/webhook/razorpay', express.raw({ type: 'application/json' }), WebhookController.handleRazorpayWebhook);
 
 // Body Parsers
 app.use(express.json());

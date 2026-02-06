@@ -1,7 +1,7 @@
 import { OrderStatus, PaymentStatus, Role } from '@prisma/client';
-import { stripe } from '../../infra/stripe';
 import { prisma } from '../../infra/database/client';
 import { ProductService } from '../product/service';
+import { RazorpayService } from '../payment/razorpay.service';
 
 export class OrderService {
     static async createOrder(data: {
@@ -22,7 +22,7 @@ export class OrderService {
         paymentMethod?: string;
         status?: string;
         paymentStatus?: string;
-        stripeIntentId?: string;
+        paymentIntentId?: string;
     }) {
         const orderNumberBase = `ORD-${Date.now()}-${Math.random().toString(36).substring(2, 5).toUpperCase()}`;
         const { userId, items } = data;
@@ -81,6 +81,8 @@ export class OrderService {
                 const settings = await tx.siteSetting.findUnique({ where: { id: 'primary' } });
                 const taxRate = settings?.taxRate || 18;
 
+                const vendorSubtotal = group.reduce((sum: number, i: any) => sum + (i.product.price * i.item.quantity), 0);
+
                 // Subtract discount from the first order it can cover
                 const orderDiscount = Math.min(vendorSubtotal, remainingDiscount);
                 remainingDiscount -= orderDiscount;
@@ -126,7 +128,7 @@ export class OrderService {
                         customerEmail: data.customerEmail,
                         customerPhone: data.customerPhone,
                         shippingAddress: JSON.stringify(shippingAddressJson),
-                        stripeIntentId: data.stripeIntentId,
+                        paymentIntentId: data.paymentIntentId,
                         items: {
                             create: group.map(g => ({
                                 productId: g.product.id,
@@ -148,31 +150,17 @@ export class OrderService {
                     include: { items: true }
                 });
 
+                // Track COD transaction for audit/analytics
+                if (data.paymentMethod === 'COD') {
+                    await RazorpayService.handleCODPayment(order.id, vendorTotal);
+                }
+
                 createdOrders.push(order);
                 grandTotal += vendorTotal;
             }
 
-            // 4. Stripe Integration
+            // Payment gateway integration will be added here
             let clientSecret = null;
-            if (data.paymentMethod === 'stripe' && !data.stripeIntentId && createdOrders.length > 0) {
-                const paymentIntent = await stripe.paymentIntents.create({
-                    amount: Math.round(grandTotal * 100),
-                    currency: 'inr',
-                    metadata: {
-                        customerEmail: data.customerEmail,
-                        orderNumbers: createdOrders.map(o => o.orderNumber).join(',')
-                    },
-                    receipt_email: data.customerEmail,
-                });
-
-                for (const o of createdOrders) {
-                    await tx.order.update({
-                        where: { id: o.id },
-                        data: { stripeIntentId: paymentIntent.id }
-                    });
-                }
-                clientSecret = paymentIntent.client_secret;
-            }
 
             // 5. Notifications
             const { NotificationService } = await import('../notification/service');
@@ -390,19 +378,7 @@ export class OrderService {
                 });
             }
 
-            if (order.paymentStatus === PaymentStatus.PAID && order.stripeIntentId) {
-                try {
-                    const refund = await stripe.refunds.create({
-                        payment_intent: order.stripeIntentId,
-                        reason: 'requested_by_customer'
-                    });
-                    console.log(`[OrderService] Stripe refund successful for intent ${order.stripeIntentId}: ${refund.id}`);
-                } catch (stripeError: any) {
-                    console.error('[OrderService] Stripe refund failed during cancellation:', stripeError.message);
-                    // We continue the cancellation even if automated refund fails; 
-                    // Manual intervention might be required if Stripe is down or intent is too old.
-                }
-            }
+            // Refund logic for new gateway will go here
 
             return await tx.order.update({
                 where: { id },
@@ -565,20 +541,7 @@ export class OrderService {
                 throw new Error(`Refund amount exceeds remaining balance. Max: ₹${remainingToRefund}`);
             }
 
-            // 3. Process Stripe Refund
-            if (order.stripeIntentId) {
-                try {
-                    await stripe.refunds.create({
-                        payment_intent: order.stripeIntentId,
-                        amount: Math.round(refundAmount * 100), // convert to cents
-                        reason: 'requested_by_customer',
-                        metadata: { orderId: order.id, processedBy: userId }
-                    });
-                } catch (stripeError: any) {
-                    console.error('[OrderService] Stripe refund API call failed:', stripeError.message);
-                    throw new Error(`Stripe Refund Failed: ${stripeError.message}`);
-                }
-            }
+            // Gateway-specific refund will be handled here
 
             // 4. Update Database
             const isFullRefund = Math.abs(refundAmount - remainingToRefund) < 0.01;

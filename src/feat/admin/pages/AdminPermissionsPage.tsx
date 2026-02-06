@@ -3,11 +3,11 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { apiClient } from '@/infra/api/apiClient';
 import { usePermission } from '@/core/hooks/usePermission';
 import { Loader2, ShieldAlert, Save } from 'lucide-react';
-import { Button } from '@/shared/ui/button';
-import { Checkbox } from '@/shared/ui/checkbox';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/shared/ui/card';
-import { useToast } from '@/shared/ui/use-toast';
-import { Separator } from '@/shared/ui/separator';
+import { Button } from '@/ui/Button';
+import { Checkbox } from '@/ui/Checkbox';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/ui/Card';
+import { useToast } from '@/ui/use-toast';
+import { Separator } from '@/ui/Separator';
 
 interface AdminPermissions {
     canApproveProducts: boolean;

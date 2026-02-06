@@ -1,247 +1,144 @@
 import { Request, Response } from 'express';
-import Stripe from 'stripe';
-import { stripe } from '../../infra/stripe';
 import { prisma } from '../../infra/database/client';
-import { PaymentStatus, OrderStatus } from '@prisma/client';
+import { PaymentStatus, OrderStatus, TransactionStatus } from '@prisma/client';
 import { EmailService } from '../../services/email.service';
+import { verifyWebhookSignature } from '../../infra/payment/razorpay';
+import { RazorpayService } from '../payment/razorpay.service';
 
 export class WebhookController {
-    static async handleStripeWebhook(req: Request, res: Response) {
-        const sig = req.headers['stripe-signature'];
-        const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
+    static async handleRazorpayWebhook(req: Request, res: Response) {
+        const signature = req.headers['x-razorpay-signature'] as string;
+        const rawBody = req.body.toString();
 
-        if (!sig || !endpointSecret) {
-            console.error('[Stripe Webhook] Missing signature or secret');
-            return res.status(400).send('Webhook Error: Missing signature or secret');
+        if (!signature) {
+            return res.status(400).json({ success: false, message: 'Missing signature' });
         }
 
-        let event: Stripe.Event;
+        // 1. Verify Signature
+        const isValid = verifyWebhookSignature(rawBody, signature);
+        if (!isValid) {
+            console.error('[Webhook] Invalid Razorpay signature');
+            return res.status(400).json({ success: false, message: 'Invalid signature' });
+        }
+
+        const event = JSON.parse(rawBody);
+        console.log(`[Webhook] Razorpay event received: ${event.event}`);
 
         try {
-            // Stripe signature verification
-            event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
-        } catch (err: any) {
-            console.error(`[Stripe Webhook] Signature verification failed: ${err.message}`);
-            return res.status(400).send(`Webhook Error: ${err.message}`);
-        }
-
-        // 1. Idempotency Check: Store or retrieve the event
-        const existingEvent = await prisma.webhookEvent.findUnique({
-            where: { stripeEventId: event.id }
-        });
-
-        if (existingEvent && existingEvent.processed) {
-            console.log(`[Stripe Webhook] Event ${event.id} already processed.`);
-            return res.json({ received: true, processed: true, idempotency: 'HIT' });
-        }
-
-        // Store the event if it doesn't exist
-        const webhookEvent = existingEvent || await prisma.webhookEvent.create({
-            data: {
-                stripeEventId: event.id,
-                eventType: event.type,
-                payload: JSON.stringify(event),
-                processed: false
-            }
-        });
-
-        try {
-            // Handle the event
-            switch (event.type) {
-                case 'payment_intent.succeeded': {
-                    const paymentIntent = event.data.object as Stripe.PaymentIntent;
-                    await this.handlePaymentSucceeded(paymentIntent);
-                    break;
+            // Log the event for record/debug
+            await prisma.webhookEvent.create({
+                data: {
+                    provider: 'RAZORPAY',
+                    providerEventId: event.account_id + '_' + (event.payload.payment?.entity.id || event.id),
+                    eventType: event.event,
+                    payload: JSON.stringify(event)
                 }
+            });
 
-                case 'payment_intent.payment_failed': {
-                    const paymentIntent = event.data.object as Stripe.PaymentIntent;
-                    await this.handlePaymentFailed(paymentIntent);
+            switch (event.event) {
+                case 'payment.captured':
+                    await WebhookController.handlePaymentCaptured(event.payload.payment.entity);
                     break;
-                }
-
-                case 'charge.refunded': {
-                    const charge = event.data.object as Stripe.Charge;
-                    await this.handleChargeRefunded(charge);
+                case 'payment.failed':
+                    await WebhookController.handlePaymentFailed(event.payload.payment.entity);
                     break;
-                }
-
+                case 'refund.processed':
+                    await WebhookController.handleRefundProcessed(event.payload.refund.entity);
+                    break;
                 default:
-                    console.log(`[Stripe Webhook] Unhandled event type ${event.type}`);
+                    console.log(`[Webhook] Unhandled event: ${event.event}`);
             }
 
-            // Mark as processed
-            await prisma.webhookEvent.update({
-                where: { id: webhookEvent.id },
-                data: {
-                    processed: true,
-                    processedAt: new Date()
-                }
-            });
-
-        } catch (error: any) {
-            console.error(`[Stripe Webhook] Error processing event ${event.id}:`, error);
-
-            await prisma.webhookEvent.update({
-                where: { id: webhookEvent.id },
-                data: {
-                    retryCount: { increment: 1 },
-                    errorMessage: error.message
-                }
-            });
-
-            return res.status(500).json({ success: false, error: 'Internal server error processing webhook' });
+            res.json({ success: true });
+        } catch (error) {
+            console.error('[Webhook] Error processing event:', error);
+            res.status(500).json({ success: false, message: 'Internal server error' });
         }
-
-        res.json({ received: true, processed: true });
     }
 
-    private static async handlePaymentSucceeded(paymentIntent: Stripe.PaymentIntent) {
-        console.log(`[Stripe Webhook] Processing successful payment for Intent: ${paymentIntent.id}`);
+    private static async handlePaymentCaptured(payment: any) {
+        const razorpayOrderId = payment.order_id;
+        const razorpayPaymentId = payment.id;
 
-        const orders = await prisma.order.findMany({
-            where: { stripeIntentId: paymentIntent.id },
-            include: { items: { include: { product: true } } }
+        const transaction = await prisma.paymentTransaction.findUnique({
+            where: { razorpayOrderId }
         });
 
-        if (orders.length === 0) {
-            console.warn(`[Stripe Webhook] No orders found for PaymentIntent: ${paymentIntent.id}`);
+        if (!transaction) {
+            console.warn(`[Webhook] Transaction not found for order ${razorpayOrderId}`);
             return;
         }
 
-        for (const order of orders) {
-            // Avoid double processing if already paid (though idempotency check above handles this mostly)
-            if (order.paymentStatus === PaymentStatus.PAID) continue;
+        if (transaction.status === TransactionStatus.PAID) return;
 
-            await prisma.order.update({
-                where: { id: order.id },
+        await prisma.$transaction(async (tx) => {
+            // Update Transaction
+            await tx.paymentTransaction.update({
+                where: { id: transaction.id },
                 data: {
-                    paymentStatus: PaymentStatus.PAID,
-                    status: OrderStatus.CONFIRMED, // Production flow: Payment Success -> Order Confirmed
-                    paidAt: new Date(),
-                    paymentMethod: paymentIntent.payment_method_types[0] || 'card',
-                    statusHistory: {
-                        create: {
-                            status: OrderStatus.CONFIRMED,
-                            notes: 'Payment confirmed via Stripe. Order moved to CONFIRMED state.'
-                        }
-                    }
+                    razorpayPaymentId,
+                    status: TransactionStatus.PAID,
+                    paymentMethod: payment.method,
+                    paymentMethodDetails: JSON.stringify(payment.acquirer_data)
                 }
             });
 
-            // Send Confirmation Email
-            if (order.customerEmail) {
-                await EmailService.sendOrderConfirmation(order.customerEmail, order).catch(e =>
-                    console.error(`[Stripe Webhook] Email confirmation failed for order ${order.orderNumber}:`, e)
-                );
-            }
-
-            // Notify the vendor
-            try {
-                const { NotificationService } = await import('../notification/service');
-                await NotificationService.createNotification({
-                    userId: order.vendorId,
-                    title: 'New Order Received',
-                    message: `Order ${order.orderNumber} is now PAID. Your earning: ₹${order.vendorEarnings.toFixed(2)}`,
-                    type: 'order',
-                    link: `/seller/orders/${order.id}`,
+            // Update Primary Order
+            const primaryOrder = await tx.order.findUnique({ where: { id: transaction.orderId } });
+            if (primaryOrder) {
+                await tx.order.update({
+                    where: { id: primaryOrder.id },
+                    data: {
+                        paymentStatus: PaymentStatus.PAID,
+                        status: OrderStatus.CONFIRMED,
+                        paidAt: new Date(),
+                        paymentIntentId: razorpayPaymentId
+                    }
                 });
-            } catch (e) {
-                console.error(`[Stripe Webhook] Vendor notification failed for order ${order.orderNumber}:`, e);
             }
-        }
-    }
 
-    private static async handlePaymentFailed(paymentIntent: Stripe.PaymentIntent) {
-        const error = paymentIntent.last_payment_error;
-        const failureReason = this.mapStripeErrorCode(error?.code || '');
-
-        console.log(`[Stripe Webhook] Processing failed payment for Intent: ${paymentIntent.id}. Reason: ${failureReason}`);
-
-        await prisma.order.updateMany({
-            where: { stripeIntentId: paymentIntent.id },
-            data: {
-                paymentStatus: PaymentStatus.FAILED,
-                paymentFailureReason: failureReason
-            }
-        });
-
-        const orders = await prisma.order.findMany({
-            where: { stripeIntentId: paymentIntent.id }
-        });
-
-        for (const order of orders) {
-            if (order.customerId) {
-                try {
-                    const { NotificationService } = await import('../notification/service');
-                    await NotificationService.createNotification({
-                        userId: order.customerId,
-                        title: 'Payment Failed',
-                        message: `Payment for order ${order.orderNumber} failed. Reason: ${error?.message || 'Transaction declined'}`,
-                        type: 'alert',
-                        link: `/checkout`, // Encourage retry
-                    });
-                } catch (e) {
-                    console.error('[Stripe Webhook] Customer failed notification error:', e);
-                }
-            }
-        }
-    }
-
-    private static async handleChargeRefunded(charge: Stripe.Charge) {
-        const paymentIntentId = charge.payment_intent as string;
-        if (!paymentIntentId) return;
-
-        console.log(`[Stripe Webhook] Processing refund for PaymentIntent: ${paymentIntentId}`);
-
-        const orders = await prisma.order.findMany({
-            where: { stripeIntentId: paymentIntentId }
-        });
-
-        for (const order of orders) {
-            const isFullRefund = charge.amount_refunded === charge.amount;
-
-            await prisma.order.update({
-                where: { id: order.id },
-                data: {
-                    paymentStatus: isFullRefund ? PaymentStatus.REFUNDED : PaymentStatus.PARTIALLY_REFUNDED,
-                    status: isFullRefund ? OrderStatus.CANCELLED : order.status,
-                    refundedAmount: (order.refundedAmount || 0) + (charge.amount_refunded / 100), // Stripe is in cents
-                    statusHistory: {
-                        create: {
-                            status: isFullRefund ? OrderStatus.CANCELLED : order.status,
-                            notes: `Refund processed via Stripe. Amount: ₹${(charge.amount_refunded / 100).toFixed(2)}`
-                        }
+            // Update Linked Orders (multi-vendor)
+            if (transaction.metadata) {
+                const metadata = JSON.parse(transaction.metadata);
+                if (metadata.otherOrderIds && Array.isArray(metadata.otherOrderIds)) {
+                    for (const orderId of metadata.otherOrderIds) {
+                        await tx.order.update({
+                            where: { id: orderId },
+                            data: {
+                                paymentStatus: PaymentStatus.PAID,
+                                status: OrderStatus.CONFIRMED,
+                                paidAt: new Date(),
+                                paymentIntentId: razorpayPaymentId
+                            }
+                        });
                     }
                 }
-            });
-
-            if (order.customerId) {
-                try {
-                    const { NotificationService } = await import('../notification/service');
-                    await NotificationService.createNotification({
-                        userId: order.customerId,
-                        title: 'Refund Processed',
-                        message: `A refund of ₹${(charge.amount_refunded / 100).toFixed(2)} for order ${order.orderNumber} has been processed.`,
-                        type: 'order',
-                        link: `/user/orders`,
-                    });
-                } catch (e) {
-                    console.error('[Stripe Webhook] Customer refund notification error:', e);
-                }
             }
-        }
+        });
     }
 
-    private static mapStripeErrorCode(code: string): any {
-        const mapping: Record<string, string> = {
-            'card_declined': 'DECLINED',
-            'expired_card': 'EXPIRED_CARD',
-            'incorrect_cvc': 'INVALID_CARD',
-            'insufficient_funds': 'INSUFFICIENT_FUNDS',
-            'processing_error': 'NETWORK_ERROR',
-            'fraudulent': 'FRAUD_SUSPECTED'
-        };
-        return mapping[code] || 'DECLINED';
+    private static async handlePaymentFailed(payment: any) {
+        const razorpayOrderId = payment.order_id;
+
+        await prisma.paymentTransaction.updateMany({
+            where: { razorpayOrderId },
+            data: {
+                status: TransactionStatus.FAILED,
+                errorCode: payment.error_code,
+                errorDescription: payment.error_description
+            }
+        });
+    }
+
+    private static async handleRefundProcessed(refund: any) {
+        const razorpayPaymentId = refund.payment_id;
+
+        await prisma.paymentTransaction.update({
+            where: { razorpayPaymentId },
+            data: {
+                refundStatus: 'COMPLETED',
+                refundAmount: refund.amount / 100
+            }
+        });
     }
 }

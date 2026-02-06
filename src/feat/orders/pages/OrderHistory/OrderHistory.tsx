@@ -22,7 +22,7 @@ import {
   ShoppingBag
 } from "lucide-react";
 import { format } from "date-fns";
-import { cn } from "@/lib/utils";
+import { cn, getMediaUrl } from "@/lib/utils";
 import { OrderCancellationReasonDialog } from "@/feat/orders/components/OrderCancellationReasonDialog";
 import { generateInvoicePDF } from "@/shared/util/invoiceGenerator";
 

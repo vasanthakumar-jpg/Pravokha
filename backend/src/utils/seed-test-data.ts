@@ -196,7 +196,7 @@ export async function seedTestData() {
             customerName: customer1.name!,
             customerEmail: customer1.email,
             customerPhone: '9876543210',
-            shippingAddress: { address: '123 Main Street', city: 'Mumbai', pincode: '400001' },
+            shippingAddress: '123 Main Street, Mumbai, 400001',
             customerId: customer1.id,
             vendorId: vendorA.id,
             platformFee: 49.9,

@@ -24,6 +24,7 @@ interface CartContextType {
   updateQuantity: (productId: string, variantId: string, size: string, quantity: number) => void;
   clearCart: () => void;
   cartTotal: number;
+  comboSavings: number;
   cartCount: number;
   isCartOpen: boolean;
   setIsCartOpen: (open: boolean) => void;
@@ -237,6 +238,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         updateQuantity,
         clearCart,
         cartTotal,
+        comboSavings,
         cartCount,
         isCartOpen,
         setIsCartOpen,

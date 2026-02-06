@@ -107,7 +107,7 @@ export function CategoryCarousel({ categories, getFallbackImage, isCategoryActiv
                             <CategorySmallCard
                                 title={category.name}
                                 description={category.description || "Discover our collection"}
-                                image={category.imageUrl || getFallbackImage(category.slug)}
+                                image={category.image || getFallbackImage(category.slug)}
                                 link={`/products?category=${category.slug}`}
                                 disabled={!isCategoryActive(category.status)}
                             />

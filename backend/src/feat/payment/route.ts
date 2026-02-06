@@ -11,6 +11,8 @@ router.delete('/methods/:id', authenticate, PaymentController.deletePaymentMetho
 // New payment endpoints
 router.get('/settings', PaymentController.getPublicSettings);
 router.post('/create-intent', authenticate, PaymentController.createPaymentIntent);
+router.post('/create-razorpay-order', authenticate, PaymentController.createPaymentIntent);
+router.post('/verify-payment', authenticate, PaymentController.verifyPayment);
 router.post('/refund/:orderId', authenticate, PaymentController.refundOrder);
 router.get('/status/:orderId', authenticate, PaymentController.getPaymentStatus);
 
