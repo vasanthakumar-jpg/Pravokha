@@ -6,9 +6,10 @@
  */
 
 export enum UserRole {
+    SUPER_ADMIN = 'SUPER_ADMIN',
     ADMIN = 'ADMIN',
-    DEALER = 'DEALER',
-    USER = 'USER'
+    SELLER = 'SELLER',
+    CUSTOMER = 'CUSTOMER'
 }
 
 export interface IUserDomain {

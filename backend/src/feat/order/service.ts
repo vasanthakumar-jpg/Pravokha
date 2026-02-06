@@ -42,10 +42,14 @@ export class OrderService {
 
             // 1. Group items by Vendor and validate stock
             const vendorGroups = new Map<string, any[]>();
+            const sanitizedItemsForDiscount: any[] = [];
+
             for (const item of items) {
                 const product = products.find(p => p.id === item.productId);
                 if (!product) throw new Error(`Product ${item.productId} not found`);
                 if (product.stock < item.quantity) throw new Error(`Insufficient stock for ${product.title}`);
+
+                sanitizedItemsForDiscount.push({ productId: item.productId, quantity: item.quantity, price: product.price });
 
                 const vId = product.vendorId;
                 if (!vId) throw new Error(`Product ${product.title} has no vendor assigned`);
@@ -60,30 +64,45 @@ export class OrderService {
                 });
             }
 
+            // 2. Calculate Combo Discounts
+            const { ComboOfferService } = require('../combo-offer/service');
+            const { totalDiscount } = await ComboOfferService.calculateComboDiscount(sanitizedItemsForDiscount);
+
+            // Distribute discount proportionally to the first vendor's order for simplicity
+            // In a more complex system, we'd split it per product involved in the combo
+            let remainingDiscount = totalDiscount;
+
             // 3. Create Orders (Split by Vendor)
             const createdOrders: any[] = [];
             let grandTotal = 0;
             let counter = 1;
 
             for (const [vId, group] of vendorGroups) {
-                const vendorSubtotal = group.reduce((sum, g) => sum + (g.product.price * g.item.quantity), 0);
-
-                // Get dynamic tax rate (fallback to 18)
                 const settings = await tx.siteSetting.findUnique({ where: { id: 'primary' } });
                 const taxRate = settings?.taxRate || 18;
 
+                // Subtract discount from the first order it can cover
+                const orderDiscount = Math.min(vendorSubtotal, remainingDiscount);
+                remainingDiscount -= orderDiscount;
+
+                const adjustedSubtotal = vendorSubtotal - orderDiscount;
+
                 // Calculate shipping eligibility
-                const baseShippingFee = 50;
+                const baseShippingFee = settings?.defaultShippingFee || 99;
                 let applicableShipping = 0;
-                if (userId && counter === 1) { // Only add shipping to the first vendor order if applicable
-                    const orderCount = await tx.order.count({ where: { customerId: userId } });
-                    if (orderCount >= 3) {
+                if (counter === 1) { // Only add shipping to the first vendor order if applicable
+                    if (!userId) {
                         applicableShipping = baseShippingFee;
+                    } else {
+                        const orderCount = await tx.order.count({ where: { customerId: userId } });
+                        if (orderCount < 3) {
+                            applicableShipping = baseShippingFee;
+                        }
                     }
                 }
 
-                const vendorTax = Math.round((vendorSubtotal + applicableShipping) * (taxRate / 100));
-                const vendorTotal = vendorSubtotal + vendorTax + applicableShipping;
+                const vendorTax = Math.round((adjustedSubtotal + applicableShipping) * (taxRate / 100));
+                const vendorTotal = adjustedSubtotal + vendorTax + applicableShipping;
 
                 const vendor = group[0].product.vendor;
                 const commissionRate = vendor?.commissionRate || settings?.commissionRate || 10;
@@ -198,7 +217,12 @@ export class OrderService {
         if (order.items) {
             order.items = order.items.map((item: any) => {
                 if (item.product) {
+                    console.log(`[OrderService] Processing item: ${item.id}, Product: ${item.product?.id}`);
+                    console.log(`[OrderService] PRE-TRANSFORM Images:`, JSON.stringify(item.product?.images));
+
                     item.product = (ProductService as any).transformProduct(item.product);
+
+                    console.log(`[OrderService] POST-TRANSFORM Images:`, JSON.stringify(item.product?.images));
                 }
                 return item;
             });

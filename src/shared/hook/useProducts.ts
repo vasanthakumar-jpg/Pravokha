@@ -2,19 +2,53 @@ import { useState, useEffect } from "react";
 import { apiClient } from "@/infra/api/apiClient";
 import { Product } from "@/data/products";
 
-export function useProducts() {
+export interface ProductFilters {
+  category?: string;
+  search?: string;
+  page?: number;
+  limit?: number;
+  sort?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  tag?: string;
+  subcategory?: string;
+}
+
+export function useProducts(filters: ProductFilters = {}) {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Deep comparison or JSON stringify to avoid infinite loop if object reference changes
+  const filterString = JSON.stringify(filters);
+
   useEffect(() => {
     fetchProducts();
-  }, []);
+  }, [filterString]);
 
   const fetchProducts = async () => {
     setLoading(true);
     try {
-      const response = await apiClient.get('/products');
+      // Build query params
+      const params: any = {};
+      if (filters.category) params.category = filters.category;
+      if (filters.search) params.search = filters.search;
+      if (filters.page) params.page = filters.page;
+      if (filters.limit) params.limit = filters.limit;
+      if (filters.sort) params.sort = filters.sort;
+      if (filters.minPrice !== undefined) params.minPrice = filters.minPrice;
+      if (filters.maxPrice !== undefined) params.maxPrice = filters.maxPrice;
+      if (filters.tag) params.tag = filters.tag;
+      // Subcategory isn't directly supported by backend yet as a param, logic might need adjustment if backend doesn't support 'subcategory' param.
+      // Checking backend controller... it accepts 'category' (slug). 
+      // If subcategory is passed, we might need to handle it. 
+      // Current backend service: `where.category = { slug: filters.category };`
+      // If we select a subcategory, we should probably pass its slug as 'category' param?
+      // Or we need to update backend to support subcategory specific filtering.
+      // For now, let's pass it if backend implementation updates or if we treat subcategory slug as category slug (which often works if slugs are unique).
+      if (filters.subcategory) params.category = filters.subcategory; // Override category with subcategory slug
+
+      const response = await apiClient.get('/products', { params });
       const productsData = response.data.products;
 
       // Transform database structure to match Product interface

@@ -16,7 +16,7 @@ interface AdminPermissions {
     canManageCategories: boolean;
     canManageUsers: boolean;
     canSuspendUsers: boolean;
-    canVerifyDealers: boolean;
+    canVerifyVendors: boolean;
     canChangeUserRoles: boolean;
     canViewAllOrders: boolean;
     canCancelAnyOrder: boolean;
@@ -36,7 +36,7 @@ const DEFAULT_PERMISSIONS: AdminPermissions = {
     canManageCategories: false,
     canManageUsers: false,
     canSuspendUsers: false,
-    canVerifyDealers: false,
+    canVerifyVendors: false,
     canChangeUserRoles: false,
     canViewAllOrders: false,
     canCancelAnyOrder: false,
@@ -128,7 +128,7 @@ export default function AdminPermissionsPage() {
             items: [
                 { key: 'canManageUsers', label: 'View/Manage Users' },
                 { key: 'canSuspendUsers', label: 'Suspend/Ban Users' },
-                { key: 'canVerifyDealers', label: 'Verify Dealers' },
+                { key: 'canVerifyVendors', label: 'Verify Vendors' },
                 { key: 'canChangeUserRoles', label: 'Change User Roles' },
             ]
         },

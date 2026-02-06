@@ -153,10 +153,27 @@ export default function AdminProductForm() {
             try {
                 console.log(`[AdminProductForm] Fetching product: ${id}`);
                 const { data: response } = await apiClient.get(`/products/${id}`);
-                const product = response.data; // Access the inner data containing product details
+                console.log('[AdminProductForm] API Response structure:', {
+                    success: response.success,
+                    hasData: !!response.data,
+                    dataType: typeof response.data
+                });
+
+                const product = response.data;
+                console.log('[AdminProductForm] Product data:', {
+                    id: product?.id,
+                    title: product?.title,
+                    hasVariants: !!product?.variants,
+                    hasImages: !!product?.images
+                });
 
                 if (!product) {
-                    toast({ title: "Error", description: "Product data not found", variant: "destructive" });
+                    toast({
+                        title: "Product Not Found",
+                        description: "This product may have been deleted or doesn't exist.",
+                        variant: "destructive"
+                    });
+                    navigate('/admin/products');
                     return;
                 }
 
@@ -169,12 +186,29 @@ export default function AdminProductForm() {
                 // SUPPORT BOTH CAMELCASE (Backend) AND SNAKE_CASE (Possible future standard)
                 const variants = product.variants || product.product_variants || [];
 
+                const parseImages = (imgs: any): string[] => {
+                    let parsed: string[] = [];
+                    if (Array.isArray(imgs)) parsed = imgs;
+                    else if (typeof imgs === 'string') {
+                        try {
+                            const p = JSON.parse(imgs);
+                            parsed = Array.isArray(p) ? p : [];
+                        } catch (e) {
+                            parsed = [];
+                        }
+                    }
+                    // Filter out nulls, empty strings, and common placeholders
+                    return parsed.filter(src => src && typeof src === 'string' && !src.includes('placeholder') && !src.includes('no-image'));
+                };
+
                 if (variants.length > 0) {
                     variants.forEach((v: any) => {
                         // Stable ID logic - prefer existing database IDs
                         let colorId = v.id;
                         const colorName = v.colorName || v.color_name;
                         const colorHex = v.colorHex || v.color_hex;
+
+                        const variantImages = parseImages(v.images);
 
                         const existingColor = colors.find(c => c.name === colorName);
 
@@ -184,10 +218,10 @@ export default function AdminProductForm() {
                                 name: colorName,
                                 hex: colorHex
                             });
-                            existingVariantImages[colorId] = v.images || [];
+                            existingVariantImages[colorId] = variantImages;
                         } else {
                             colorId = existingColor.id;
-                            v.images?.forEach((img: string) => {
+                            variantImages.forEach((img: string) => {
                                 if (!existingVariantImages[colorId].includes(img)) existingVariantImages[colorId].push(img);
                             });
                         }
@@ -242,7 +276,24 @@ export default function AdminProductForm() {
                 });
 
             } catch (error: any) {
-                toast({ title: "Error", description: "Failed to load product", variant: "destructive" });
+                console.error('[AdminProductForm] Error loading product:', error);
+                console.error('[AdminProductForm] Error response:', error.response?.data);
+                console.error('[AdminProductForm] Error status:', error.response?.status);
+
+                if (error.response?.status === 404) {
+                    toast({
+                        title: "Product Not Found",
+                        description: "This product doesn't exist in the database. Redirecting to products list...",
+                        variant: "destructive"
+                    });
+                    setTimeout(() => navigate('/admin/products'), 2000);
+                } else {
+                    toast({
+                        title: "Error Loading Product",
+                        description: error.response?.data?.message || error.message || "Failed to load product data",
+                        variant: "destructive"
+                    });
+                }
             } finally {
                 setIsLoading(false);
             }
@@ -519,60 +570,67 @@ export default function AdminProductForm() {
     );
 
     return (
-        <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8 flex flex-col gap-8 pb-20 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="max-w-7xl mx-auto py-4 sm:py-8 px-4 sm:px-6 lg:px-8 flex flex-col gap-6 sm:gap-8 pb-20 animate-in fade-in slide-in-from-bottom-4 duration-500">
             {/* Sticky Top Bar (SAP-H v1 adaptation for Form) */}
-            <div className="sticky top-0 z-30 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-4 bg-background border-b border-border/60 shadow-sm">
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full sm:w-auto">
+            <div className="sticky top-0 z-30 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-3 sm:py-4 bg-background/95 backdrop-blur-md border-b border-border/60 shadow-sm">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
+                    <div className="flex items-center gap-3 w-full sm:w-auto">
                         <Button
                             variant="outline"
-                            size="sm"
+                            size="icon"
                             onClick={() => navigate("/admin/products/manage")}
-                            className="h-9 rounded-xl border-border/60 bg-card gap-2 font-bold text-xs justify-start shadow-sm"
+                            className="h-10 w-10 sm:h-9 sm:w-auto sm:px-3 rounded-xl border-border/60 bg-card gap-2 font-bold text-xs shadow-sm shrink-0"
                         >
                             <ArrowLeft className="h-4 w-4" />
-                            Back
+                            <span className="hidden sm:inline">Back</span>
                         </Button>
-                        <div className="min-w-0">
-                            <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
+                        <div className="min-w-0 flex-1 sm:flex-none">
+                            <h1 className="text-lg sm:text-2xl font-black tracking-tight flex items-center gap-2 truncate">
                                 {id ? "Optimize Product" : "Initialize Matrix"}
-                                {formData.published ? (
-                                    <Badge className="bg-emerald-500 hover:bg-emerald-600 border-none px-2 py-0 text-[10px]">LIVE</Badge>
-                                ) : (
-                                    <Badge variant="secondary" className="px-2 py-0 text-[10px]">DRAFT</Badge>
-                                )}
+                                <div className="shrink-0">
+                                    {formData.published ? (
+                                        <Badge className="bg-emerald-500 hover:bg-emerald-600 border-none px-2 py-0 text-[9px] font-black h-4 uppercase">LIVE</Badge>
+                                    ) : (
+                                        <Badge variant="secondary" className="px-2 py-0 text-[9px] font-black h-4 uppercase bg-muted/50">DRAFT</Badge>
+                                    )}
+                                </div>
                             </h1>
-                            <p className="text-sm text-muted-foreground mt-0.5">Product management workspace</p>
+                            <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 opacity-70 hidden xs:block">Product Management Matrix</p>
                         </div>
                     </div>
-                    <div className="flex items-center gap-3 w-full sm:w-auto">
+
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
                         <AlertDialog>
                             <AlertDialogTrigger asChild>
-                                <Button variant="outline" className="rounded-xl flex-1 sm:flex-none border-border/60 hover:bg-rose-500/10 hover:text-rose-500 hover:border-rose-500/30 transition-all">
+                                <Button variant="outline" className="rounded-xl h-10 sm:h-11 flex-1 sm:flex-none border-border/60 hover:bg-rose-500/10 hover:text-rose-500 hover:border-rose-500/30 transition-all font-bold text-xs uppercase tracking-tight">
                                     Discard
                                 </Button>
                             </AlertDialogTrigger>
                             <AlertDialogContent className="bg-card border-border/60 rounded-3xl shadow-2xl">
                                 <AlertDialogHeader>
-                                    <AlertDialogTitle className="text-xl font-bold">Discard Changes?</AlertDialogTitle>
-                                    <AlertDialogDescription className="text-muted-foreground font-medium">
+                                    <AlertDialogTitle className="text-xl font-black tracking-tight">Discard Changes?</AlertDialogTitle>
+                                    <AlertDialogDescription className="text-muted-foreground font-medium text-sm">
                                         All unsaved modifications to this product matrix will be terminated. This process is irreversible.
                                     </AlertDialogDescription>
                                 </AlertDialogHeader>
-                                <AlertDialogFooter className="gap-2">
-                                    <AlertDialogCancel className="rounded-xl border-border/50 font-bold">Continue Editing</AlertDialogCancel>
+                                <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+                                    <AlertDialogCancel className="rounded-xl border-border/50 font-bold w-full sm:w-auto">Continue Editing</AlertDialogCancel>
                                     <AlertDialogAction
                                         onClick={() => navigate("/admin/products/manage")}
-                                        className="rounded-xl bg-destructive text-white hover:bg-destructive/90 font-black shadow-lg shadow-destructive/20"
+                                        className="rounded-xl bg-destructive text-white hover:bg-destructive/90 font-black shadow-lg shadow-destructive/20 w-full sm:w-auto"
                                     >
                                         Confirm Termination
                                     </AlertDialogAction>
                                 </AlertDialogFooter>
                             </AlertDialogContent>
                         </AlertDialog>
-                        <Button onClick={handleSave} disabled={isSaving} className="rounded-xl shadow-lg shadow-primary/20 flex-1 sm:flex-none bg-primary text-primary-foreground font-bold hover:scale-105 transition-transform active:scale-95">
-                            {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                            Deploy Changes
+                        <Button
+                            onClick={handleSave}
+                            disabled={isSaving}
+                            className="rounded-xl h-10 sm:h-11 shadow-lg shadow-primary/20 flex-[2] sm:flex-none bg-primary text-primary-foreground font-black hover:scale-[1.02] active:scale-95 transition-all text-xs uppercase tracking-widest gap-2"
+                        >
+                            {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                            Deploy
                         </Button>
                     </div>
                 </div>
@@ -582,15 +640,15 @@ export default function AdminProductForm() {
                 {/* Left: Component Sections */}
                 <div className="lg:col-span-8 space-y-8">
                     <Tabs defaultValue="general" className="w-full" onValueChange={setActiveTab}>
-                        <TabsList className="bg-muted/50 p-1 rounded-2xl border border-border/50 w-fit">
-                            <TabsTrigger value="general" className="rounded-xl px-6 data-[state=active]:bg-background transition-all flex items-center gap-2">
-                                <Info className="h-4 w-4" /> General
+                        <TabsList className="bg-muted/50 p-1 rounded-2xl border border-border/50 w-full overflow-x-auto overflow-y-hidden flex-nowrap justify-start scrollbar-hide">
+                            <TabsTrigger value="general" className="rounded-xl px-3 sm:px-4 md:px-6 py-2 data-[state=active]:bg-background transition-all flex items-center gap-1.5 sm:gap-2 shrink-0 text-xs sm:text-sm">
+                                <Info className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> <span>General</span>
                             </TabsTrigger>
-                            <TabsTrigger value="inventory" className="rounded-xl px-6 data-[state=active]:bg-background transition-all flex items-center gap-2">
-                                <Layers className="h-4 w-4" /> Variants & Matrix
+                            <TabsTrigger value="inventory" className="rounded-xl px-3 sm:px-4 md:px-6 py-2 data-[state=active]:bg-background transition-all flex items-center gap-1.5 sm:gap-2 shrink-0 text-xs sm:text-sm">
+                                <Layers className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> <span className="hidden xs:inline">Variants &</span> <span>Matrix</span>
                             </TabsTrigger>
-                            <TabsTrigger value="media" className="rounded-xl px-6 data-[state=active]:bg-background transition-all flex items-center gap-2">
-                                <ImageIcon className="h-4 w-4" /> Gallery
+                            <TabsTrigger value="media" className="rounded-xl px-3 sm:px-4 md:px-6 py-2 data-[state=active]:bg-background transition-all flex items-center gap-1.5 sm:gap-2 shrink-0 text-xs sm:text-sm">
+                                <ImageIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> Gallery
                             </TabsTrigger>
                         </TabsList>
 
@@ -620,29 +678,6 @@ export default function AdminProductForm() {
                                                 />
                                             </div>
 
-
-
-                                            <div className="flex items-center justify-between p-4 rounded-2xl bg-muted/20 border border-border/40">
-                                                <div className="space-y-0.5">
-                                                    <Label className="text-sm font-bold">Featured Collection</Label>
-                                                    <p className="text-[10px] text-muted-foreground font-medium">Add to high-visibility discovery rows.</p>
-                                                </div>
-                                                <Switch
-                                                    checked={formData.is_featured}
-                                                    onCheckedChange={v => handleChange('is_featured', v)}
-                                                />
-                                            </div>
-
-                                            <div className="flex items-center justify-between p-4 rounded-2xl bg-muted/20 border border-border/40">
-                                                <div className="space-y-0.5">
-                                                    <Label className="text-sm font-bold">Verified Deploy</Label>
-                                                    <p className="text-[10px] text-muted-foreground font-medium">Display trust badge for quality assurance.</p>
-                                                </div>
-                                                <Switch
-                                                    checked={formData.is_verified}
-                                                    onCheckedChange={v => handleChange('is_verified', v)}
-                                                />
-                                            </div>
                                         </CardContent>
                                     </Card>
                                     <Card className="border-border/50 bg-card/60 backdrop-blur-xl overflow-hidden rounded-3xl">
@@ -667,7 +702,7 @@ export default function AdminProductForm() {
                                                 />
                                                 {errors.title && <p className="text-[10px] font-bold text-rose-500 animate-in fade-in slide-in-from-top-1">{errors.title}</p>}
                                             </div>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                                                 <div className="grid gap-2">
                                                     <Label className="text-xs font-bold text-muted-foreground">Slug (URL)</Label>
                                                     <Input
@@ -742,7 +777,11 @@ export default function AdminProductForm() {
                                                         </SelectTrigger>
                                                         <SelectContent>
                                                             {dbSubcategories
-                                                                .filter(sub => (sub.category_id === formData.selectedCategoryId || sub.categoryId === formData.selectedCategoryId || sub.parentId === formData.selectedCategoryId))
+                                                                .filter(sub => {
+                                                                    // Robust check for different potential backend property names
+                                                                    const subCatId = (sub as any).category_id || (sub as any).categoryId || (sub as any).parentId;
+                                                                    return subCatId === formData.selectedCategoryId;
+                                                                })
                                                                 .map(sub => (
                                                                     <SelectItem key={sub.id} value={sub.id}>{sub.name}</SelectItem>
                                                                 ))
@@ -916,7 +955,7 @@ export default function AdminProductForm() {
                                                                     <div className="w-5 h-5 rounded-full border shadow-sm ring-4 ring-background" style={{ backgroundColor: color.hex }} />
                                                                     <span className="font-black text-sm tracking-tight text-foreground/80">{color.name.toUpperCase()}</span>
                                                                 </div>
-                                                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                                                                <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
                                                                     {formData.selectedSizes.map(size => {
                                                                         const key = getStockKey(color.name, size);
                                                                         const isUnavailable = formData.unavailableVariants?.includes(key);
@@ -979,7 +1018,7 @@ export default function AdminProductForm() {
                                 </TabsContent>
 
                                 <TabsContent value="media" className="m-0 space-y-6">
-                                    <Card className="border-border/50 bg-card/60 backdrop-blur-xl overflow-hidden rounded-3xl overflow-hidden">
+                                    <Card className="border-border/50 bg-card/60 backdrop-blur-xl overflow-hidden rounded-3xl">
                                         <CardHeader>
                                             <CardTitle className="text-lg flex items-center gap-2 font-bold"><ImageIcon className="h-5 w-5 text-primary" /> Visual Assets</CardTitle>
                                             <CardDescription>Upload high-resolution images for your product gallery.</CardDescription>
@@ -1011,26 +1050,26 @@ export default function AdminProductForm() {
                                                                     {!hasImages && <Badge variant="destructive" className="text-[9px] h-4">Required</Badge>}
                                                                 </div>
 
-                                                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                                                                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-3">
                                                                     {/* Upload Trigger */}
                                                                     <label className="aspect-square rounded-2xl border-2 border-dashed border-border/60 hover:border-primary/50 hover:bg-primary/5 transition-all flex flex-col items-center justify-center gap-2 cursor-pointer group">
                                                                         <div className="p-2 rounded-full bg-muted group-hover:bg-primary/20 transition-colors">
                                                                             <Upload className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
                                                                         </div>
-                                                                        <span className="text-[10px] font-black text-muted-foreground tracking-widest">Add media</span>
+                                                                        <span className="text-[10px] font-black text-muted-foreground tracking-widest text-center px-1">Add media</span>
                                                                         <input type="file" multiple accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, color.id)} />
                                                                     </label>
 
                                                                     {/* Existing Images */}
                                                                     {existing.map((src, i) => (
-                                                                        <div key={`exist-${color.id}-${i}`} className="aspect-square rounded-2xl overflow-hidden border border-border/50 relative group bg-background">
-                                                                            <img src={src} className="w-full h-full object-cover transition-transform group-hover:scale-105 duration-300" />
-                                                                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                                                                                <button onClick={() => removeImage(i, 'existing', color.id)} className="p-1.5 bg-rose-500 text-white rounded-full hover:bg-rose-600 transition-colors shadow-lg">
-                                                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                                        <div key={`exist-${color.id}-${i}`} className="aspect-square rounded-2xl overflow-hidden border border-border/50 relative group bg-background shadow-sm">
+                                                                            <img src={src} className="w-full h-full object-cover transition-transform group-hover:scale-110 duration-500" />
+                                                                            <div className="absolute inset-x-0 bottom-0 top-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                                                <button onClick={() => removeImage(i, 'existing', color.id)} className="p-2 bg-rose-500 text-white rounded-full hover:bg-rose-600 transition-all hover:scale-110 shadow-xl">
+                                                                                    <Trash2 className="h-4 w-4" />
                                                                                 </button>
                                                                             </div>
-                                                                            <div className="absolute bottom-2 left-2 bg-background px-1.5 py-0.5 rounded text-[8px] font-bold border border-border/40 shadow-sm">Stored</div>
+                                                                            <div className="absolute top-1.5 left-1.5 bg-background/90 backdrop-blur-sm px-1.5 py-0.5 rounded text-[8px] font-bold border border-border/40 shadow-sm leading-none">Stored</div>
                                                                         </div>
                                                                     ))}
 
@@ -1038,12 +1077,12 @@ export default function AdminProductForm() {
                                                                     {previews.map((src, i) => (
                                                                         <div key={`new-${color.id}-${i}`} className="aspect-square rounded-2xl overflow-hidden border border-primary/30 relative group bg-background shadow-lg shadow-primary/5">
                                                                             <img src={src} className="w-full h-full object-cover" />
-                                                                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                                                                                <button onClick={() => removeImage(i, 'new', color.id)} className="p-1.5 bg-rose-500 text-white rounded-full hover:bg-rose-600 transition-colors shadow-lg">
-                                                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                                                <button onClick={() => removeImage(i, 'new', color.id)} className="p-2 bg-rose-500 text-white rounded-full hover:bg-rose-600 transition-all hover:scale-110 shadow-xl">
+                                                                                    <Trash2 className="h-4 w-4" />
                                                                                 </button>
                                                                             </div>
-                                                                            <div className="absolute top-2 left-2 bg-primary text-primary-foreground px-1.5 py-0.5 rounded text-[8px] font-bold tracking-wider shadow-sm">New</div>
+                                                                            <div className="absolute top-1.5 left-1.5 bg-primary text-primary-foreground px-1.5 py-0.5 rounded text-[8px] font-bold tracking-wider shadow-sm leading-none">NEW</div>
                                                                         </div>
                                                                     ))}
                                                                 </div>
@@ -1076,27 +1115,53 @@ export default function AdminProductForm() {
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-6">
-                            <div className="aspect-[4/5] rounded-2xl bg-muted overflow-hidden relative border shadow-inner">
-                                {(() => {
-                                    const firstColor = formData.selectedColors[0];
-                                    const previewImage = firstColor
-                                        ? (formData.variantPreviews[firstColor.id]?.[0] || formData.existingVariantImages[firstColor.id]?.[0])
-                                        : null;
+                            <div className="space-y-3">
+                                <div className="aspect-[4/5] rounded-2xl bg-muted overflow-hidden relative border shadow-inner">
+                                    {(() => {
+                                        const firstColor = formData.selectedColors[0];
+                                        const previewImage = firstColor
+                                            ? (formData.variantPreviews[firstColor.id]?.[0] || formData.existingVariantImages[firstColor.id]?.[0])
+                                            : null;
 
-                                    return previewImage ? (
-                                        <img src={previewImage} className="w-full h-full object-cover" />
-                                    ) : (
-                                        <div className="w-full h-full flex flex-col items-center justify-center gap-4 text-muted-foreground grayscale opacity-30">
-                                            <ImageIcon className="h-12 w-12" />
-                                            <span className="text-[10px] font-bold tracking-widest">Asset undefined</span>
+                                        return previewImage ? (
+                                            <img src={previewImage} className="w-full h-full object-cover" />
+                                        ) : (
+                                            <div className="w-full h-full flex flex-col items-center justify-center gap-4 text-muted-foreground grayscale opacity-30">
+                                                <ImageIcon className="h-12 w-12" />
+                                                <span className="text-[10px] font-bold tracking-widest">Asset undefined</span>
+                                            </div>
+                                        );
+                                    })()}
+                                    {discountPercent > 0 && (
+                                        <div className="absolute top-3 left-3 bg-rose-500 text-white px-2 py-1 rounded-lg text-[10px] font-black tracking-wider shadow-lg shadow-rose-500/30">
+                                            -{discountPercent}%
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Mini Gallery Carousel Adaptation - Intelligent filtering */}
+                                {(() => {
+                                    const allImages = formData.selectedColors.flatMap(color =>
+                                        [...(formData.existingVariantImages[color.id] || []), ...(formData.variantPreviews[color.id] || [])]
+                                    ).filter(src => src && !src.includes('placeholder'));
+
+                                    if (allImages.length <= 1) return null;
+
+                                    return (
+                                        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide py-1">
+                                            {allImages.slice(0, 10).map((src, idx) => (
+                                                <div key={idx} className="w-12 h-12 min-w-[3rem] rounded-xl overflow-hidden border border-border/40 hover:border-primary/50 transition-colors shadow-sm cursor-pointer opacity-70 hover:opacity-100">
+                                                    <img src={src} className="w-full h-full object-cover" />
+                                                </div>
+                                            ))}
+                                            {allImages.length > 10 && (
+                                                <div className="w-12 h-12 min-w-[3rem] rounded-xl bg-muted flex items-center justify-center text-[10px] font-bold text-muted-foreground">
+                                                    +{allImages.length - 10}
+                                                </div>
+                                            )}
                                         </div>
                                     );
                                 })()}
-                                {discountPercent > 0 && (
-                                    <div className="absolute top-3 left-3 bg-rose-500 text-white px-2 py-1 rounded-lg text-[10px] font-black tracking-wider shadow-lg shadow-rose-500/30">
-                                        -{discountPercent}%
-                                    </div>
-                                )}
                             </div>
 
                             <div className="space-y-4">
@@ -1113,23 +1178,7 @@ export default function AdminProductForm() {
                                 </div>
 
                                 <div className="space-y-3 pt-2 border-t border-border/50">
-                                    <div className="flex items-center justify-between">
-                                        <Label className="text-[10px] font-black uppercase text-muted-foreground">Governance</Label>
-                                        <div className="flex flex-col gap-2">
-                                            <div className="flex items-center gap-2 justify-end">
-                                                <span className="text-[9px] font-bold text-muted-foreground">PUBLISH</span>
-                                                <Switch checked={formData.published} onCheckedChange={v => handleChange('published', v)} className="data-[state=checked]:bg-emerald-500" />
-                                            </div>
-                                            <div className="flex items-center gap-2 justify-end">
-                                                <span className="text-[9px] font-bold text-muted-foreground">FEATURED</span>
-                                                <Switch checked={formData.is_featured} onCheckedChange={v => handleChange('is_featured', v)} className="data-[state=checked]:bg-amber-500" />
-                                            </div>
-                                            <div className="flex items-center gap-2 justify-end">
-                                                <span className="text-[9px] font-bold text-muted-foreground">VERIFIED</span>
-                                                <Switch checked={formData.is_verified} onCheckedChange={v => handleChange('is_verified', v)} className="data-[state=checked]:bg-blue-500" />
-                                            </div>
-                                        </div>
-                                    </div>
+
 
                                     <div className="space-y-4 pt-4">
                                         <div className="grid gap-2">
@@ -1174,14 +1223,7 @@ export default function AdminProductForm() {
                                         <p className="text-[9px] text-muted-foreground italic text-center">Net earnings per unit after platform fees.</p>
                                     </div>
 
-                                    <div className="grid grid-cols-2 gap-3 pt-4">
-                                        <div className="p-3 rounded-2xl bg-background border flex flex-col gap-1">
-                                            <span className="text-[9px] font-black uppercase text-muted-foreground">Status</span>
-                                            <div className="flex items-center gap-1.5 leading-none">
-                                                <div className={cn("w-2 h-2 rounded-full", formData.published ? "bg-emerald-500 shadow-sm shadow-emerald-500/50" : "bg-muted-foreground")} />
-                                                <span className="text-[10px] font-black">{formData.published ? "PUBLISHED" : "DRAFT"}</span>
-                                            </div>
-                                        </div>
+                                    <div className="grid grid-cols-1 gap-3 pt-4">
                                         <div className="p-3 rounded-2xl bg-background border flex flex-col gap-1">
                                             <span className="text-[9px] font-black uppercase text-muted-foreground">Variants</span>
                                             <div className="flex items-center gap-1.5 leading-none">
@@ -1196,7 +1238,7 @@ export default function AdminProductForm() {
                     </Card>
                 </div>
             </div>
-        </div>
+        </div >
     );
 }
 

@@ -31,6 +31,12 @@ export function ProductsPage() {
     const [dbCategories, setDbCategories] = useState<{ id: string; name: string }[]>([]);
     const [dbSubcategories, setDbSubcategories] = useState<{ id: string; name: string; category_id: string }[]>([]);
 
+    const categoryParam = searchParams.get("category");
+    const subcategoryParam = searchParams.get("subcategory");
+    const searchQuery = searchParams.get("search");
+    const filterParam = searchParams.get("filter");
+    const tagParam = searchParams.get("tag");
+
     // Fetch categories and subcategories
     useEffect(() => {
         const fetchCategories = async () => {
@@ -77,16 +83,32 @@ export function ProductsPage() {
         fetchSubcategories();
     }, [selectedCategories]);
 
-    // Fetch products from database
-    const { products, loading, error } = useProducts();
+    // Map sort values to backend expected values
+    const getBackendSort = (sort: string) => {
+        switch (sort) {
+            case "price-low": return "price_asc";
+            case "price-high": return "price_desc";
+            case "rating": return "rating";
+            case "featured": return "featured"; // Matches backend
+            default: return "featured";
+        }
+    };
+
+    // Fetch products from database with server-side filters
+    const { products, loading, error } = useProducts({
+        search: searchQuery || undefined,
+        category: selectedCategories.length > 0 ? selectedCategories[0] : (categoryParam !== "all" ? categoryParam : undefined), // Currently taking first category
+        subcategory: selectedSubcategories.length > 0 ? selectedSubcategories[0] : (subcategoryParam || undefined),
+        sort: getBackendSort(sortBy),
+        minPrice: priceRange[0],
+        maxPrice: priceRange[1],
+        minDiscount: minDiscount > 0 ? minDiscount : undefined,
+        tag: tagParam || (filterParam === "deals" ? "deals" : undefined),
+    });
 
     useGsapAnimations();
 
-    const categoryParam = searchParams.get("category");
-    const subcategoryParam = searchParams.get("subcategory");
-    const searchQuery = searchParams.get("search");
-    const filterParam = searchParams.get("filter");
-    const tagParam = searchParams.get("tag");
+    // Variables moved to top to fix ReferenceError
 
     useEffect(() => {
         if (categoryParam && categoryParam !== "all") {
@@ -104,77 +126,8 @@ export function ProductsPage() {
         }
     }, [subcategoryParam]);
 
-    let filteredProducts = [...(products || [])];
-
-    // Filter by search query
-    if (searchQuery) {
-        const query = searchQuery.toLowerCase();
-        filteredProducts = filteredProducts.filter((p) =>
-            p.title.toLowerCase().includes(query) ||
-            p.description.toLowerCase().includes(query) ||
-            (p.category && p.category.toLowerCase().includes(query)) ||
-            ((p as any).subcategoryName && (p as any).subcategoryName.toLowerCase().includes(query))
-        );
-    }
-
-    // Filter by category (if no subcategory filter active)
-    if (selectedCategories.length > 0 && selectedSubcategories.length === 0) {
-        filteredProducts = filteredProducts.filter((p: any) => {
-            const pCatSlug = (p.categorySlug || "").toLowerCase();
-            const pCatName = (p.category || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-            return selectedCategories.some(cat => {
-                const target = cat.toLowerCase().replace(/[^a-z0-9]/g, "");
-                return target === pCatSlug || target === pCatName;
-            });
-        });
-    }
-
-    // Filter by subcategory
-    if (selectedSubcategories.length > 0) {
-        filteredProducts = filteredProducts.filter((p) => {
-            const pSubId = p.subcategory_id;
-            const pSubSlug = ((p as any).subcategorySlug || "").toLowerCase();
-            return selectedSubcategories.some(sub => {
-                const target = sub.toLowerCase();
-                return target === pSubId ||
-                    target === pSubSlug ||
-                    pSubSlug.endsWith(`-${target}`);
-            });
-        });
-    }
-
-    // Filter by Deals (from URL param)
-    if (filterParam === "deals" || tagParam === "deals") {
-        filteredProducts = filteredProducts.filter(p => (p.discountPrice || 0) < p.price && (p.discountPrice || 0) > 0);
-    }
-
-    // Filter by New Arrivals (from URL param)
-    if (filterParam === "new" || tagParam === "new") {
-        filteredProducts = filteredProducts.filter(p => (p as any).isNew);
-    }
-
-    // Filter by price
-    filteredProducts = filteredProducts.filter(
-        (p) => (p.discountPrice || p.price) >= priceRange[0] && (p.discountPrice || p.price) <= priceRange[1]
-    );
-
-    // Filter by Discount
-    if (minDiscount > 0) {
-        filteredProducts = filteredProducts.filter((p) => {
-            if (!p.discountPrice || p.discountPrice >= p.price) return false;
-            const discountPercent = ((p.price - p.discountPrice) / p.price) * 100;
-            return discountPercent >= minDiscount;
-        });
-    }
-
-    // Sort
-    if (sortBy === "price-low") {
-        filteredProducts.sort((a, b) => (a.discountPrice || a.price) - (b.discountPrice || b.price));
-    } else if (sortBy === "price-high") {
-        filteredProducts.sort((a, b) => (b.discountPrice || b.price) - (a.discountPrice || a.price));
-    } else if (sortBy === "rating") {
-        filteredProducts.sort((a, b) => (b.rating || 0) - (a.rating || 0));
-    }
+    // Use products directly from hook (server-side filtered)
+    const filteredProducts = products;
 
     const toggleTempCategory = (categoryId: string) => {
         setTempCategories((prev) =>

@@ -319,11 +319,11 @@ export default function AdminOrderTracking() {
           <Table>
             <TableHeader className="bg-muted/30">
               <TableRow className="hover:bg-transparent">
-                <TableHead className="w-[150px] px-6 h-12 text-[11px] font-bold tracking-wider text-muted-foreground/60 normal-case">Order Details</TableHead>
-                <TableHead className="text-[11px] font-bold tracking-wider text-muted-foreground/60 normal-case">Customer Identity</TableHead>
-                <TableHead className="text-[11px] font-bold tracking-wider text-muted-foreground/60 normal-case">Lifecycle State</TableHead>
-                <TableHead className="text-[11px] font-bold tracking-wider text-muted-foreground/60 normal-case">Financial Value</TableHead>
-                <TableHead className="text-right text-[11px] font-bold tracking-wider text-muted-foreground/60 pr-6 normal-case">Actions</TableHead>
+                <TableHead className="w-[180px] px-4 sm:px-6 h-12 text-left text-[11px] font-bold tracking-wider text-muted-foreground/70 normal-case">Order Details</TableHead>
+                <TableHead className="w-[220px] px-4 text-left text-[11px] font-bold tracking-wider text-muted-foreground/70 normal-case">Customer Identity</TableHead>
+                <TableHead className="w-[140px] px- text-center text-[11px] font-bold tracking-wider text-muted-foreground/70 normal-case">Lifecycle State</TableHead>
+                <TableHead className="w-[120px] px-4 text-right text-[11px] font-bold tracking-wider text-muted-foreground/70 normal-case">Financial Value</TableHead>
+                <TableHead className="w-[140px] px-4 pr-6 text-right text-[11px] font-bold tracking-wider text-muted-foreground/70 normal-case">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -347,7 +347,7 @@ export default function AdminOrderTracking() {
               ) : (
                 filteredOrders.map((order) => (
                   <TableRow key={order.id} className="group hover:bg-primary/5 transition-colors border-b-border/30">
-                    <TableCell className="py-5">
+                    <TableCell className="py-5 px-4 sm:px-6">
                       <div className="flex flex-col">
                         <span className="font-semibold text-sm tracking-tight">#{order.order_number}</span>
                         <span className="text-[10px] text-muted-foreground font-mono tracking-tighter opacity-70">
@@ -355,7 +355,7 @@ export default function AdminOrderTracking() {
                         </span>
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="px-4">
                       <div className="flex flex-col">
                         <span className="font-semibold text-sm tracking-tight">{order.customer_name}</span>
                         <span className="text-[11px] text-muted-foreground flex items-center gap-1.5 font-medium">
@@ -363,11 +363,11 @@ export default function AdminOrderTracking() {
                         </span>
                       </div>
                     </TableCell>
-                    <TableCell>{getStatusBadge(order.order_status)}</TableCell>
-                    <TableCell>
+                    <TableCell className="px-4 text-center">{getStatusBadge(order.order_status)}</TableCell>
+                    <TableCell className="px-4 text-right">
                       <span className="font-semibold text-sm">₹{order.total.toLocaleString()}</span>
                     </TableCell>
-                    <TableCell className="text-right pr-6">
+                    <TableCell className="px-4 pr-6 text-right">
                       <Button
                         variant="outline"
                         size="sm"

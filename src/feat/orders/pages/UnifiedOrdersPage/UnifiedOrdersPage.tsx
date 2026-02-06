@@ -300,7 +300,9 @@ export default function UnifiedOrdersPage() {
         if (type === 'buyer') {
             navigate(`/orders/${orderId}`);
         } else {
-            const basePath = userRole === 'ADMIN' ? '/admin' : '/seller';
+            // Check if user has administrative privileges
+            const isAdminPrivileged = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' || location.pathname.startsWith('/admin');
+            const basePath = isAdminPrivileged ? '/admin' : '/seller';
             navigate(`${basePath}/orders/${orderId}`);
         }
     };
@@ -335,7 +337,7 @@ export default function UnifiedOrdersPage() {
     const handleConfirmCancellation = async (reason: string, comments: string) => {
         if (!cancellingOrder || !user) return;
         try {
-            await apiClient.patch(`/orders/${cancellingOrder.id}/cancel`, {
+            await apiClient.post(`/orders/${cancellingOrder.id}/cancel`, {
                 reason,
                 comments
             });

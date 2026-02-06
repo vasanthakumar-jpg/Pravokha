@@ -12,6 +12,7 @@ import logoDark from "@/assets/logo-dark.png";
 import { TrustBadges } from "@/shared/ui/TrustBadges";
 import { AnimatedPaymentIcons } from "@/shared/ui/PaymentIcons";
 import { useAuth } from "@/core/context/AuthContext";
+import { useCategories } from "@/shared/hook/useCategories";
 import { cn } from "@/lib/utils";
 import styles from "./Footer.module.css";
 
@@ -22,6 +23,7 @@ export function Footer() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const { theme } = useTheme();
     const { user, role } = useAuth();
+    const { categories: dynamicCategories } = useCategories();
 
     const handleNewsletterSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -101,15 +103,25 @@ export function Footer() {
                         </ul>
                     </div>
 
-                    {/* Consumer Policy */}
+                    {/* Shop By Category (Dynamic) */}
                     <div>
-                        <h4 className="font-semibold mb-4 text-muted-foreground uppercase tracking-wider text-xs">Consumer Policy</h4>
+                        <h4 className="font-semibold mb-4 text-muted-foreground uppercase tracking-wider text-xs">Categories</h4>
                         <ul className="space-y-2">
-                            <li><Link to="/cancellation-returns" className="hover:underline hover:text-primary transition-colors">Cancellation & Returns</Link></li>
-                            <li><Link to="/terms" className="hover:underline hover:text-primary transition-colors">Terms of Use</Link></li>
-                            <li><Link to="/security" className="hover:underline hover:text-primary transition-colors">Security</Link></li>
-                            <li><Link to="/privacy" className="hover:underline hover:text-primary transition-colors">Privacy</Link></li>
-                            <li><Link to="/learn-more" className="hover:underline hover:text-primary transition-colors">Learn More</Link></li>
+                            {dynamicCategories.slice(0, 6).map((category) => (
+                                <li key={category.id}>
+                                    <Link
+                                        to={`/products?category=${category.slug}`}
+                                        className="hover:underline hover:text-primary transition-colors capitalize"
+                                    >
+                                        {category.name}
+                                    </Link>
+                                </li>
+                            ))}
+                            <li>
+                                <Link to="/products" className="font-semibold text-primary hover:underline transition-colors">
+                                    Browse All
+                                </Link>
+                            </li>
                         </ul>
                     </div>
 

@@ -8,6 +8,12 @@ export class ComboOfferController {
         res.json({ success: true, comboOffers });
     });
 
+    static getOffersByProduct = asyncHandler(async (req: Request, res: Response) => {
+        const { productId } = req.params;
+        const comboOffers = await ComboOfferService.getOffersForProduct(productId);
+        res.json({ success: true, comboOffers });
+    });
+
     static createOffer = asyncHandler(async (req: Request, res: Response) => {
         const offer = await ComboOfferService.createOffer(req.body);
         res.status(201).json({ success: true, data: offer });

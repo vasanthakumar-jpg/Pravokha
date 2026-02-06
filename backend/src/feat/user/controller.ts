@@ -242,10 +242,25 @@ export class UserController {
                 if (Object.keys(userUpdates).length > 0) {
                     await tx.user.update({ where: { id: userId }, data: userUpdates });
                 }
-                return await tx.vendor.update({ where: { ownerId: userId }, data: vendorUpdates });
+
+                return await tx.vendor.upsert({
+                    where: { ownerId: userId },
+                    update: vendorUpdates,
+                    create: {
+                        ownerId: userId,
+                        ...vendorUpdates,
+                        // Ensure required fields for creation if they're missing in this specific update
+                        storeName: vendorUpdates.storeName || user.name || 'My Store',
+                        slug: vendorUpdates.slug || (vendorUpdates.storeName || user.name || 'my-store')
+                            .toLowerCase()
+                            .replace(/[^\w ]+/g, '')
+                            .replace(/ +/g, '-'),
+                        status: 'PENDING'
+                    }
+                });
             });
 
-            console.log('[updateVendorSettings] Update successful');
+            console.log('[updateVendorSettings] Update/Upsert successful');
             res.json({ success: true, settings: result });
         } catch (error: any) {
             console.error('[updateVendorSettings] Error:', error);
@@ -254,7 +269,7 @@ export class UserController {
                 message: 'Failed to update store settings.',
                 error: error.message,
                 code: error.code,
-                meta: error.meta // Prisma often puts constraint details here
+                meta: error.meta
             });
         }
     });

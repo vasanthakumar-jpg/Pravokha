@@ -149,7 +149,14 @@ const ConditionalFooter = () => {
 
 const NavigateToOrderDetail = () => {
   const { orderId } = useParams();
-  return <Navigate to={`/user/orders/detail/${orderId}`} replace />;
+  const { role } = useAuth();
+  const isAdmin = role === 'ADMIN' || role === 'SUPER_ADMIN';
+
+  const targetPath = isAdmin
+    ? `/admin/orders/${orderId}`
+    : `/user/orders/detail/${orderId}`;
+
+  return <Navigate to={targetPath} replace />;
 };
 
 // Internal Router to dispatch Admin to correct Dashboard
@@ -553,7 +560,7 @@ export default function App() {
 
                           {/* User Routes */}
                           <Route path="/user/*" element={
-                            <ProtectedRoute allowedRoles={["CUSTOMER"]}>
+                            <ProtectedRoute allowedRoles={["CUSTOMER", "ADMIN", "SUPER_ADMIN"]}>
                               <Suspense fallback={<LoadingFallback />}>
                                 <Routes>
                                   <Route index element={

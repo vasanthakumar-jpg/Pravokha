@@ -11,6 +11,7 @@ import { toast } from "@/shared/hook/use-toast";
 import { ImageViewer } from "@/feat/products/components/ImageViewer";
 import { RelatedProducts } from "@/feat/products/components/RelatedProducts";
 import { ProductReviews, ReviewStatistics } from "@/feat/products/components/ProductReviews";
+import { ComboOfferWidget } from "@/feat/products/components/ComboOfferWidget";
 import { useGsapAnimations } from "@/shared/hook/useGsapAnimations";
 import { InteractiveStarRating } from "@/shared/ui/InteractiveStarRating";
 import { apiClient } from "@/infra/api/apiClient";
@@ -65,6 +66,7 @@ export function ProductDetailPage() {
     const [isInWishlist, setIsInWishlist] = useState(false);
     const [reviews, setReviews] = useState<any[]>([]);
     const [reviewsLoading, setReviewsLoading] = useState(false);
+    const [comboOffers, setComboOffers] = useState<any[]>([]);
 
     const fetchReviews = async () => {
         if (!product?.id) return;
@@ -81,8 +83,23 @@ export function ProductDetailPage() {
         }
     };
 
+    const fetchComboOffers = async () => {
+        if (!product?.id) return;
+        try {
+            const response = await apiClient.get(`/combo-offers/product/${product.id}`);
+            if (response.data.success) {
+                setComboOffers(response.data.comboOffers || []);
+            }
+        } catch (error) {
+            console.error("Error fetching combo offers:", error);
+        }
+    };
+
     useEffect(() => {
-        if (product?.id) fetchReviews();
+        if (product?.id) {
+            fetchReviews();
+            fetchComboOffers();
+        }
     }, [product?.id]);
 
     const calculateDistribution = () => {
@@ -621,6 +638,9 @@ export function ProductDetailPage() {
                                 <span className="text-sm">100% secure payments</span>
                             </div>
                         </div>
+
+                        {/* Combo Offers Widget */}
+                        <ComboOfferWidget productId={product.id} offers={comboOffers} />
                     </div>
                 </div>
 

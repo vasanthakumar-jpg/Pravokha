@@ -527,6 +527,19 @@ export default function AdminOrders() {
                     </div>
                   </div>
                 </div>
+
+                <div className="pt-4 mt-6 border-t border-border">
+                  <Button
+                    className="w-full h-12 bg-primary hover:bg-primary/90 text-white font-bold gap-2"
+                    onClick={() => navigate(`/admin/orders/${selectedOrder.id}`)}
+                  >
+                    <ArrowRight className="h-4 w-4" />
+                    Open Full Management Page
+                  </Button>
+                  <p className="text-[10px] text-muted-foreground mt-2 text-center">
+                    Access advanced features like Refunds, Custom Invoices, and Item-Level tracking.
+                  </p>
+                </div>
               </div>
             )}
           </SheetContent>

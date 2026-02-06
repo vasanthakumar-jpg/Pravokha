@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-const API_BASE = 'http://localhost:5000';
 import { useNavigate, useParams } from "react-router-dom";
 import { useOrderNotifications } from "@/shared/hook/useOrderNotifications";
 import { apiClient } from "@/infra/api/apiClient";
@@ -395,7 +394,7 @@ export default function OrderHistory() {
                               }
 
                               const imgPath = item.product?.images?.[0]?.url || item.image || variantImgs?.[0];
-                              const fullImgUrl = imgPath ? (imgPath.startsWith('http') ? imgPath : `${API_BASE}${imgPath}`) : null;
+                              const fullImgUrl = getMediaUrl(imgPath);
                               return fullImgUrl ? (
                                 <img
                                   src={fullImgUrl}

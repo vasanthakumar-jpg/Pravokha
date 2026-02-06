@@ -31,6 +31,38 @@ export class ComboOfferService {
         });
     }
 
+    static async getOffersForProduct(productId: string) {
+        const allOffers = await prisma.comboOffer.findMany({
+            where: { active: true }
+        });
+
+        const relevantOffers = allOffers.filter(offer => {
+            try {
+                const ids = typeof offer.productIds === 'string' ? JSON.parse(offer.productIds) : offer.productIds;
+                return Array.isArray(ids) && ids.includes(productId);
+            } catch (e) {
+                return false;
+            }
+        });
+
+        // Enrich with product details
+        const enrichedOffers = await Promise.all(relevantOffers.map(async (offer) => {
+            const ids = typeof offer.productIds === 'string' ? JSON.parse(offer.productIds) : offer.productIds;
+            const products = await prisma.product.findMany({
+                where: { id: { in: ids } },
+                include: {
+                    variants: {
+                        take: 1,
+                        include: { sizes: true }
+                    }
+                }
+            });
+            return { ...offer, products };
+        }));
+
+        return enrichedOffers;
+    }
+
     static async updateOffer(id: string, data: any) {
         const updateData: any = { ...data };
 
@@ -58,10 +90,56 @@ export class ComboOfferService {
         });
     }
 
-    static async toggleStatus(id: string, active: boolean) {
-        return await prisma.comboOffer.update({
-            where: { id },
-            data: { active }
+    static async calculateComboDiscount(items: any[]) {
+        const activeOffers = await prisma.comboOffer.findMany({
+            where: { active: true }
         });
+
+        let totalDiscount = 0;
+        const appliedOffers: any[] = [];
+
+        for (const offer of activeOffers) {
+            if (!offer.productIds) continue;
+
+            let offerProductIds: string[];
+            try {
+                offerProductIds = typeof offer.productIds === 'string' ? JSON.parse(offer.productIds) : offer.productIds;
+            } catch (e) {
+                offerProductIds = [];
+            }
+
+            if (offerProductIds.length === 0) continue;
+
+            // Simple logic: Check if all products in the offer are in the items list
+            // In a more complex "real-world" scenario, we'd handle multiples (e.g., 2 sets of the same combo)
+            // For now, let's implement the "Buy these specific items for a set price" logic
+
+            const cartProductIds = items.map(i => i.productId);
+            const hasAllProducts = offerProductIds.every(id => cartProductIds.includes(id));
+
+            if (hasAllProducts) {
+                // For a real-world system, we calculate the discount as:
+                // Sum(Original Prices) - ComboPrice
+
+                // Fetch the actual prices of these products to be sure
+                const products = await prisma.product.findMany({
+                    where: { id: { in: offerProductIds } }
+                });
+
+                const originalTotal = products.reduce((sum, p) => sum + p.price, 0);
+                const discount = originalTotal - offer.comboPrice;
+
+                if (discount > 0) {
+                    totalDiscount += discount;
+                    appliedOffers.push({
+                        id: offer.id,
+                        title: offer.title,
+                        discount
+                    });
+                }
+            }
+        }
+
+        return { totalDiscount, appliedOffers };
     }
 }

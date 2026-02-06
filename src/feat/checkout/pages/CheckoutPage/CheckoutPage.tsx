@@ -53,11 +53,24 @@ export function CheckoutPage() {
     const [processingStep, setProcessingStep] = useState<'contacting' | 'verifying' | 'confirming' | 'success'>('contacting');
     const [settings, setSettings] = useState({ taxRate: 18, shippingFee: 50 });
     const [orderCount, setOrderCount] = useState(0);
+    const [comboOffers, setComboOffers] = useState<any[]>([]);
 
     useEffect(() => {
         fetchSettings();
         fetchOrderCount();
+        fetchComboOffers();
     }, []);
+
+    const fetchComboOffers = async () => {
+        try {
+            const response = await apiClient.get('/combo-offers');
+            if (response.data.success) {
+                setComboOffers(response.data.data || []);
+            }
+        } catch (error) {
+            console.error("Failed to fetch combo offers:", error);
+        }
+    };
 
     const fetchOrderCount = async () => {
         try {
@@ -102,23 +115,50 @@ export function CheckoutPage() {
         setLoading(false);
     };
 
-    const tshirtItems = items.filter(item => item.price === 325);
-    const tshirtCount = tshirtItems.reduce((sum, item) => sum + item.quantity, 0);
-    const comboSets = Math.floor(tshirtCount / 3);
-    const hasComboOffer = comboSets > 0;
+    // Calculate Combo Savings (Dynamic from API)
+    let comboSavings = 0;
+    const appliedComboOfferIds: string[] = [];
 
-    // rawSubtotal is the price before any combo discounts
+    comboOffers.forEach(offer => {
+        if (!offer.active) return;
+        let productIds: string[] = [];
+        try {
+            productIds = typeof offer.productIds === 'string' ? JSON.parse(offer.productIds) : offer.productIds;
+        } catch (e) {
+            productIds = [];
+        }
+
+        if (productIds.length > 0) {
+            // Simple check: do we have all these products?
+            const cartProductIds = items.map(i => i.productId);
+            const hasAll = productIds.every(id => cartProductIds.includes(id));
+            if (hasAll) {
+                // Fetch prices of involved products to calculate real discount
+                const comboProducts = items.filter(i => productIds.includes(i.productId));
+                const originalTotal = comboProducts.reduce((sum, p) => sum + p.price * p.quantity, 0);
+
+                // For simplicity, we assume the combo covers one of each product
+                // In a real marketplace, you might handle quantity better
+                const singleSetOriginal = comboProducts.reduce((sum, p) => sum + p.price, 0);
+                const discount = singleSetOriginal - offer.comboPrice;
+
+                if (discount > 0) {
+                    comboSavings += discount;
+                    appliedComboOfferIds.push(offer.id);
+                }
+            }
+        }
+    });
+
+    const hasComboOffer = comboSavings > 0;
     const rawSubtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-    const comboSavings = comboSets * (3 * 325 - 949);
-
-    // actualSubtotal matches what the backend will calculate
     const actualSubtotal = rawSubtotal - comboSavings;
 
-    const isEligibleForFreeShipping = user && orderCount < 3;
-    const shipping = isEligibleForFreeShipping ? 0 : 50;
+    // LOYALTY REWARD: Free shipping for customers with 3 or more orders
+    const isEligibleForFreeShipping = user && orderCount >= 3;
+    const shipping = isEligibleForFreeShipping ? 0 : settings.shippingFee;
     const tax = Math.round((actualSubtotal + shipping) * (settings.taxRate / 100));
     const total = actualSubtotal + shipping + tax;
-    const discountedTotal = total; // For clarity in handlePaymentComplete if needed
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -201,10 +241,21 @@ export function CheckoutPage() {
         }
     };
 
-    const handlePaymentComplete = async (paymentDetails: any, orderId: string) => {
+    const handlePaymentComplete = async (paymentDetails: any, orderId?: string) => {
         try {
             if (isSuspended) {
                 throw new Error("TRANSACTION_BLOCKED: Your account is suspended.");
+            }
+
+            // REDUNDANCY CHECK: 
+            // If method is 'stripe', the orders were already created in createPaymentIntent.
+            // We only need to wait for redirect or sync. 
+            // Only call POST /orders for non-stripe (e.g. COD)
+            if (paymentDetails.method === 'stripe') {
+                console.log("Stripe payment detected. Skipping duplicate order creation.");
+                clearCart();
+                setTimeout(() => navigate("/user/orders"), 1000);
+                return;
             }
 
             const sanitizedItems = items.map(item => ({
@@ -216,7 +267,7 @@ export function CheckoutPage() {
             }));
 
             const orderData = {
-                orderNumber: orderId,
+                orderNumber: orderId, // This might be used as a prefix or base
                 customerName: formData.name,
                 customerEmail: formData.email,
                 customerPhone: formData.phone,
@@ -235,23 +286,25 @@ export function CheckoutPage() {
 
             if (!response.data.success) throw new Error("Backend failed to create order.");
 
-            const confirmedOrder = response.data.data.order;
+            const confirmedOrder = response.data.data.order || response.data.data.orders?.[0];
 
             // Send confirmation email (don't let it crash the success flow)
             try {
-                await emailClient.sendOrderConfirmation(formData.email, confirmedOrder);
+                if (confirmedOrder) {
+                    await emailClient.sendOrderConfirmation(formData.email, confirmedOrder);
+                }
             } catch (emailErr) {
                 console.error("Email confirmation failed:", emailErr);
             }
 
             toast({
                 title: "Order Placed Successfully",
-                description: `Your order #${confirmedOrder.orderNumber} has been confirmed.`,
+                description: `Your order has been confirmed.`,
             });
 
             clearCart();
             setShowPaymentDialog(false);
-            setTimeout(() => navigate("/orders"), 1000);
+            setTimeout(() => navigate("/user/orders"), 1000);
         } catch (error: any) {
             console.error("Error placing order:", error);
             setIsProcessing(false);
@@ -444,7 +497,7 @@ export function CheckoutPage() {
                                 </div>
                                 {isEligibleForFreeShipping && (
                                     <p className="text-[10px] text-green-600 font-bold text-center">
-                                        🎉 Free shipping on your first 3 orders!
+                                        🎉 Loyalty Reward: Free shipping for our valued customers!
                                     </p>
                                 )}
                                 <Separator />

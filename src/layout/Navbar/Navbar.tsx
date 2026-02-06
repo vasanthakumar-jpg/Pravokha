@@ -407,12 +407,7 @@ export function Navbar() {
                             />
                         </div>
 
-                        <Link to="/products?tag=new">
-                            <Button variant="ghost" size="sm" className={styles.navButton}>
-                                <Calendar className={cn("h-4 w-4 flex-shrink-0", styles.navButtonIcon)} />
-                                <span className={cn("hidden lg:inline", styles.navButtonText)}>New Arrivals</span>
-                            </Button>
-                        </Link>
+
 
                         <Link to="/user/orders">
                             <Button variant="ghost" size="sm" className={styles.navButton}>

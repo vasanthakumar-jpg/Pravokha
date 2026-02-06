@@ -59,18 +59,26 @@ export class PaymentController {
             return res.status(400).json({ success: false, message: 'Cart is empty' });
         }
 
+        // Security: Check if user is suspended
+        if (user && user.status === 'suspended') {
+            return res.status(403).json({
+                success: false,
+                message: 'Your account is under compliance review and cannot perform new transactions.'
+            });
+        }
+
         // Fetch dynamic settings from database
         const settings = await prisma.siteSetting.findUnique({ where: { id: 'primary' } });
         const taxRate = settings?.taxRate || 18;
         const baseShippingFee = 50; // New Requirement: Flat ₹50
 
-        // Check if user is eligible for free shipping (first 3 orders)
+        // Check if user is eligible for free shipping (Loyalty Reward: >= 3 orders)
         let applicableShipping = baseShippingFee;
         if (user?.id) {
             const orderCount = await prisma.order.count({
                 where: { customerId: user.id }
             });
-            if (orderCount < 3) {
+            if (orderCount >= 3) {
                 applicableShipping = 0;
             }
         }
@@ -113,9 +121,13 @@ export class PaymentController {
                 });
             }
 
-            // 2. Add Shipping and Tax
-            const taxAmount = Math.round((totalAmount + applicableShipping) * (taxRate / 100)); // GST on product + shipping
-            const grandTotal = totalAmount + applicableShipping + taxAmount;
+            // 2. Add Shipping, Tax and Apply Combo Discounts
+            const { ComboOfferService } = require('../combo-offer/service');
+            const { totalDiscount, appliedOffers } = await ComboOfferService.calculateComboDiscount(items);
+
+            const subtotalAfterCombos = totalAmount - totalDiscount;
+            const taxAmount = Math.round((subtotalAfterCombos + applicableShipping) * (taxRate / 100)); // GST on product + shipping
+            const grandTotal = subtotalAfterCombos + applicableShipping + taxAmount;
 
             // 3. Validate Stripe Minimum (₹50)
             if (grandTotal < 50) {
@@ -190,7 +202,10 @@ export class PaymentController {
                 orders: orders.map(o => ({ id: o.id, orderNumber: o.orderNumber })),
                 totalAmount: grandTotal,
                 amount: grandTotal, // Match frontend expectations
-                subtotal: totalAmount,
+                subtotal: subtotalAfterCombos,
+                rawSubtotal: totalAmount,
+                discount: totalDiscount,
+                appliedOffers,
                 shipping: applicableShipping,
                 tax: taxAmount
             };

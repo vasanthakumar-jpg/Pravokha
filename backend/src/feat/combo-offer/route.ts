@@ -7,6 +7,7 @@ const router = Router();
 
 // Public route to list active offers (for frontend home/offers page)
 router.get('/', ComboOfferController.listOffers);
+router.get('/product/:productId', ComboOfferController.getOffersByProduct);
 
 // Admin-only routes
 router.post('/', authenticate, authorize([Role.SUPER_ADMIN, Role.ADMIN]), ComboOfferController.createOffer);

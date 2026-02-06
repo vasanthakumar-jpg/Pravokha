@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { toast } from "@/shared/hook/use-toast";
+import { apiClient } from "@/infra/api/apiClient";
 
 export interface CartItem {
   productId: string;
@@ -18,6 +19,7 @@ export interface CartItem {
 interface CartContextType {
   items: CartItem[];
   addToCart: (item: Omit<CartItem, "quantity">, quantity?: number) => void;
+  addMultipleToCart: (itemsToAdd: Array<{ item: Omit<CartItem, "quantity">; quantity: number }>) => void;
   removeFromCart: (productId: string, variantId: string, size: string) => void;
   updateQuantity: (productId: string, variantId: string, size: string, quantity: number) => void;
   clearCart: () => void;
@@ -50,10 +52,23 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     return mergedItems;
   });
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [comboOffers, setComboOffers] = useState<any[]>([]);
 
   useEffect(() => {
     localStorage.setItem("pravokha-cart", JSON.stringify(items));
+    fetchComboOffers();
   }, [items]);
+
+  const fetchComboOffers = async () => {
+    try {
+      const response = await apiClient.get('/combo-offers');
+      if (response.data.success) {
+        setComboOffers(response.data.comboOffers);
+      }
+    } catch (err) {
+      console.error('Failed to fetch combo offers:', err);
+    }
+  };
 
   const addToCart = (item: Omit<CartItem, "quantity">, quantity: number = 1) => {
     const existing = items.find(
@@ -110,6 +125,33 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setIsCartOpen(true);
   };
 
+  const addMultipleToCart = (itemsToAdd: Array<{ item: Omit<CartItem, "quantity">; quantity: number }>) => {
+    setItems(prev => {
+      let newItems = [...prev];
+      itemsToAdd.forEach(({ item, quantity }) => {
+        const existingIndex = newItems.findIndex(
+          (i) => i.productId === item.productId && i.variantId === item.variantId && i.size === item.size
+        );
+
+        if (existingIndex > -1) {
+          const newQuantity = newItems[existingIndex].quantity + quantity;
+          if (newQuantity <= item.maxStock) {
+            newItems[existingIndex] = { ...newItems[existingIndex], quantity: newQuantity };
+          }
+        } else if (item.maxStock >= quantity) {
+          newItems.push({ ...item, quantity });
+        }
+      });
+      return newItems;
+    });
+
+    toast({
+      title: "Bundle added!",
+      description: `Added ${itemsToAdd.length} items to your cart.`,
+    });
+    setIsCartOpen(true);
+  };
+
   const removeFromCart = (productId: string, variantId: string, size: string) => {
     setItems((prev) => prev.filter(
       (i) => !(i.productId === productId && i.variantId === variantId && i.size === size)
@@ -154,16 +196,35 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
-  // Check for T-shirt combo: 3 items at Rs 325 each = Rs 949 total
-  const tshirtItems = items.filter(item => item.price === 325);
-  const tshirtCount = tshirtItems.reduce((sum, item) => sum + item.quantity, 0);
-  const comboSets = Math.floor(tshirtCount / 3);
-  const comboSavings = comboSets * (3 * 325 - 949);
+  // Calculate Dynamic Combo Savings
+  let comboSavings = 0;
+  comboOffers.forEach(offer => {
+    if (!offer.active) return;
+    let productIds: string[] = [];
+    try {
+      productIds = typeof offer.productIds === 'string' ? JSON.parse(offer.productIds) : offer.productIds;
+    } catch (e) {
+      productIds = [];
+    }
+
+    if (productIds.length > 0) {
+      const cartProductIds = items.map(i => i.productId);
+      const hasAll = productIds.every(id => cartProductIds.includes(id));
+      if (hasAll) {
+        // Calculate savings based on items in cart
+        const comboProducts = items.filter(i => productIds.includes(i.productId));
+        const singleSetOriginal = comboProducts.reduce((sum, p) => sum + p.price, 0);
+        const discount = singleSetOriginal - offer.comboPrice;
+
+        if (discount > 0) {
+          comboSavings += discount;
+        }
+      }
+    }
+  });
 
   const subTotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const cartTotal = subTotal - comboSavings;
-  const hasComboOffer = comboSets > 0;
-
   const cartCount = items.reduce((sum, item) => sum + item.quantity, 0);
 
   return (
@@ -171,6 +232,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       value={{
         items,
         addToCart,
+        addMultipleToCart,
         removeFromCart,
         updateQuantity,
         clearCart,

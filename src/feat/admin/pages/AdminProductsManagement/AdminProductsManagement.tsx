@@ -110,6 +110,7 @@ export default function AdminProductsManagement() {
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [sourceFilter, setSourceFilter] = useState("all");
   const [sortBy, setSortBy] = useState("newest");
   const [viewMode, setViewMode] = useState<"table" | "grid">("table");
 
@@ -211,6 +212,16 @@ export default function AdminProductsManagement() {
     }
     if (statusFilter !== "all") {
       filtered = filtered.filter(p => statusFilter === "published" ? p.status === 'ACTIVE' : p.status !== 'ACTIVE');
+    }
+    if (sourceFilter !== "all") {
+      filtered = filtered.filter(p => {
+        const storeName = p.vendor?.storeName?.toLowerCase() || "";
+        const isOfficial = storeName.includes("official") ||
+          storeName.includes("admin") ||
+          storeName.includes("pravokha") || // Add platform name for safety
+          p.sellerId === "admin"; // Check ID if available
+        return sourceFilter === "official" ? isOfficial : !isOfficial;
+      });
     }
 
     // Sort
@@ -402,7 +413,7 @@ export default function AdminProductsManagement() {
                     <span>Filter</span>
                   </div>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-64 bg-card border-border/60 shadow-xl rounded-xl">
+                <DropdownMenuContent align="end" className="w-64 max-h-[400px] overflow-y-auto bg-card border-border/60 shadow-xl rounded-xl scrollbar-hide">
                   <DropdownMenuLabel className="text-[10px] font-black tracking-widest text-muted-foreground opacity-70 px-2 py-1.5">Intelligent categorization</DropdownMenuLabel>
                   <DropdownMenuItem onClick={() => setCategoryFilter("all")} className={cn("rounded-lg px-2 py-2 flex justify-between items-center", categoryFilter === "all" && "bg-primary/10 text-primary")}>
                     <span>All Collections</span>
@@ -423,6 +434,11 @@ export default function AdminProductsManagement() {
                   <DropdownMenuItem onClick={() => setStatusFilter("all")} className={cn("rounded-lg px-2 py-1.5", statusFilter === "all" && "bg-primary/10 text-primary")}>All Status</DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setStatusFilter("published")} className={cn("rounded-lg px-2 py-1.5", statusFilter === "published" && "bg-primary/10 text-primary")}>Live Published</DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setStatusFilter("draft")} className={cn("rounded-lg px-2 py-1.5", statusFilter === "draft" && "bg-primary/10 text-primary")}>Draft Archives</DropdownMenuItem>
+                  <DropdownMenuSeparator className="bg-border/50 my-1" />
+                  <DropdownMenuLabel className="text-[10px] font-black tracking-widest text-muted-foreground opacity-70 px-2 py-1.5">Product source</DropdownMenuLabel>
+                  <DropdownMenuItem onClick={() => setSourceFilter("all")} className={cn("rounded-lg px-2 py-1.5", sourceFilter === "all" && "bg-primary/10 text-primary")}>All Sources</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setSourceFilter("official")} className={cn("rounded-lg px-2 py-1.5", sourceFilter === "official" && "bg-primary/10 text-primary")}>Official (Admin)</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setSourceFilter("seller")} className={cn("rounded-lg px-2 py-1.5", sourceFilter === "seller" && "bg-primary/10 text-primary")}>Third-party Sellers</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
 
@@ -430,13 +446,13 @@ export default function AdminProductsManagement() {
                 <DropdownMenuTrigger asChild>
                   <div className={cn(
                     "flex items-center gap-1 group cursor-pointer hover:text-primary transition-colors",
-                    sortBy !== "newest" && "text-primary"
+                    (sortBy !== "newest" || sourceFilter !== "all") && "text-primary"
                   )}>
                     <ArrowUpDown className="h-3 w-3" />
                     <span>Sort</span>
                   </div>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48 bg-card border-border/60 shadow-xl rounded-xl">
+                <DropdownMenuContent align="end" className="w-48 max-h-[300px] overflow-y-auto bg-card border-border/60 shadow-xl rounded-xl scrollbar-hide">
                   <DropdownMenuItem onClick={() => setSortBy("newest")} className={cn("rounded-lg px-2 py-1.5", sortBy === "newest" && "bg-primary/10 text-primary")}>Newest First</DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setSortBy("oldest")} className={cn("rounded-lg px-2 py-1.5", sortBy === "oldest" && "bg-primary/10 text-primary")}>Oldest Record</DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setSortBy("price-low")} className={cn("rounded-lg px-2 py-1.5", sortBy === "price-low" && "bg-primary/10 text-primary")}>Price: Ascending</DropdownMenuItem>
@@ -473,6 +489,7 @@ export default function AdminProductsManagement() {
                           <TableHead className="w-[80px] px-6 h-12 text-[11px] font-bold tracking-wider text-muted-foreground/60">Image</TableHead>
                           <TableHead className="text-[11px] font-bold tracking-wider text-muted-foreground/60">Intelligence</TableHead>
                           <TableHead className="text-[11px] font-bold tracking-wider text-muted-foreground/60">Category</TableHead>
+                          <TableHead className="text-[11px] font-bold tracking-wider text-muted-foreground/60">Source</TableHead>
                           <TableHead className="text-[11px] font-bold tracking-wider text-muted-foreground/60">Price matrix</TableHead>
                           <TableHead className="text-[11px] font-bold tracking-wider text-muted-foreground/60">Governance</TableHead>
                           <TableHead className="text-[11px] font-bold tracking-wider text-muted-foreground/60 text-right pr-10">Actions</TableHead>
@@ -507,6 +524,16 @@ export default function AdminProductsManagement() {
                               <Badge variant="outline" className="text-[9px] font-bold rounded-lg border-border/50 bg-background/50">
                                 {((typeof product.category === 'object' ? product.category?.name : product.category) || "N/A").toUpperCase()}
                               </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex flex-col">
+                                <span className="text-[11px] font-bold text-foreground truncate max-w-[120px]">
+                                  {product.vendor?.storeName || "Unknown Seller"}
+                                </span>
+                                <span className="text-[9px] text-muted-foreground opacity-70 italic">
+                                  {product.vendor?.storeName?.toLowerCase().includes("official") ? "Platform Official" : "External Seller"}
+                                </span>
+                              </div>
                             </TableCell>
                             <TableCell>
                               <div className="flex flex-col">
@@ -572,68 +599,84 @@ export default function AdminProductsManagement() {
                 )}
 
                 {/* Mobile Table View (Cards) */}
-                <div className="block sm:hidden space-y-3 p-3">
+                <div className="block sm:hidden grid grid-cols-1 gap-4 p-4">
                   {filteredProducts.map((product) => (
-                    <div key={product.id} className="flex gap-3 bg-card border border-border/60 p-3 rounded-xl shadow-sm">
-                      <div className="h-16 w-16 min-w-[4rem] rounded-lg bg-muted overflow-hidden border border-border/50">
-                        {(() => {
-                          // Robust image extraction
-                          const image = product.variants?.[0]?.images?.[0] || product.product_variants?.[0]?.images?.[0];
-                          return image ? (
-                            <img src={image} className="w-full h-full object-cover" />
-                          ) : (
-                            <div className="flex items-center justify-center h-full w-full bg-muted/50">
-                              <Package className="h-6 w-6 text-muted-foreground/30" />
-                            </div>
-                          );
-                        })()}
-                      </div>
-                      <div className="flex-1 min-w-0 flex flex-col justify-between">
-                        <div>
-                          <div className="flex justify-between items-start gap-2">
-                            <h3 className="text-sm font-bold truncate pr-2">{product.title}</h3>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-6 w-6 -mt-1 -mr-1">
-                                  <MoreHorizontal className="h-3.5 w-3.5" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-48 bg-card/90 backdrop-blur-xl border-border/50">
-                                {can('EDIT_ANY_PRODUCT') && (
-                                  <DropdownMenuItem onClick={() => navigate(`/admin/products/edit/${product.id}`)}>
-                                    <Pencil className="mr-2 h-3.5 w-3.5" /> Edit Details
-                                  </DropdownMenuItem>
-                                )}
-                                {can('APPROVE_PRODUCT') && (
-                                  <DropdownMenuItem onClick={() => togglePublished(product.id, product.status)}>
-                                    {product.status === 'ACTIVE' ? <EyeOff className="mr-2 h-3.5 w-3.5" /> : <Eye className="mr-2 h-3.5 w-3.5" />}
-                                    {product.status === 'ACTIVE' ? "Unpublish" : "Publish"}
-                                  </DropdownMenuItem>
-                                )}
-                                <DropdownMenuSeparator />
-                                {can('DELETE_ANY_PRODUCT') && (
-                                  <DropdownMenuItem onClick={() => handleDelete(product.id)} className="text-rose-500">
-                                    <Trash2 className="mr-2 h-3.5 w-3.5" /> Delete
-                                  </DropdownMenuItem>
-                                )}
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                          <p className="text-[10px] text-muted-foreground font-mono truncate">{product.sku}</p>
-                        </div>
-                        <div className="flex items-center justify-between mt-2">
-                          <div className="flex items-center gap-1.5 slice">
-                            <Badge variant="outline" className="text-[9px] h-4 px-1">
-                              {typeof product.category === 'object' ? product.category?.name : (product.category || "N/A")}
+                    <div key={product.id} className="flex flex-col bg-card border border-border/60 rounded-2xl shadow-sm overflow-hidden group active:scale-[0.98] transition-transform">
+                      <div className="flex p-4 gap-4">
+                        <div className="h-24 w-24 min-w-[6rem] rounded-xl bg-muted overflow-hidden border border-border/50 shadow-inner relative">
+                          {(() => {
+                            const image = product.variants?.[0]?.images?.[0] || product.product_variants?.[0]?.images?.[0];
+                            return image ? (
+                              <img src={image} className="w-full h-full object-cover" loading="lazy" />
+                            ) : (
+                              <div className="flex items-center justify-center h-full w-full bg-muted/50">
+                                <Package className="h-8 w-8 text-muted-foreground/30" />
+                              </div>
+                            );
+                          })()}
+                          <div className="absolute top-1 left-1">
+                            <Badge
+                              variant={product.status === 'ACTIVE' ? "default" : "secondary"}
+                              className={cn(
+                                "text-[7px] font-black h-4 px-1 rounded-md",
+                                product.status === 'ACTIVE' ? "bg-emerald-500 text-white" : "bg-black/40 text-white"
+                              )}
+                            >
+                              {product.status}
                             </Badge>
-                            <span className="font-bold text-sm">₹{(product.price || 0).toLocaleString()}</span>
                           </div>
-                          <Badge
-                            variant={product.status === 'ACTIVE' ? "default" : "secondary"}
-                            className={cn("text-[8px] h-4 px-1.5", product.status === 'ACTIVE' ? "bg-emerald-500 text-white" : "bg-muted text-muted-foreground")}
-                          >
-                            {product.status}
-                          </Badge>
+                        </div>
+                        <div className="flex-1 min-w-0 flex flex-col justify-between py-1">
+                          <div className="space-y-1">
+                            <div className="flex justify-between items-start">
+                              <h3 className="text-sm font-bold truncate leading-tight pr-1">{product.title}</h3>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="h-6 w-6 -mt-1 -mr-2">
+                                    <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-52 bg-card/95 backdrop-blur-xl border-border/50 rounded-xl shadow-2xl">
+                                  <DropdownMenuLabel className="text-[10px] font-black tracking-widest text-muted-foreground opacity-70">Catalog Governance</DropdownMenuLabel>
+                                  {can('EDIT_ANY_PRODUCT') && (
+                                    <DropdownMenuItem onClick={() => navigate(`/admin/products/edit/${product.id}`)} className="font-bold py-2.5">
+                                      <Pencil className="mr-2 h-4 w-4" /> Edit Attributes
+                                    </DropdownMenuItem>
+                                  )}
+                                  {can('APPROVE_PRODUCT') && (
+                                    <DropdownMenuItem onClick={() => togglePublished(product.id, product.status)} className="font-bold py-2.5">
+                                      {product.status === 'ACTIVE' ? <EyeOff className="mr-2 h-4 w-4" /> : <Eye className="mr-2 h-4 w-4" />}
+                                      {product.status === 'ACTIVE' ? "Archive Entry" : "Deploy Live"}
+                                    </DropdownMenuItem>
+                                  )}
+                                  <DropdownMenuSeparator className="bg-border/40" />
+                                  {can('DELETE_ANY_PRODUCT') && (
+                                    <DropdownMenuItem onClick={() => handleDelete(product.id)} className="text-rose-500 font-bold focus:bg-rose-500 focus:text-white py-2.5">
+                                      <Trash2 className="mr-2 h-4 w-4" /> Terminate Matrix
+                                    </DropdownMenuItem>
+                                  )}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
+                            <p className="text-[9px] text-muted-foreground font-mono opacity-60">SKU: {product.sku}</p>
+                            <div className="pt-1 flex items-center gap-2">
+                              <Badge variant="outline" className="text-[8px] h-4 px-1.5 font-bold bg-muted/30">
+                                {((typeof product.category === 'object' ? product.category?.name : product.category) || "N/A").toUpperCase()}
+                              </Badge>
+                            </div>
+                          </div>
+
+                          <div className="flex items-end justify-between mt-1">
+                            <div className="flex flex-col">
+                              <span className="text-[9px] text-muted-foreground font-bold uppercase tracking-tighter">Selling Price</span>
+                              <span className="font-black text-base tracking-tighter">₹{(product.price || 0).toLocaleString()}</span>
+                            </div>
+                            <div className="text-right">
+                              <span className="text-[8px] text-muted-foreground font-medium block italic truncate max-w-[80px]">
+                                {product.vendor?.storeName || "Direct"}
+                              </span>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>

@@ -1,6 +1,6 @@
 import { OrderController } from './controller';
 import { authenticate, authorize, checkAccountStatus } from '../../shared/middleware/auth';
-import { requireDealerOrderAccess, requireOrderOwnership } from '../../shared/middleware/ownership';
+import { requireSellerOrderAccess, requireOrderOwnership } from '../../shared/middleware/ownership';
 import { Role } from '@prisma/client';
 import { Router } from 'express';
 
@@ -20,7 +20,7 @@ router.post('/', OrderController.createOrder);
 router.get('/stats', OrderController.getStats);
 
 // Get specific order
-router.get('/:id', OrderController.getOrder);
+router.get('/:id', requireSellerOrderAccess, OrderController.getOrder);
 
 // Get order history
 router.get('/:id/history', OrderController.getHistory);
@@ -29,9 +29,9 @@ router.get('/:id/history', OrderController.getHistory);
 router.post('/:id/cancel', OrderController.cancelOrder);
 
 // Admin & Vendor Status Management
-router.patch('/:id/status', authorize([Role.SUPER_ADMIN, Role.ADMIN, Role.SELLER]), OrderController.updateStatus);
-router.patch('/:id/items/:itemId/status', authorize([Role.SUPER_ADMIN, Role.ADMIN, Role.SELLER]), OrderController.updateItemStatus);
-router.post('/:id/ship', authorize([Role.SUPER_ADMIN, Role.ADMIN, Role.SELLER]), OrderController.ship);
+router.patch('/:id/status', authorize([Role.SUPER_ADMIN, Role.ADMIN, Role.SELLER]), requireOrderOwnership, OrderController.updateStatus);
+router.patch('/:id/items/:itemId/status', authorize([Role.SUPER_ADMIN, Role.ADMIN, Role.SELLER]), requireOrderOwnership, OrderController.updateItemStatus);
+router.post('/:id/ship', authorize([Role.SUPER_ADMIN, Role.ADMIN, Role.SELLER]), requireOrderOwnership, OrderController.ship);
 
 // Admin Specific Routes
 router.patch('/:id/refund', authorize([Role.SUPER_ADMIN]), OrderController.refundOrder);

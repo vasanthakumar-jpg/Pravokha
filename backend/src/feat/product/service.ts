@@ -162,7 +162,7 @@ export class ProductService {
         return this.transformProduct(newProduct);
     }
 
-    static async getProducts(user?: { id: string; role: Role }, filters: { search?: string; category?: string; page?: number | string; limit?: number | string; vendorId?: string; tag?: string; scope?: string } = {}) {
+    static async getProducts(user?: { id: string; role: Role }, filters: { search?: string; category?: string; subcategory?: string; page?: number | string; limit?: number | string; vendorId?: string; tag?: string; scope?: string; sort?: string; minPrice?: number; maxPrice?: number } = {}) {
         const pageNum = typeof filters.page === 'string' ? parseInt(filters.page) : (Number(filters.page) || 1);
         const limitNum = typeof filters.limit === 'string' ? parseInt(filters.limit) : (Number(filters.limit) || 10);
         const skip = (pageNum - 1) * limitNum;
@@ -170,14 +170,30 @@ export class ProductService {
         const where: any = { deletedAt: null };
 
         if (filters.search) {
+            const searchPattern = filters.search.trim();
             where.OR = [
-                { title: { contains: filters.search } },
-                { description: { contains: filters.search } }
+                { title: { contains: searchPattern } },
+                { tags: { contains: searchPattern } },
+                { description: { contains: searchPattern } }
             ];
         }
 
-        if (filters.category) {
-            where.category = { slug: filters.category };
+        if (filters.subcategory) {
+            // Priority: Filter by specific subcategory slug
+            where.category = { slug: filters.subcategory };
+        } else if (filters.category) {
+            // Recursive Category Logic: Fetch products from parent category AND all its children
+            const parentCategory = await prisma.category.findUnique({
+                where: { slug: filters.category },
+                include: { subcategories: { select: { id: true } } }
+            });
+
+            if (parentCategory) {
+                const categoryIds = [parentCategory.id, ...parentCategory.subcategories.map(s => s.id)];
+                where.categoryId = { in: categoryIds };
+            } else {
+                where.category = { slug: filters.category };
+            }
         }
 
         if (filters.vendorId) {
@@ -186,6 +202,40 @@ export class ProductService {
 
         if (filters.tag === 'deals') {
             where.compareAtPrice = { not: null };
+        }
+
+        // Filter by Price Range
+        if (filters.minPrice !== undefined || filters.maxPrice !== undefined) {
+            where.price = {};
+            if (filters.minPrice !== undefined) where.price.gte = Number(filters.minPrice);
+            if (filters.maxPrice !== undefined) where.price.lte = Number(filters.maxPrice);
+        }
+
+        // Sorting Logic (Real-world Marketplace Implementation)
+        let orderBy: any = [];
+
+        switch (filters.sort) {
+            case 'price_asc':
+                orderBy = [{ price: 'asc' }];
+                break;
+            case 'price_desc':
+                orderBy = [{ price: 'desc' }];
+                break;
+            case 'rating':
+                orderBy = [
+                    { rating: 'desc' },
+                    { reviewCount: 'desc' },
+                    { createdAt: 'desc' }
+                ];
+                break;
+            case 'featured':
+                orderBy = [
+                    { isFeatured: 'desc' },
+                    { createdAt: 'desc' }
+                ];
+                break;
+            default:
+                orderBy = [{ createdAt: 'desc' }];
         }
 
         const include = {
@@ -225,7 +275,7 @@ export class ProductService {
                 include,
                 skip,
                 take: limitNum,
-                orderBy: { createdAt: 'desc' }
+                orderBy // Apply dynamic sorting
             }),
             prisma.product.count({ where })
         ]);
@@ -236,6 +286,12 @@ export class ProductService {
     }
 
     static async getProductById(idOrSlug: string, user?: { id: string; role: Role }) {
+        console.log('[ProductService] getProductById called:', {
+            idOrSlug,
+            userId: user?.id,
+            userRole: user?.role
+        });
+
         const include = {
             variants: {
                 include: {
@@ -266,20 +322,37 @@ export class ProductService {
             include
         });
 
+        console.log('[ProductService] Database query result:', {
+            found: !!product,
+            productId: product?.id,
+            productTitle: product?.title,
+            productStatus: product?.status,
+            vendorId: product?.vendorId
+        });
+
         if (!product) {
+            console.error('[ProductService] Product not found in database:', idOrSlug);
             throw { statusCode: 404, message: 'Product not found' };
         }
 
-        if (user && (user.role === Role.SUPER_ADMIN || user.role === Role.ADMIN)) return product;
+        if (user && (user.role === Role.SUPER_ADMIN || user.role === Role.ADMIN)) {
+            console.log('[ProductService] Returning product to admin/super_admin');
+            return this.transformProduct(product);
+        }
 
         if (product.status !== 'ACTIVE') {
-            if (!user) throw { statusCode: 403, message: 'Forbidden' };
+            if (!user) {
+                console.warn('[ProductService] Inactive product access denied for unauthenticated user');
+                throw { statusCode: 403, message: 'Forbidden' };
+            }
             const vendor = await prisma.vendor.findUnique({ where: { ownerId: user.id } });
             if (!vendor || product.vendorId !== vendor.id) {
+                console.warn('[ProductService] Inactive product access denied for non-owner');
                 throw { statusCode: 403, message: 'Forbidden' };
             }
         }
 
+        console.log('[ProductService] Returning product successfully');
         return this.transformProduct(product);
     }
 

@@ -35,9 +35,9 @@ router.put('/settings/system', requirePermission('MANAGE_SETTINGS', 'SYSTEM'), u
 router.get('/product-updates', requirePermission('MANAGE_PRODUCTS', 'MARKETPLACE'), getProductUpdateRequests);
 router.patch('/product-updates/:id', requirePermission('MANAGE_PRODUCTS', 'MARKETPLACE'), updateProductRequestStatus);
 
-// Permission Management (Restricted to SUPER_ADMIN internally)
-router.post('/permissions/:adminId', updateAdminPermissions);
-router.get('/permissions/:adminId', getAdminPermissions);
+// Permission Management (Restricted to SUPER_ADMIN internally, but guarded by middleware for logging/RBAC)
+router.post('/permissions/:adminId', requirePermission('MANAGE_ADMINS', 'SYSTEM'), updateAdminPermissions);
+router.get('/permissions/:adminId', requirePermission('MANAGE_ADMINS', 'SYSTEM'), getAdminPermissions);
 
 // User Management
 router.post('/users/:userId/suspend', requirePermission('SUSPEND_USER', 'USER'), suspendUser);

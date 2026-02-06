@@ -11,6 +11,7 @@ router.get('/admin/all', authenticate, authorize([Role.SUPER_ADMIN, Role.ADMIN])
 router.post('/', authenticate, authorize([Role.SUPER_ADMIN, Role.ADMIN]), CategoryController.createCategory);
 router.patch('/:id', authenticate, authorize([Role.SUPER_ADMIN, Role.ADMIN]), CategoryController.updateCategory);
 router.delete('/:id', authenticate, authorize([Role.SUPER_ADMIN, Role.ADMIN]), CategoryController.deleteCategory);
+router.patch('/reorder', authenticate, authorize([Role.SUPER_ADMIN, Role.ADMIN]), CategoryController.reorderCategories);
 router.get('/subcategories', CategoryController.listAllSubcategories);
 router.post('/subcategories', authenticate, authorize([Role.SUPER_ADMIN, Role.ADMIN]), CategoryController.createSubcategory);
 router.patch('/subcategories/:id', authenticate, authorize([Role.SUPER_ADMIN, Role.ADMIN]), CategoryController.updateSubcategory);

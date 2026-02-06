@@ -64,83 +64,96 @@ export class PermissionService {
         if (!permissions) return false;
 
         // Map action+resource to DB fields
-        switch (`${action}_${resource}`) {
             case 'APPROVE_PRODUCT':
-                return permissions.canApproveProducts;
+            case 'APPROVE_PRODUCT_MARKETPLACE':
+        return permissions.canApproveProducts;
             case 'EDIT_PRODUCT':
             case 'UPDATE_PRODUCT':
-                return permissions.canEditAnyProduct;
+            case 'MANAGE_PRODUCTS_MARKETPLACE':
+        return permissions.canEditAnyProduct;
             case 'DELETE_PRODUCT':
-                return permissions.canDeleteAnyProduct;
+        return permissions.canDeleteAnyProduct;
             case 'MANAGE_CATEGORY':
-                return permissions.canManageCategories;
+            case 'MANAGE_CATEGORY_SYSTEM':
+        return permissions.canManageCategories;
             case 'MANAGE_USER':
             case 'VIEW_USERS':
-                return permissions.canManageUsers;
+            case 'MANAGE_USER_USER':
+            case 'VIEW_USERS_USER':
+        return permissions.canManageUsers;
             case 'SUSPEND_USER':
-                return permissions.canSuspendUsers;
+            case 'SUSPEND_USER_USER':
+        return permissions.canSuspendUsers;
+            case 'ACTIVATE_USER_USER':
+        return permissions.canSuspendUsers; // Using same flag for activation
             case 'VERIFY_VENDOR':
-                return permissions.canVerifyVendors;
+        return permissions.canVerifyVendors;
             case 'CHANGE_ROLE':
-                return permissions.canChangeUserRoles;
+        return permissions.canChangeUserRoles;
             case 'VIEW_ALL_ORDERS':
-                return permissions.canViewAllOrders;
+        return permissions.canViewAllOrders;
             case 'CANCEL_ORDER':
-                return permissions.canCancelAnyOrder;
+        return permissions.canCancelAnyOrder;
             case 'ISSUE_REFUND':
-                return permissions.canIssueRefunds;
+        return permissions.canIssueRefunds;
             case 'APPROVE_PAYOUT':
-                return permissions.canApprovePayouts;
+        return permissions.canApprovePayouts;
             case 'VIEW_FINANCIALS':
-                return permissions.canViewFinancials;
+        return permissions.canViewFinancials;
             case 'MODIFY_COMMISSION':
-                return permissions.canModifyCommission;
+        return permissions.canModifyCommission;
             case 'VIEW_AUDIT_LOGS':
-                return permissions.canAccessAuditLogs;
+            case 'VIEW_AUDIT_LOGS_SYSTEM':
+        return permissions.canAccessAuditLogs;
             case 'MANAGE_ADMINS':
-                return permissions.canManageAdmins;
+            case 'MANAGE_ADMINS_SYSTEM':
+        return permissions.canManageAdmins;
             case 'CHANGE_SETTINGS':
-                return permissions.canChangeSettings;
+            case 'MANAGE_SETTINGS_SYSTEM':
+        return permissions.canChangeSettings;
+            case 'VIEW_ANALYTICS':
+            case 'VIEW_ANALYTICS_SYSTEM':
+        return permissions.canViewFinancials; // Mapping analytics to financials permission
             default:
-                return false;
-        }
+        return false;
+}
     }
 
     /**
      * Check vendor permissions (ownership based)
      */
     private static async checkVendorPermission(
-        action: string,
-        resource: string,
-        userId: string,
-        resourceOwnerId?: string
-    ): Promise<boolean> {
-        // Find vendor associated with this user
-        const vendor = await prisma.vendor.findUnique({ where: { ownerId: userId } });
-        if (!vendor) return false;
+    action: string,
+    resource: string,
+    userId: string,
+    resourceOwnerId ?: string
+): Promise < boolean > {
+    // Find vendor associated with this user
+    const vendor = await prisma.vendor.findUnique({ where: { ownerId: userId } });
+    if(!vendor) return false;
 
-        switch (resource) {
+    switch(resource) {
             case 'PRODUCT':
-                if (action === 'CREATE') return true;
-                if (['EDIT', 'UPDATE', 'DELETE', 'VIEW'].includes(action)) {
-                    // resourceOwnerId should be the vendorId here
-                    return vendor.id === resourceOwnerId;
-                }
-                return false;
+    if(action === 'CREATE') return true;
+if (['EDIT', 'UPDATE', 'DELETE', 'VIEW'].includes(action)) {
+    // resourceOwnerId should be the vendorId here
+    return vendor.id === resourceOwnerId;
+}
+return false;
 
             case 'ORDER':
-                // Vendors can manage orders split specifically for them
-                if (['VIEW', 'UPDATE_STATUS'].includes(action)) {
-                    return vendor.id === resourceOwnerId;
-                }
-                return false;
+// Vendors can manage orders split specifically for them
+if (['VIEW', 'UPDATE_STATUS'].includes(action)) {
+    return vendor.id === resourceOwnerId;
+}
+return false;
 
             case 'PAYOUT':
-                if (action === 'REQUEST' || action === 'VIEW') return vendor.id === resourceOwnerId;
-                return false;
+if (action === 'REQUEST' || action === 'VIEW') return vendor.id === resourceOwnerId;
+return false;
 
             default:
-                return false;
+return false;
         }
     }
 
@@ -148,31 +161,31 @@ export class PermissionService {
      * Check customer permissions (ownership based)
      */
     private static checkCustomerPermission(
-        action: string,
-        resource: string,
-        userId: string,
-        resourceOwnerId?: string
-    ): boolean {
-        switch (resource) {
-            case 'ORDER':
-                if (action === 'CREATE') return true;
-                if (action === 'VIEW' || action === 'CANCEL') return userId === resourceOwnerId;
-                return false;
+    action: string,
+    resource: string,
+    userId: string,
+    resourceOwnerId ?: string
+): boolean {
+    switch (resource) {
+        case 'ORDER':
+            if (action === 'CREATE') return true;
+            if (action === 'VIEW' || action === 'CANCEL') return userId === resourceOwnerId;
+            return false;
 
-            case 'PROFILE':
-            case 'ADDRESS':
-                return userId === resourceOwnerId;
+        case 'PROFILE':
+        case 'ADDRESS':
+            return userId === resourceOwnerId;
 
-            case 'REVIEW':
-                if (action === 'CREATE' || action === 'UPDATE' || action === 'DELETE') return true;
-                return false;
+        case 'REVIEW':
+            if (action === 'CREATE' || action === 'UPDATE' || action === 'DELETE') return true;
+            return false;
 
-            case 'PRODUCT':
-                if (action === 'VIEW') return true;
-                return false;
+        case 'PRODUCT':
+            if (action === 'VIEW') return true;
+            return false;
 
-            default:
-                return false;
-        }
+        default:
+            return false;
     }
+}
 }

@@ -61,7 +61,7 @@ export const createProduct = asyncHandler(async (req: Request, res: Response) =>
 
 export const getProducts = asyncHandler(async (req: Request, res: Response) => {
     const user = (req as any).user;
-    const { search, category, page, limit, vendorId, tag, scope } = req.query;
+    const { search, category, page, limit, vendorId, tag, scope, sort } = req.query;
     // Super Admins can see all, Vendors might have restrictions handled in service
     const result = await ProductService.getProducts(user!, {
         search: search as string,
@@ -70,7 +70,10 @@ export const getProducts = asyncHandler(async (req: Request, res: Response) => {
         limit: limit ? parseInt(limit as string) : undefined,
         vendorId: vendorId as string,
         tag: tag as string,
-        scope: scope as string
+        scope: scope as string,
+        sort: sort as string,
+        minPrice: req.query.minPrice ? Number(req.query.minPrice) : undefined,
+        maxPrice: req.query.maxPrice ? Number(req.query.maxPrice) : undefined
     });
     res.status(200).json({ success: true, ...result });
 });

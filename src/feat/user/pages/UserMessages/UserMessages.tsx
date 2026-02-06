@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useAuth } from "@/core/context/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/ui/Card";
 import { Button } from "@/ui/Button";
 import { Input } from "@/ui/Input";
@@ -14,6 +15,7 @@ export default function UserMessages() {
   const { notifications, markAsRead, markAllAsRead, deleteNotification } = useNotifications();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("all");
+  const { user, role } = useAuth();
   const navigate = useNavigate();
 
   const getIcon = (type: Notification['type']) => {
@@ -55,7 +57,11 @@ export default function UserMessages() {
 
     // Navigate based on type/metadata
     if (notification.metadata?.orderId) {
-      navigate(`/user/orders/detail/${notification.metadata.orderId}`);
+      const isAdmin = role === 'ADMIN' || role === 'SUPER_ADMIN';
+      const targetPath = isAdmin
+        ? `/admin/orders/${notification.metadata.orderId}`
+        : `/user/orders/detail/${notification.metadata.orderId}`;
+      navigate(targetPath);
     } else if (notification.type === 'order' || notification.type === 'order_cancelled') {
       // Fallback if metadata is missing (though it shouldn't be for new ones)
       // Check if message contains order number or similar if needed, 

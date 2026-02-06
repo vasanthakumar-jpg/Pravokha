@@ -89,15 +89,17 @@ export function UserAccountDropdown() {
         { icon: Users, label: "Users List", path: "/admin/users" },
         { icon: Package, label: "All Products", path: "/admin/products" },
         { icon: ShoppingBag, label: "All Orders", path: "/admin/orders" },
-        { icon: User, label: "User Profile", path: "/user/account" },
+        { icon: User, label: "Account Settings", path: "/user/account" },
     ];
 
     const getMenuItems = () => {
         const normalizedRole = role?.toLowerCase();
         switch (normalizedRole) {
             case "super_admin":
-                return getAdminMenuItems();
             case "admin":
+                return getAdminMenuItems();
+            case "vendor":
+            case "seller":
                 return getSellerMenuItems();
             default:
                 return getUserMenuItems();

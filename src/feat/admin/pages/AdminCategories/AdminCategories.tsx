@@ -1,33 +1,109 @@
 import { useState, useEffect } from "react";
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, rectSortingStrategy } from '@dnd-kit/sortable';
 import { useNavigate } from "react-router-dom";
-import { apiClient } from "@/infra/api/apiClient";
-import { useAdmin } from "@/core/context/AdminContext";
 import { AdminSkeleton } from "@/feat/admin/components/AdminSkeleton";
-import { Card, CardContent, CardHeader, CardTitle } from "@/ui/Card";
+import { CSS } from '@dnd-kit/utilities';
+import { Loader2, Plus, Search, Pencil, Trash2, ArrowLeft, ShoppingBag, Info } from "lucide-react";
+import { useAdmin } from "@/core/context/AdminContext";
+import { useAuth } from "@/core/context/AuthContext";
+import { apiClient } from "@/infra/api/apiClient";
+import { useToast } from "@/shared/hook/use-toast";
 import { Button } from "@/ui/Button";
 import { Input } from "@/ui/Input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/ui/Card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/ui/Dialog";
 import { Label } from "@/ui/Label";
 import { Textarea } from "@/ui/Textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/Select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/ui/Dialog";
-import { toast } from "@/shared/hook/use-toast";
-
-import { Pencil, Trash2, Plus, ArrowLeft, Upload, Info, ShoppingBag } from "lucide-react";
-import { LoadingSpinner } from "@/shared/ui/LoadingSpinner";
 import { NoResultsFound } from "@/feat/admin/components/NoResultsFound";
+import { cn } from "@/lib/utils";
 
 interface Category {
   id: string;
   name: string;
   slug: string;
   description: string | null;
-  image_url: string | null;
   status: string;
   display_order: number;
+  image_url?: string;
+}
+
+// Sortable Item Component
+function SortableCategoryCard({ category, openEditDialog, handleDelete }: { category: Category, openEditDialog: (c: Category) => void, handleDelete: (id: string) => void }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging
+  } = useSortable({ id: category.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 1000 : 'auto',
+  };
+
+  return (
+    <Card
+      ref={setNodeRef}
+      style={style}
+      className={`group hover:border-primary/50 transition-all duration-300 bg-card border-border/60 shadow-sm hover:shadow-md rounded-xl overflow-hidden ${isDragging ? "shadow-xl ring-2 ring-primary" : ""}`}
+    >
+      <CardHeader className="p-4 sm:p-5 pb-2 cursor-move" {...attributes} {...listeners}>
+        <CardTitle className="flex items-start justify-between gap-2">
+          <span className="text-sm sm:text-base font-bold tracking-tight truncate pr-2">{category.name}</span>
+          <span className={`text-xs font-medium px-2 py-0.5 rounded-full border shrink-0 capitalize ${category.status === "active" ? "bg-emerald-500/5 text-emerald-600 border-emerald-500/20" :
+            category.status === "coming_soon" ? "bg-amber-500/5 text-amber-600 border-amber-500/20" :
+              "bg-muted/50 text-muted-foreground border-border/50"
+            }`}>
+            {category.status.replace("_", " ")}
+          </span>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="p-4 sm:p-5 pt-2 flex flex-col gap-4">
+        <div className="space-y-1">
+          <p className="text-xs text-muted-foreground line-clamp-2 min-h-[2.5em]">{category.description || "No description provided."}</p>
+          <div className="flex flex-col gap-1 mt-2">
+            <div className="flex items-center justify-between text-[10px] text-muted-foreground font-mono bg-muted/30 px-2 py-1 rounded-lg">
+              <span>Slug</span>
+              <span className="truncate max-w-[120px]">{category.slug}</span>
+            </div>
+            <div className="flex items-center justify-between text-[10px] text-muted-foreground font-mono bg-muted/30 px-2 py-1 rounded-lg">
+              <span>Order</span>
+              <span>#{category.display_order}</span>
+            </div>
+          </div>
+        </div>
+        <div className="flex gap-2 mt-auto pt-2 border-t border-border/30">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => openEditDialog(category)}
+            className="flex-1 h-8 text-xs font-bold rounded-xl hover:bg-primary/5 hover:text-primary border-border/40"
+          >
+            <Pencil className="h-3.5 w-3.5 mr-1.5" /> Edit
+          </Button>
+          <Button
+            size="sm"
+            variant="destructive"
+            onClick={() => handleDelete(category.id)}
+            className="flex-1 h-8 text-xs font-bold rounded-xl shadow-sm shadow-destructive/20"
+          >
+            <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Delete
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
 
 export default function AdminCategories() {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const { isAdmin, loading: adminLoading } = useAdmin();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -37,6 +113,7 @@ export default function AdminCategories() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [searchQuery, setSearchQuery] = useState("");
+  const [isSavingOrder, setIsSavingOrder] = useState(false); // New state for reorder saving
 
   const filteredCategories = categories.filter(cat =>
     cat.status !== 'inactive' && (
@@ -44,6 +121,57 @@ export default function AdminCategories() {
       cat.slug.toLowerCase().includes(searchQuery.toLowerCase())
     )
   );
+
+  // Sorting setup
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (active.id !== over?.id) {
+      setCategories((items) => {
+        const oldIndex = items.findIndex((item) => item.id === active.id);
+        const newIndex = items.findIndex((item) => item.id === over?.id);
+        const newItems = arrayMove(items, oldIndex, newIndex);
+
+        // Optimistic UI Update: Re-assign display_order based on new index
+        const updatedItems = newItems.map((item, index) => ({
+          ...item,
+          display_order: index + 1 // 1-based index
+        }));
+
+        // Trigger server update in background
+        saveNewOrder(updatedItems);
+
+        return updatedItems;
+      });
+    }
+  };
+
+  const saveNewOrder = async (items: Category[]) => {
+    setIsSavingOrder(true);
+    try {
+      // Prepare payload: array of { id, displayOrder }
+      const payload = items.map(item => ({
+        id: item.id,
+        displayOrder: item.display_order
+      }));
+
+      await apiClient.patch('/categories/reorder', { items: payload });
+      toast({ title: "Updated", description: "Category order saved." });
+    } catch (error) {
+      console.error("Failed to save order", error);
+      toast({ title: "Error", description: "Failed to save new order.", variant: "destructive" });
+      fetchCategories(); // Revert on error
+    } finally {
+      setIsSavingOrder(false);
+    }
+  };
 
   const [formData, setFormData] = useState({
     name: "",
@@ -86,6 +214,8 @@ export default function AdminCategories() {
         image_url: cat.image, // Fixed: Prisma field is 'image'
         display_order: cat.displayOrder ? Number(cat.displayOrder) : 0
       }));
+      // Ensure frontend sorting matches display order
+      data.sort((a: Category, b: Category) => a.display_order - b.display_order);
       setCategories(data || []);
     } catch (error: any) {
       toast({
@@ -190,6 +320,7 @@ export default function AdminCategories() {
       name: category.name,
       slug: category.slug,
       description: category.description || "",
+      image_url: category.image_url || "",
       status: (category.status || 'active').toLowerCase(),
       display_order: category.display_order,
     });
@@ -235,8 +366,9 @@ export default function AdminCategories() {
               <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2">
                 Categories
                 <span className="text-xs font-medium bg-primary/5 text-primary rounded-lg border border-primary/20 px-2 py-0.5">{filteredCategories.length} Total</span>
+                {isSavingOrder && <span className="text-xs text-muted-foreground animate-pulse">Saving order...</span>}
               </h1>
-              <p className="text-xs sm:text-base text-muted-foreground mt-1">Organize product categories</p>
+              <p className="text-xs sm:text-base text-muted-foreground mt-1">Organize product categories. Drag and drop cards to reorder.</p>
             </div>
           </div>
           <div className="flex items-center gap-2 w-full xl:w-auto">
@@ -438,66 +570,37 @@ export default function AdminCategories() {
         />
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3 sm:gap-6">
-        {filteredCategories.length === 0 ? (
-          <div className="col-span-full">
-            <NoResultsFound
-              searchTerm={searchQuery}
-              onReset={() => setSearchQuery("")}
-              className="bg-card/50"
-            />
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext
+          items={filteredCategories}
+          strategy={rectSortingStrategy}
+        >
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3 sm:gap-6">
+            {filteredCategories.length === 0 ? (
+              <div className="col-span-full">
+                <NoResultsFound
+                  searchTerm={searchQuery}
+                  onReset={() => setSearchQuery("")}
+                  className="bg-card/50"
+                />
+              </div>
+            ) : (
+              filteredCategories.map((category) => (
+                <SortableCategoryCard
+                  key={category.id}
+                  category={category}
+                  openEditDialog={openEditDialog}
+                  handleDelete={handleDelete}
+                />
+              ))
+            )}
           </div>
-        ) : (
-          filteredCategories.map((category) => (
-            <Card key={category.id} className="group hover:border-primary/50 transition-all duration-300 bg-card borderFONborder/60 shadow-sm hover:shadow-md rounded-xl overflow-hidden">
-              <CardHeader className="p-4 sm:p-5 pb-2">
-                <CardTitle className="flex items-start justify-between gap-2">
-                  <span className="text-sm sm:text-base font-bold tracking-tight truncate pr-2">{category.name}</span>
-                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full border shrink-0 capitalize ${category.status === "active" ? "bg-emerald-500/5 text-emerald-600 border-emerald-500/20" :
-                    category.status === "coming_soon" ? "bg-amber-500/5 text-amber-600 border-amber-500/20" :
-                      "bg-muted/50 text-muted-foreground border-border/50"
-                    }`}>
-                    {category.status.replace("_", " ")}
-                  </span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-4 sm:p-5 pt-2 flex flex-col gap-4">
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground line-clamp-2 min-h-[2.5em]">{category.description || "No description provided."}</p>
-                  <div className="flex flex-col gap-1 mt-2">
-                    <div className="flex items-center justify-between text-[10px] text-muted-foreground font-mono bg-muted/30 px-2 py-1 rounded-lg">
-                      <span>Slug</span>
-                      <span className="truncate max-w-[120px]">{category.slug}</span>
-                    </div>
-                    <div className="flex items-center justify-between text-[10px] text-muted-foreground font-mono bg-muted/30 px-2 py-1 rounded-lg">
-                      <span>Order</span>
-                      <span>#{category.display_order}</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex gap-2 mt-auto pt-2 border-t border-border/30">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => openEditDialog(category)}
-                    className="flex-1 h-8 text-xs font-bold rounded-xl hover:bg-primary/5 hover:text-primary border-border/40"
-                  >
-                    <Pencil className="h-3.5 w-3.5 mr-1.5" /> Edit
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="destructive"
-                    onClick={() => handleDelete(category.id)}
-                    className="flex-1 h-8 text-xs font-bold rounded-xl shadow-sm shadow-destructive/20"
-                  >
-                    <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Delete
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))
-        )}
-      </div>
+        </SortableContext>
+      </DndContext>
     </div >
   );
 }

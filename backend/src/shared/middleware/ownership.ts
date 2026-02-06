@@ -142,9 +142,9 @@ export const requireProductOwnership = requireOwnership({
 });
 
 /**
- * Validates that a DEALER can only view orders containing their products
+ * Validates that a SELLER can only view orders containing their products
  */
-export const requireDealerOrderAccess = async (req: Request, res: Response, next: NextFunction) => {
+export const requireSellerOrderAccess = async (req: Request, res: Response, next: NextFunction) => {
     try {
         if (!req.user) {
             return res.status(401).json({ success: false, message: 'Authentication required' });
@@ -205,7 +205,7 @@ export const requireDealerOrderAccess = async (req: Request, res: Response, next
 };
 
 /**
- * Validates that the authenticated seller (ADMIN) owns the order.
+ * Validates that the authenticated seller (SELLER) owns the order.
  */
 export const requireOrderOwnership = async (req: Request, res: Response, next: NextFunction) => {
     try {

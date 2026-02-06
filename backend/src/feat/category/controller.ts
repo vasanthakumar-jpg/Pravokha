@@ -210,4 +210,24 @@ export class CategoryController {
         await prisma.category.delete({ where: { id } });
         res.json({ success: true, message: 'Subcategory deleted successfully' });
     });
+    // 7. Reorder Categories (Batch Update)
+    static reorderCategories = asyncHandler(async (req: Request, res: Response) => {
+        const { items } = req.body; // Expect [{ id: string, displayOrder: number }]
+
+        if (!items || !Array.isArray(items)) {
+            return res.status(400).json({ success: false, message: 'Invalid items array' });
+        }
+
+        // Use transaction for batch update to ensure atomicity
+        await prisma.$transaction(
+            items.map((item: any) =>
+                prisma.category.update({
+                    where: { id: item.id },
+                    data: { displayOrder: item.displayOrder }
+                })
+            )
+        );
+
+        res.json({ success: true, message: 'Categories reordered successfully' });
+    });
 }

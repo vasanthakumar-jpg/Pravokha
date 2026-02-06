@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-const API_BASE = 'http://localhost:5000';
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/ui/Card";
 import { Button } from "@/ui/Button";
@@ -379,7 +378,7 @@ export default function UserOrderDetail() {
                                        }
                                     }
 
-                                    const fullImgUrl = imgPath ? (imgPath.startsWith('http') ? imgPath : `${API_BASE}${imgPath}`) : null;
+                                    const fullImgUrl = getMediaUrl(imgPath);
                                     return fullImgUrl ? (
                                        <img src={fullImgUrl} alt={item.product?.title || item.title} className="h-full w-full object-cover object-center group-hover:scale-105 transition-transform duration-300" />
                                     ) : (
