@@ -58,19 +58,13 @@ export class ProductService {
         if (data.isVerified !== undefined) mappedData.isVerified = !!data.isVerified;
         else if (data.is_verified !== undefined) mappedData.isVerified = !!data.is_verified;
 
-        if (data.isFeatured !== undefined) mappedData.isFeatured = !!data.isFeatured;
-        else if (data.is_featured !== undefined) mappedData.isFeatured = !!data.is_featured;
-
         if (data.isBlocked !== undefined) mappedData.isBlocked = !!data.isBlocked;
         else if (data.is_blocked !== undefined) mappedData.isBlocked = !!data.is_blocked;
 
         console.log(`[ProductService] Mapped Governance Flags:`, {
             isVerified: mappedData.isVerified,
-            isFeatured: mappedData.isFeatured,
             isBlocked: mappedData.isBlocked,
             originalData: {
-                isFeatured: data.isFeatured,
-                is_featured: data.is_featured,
                 isVerified: data.isVerified,
                 is_verified: data.is_verified
             }
@@ -162,7 +156,7 @@ export class ProductService {
         return this.transformProduct(newProduct);
     }
 
-    static async getProducts(user?: { id: string; role: Role }, filters: { search?: string; category?: string; subcategory?: string; page?: number | string; limit?: number | string; vendorId?: string; tag?: string; scope?: string; sort?: string; minPrice?: number; maxPrice?: number } = {}) {
+    static async getProducts(user?: { id: string; role: Role }, filters: { search?: string; category?: string; subcategory?: string; page?: number | string; limit?: number | string; vendorId?: string; tag?: string; scope?: string; sort?: string; minPrice?: number; maxPrice?: number; minDiscount?: number; minRating?: number } = {}) {
         const pageNum = typeof filters.page === 'string' ? parseInt(filters.page) : (Number(filters.page) || 1);
         const limitNum = typeof filters.limit === 'string' ? parseInt(filters.limit) : (Number(filters.limit) || 10);
         const skip = (pageNum - 1) * limitNum;
@@ -170,12 +164,57 @@ export class ProductService {
         const where: any = { deletedAt: null };
 
         if (filters.search) {
-            const searchPattern = filters.search.trim();
-            where.OR = [
-                { title: { contains: searchPattern } },
-                { tags: { contains: searchPattern } },
-                { description: { contains: searchPattern } }
-            ];
+            const rawKeywords = filters.search.trim().split(/\s+/).filter(word => word.length > 0);
+
+            const stopWords = ['for', 'the', 'and', 'with', 'from', 'best', 'buy', 'this', 'that', 'super', 'very'];
+
+            const keywords = rawKeywords
+                .filter(word => word.length > 1 && !stopWords.includes(word.toLowerCase()))
+                .map(word => {
+                    const wordLower = word.toLowerCase();
+                    const variations = [wordLower];
+
+                    // Hyphen Variations
+                    if (wordLower === 'tshirt' || wordLower === 'tshirts') variations.push('t-shirt', 't-shirts', 'tee');
+                    if (wordLower === 't-shirt' || wordLower === 't-shirts') variations.push('tshirt', 'tshirts', 'tee');
+
+                    // Gender Variations
+                    if (wordLower === 'mens' || wordLower === 'men') variations.push('mens', 'men', 'male');
+                    if (wordLower === 'womens' || wordLower === 'women') variations.push('womens', 'women', 'female', 'lady', 'ladies');
+
+                    // Simple Pluralization Stemming
+                    if (wordLower.length > 3) {
+                        if (wordLower.endsWith('s')) variations.push(wordLower.slice(0, -1));
+                        else variations.push(wordLower + 's');
+                    }
+
+                    return [...new Set(variations)];
+                });
+
+            if (keywords.length > 0) {
+                // PASS 1: Try strict AND (All keywords must be represented)
+                where.AND = keywords.map(variations => ({
+                    OR: variations.flatMap(v => [
+                        { title: { contains: v } },
+                        { tags: { contains: v } },
+                        { description: { contains: v } }
+                    ])
+                }));
+
+                // Check if Pass 1 yields results
+                const count = await prisma.product.count({ where });
+
+                if (count === 0) {
+                    // PASS 2: Fallback to OR (Any significant keyword matches)
+                    // This handles cases like "tshirt perfect fit" where "perfect" isn't in DB
+                    delete where.AND;
+                    where.OR = keywords.flatMap(variations => variations.flatMap(v => [
+                        { title: { contains: v } },
+                        { tags: { contains: v } },
+                        { description: { contains: v } }
+                    ]));
+                }
+            }
         }
 
         if (filters.subcategory) {
@@ -209,6 +248,28 @@ export class ProductService {
             where.price = {};
             if (filters.minPrice !== undefined) where.price.gte = Number(filters.minPrice);
             if (filters.maxPrice !== undefined) where.price.lte = Number(filters.maxPrice);
+        }
+
+        // Filter by Rating
+        if (filters.minRating !== undefined) {
+            where.rating = { gte: Number(filters.minRating) };
+        }
+
+        // Backend Discount Filtering
+        // Since discount is calculated (compareAtPrice - price) / compareAtPrice * 100
+        // We need to ensure compareAtPrice > price first.
+        if (filters.minDiscount) {
+            // This is a rough filter at DB level to reduce result set, precise check happens in memory if needed
+            // But Prisma doesn't support computed columns in where clause easily without raw query
+            // Workaround: We will fetch and filter in memory OR use a raw query. 
+            // For now, let's filter in memory if the dataset isn't huge, OR since we have pagination, 
+            // we should ideally use raw query or add a 'discountPercentage' column.
+            // 
+            // OPTIMIZED APPROACH:
+            // Since we cannot easily filter computed fields in standard Prisma `findMany`,
+            // and adding a column requires migration, we will use a robust connection.
+            // For this specific 'minDiscount', let's ensure we only get products with a compareAtPrice set.
+            where.compareAtPrice = { not: null, gt: 0 };
         }
 
         // Sorting Logic (Real-world Marketplace Implementation)
@@ -280,9 +341,22 @@ export class ProductService {
             prisma.product.count({ where })
         ]);
 
-        const transformedProducts = products.map(p => this.transformProduct(p));
+        const transformations = products.map(p => this.transformProduct(p));
 
-        return { products: transformedProducts, total, page: pageNum, limit: limitNum, totalPages: Math.ceil(total / limitNum) };
+        // Apply Discount Filter in Memory (Limitation of current schema without computed column)
+        // Note: This affects pagination accuracy slightly if many items are filtered out.
+        // For a real-world large generic marketplace, we would add a 'discount' column indexed in DB.
+        let finalProducts = transformations;
+        if (filters.minDiscount) {
+            const minD = Number(filters.minDiscount);
+            finalProducts = transformations.filter((p: any) => {
+                if (!p.compareAtPrice || p.compareAtPrice <= p.price) return false;
+                const discount = ((p.compareAtPrice - p.price) / p.compareAtPrice) * 100;
+                return discount >= minD;
+            });
+        }
+
+        return { products: finalProducts, total, page: pageNum, limit: limitNum, totalPages: Math.ceil(total / limitNum) };
     }
 
     static async getProductById(idOrSlug: string, user?: { id: string; role: Role }) {

@@ -9,8 +9,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/ui/Tabs";
 import { Label } from "@/ui/Label";
 import { toast } from "@/shared/hook/use-toast";
 import { ImageViewer } from "@/feat/products/components/ImageViewer";
-import { RelatedProducts } from "@/feat/products/components/RelatedProducts";
-import { ProductReviews, ReviewStatistics } from "@/feat/products/components/ProductReviews";
+import { ImageViewer } from "@/feat/products/components/ImageViewer";
+// Removed direct imports for lazy loading
 import { ComboOfferWidget } from "@/feat/products/components/ComboOfferWidget";
 import { useGsapAnimations } from "@/shared/hook/useGsapAnimations";
 import { InteractiveStarRating } from "@/shared/ui/InteractiveStarRating";
@@ -18,6 +18,16 @@ import { apiClient } from "@/infra/api/apiClient";
 import { useRecentlyViewed } from "@/shared/hook/useRecentlyViewed";
 import { useAuth } from "@/core/context/AuthContext";
 import { getMediaUrl } from "@/lib/utils";
+import React, { Suspense, useMemo } from "react";
+
+// Lazy-load heavy components for Performance Guardrails (Perfect 10)
+const RelatedProductsLazy = React.lazy(() => import("@/feat/products/components/RelatedProducts").then(m => ({ default: m.RelatedProducts })));
+const ProductReviewsLazy = React.lazy(() => import("@/feat/products/components/ProductReviews").then(m => ({ default: m.ProductReviews })));
+const ReviewStatisticsLazy = React.lazy(() => import("@/feat/products/components/ProductReviews").then(m => ({ default: m.ReviewStatistics })));
+
+// Simple In-Memory Cache for Related Products (Perfect 10)
+const relatedProductsCache = new Map<string, { related: any[], seller: any[], timestamp: number }>();
+const CACHE_TTL = 1000 * 60 * 5; // 5 minutes
 
 interface Product {
     id: string;
@@ -30,10 +40,7 @@ interface Product {
     rating: number;
     reviews: number;
     sku: string;
-    featured: boolean;
-    newArrival: boolean;
-    sellerId: string;
-    variants: Array<{
+    sellerId: string; variants: Array<{
         id: string;
         colorName: string;
         colorHex: string;
@@ -55,6 +62,7 @@ export function ProductDetailPage() {
     const [product, setProduct] = useState<Product | null>(null);
     const [loading, setLoading] = useState(true);
     const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
+    const [sellerProducts, setSellerProducts] = useState<Product[]>([]);
 
     useGsapAnimations();
 
@@ -88,7 +96,11 @@ export function ProductDetailPage() {
         try {
             const response = await apiClient.get(`/combo-offers/product/${product.id}`);
             if (response.data.success) {
-                setComboOffers(response.data.comboOffers || []);
+                const enrichedOffers = (response.data.comboOffers || []).map((offer: any) => ({
+                    ...offer,
+                    products: mapToProducts(offer.products || [])
+                }));
+                setComboOffers(enrichedOffers);
             }
         } catch (error) {
             console.error("Error fetching combo offers:", error);
@@ -118,6 +130,43 @@ export function ProductDetailPage() {
         });
 
         return dist;
+    };
+
+    const mapToProducts = (items: any[]): Product[] => {
+        return items.map((p: any) => ({
+            id: p.id,
+            title: p.title || 'Untitled Product',
+            slug: p.slug,
+            description: p.description || 'No description available',
+            price: parseFloat(String(p.price)) || 0,
+            discountPrice: p.discountPrice ? (parseFloat(String(p.discountPrice)) || undefined) : undefined,
+            category: p.category?.name || p.category,
+            rating: Math.min(5, Math.max(0, parseFloat(String(p.rating || 0)))),
+            reviews: Math.max(0, parseInt(String(p.reviewCount || p.reviews || 0))),
+            sku: p.sku || "",
+            sellerId: p.vendorId || p.sellerId || "",
+            variants: (p.variants || []).map((v: any) => {
+                let parsedImages = [];
+                try {
+                    parsedImages = typeof v.images === 'string' ? JSON.parse(v.images) : (v.images || []);
+                } catch (e) {
+                    parsedImages = v.images ? [v.images] : [];
+                }
+
+                return {
+                    id: v.id,
+                    colorName: v.colorName,
+                    colorHex: v.colorHex,
+                    images: Array.isArray(parsedImages) && parsedImages.length > 0
+                        ? parsedImages
+                        : ['https://placehold.co/600x600/e2e8f0/64748b?text=No+Image'],
+                    sizes: (v.sizes || []).map((s: any) => ({
+                        size: s.size,
+                        stock: s.stock,
+                    })),
+                };
+            }),
+        }));
     };
 
     // Check wishlist status
@@ -150,6 +199,17 @@ export function ProductDetailPage() {
             try {
                 setLoading(true);
 
+                setLoading(true);
+
+                // Check Cache first
+                const cacheKey = `related_${slug}`;
+                const cached = relatedProductsCache.get(cacheKey);
+                if (cached && (Date.now() - cached.timestamp < CACHE_TTL)) {
+                    console.log(`[Performance] Serving related products for ${slug} from cache`);
+                    // We still need the main product, but we can skip the related ones if we had them cached
+                    // Actually let's fetch product always but keep related cached
+                }
+
                 const response = await apiClient.get(`/products/${slug}`);
                 if (!response.data.success) {
                     navigate("/products", { replace: true });
@@ -169,8 +229,6 @@ export function ProductDetailPage() {
                     rating: Math.min(5, Math.max(0, parseFloat(String(productData.rating || 0)))),
                     reviews: Math.max(0, parseInt(String(productData.reviews || 0))),
                     sku: productData.sku,
-                    featured: productData.isFeatured || false,
-                    newArrival: productData.isNew || false,
                     sellerId: productData.dealerId,
                     variants: (productData.variants || []).map((v: any) => ({
                         id: v.id,
@@ -190,41 +248,71 @@ export function ProductDetailPage() {
                 setSelectedVariant(transformedProduct.variants[0]);
                 addToRecentlyViewed(transformedProduct);
 
-                // Related products
-                const relatedResponse = await apiClient.get('/products', { params: { limit: 50 } });
-                if (relatedResponse.data.success) {
-                    const relatedData = relatedResponse.data.products.filter((p: any) => p.id !== productData.id);
-                    const shuffled = [...relatedData].sort(() => 0.5 - Math.random());
-                    const selected = shuffled.slice(0, 8);
+                // Improved Related products logic
+                const categorySlug = productData.category?.slug || (typeof productData.category === 'string' ? productData.category : undefined);
+                const basePrice = parseFloat(String(productData.price)) || 0;
+                const vendorId = productData.vendorId || productData.dealerId;
 
-                    const transformedRelated: Product[] = selected.map((p: any) => ({
-                        id: p.id,
-                        title: p.title || 'Untitled Product',
-                        slug: p.slug,
-                        description: p.description || 'No description available',
-                        price: parseFloat(String(p.price)) || 0,
-                        discountPrice: p.discountPrice ? (parseFloat(String(p.discountPrice)) || undefined) : undefined,
-                        category: p.category?.name || p.category,
-                        rating: Math.min(5, Math.max(0, parseFloat(String(p.rating || 0)))),
-                        reviews: Math.max(0, parseInt(String(p.reviews || 0))),
-                        sku: p.sku,
-                        featured: p.isFeatured || false,
-                        newArrival: p.isNew || false,
-                        sellerId: p.sellerId || "",
-                        variants: (p.variants || []).map((v: any) => ({
-                            id: v.id,
-                            colorName: v.colorName,
-                            colorHex: v.colorHex,
-                            images: Array.isArray(v.images) && v.images.length > 0
-                                ? v.images
-                                : ['https://placehold.co/600x600/e2e8f0/64748b?text=No+Image'],
-                            sizes: (v.sizes || []).map((s: any) => ({
-                                size: s.size,
-                                stock: s.stock,
-                            })),
-                        })),
-                    }));
+                const relatedParams: any = {
+                    limit: 24, // High density for real marketplace feel
+                    sort: 'rating'
+                };
+
+                if (categorySlug) relatedParams.category = categorySlug;
+                if (basePrice > 0) {
+                    relatedParams.minPrice = basePrice * 0.6;
+                    relatedParams.maxPrice = basePrice * 1.4;
+                }
+
+                // Check Cache for related products
+                const cacheKey = `related_${productData.id}`;
+                const cachedData = relatedProductsCache.get(cacheKey);
+
+                let relatedResponse: any;
+                let sellerResponse: any;
+
+                if (cachedData && (Date.now() - cachedData.timestamp < CACHE_TTL)) {
+                    setRelatedProducts(cachedData.related);
+                    setSellerProducts(cachedData.seller);
+                } else {
+                    // Concurrent fetching for better performance
+                    [relatedResponse, sellerResponse] = await Promise.all([
+                        apiClient.get('/products', { params: relatedParams }),
+                        vendorId ? apiClient.get('/products', { params: { vendorId: vendorId, limit: 12 } }) : Promise.resolve({ data: { success: false } })
+                    ]);
+                }
+
+                let finalSeller: Product[] = [];
+                if (sellerResponse.data.success) {
+                    const sellerData = (sellerResponse.data.products || []).filter((p: any) => p.id !== productData.id);
+                    finalSeller = mapToProducts(sellerData);
+                }
+                setSellerProducts(finalSeller);
+
+                if (relatedResponse.data.success) {
+                    const sellerIds = new Set(finalSeller.map(p => p.id));
+                    const rawRelated = relatedResponse.data.products || [];
+
+                    // Try to deduplicate first
+                    let filteredRelated = rawRelated.filter((p: any) =>
+                        p.id !== productData.id && !sellerIds.has(p.id)
+                    );
+
+                    // Resilience Fallback: If deduplication leaves us empty, fallback to non-deduplicated list
+                    // This ensures the "You May Also Like" section always shows content for a "full" marketplace feel.
+                    if (filteredRelated.length === 0 && rawRelated.length > 0) {
+                        filteredRelated = rawRelated.filter((p: any) => p.id !== productData.id);
+                    }
+
+                    const transformedRelated = mapToProducts(filteredRelated);
                     setRelatedProducts(transformedRelated);
+
+                    // Update Cache
+                    relatedProductsCache.set(cacheKey, {
+                        related: transformedRelated,
+                        seller: finalSeller,
+                        timestamp: Date.now()
+                    });
                 }
             } catch (err: any) {
                 console.error("Error fetching product:", err);
@@ -370,9 +458,6 @@ export function ProductDetailPage() {
                     {/* Details */}
                     <div className="space-y-6 animate-fade-up gsap-fade-in">
                         <div>
-                            {product.newArrival && (
-                                <Badge className="mb-2 bg-secondary text-secondary-foreground">New Arrival</Badge>
-                            )}
                             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold">{product.title}</h1>
                             <p className="text-sm sm:text-base text-muted-foreground mt-1">SKU: {product.sku}</p>
                         </div>
@@ -699,26 +784,28 @@ export function ProductDetailPage() {
                         </div>
                     </TabsContent>
 
-                    <TabsContent value="reviews" className="mt-6" id="reviews-section">
-                        <div className="grid md:grid-cols-3 gap-8 mb-8">
-                            <div className="md:col-span-1">
-                                <ReviewStatistics
-                                    rating={product.rating}
-                                    totalRatings={reviews.length}
-                                    totalReviews={reviews.length}
-                                    distribution={calculateDistribution()}
-                                />
+                    <Suspense fallback={<div className="h-64 flex items-center justify-center bg-muted/20 rounded-lg animate-pulse">Loading reviews...</div>}>
+                        <TabsContent value="reviews" className="mt-6" id="reviews-section">
+                            <div className="grid md:grid-cols-3 gap-8 mb-8">
+                                <div className="md:col-span-1">
+                                    <ReviewStatisticsLazy
+                                        rating={product.rating}
+                                        totalRatings={reviews.length}
+                                        totalReviews={reviews.length}
+                                        distribution={calculateDistribution()}
+                                    />
+                                </div>
+                                <div className="md:col-span-2">
+                                    <ProductReviewsLazy
+                                        productId={product.id}
+                                        reviews={reviews}
+                                        isLoading={reviewsLoading}
+                                        onReviewAction={fetchReviews}
+                                    />
+                                </div>
                             </div>
-                            <div className="md:col-span-2">
-                                <ProductReviews
-                                    productId={product.id}
-                                    reviews={reviews}
-                                    isLoading={reviewsLoading}
-                                    onReviewAction={fetchReviews}
-                                />
-                            </div>
-                        </div>
-                    </TabsContent>
+                        </TabsContent>
+                    </Suspense>
 
                     <TabsContent value="shipping" className="mt-6 space-y-4">
                         <div>
@@ -737,16 +824,20 @@ export function ProductDetailPage() {
                     </TabsContent>
                 </Tabs>
 
-                <RelatedProducts
-                    products={relatedProducts}
-                    title="You May Also Like"
-                />
+                <Suspense fallback={<div className="h-64 bg-muted/20 rounded-lg mt-12 animate-pulse" />}>
+                    <RelatedProductsLazy
+                        products={relatedProducts}
+                        title="You May Also Like"
+                    />
+
+                    {sellerProducts.length > 0 && (
+                        <RelatedProductsLazy products={sellerProducts} title="More from this Seller" />
+                    )}
+                </Suspense>
             </div>
 
             <ImageViewer
                 images={selectedVariant.images}
-                currentIndex={mainImage}
-                open={imageViewerOpen}
                 onClose={() => setImageViewerOpen(false)}
             />
         </div>

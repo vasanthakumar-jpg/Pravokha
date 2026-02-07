@@ -18,6 +18,7 @@ import { Label } from "@/ui/Label";
 import { ArrowLeft, RefreshCw, Search, Filter, Package, Eye, Settings2, Clock } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { VerticalOrderTracker } from "@/feat/orders/components/OrderTimeline/VerticalOrderTracker";
 
 export default function AdminOrderTracking() {
   const navigate = useNavigate();
@@ -529,26 +530,16 @@ export default function AdminOrderTracking() {
                 <h3 className="text-sm font-black flex items-center gap-2 tracking-tighter">
                   <Clock className="h-4 w-4 text-primary" /> Fulfilment Timeline
                 </h3>
-                <div className="space-y-6 pl-2 border-l border-border/40 ml-2">
-                  {selectedOrder?.tracking_updates?.length > 0 ? (
-                    selectedOrder.tracking_updates.map((update: any, i: number) => (
-                      <div key={i} className="relative pl-6">
-                        <div className="absolute -left-[1.65rem] top-1.5 h-3 w-3 rounded-full bg-primary border-4 border-background shadow-primary/20 shadow-lg" />
-                        <div className="flex flex-col">
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="text-[11px] font-semibold tracking-widest text-[#146B6B]">{update.status}</span>
-                            <span className="text-[10px] font-semibold text-muted-foreground">{update.timestamp ? format(new Date(update.timestamp), 'MMM dd, HH:mm') : 'N/A'}</span>
-                          </div>
-                          <p className="text-xs font-semibold text-muted-foreground leading-relaxed">{update.message}</p>
-                        </div>
-                      </div>
-                    )).reverse()
-                  ) : (
-                    <div className="text-center py-6">
-                      <Clock className="h-8 w-8 mx-auto text-muted-foreground/20 mb-2" />
-                      <p className="text-[10px] font-semibold text-muted-foreground italic">No lifecycle events recorded.</p>
-                    </div>
-                  )}
+                <div className="space-y-6">
+                  <VerticalOrderTracker
+                    status={selectedOrder?.order_status}
+                    createdAt={selectedOrder?.created_at}
+                    trackingUpdates={selectedOrder?.tracking_updates?.map((u: any) => ({
+                      status: (u.status || '').toLowerCase(),
+                      timestamp: u.timestamp,
+                      message: u.message
+                    })) || []}
+                  />
                 </div>
               </div>
             </div>

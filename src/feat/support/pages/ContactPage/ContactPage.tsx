@@ -9,6 +9,7 @@ import { toast } from "@/shared/hook/use-toast";
 import { apiClient } from "@/infra/api/apiClient";
 import { z } from "zod";
 import { cn } from "@/lib/utils";
+import { APP_CONFIG } from "@/core/config/appConfig";
 
 const contactSchema = z.object({
     name: z.string().min(2, "Name must be at least 2 characters").max(100),
@@ -206,10 +207,10 @@ export function ContactPage() {
                                     <div className="min-w-0">
                                         <p className="font-medium text-sm sm:text-base">Email</p>
                                         <a
-                                            href="mailto:vasanthakumar141099@gmail.com"
+                                            href={`mailto:${APP_CONFIG.SUPPORT_EMAIL}`}
                                             className="text-xs sm:text-sm text-muted-foreground hover:text-primary break-all"
                                         >
-                                            vasanthakumar141099@gmail.com
+                                            {APP_CONFIG.SUPPORT_EMAIL}
                                         </a>
                                     </div>
                                 </div>
@@ -217,11 +218,8 @@ export function ContactPage() {
                                     <Phone className="h-4 w-4 sm:h-5 sm:w-5 text-primary mt-0.5 flex-shrink-0" />
                                     <div>
                                         <p className="font-medium text-sm sm:text-base">Phone</p>
-                                        <a href="tel:+917339232817" className="text-xs sm:text-sm text-muted-foreground hover:text-primary block">
-                                            7339232817
-                                        </a>
-                                        <a href="tel:+917708368442" className="text-xs sm:text-sm text-muted-foreground hover:text-primary block">
-                                            7708368442
+                                        <a href={`tel:${APP_CONFIG.SUPPORT_PHONE}`} className="text-xs sm:text-sm text-muted-foreground hover:text-primary block">
+                                            {APP_CONFIG.SUPPORT_PHONE}
                                         </a>
                                     </div>
                                 </div>
@@ -230,11 +228,7 @@ export function ContactPage() {
                                     <div>
                                         <p className="font-medium text-sm sm:text-base">Address</p>
                                         <p className="text-xs sm:text-sm text-muted-foreground">
-                                            8, Bhavani Nagar 1st Street,
-                                            <br />
-                                            Pappanayakkan Palayam,
-                                            <br />
-                                            Tirupur
+                                            {APP_CONFIG.ADDRESS}
                                         </p>
                                     </div>
                                 </div>

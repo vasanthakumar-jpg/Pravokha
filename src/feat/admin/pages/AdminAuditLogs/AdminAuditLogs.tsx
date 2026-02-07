@@ -73,15 +73,32 @@ import { NoResultsFound } from "@/feat/admin/components/NoResultsFound";
 
 // MetadataRenderer component to display audit log metadata
 function MetadataRenderer({ data }: { data: any }) {
-    if (!data || Object.keys(data).length === 0) {
+    // Handle case where data might be a stringified JSON
+    let parsedData = data;
+    if (typeof data === 'string') {
+        try {
+            parsedData = JSON.parse(data);
+        } catch (e) {
+            // If parsing fails, show as-is
+            parsedData = data;
+        }
+    }
+
+    if (!parsedData || (typeof parsedData === 'object' && Object.keys(parsedData).length === 0)) {
         return <p className="text-xs text-muted-foreground italic">No additional metadata</p>;
     }
+
     return (
         <div className="p-4 rounded-2xl bg-muted/30 border border-border/40 font-mono text-xs">
-            <pre className="whitespace-pre-wrap break-all">{JSON.stringify(data, null, 2)}</pre>
+            <pre className="whitespace-pre-wrap break-all">
+                {typeof parsedData === 'object'
+                    ? JSON.stringify(parsedData, null, 2)
+                    : parsedData}
+            </pre>
         </div>
     );
 }
+
 
 // Update interface to match backend
 interface AuditLog {

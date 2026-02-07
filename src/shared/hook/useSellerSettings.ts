@@ -97,7 +97,28 @@ export const useSellerSettings = () => {
         mutationFn: async (newSettings: SellerProfile) => {
             if (!user) throw new Error("No user");
 
-            await apiClient.patch('/users/settings/vendor', newSettings);
+            // Map frontend fields to backend schema fields
+            const payload = {
+                storeName: newSettings.storeName,
+                storeDescription: newSettings.storeDescription,
+                storeLogoUrl: newSettings.storeLogoUrl,
+                storeBannerUrl: newSettings.storeBannerUrl,
+                supportEmail: newSettings.email, // Map email -> supportEmail
+                supportPhone: newSettings.phone, // Map phone -> supportPhone
+                businessAddress: newSettings.address, // Map address -> businessAddress
+                gstNumber: newSettings.gst, // Map gst -> gstNumber
+                panNumber: newSettings.pan, // Map pan -> panNumber
+                bankAccountNumber: newSettings.bankAccount, // Map bankAccount -> bankAccountNumber
+                bankIfscCode: newSettings.ifsc, // Map ifsc -> bankIfscCode
+                beneficiaryName: newSettings.beneficiaryName,
+                vacationMode: newSettings.vacationMode,
+                autoConfirm: newSettings.autoConfirm,
+                returnPolicy: newSettings.returnPolicy,
+                metaTitle: newSettings.metaTitle,
+                metaDescription: newSettings.metaDescription
+            };
+
+            await apiClient.patch('/users/settings/vendor', payload);
             return newSettings;
         },
         onSuccess: async () => {

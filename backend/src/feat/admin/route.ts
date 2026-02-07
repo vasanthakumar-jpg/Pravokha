@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { authenticate, authorize } from '../../shared/middleware/auth';
 import { requirePermission } from '../../shared/middleware/permission';
+import { validate } from '../../shared/middleware/validation';
+import { siteSettingsSchema, notificationSettingsSchema, systemSettingsSchema } from '../../shared/validation/admin.schema';
 import {
     updateAdminPermissions,
     getAdminPermissions,
@@ -26,10 +28,11 @@ router.get('/stats', requirePermission('VIEW_ANALYTICS', 'SYSTEM'), getDashboard
 
 // Site Settings
 router.get('/settings/site', requirePermission('MANAGE_SETTINGS', 'SYSTEM'), getSiteSettings);
-router.put('/settings/site', requirePermission('MANAGE_SETTINGS', 'SYSTEM'), updateSiteSettings);
+router.put('/settings/site', requirePermission('MANAGE_SETTINGS', 'SYSTEM'), validate({ body: siteSettingsSchema }), updateSiteSettings);
 router.get('/settings/notifications', requirePermission('MANAGE_SETTINGS', 'SYSTEM'), getNotificationSettings);
-router.put('/settings/notifications', requirePermission('MANAGE_SETTINGS', 'SYSTEM'), updateNotificationSettings);
-router.put('/settings/system', requirePermission('MANAGE_SETTINGS', 'SYSTEM'), updateSystemSettings);
+router.put('/settings/notifications', requirePermission('MANAGE_SETTINGS', 'SYSTEM'), validate({ body: notificationSettingsSchema }), updateNotificationSettings);
+router.put('/settings/system', requirePermission('MANAGE_SETTINGS', 'SYSTEM'), validate({ body: systemSettingsSchema }), updateSystemSettings);
+
 
 // Product Update Requests (Governance)
 router.get('/product-updates', requirePermission('MANAGE_PRODUCTS', 'MARKETPLACE'), getProductUpdateRequests);

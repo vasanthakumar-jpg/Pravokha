@@ -60,6 +60,8 @@ import { AdminFormSkeleton } from "@/feat/admin/components/AdminSkeleton";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn, getMediaUrl } from "@/lib/utils";
 import type { AdminRoleCounts, ApiResponse } from "@/feat/admin/types/settings";
+import { profileUpdateSchema } from "@/shared/validation/user.schema";
+import { siteSettingsSchema, notificationSettingsSchema, systemSettingsSchema } from "@/shared/validation/admin.schema";
 
 export default function AdminSettings() {
   const { user, refreshProfile } = useAuth();
@@ -243,15 +245,37 @@ export default function AdminSettings() {
   }, [user, fetchProfile, fetchSiteSettings, fetchRoleCounts, fetchNotificationSettings]);
 
   const handleSaveProfile = async () => {
+    // 1. Validate with Zod
+    const validationResult = profileUpdateSchema.safeParse({
+      name: profileData.fullName,
+      phone: profileData.phone,
+      address: profileData.address,
+      avatarUrl: profileData.avatarUrl
+    });
+
+    if (!validationResult.success) {
+      toast({
+        title: "Validation Error",
+        description: validationResult.error.errors[0].message,
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
       setSaving(true);
-      // Backend expects camelCase (Prisma model uses name, not fullName)
-      await apiClient.put('/users/profile', {
+      // Backend expects camelCase
+      const payload: any = {
         name: profileData.fullName,
-        phone: profileData.phone,
-        address: profileData.address,
         avatarUrl: profileData.avatarUrl,
-      });
+      };
+
+      // Only include phone if it has value, and strip non-digits
+      if (profileData.phone) {
+        payload.phone = profileData.phone.replace(/\D/g, '');
+      }
+
+      await apiClient.put('/users/profile', payload);
 
       toast({
         title: "Profile Updated",
@@ -260,6 +284,7 @@ export default function AdminSettings() {
 
       await refreshProfile();
     } catch (error) {
+
       console.error("[AdminSettings] Error updating profile:", error);
       toast({
         title: "Update Failed",
@@ -272,6 +297,18 @@ export default function AdminSettings() {
   };
 
   const handleSaveStoreSettings = async () => {
+    // 1. Validate with Zod
+    const validationResult = siteSettingsSchema.safeParse(storeData);
+
+    if (!validationResult.success) {
+      toast({
+        title: "Validation Error",
+        description: validationResult.error.errors[0].message,
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
       setSaving(true);
       // Backend expects camelCase (Prisma SiteSetting model)
@@ -289,6 +326,7 @@ export default function AdminSettings() {
         description: "Global marketplace configurations have been updated.",
       });
     } catch (error) {
+
       console.error("[AdminSettings] Error saving store settings:", error);
       toast({
         title: "Sync Failed",
@@ -301,8 +339,21 @@ export default function AdminSettings() {
   };
 
   const handleSaveNotificationSettings = async (settings: any) => {
+    const newSettings = { ...notificationData, ...settings };
+
+    // 1. Validate with Zod
+    const validationResult = notificationSettingsSchema.safeParse(newSettings);
+
+    if (!validationResult.success) {
+      toast({
+        title: "Validation Error",
+        description: validationResult.error.errors[0].message,
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
-      const newSettings = { ...notificationData, ...settings };
       setNotificationData(newSettings);
 
       await apiClient.put('/admin/settings/notifications', newSettings);
@@ -316,7 +367,20 @@ export default function AdminSettings() {
     }
   };
 
+
   const handleSaveSystemSettings = async () => {
+    // 1. Validate with Zod
+    const validationResult = systemSettingsSchema.safeParse(systemData);
+
+    if (!validationResult.success) {
+      toast({
+        title: "Validation Error",
+        description: validationResult.error.errors[0].message,
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
       setSaving(true);
       // Backend expects camelCase (Prisma SiteSetting model)
@@ -336,6 +400,7 @@ export default function AdminSettings() {
         description: "Infrastructure settings have been applied.",
       });
     } catch (error) {
+
       console.error("[AdminSettings] Error saving system settings:", error);
       toast({
         title: "Update Failed",

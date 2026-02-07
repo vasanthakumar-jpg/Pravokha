@@ -18,29 +18,19 @@ import {
 import { format } from "date-fns";
 import { useToast } from "@/shared/hook/use-toast";
 import { apiClient } from "@/infra/api/apiClient";
-import { OrderTimeline } from "@/feat/orders/components/OrderTimeline";
+import { OrderTimeline, VerticalOrderTracker } from "@/feat/orders/components/OrderTimeline";
 import { OrderCancellationReasonDialog } from "@/feat/orders/components/OrderCancellationReasonDialog";
 import { generateInvoicePDF } from "@/shared/util/invoiceGenerator";
-import { cn } from "@/lib/utils";
+import { cn, getMediaUrl } from "@/lib/utils";
+import { Order, OrderItem } from "@/core/types/product";
 
-interface OrderItem {
-   id: string;
-   productId?: string;
-   title: string;
-   colorName?: string;
-   size?: string;
-   quantity: number;
-   price: number;
-   image?: string;
-   sellerId?: string;
-}
 
 export default function UserOrderDetail() {
    const { orderId } = useParams();
    const navigate = useNavigate();
    const { toast } = useToast();
 
-   const [order, setOrder] = useState<any>(null);
+   const [order, setOrder] = useState<Order | null>(null);
    const [orderHistory, setOrderHistory] = useState<any[]>([]); // To store real history
    const [loading, setLoading] = useState(true);
 
@@ -59,25 +49,8 @@ export default function UserOrderDetail() {
          const rawOrder = orderResponse.data;
 
          if (rawOrder) {
-            const transformedOrder = {
-               ...rawOrder,
-               order_number: rawOrder.orderNumber,
-               order_status: rawOrder.status,
-               created_at: rawOrder.createdAt,
-               // Ensure address and payment fields are mapped correctly from camelCase
-               shipping_address: rawOrder.shippingAddress || rawOrder.shipping_address,
-               shipping_city: rawOrder.shippingCity || rawOrder.shipping_city,
-               shipping_pincode: rawOrder.shippingPincode || rawOrder.shipping_pincode,
-               payment_method: rawOrder.paymentMethod || rawOrder.payment_method,
-               payment_status: rawOrder.paymentStatus || rawOrder.payment_status,
-               customer_name: rawOrder.customerName || rawOrder.customer_name,
-               customer_phone: rawOrder.customerPhone || rawOrder.customer_phone,
-               tracking_number: rawOrder.trackingNumber || rawOrder.tracking_number,
-               total: rawOrder.totalAmount || rawOrder.total,
-               tax_charge: rawOrder.taxAmount,
-               shipping_charge: rawOrder.shippingFee,
-            };
-            setOrder(transformedOrder);
+            // rawOrder is expected to have camelCase fields from the backend
+            setOrder(rawOrder);
          } else {
             setOrder(null);
          }
@@ -108,9 +81,9 @@ export default function UserOrderDetail() {
    const calculatePricing = () => {
       if (!order) return { subtotal: 0, tax: 0, shipping: 0, total: 0 };
 
-      const total = order.totalAmount || order.total || 0;
-      const shipping = order.shipping_charge || 0;
-      const tax = order.tax_charge || 0;
+      const total = order.totalAmount || 0;
+      const shipping = order.shippingFee || 0;
+      const tax = order.taxAmount || 0;
       const subtotal = total - shipping - tax;
 
       return { subtotal, tax, shipping, total };
@@ -156,9 +129,9 @@ export default function UserOrderDetail() {
          );
 
          // Use direct database values
-         const actualTotal = order.totalAmount || order.total || 0;
-         const shippingCharge = order.shipping_charge || 0;
-         const taxAmount = order.tax_charge || 0;
+         const actualTotal = order.totalAmount || 0;
+         const shippingCharge = order.shippingFee || 0;
+         const taxAmount = order.taxAmount || 0;
          const subtotal = actualTotal - shippingCharge - taxAmount;
 
          // Ensure items are mapped correctly for the generator
@@ -171,26 +144,26 @@ export default function UserOrderDetail() {
          }));
 
          await generateInvoicePDF({
-            orderNumber: order.order_number || "N/A",
-            orderDate: order.created_at && !isNaN(new Date(order.created_at).getTime())
-               ? format(new Date(order.created_at), 'MMMM dd, yyyy')
+            orderNumber: order.orderNumber || "N/A",
+            orderDate: order.createdAt && !isNaN(new Date(order.createdAt).getTime())
+               ? format(new Date(order.createdAt), 'MMMM dd, yyyy')
                : new Date().toDateString(),
-            customerName: order.customer_name || "Customer",
-            customerEmail: order.customer_email || "N/A",
-            customerPhone: order.customer_phone || "N/A",
-            shippingAddress: order.shipping_address || "N/A",
-            shippingCity: order.shipping_city || "",
-            shippingPincode: order.shipping_pincode || "",
+            customerName: order.customerName || "Customer",
+            customerEmail: order.customerEmail || "N/A",
+            customerPhone: order.customerPhone || "N/A",
+            shippingAddress: order.shippingAddress || "N/A",
+            shippingCity: order.shippingCity || "",
+            shippingPincode: order.shippingPincode || "",
             items: invoiceItems,
             subtotal: subtotal,
             tax: taxAmount,
             shipping: shippingCharge,
             total: actualTotal,
-            paymentMethod: order.payment_method || 'N/A',
-            paymentStatus: order.payment_status || 'pending',
+            paymentMethod: order.paymentMethod || 'N/A',
+            paymentStatus: order.paymentStatus || 'pending',
          });
 
-         toast({ title: "Invoice Downloaded", description: `Invoice_${order.order_number}.pdf` });
+         toast({ title: "Invoice Downloaded", description: `Invoice_${order.orderNumber}.pdf` });
       } catch (error) {
          console.error("Invoice Calculation Error:", error);
          toast({ title: "Error", description: "Failed to generate invoice. Please contact support.", variant: "destructive" });
@@ -230,14 +203,14 @@ export default function UserOrderDetail() {
    // Construct timeline updates from real history
    const timelineUpdates = orderHistory.map(h => ({
       id: h.id,
-      status: h.new_status,
-      timestamp: h.created_at,
+      status: h.newStatus || h.new_status,
+      timestamp: h.createdAt || h.created_at,
       message: h.description
    }));
 
    // If no history exists (legacy orders), fallback to current status
-   if (timelineUpdates.length === 0 && order.created_at) {
-      timelineUpdates.push({ id: undefined, status: 'pending', timestamp: order.created_at, message: 'Order Placed' });
+   if (timelineUpdates.length === 0 && order.createdAt) {
+      timelineUpdates.push({ id: undefined, status: 'pending', timestamp: order.createdAt, message: 'Order Placed' });
    }
 
    return (
@@ -252,32 +225,32 @@ export default function UserOrderDetail() {
                   Back to Orders
                </Button>
                <div className="flex items-center justify-between gap-2 w-full">
-                  <h1 className="text-sm sm:text-2xl md:text-3xl font-bold tracking-tight break-all sm:break-normal">Order #{order.order_number}</h1>
+                  <h1 className="text-sm sm:text-2xl md:text-3xl font-bold tracking-tight break-all sm:break-normal">Order #{order.orderNumber}</h1>
                   <Badge className={cn("text-white h-5 sm:h-7 px-2 sm:px-3 text-[10px] sm:text-sm font-medium whitespace-nowrap",
-                     order.order_status?.toLowerCase() === 'delivered' ? "bg-green-600" :
-                        order.order_status?.toLowerCase() === 'cancelled' ? "bg-red-600" :
-                           order.order_status?.toLowerCase() === 'packed' ? "bg-purple-600" :
+                     order.status?.toLowerCase() === 'delivered' ? "bg-green-600" :
+                        order.status?.toLowerCase() === 'cancelled' ? "bg-red-600" :
+                           order.status?.toLowerCase() === 'packed' ? "bg-purple-600" :
                               "bg-primary"
                   )}>
-                     {order.order_status?.toUpperCase()}
+                     {order.status?.toUpperCase()}
                   </Badge>
                </div>
                <div className="flex items-center gap-2 mt-2 text-sm sm:text-base text-muted-foreground">
                   <Calendar className="h-4 w-4 sm:h-5 sm:w-5" />
-                  {order.created_at && !isNaN(new Date(order.created_at).getTime())
-                     ? format(new Date(order.created_at), 'MMM dd, yyyy')
+                  {order.createdAt && !isNaN(new Date(order.createdAt).getTime())
+                     ? format(new Date(order.createdAt), 'MMM dd, yyyy')
                      : 'N/A'}
                </div>
             </div>
 
             <div className="flex flex-col gap-3 w-full sm:w-auto sm:flex-row mt-4 sm:mt-0">
-               {order.order_status !== 'cancelled' && (
+               {order.status !== 'cancelled' && (
                   <Button variant="outline" size="sm" onClick={handleDownloadInvoice} className="h-10 w-full sm:w-auto justify-center sm:min-w-[100px]">
                      <Download className="h-4 w-4 mr-2" />
                      Invoice
                   </Button>
                )}
-               {(order.order_status?.toLowerCase() === 'pending' || order.order_status?.toLowerCase() === 'confirmed') && (
+               {(order.status?.toLowerCase() === 'pending' || order.status?.toLowerCase() === 'confirmed') && (
                   <Button variant="destructive" size="sm" onClick={handleCancelOrder} className="h-10 w-full sm:w-auto justify-center sm:min-w-[120px]">
                      <XCircle className="h-4 w-4 mr-2" />
                      Cancel Order
@@ -300,17 +273,16 @@ export default function UserOrderDetail() {
                      </CardTitle>
                   </CardHeader>
                   <CardContent>
-                     <OrderTimeline
-                        status={order.order_status?.toLowerCase()}
-                        createdAt={order.created_at}
+                     <VerticalOrderTracker
+                        status={order.status?.toLowerCase()}
+                        createdAt={order.createdAt}
                         trackingUpdates={timelineUpdates}
-                        onDelete={handleDeleteHistory}
                      />
                   </CardContent>
                </Card>
 
                {/* Refund Status Card - Premium Feature */}
-               {(order.payment_status === 'refund_pending' || order.payment_status === 'refunded') && (
+               {(order.paymentStatus === 'refund_pending' || order.paymentStatus === 'refunded') && (
                   <Card className="border-0 shadow-lg ring-1 ring-emerald-500/20 bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-950/30 dark:to-gray-900">
                      <CardHeader className="pb-2">
                         <CardTitle className="flex items-center gap-2 text-lg text-emerald-700 dark:text-emerald-400">
@@ -320,16 +292,16 @@ export default function UserOrderDetail() {
                      </CardHeader>
                      <CardContent>
                         <div className="flex items-center gap-4">
-                           <div className={`p-3 rounded-full ${order.payment_status === 'refunded' ? 'bg-emerald-100 text-emerald-600' : 'bg-yellow-100 text-yellow-600'}`}>
-                              {order.payment_status === 'refunded' ? <XCircle className="h-6 w-6 rotate-45" /> : <Calendar className="h-6 w-6" />}
+                           <div className={`p-3 rounded-full ${order.paymentStatus === 'refunded' ? 'bg-emerald-100 text-emerald-600' : 'bg-yellow-100 text-yellow-600'}`}>
+                              {order.paymentStatus === 'refunded' ? <XCircle className="h-6 w-6 rotate-45" /> : <Calendar className="h-6 w-6" />}
                            </div>
                            <div>
                               <h4 className="font-semibold text-lg">
-                                 {order.payment_status === 'refunded' ? 'Refund Processed' : 'Refund Initiated'}
+                                 {order.paymentStatus === 'refunded' ? 'Refund Processed' : 'Refund Initiated'}
                               </h4>
                               <p className="text-muted-foreground text-sm mt-1">
-                                 Amount: <span className="font-medium text-foreground">₹{order.total?.toLocaleString()}</span>
-                                 {order.payment_status === 'refund_pending' &&
+                                 Amount: <span className="font-medium text-foreground">₹{order.totalAmount?.toLocaleString()}</span>
+                                 {order.paymentStatus === 'refund_pending' &&
                                     " • It usually takes 5-7 business days for the amount to reflect in your account."
                                  }
                               </p>
@@ -345,23 +317,23 @@ export default function UserOrderDetail() {
                      <CardTitle className="text-lg">Items in your order</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                     {items.map((item: any, idx: number) => {
-                        // Robust ID extraction: check new productId, then product_id, then id
-                        const productId = item.productId || item.product_id || item.id;
+                     {items.map((item: OrderItem, idx: number) => {
+                        // Robust ID extraction
+                        const productId = item.productId || item.id;
                         return (
                            <div
                               key={idx}
                               className="flex gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl border bg-card hover:bg-primary/5 transition-all cursor-pointer group"
                               onClick={() => {
-                                 const slug = item.product?.slug || item.productId || item.product_id || item.id;
+                                 const slug = item.product?.slug || item.productId || item.id;
                                  navigate(`/product/${slug}`);
                               }}
 
                            >
                               <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg border overflow-hidden bg-muted flex-shrink-0">
                                  {(() => {
-                                    // Robust image extraction: check product images, then variant images
-                                    let imgPath = item.product?.images?.[0]?.url || item.image;
+                                    // Robust image extraction: check item image, then variant images
+                                    let imgPath = item.image;
 
                                     if (!imgPath && item.product?.variants) {
                                        // Scan all variants for an image
@@ -380,7 +352,7 @@ export default function UserOrderDetail() {
 
                                     const fullImgUrl = getMediaUrl(imgPath);
                                     return fullImgUrl ? (
-                                       <img src={fullImgUrl} alt={item.product?.title || item.title} className="h-full w-full object-cover object-center group-hover:scale-105 transition-transform duration-300" />
+                                       <img src={fullImgUrl} alt={item.product?.title || 'Product'} className="h-full w-full object-cover object-center group-hover:scale-105 transition-transform duration-300" />
                                     ) : (
                                        <div className="flex h-full w-full items-center justify-center bg-gray-100">
                                           <ShoppingBag className="h-8 w-8 text-gray-400" />
@@ -391,7 +363,7 @@ export default function UserOrderDetail() {
                               <div className="flex flex-1 flex-col min-w-0">
                                  <div className="flex flex-col sm:flex-row sm:justify-between items-start gap-1 sm:gap-4">
                                     <h3 className="text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100 line-clamp-2 group-hover:text-primary transition-colors leading-tight">
-                                       {item.product?.title || item.title}
+                                       {item.product?.title || 'Product'}
                                     </h3>
                                     <p className="text-sm sm:text-base font-bold whitespace-nowrap">
                                        ₹{(item.priceAtPurchase * item.quantity).toLocaleString()}
@@ -475,20 +447,20 @@ export default function UserOrderDetail() {
                                  <span className="font-medium text-sm">Payment Method</span>
                               </div>
                               <span className="capitalize text-sm font-medium">
-                                 {order.payment_method === "upi" ? "UPI" :
-                                    order.payment_method === "qr" ? "QR Code" :
-                                       order.payment_method === "cod" ? "Cash on Delivery" :
-                                          order.payment_method || "N/A"}
+                                 {order.paymentMethod === "upi" ? "UPI" :
+                                    order.paymentMethod === "qr" ? "QR Code" :
+                                       order.paymentMethod === "cod" ? "Cash on Delivery" :
+                                          order.paymentMethod || "N/A"}
                               </span>
                            </div>
                            <Separator className="bg-border/50" />
                            <div className="flex items-center justify-between">
                               <span className="text-sm text-muted-foreground">Payment Status</span>
-                              <Badge variant={order.payment_status === 'paid' ? 'default' : 'secondary'} className={cn(
+                              <Badge variant={order.paymentStatus === 'paid' ? 'default' : 'secondary'} className={cn(
                                  "capitalize shadow-sm",
-                                 order.payment_status === 'paid' ? "bg-green-600 hover:bg-green-700" : ""
+                                 order.paymentStatus === 'paid' ? "bg-green-600 hover:bg-green-700" : ""
                               )}>
-                                 {order.payment_status || "Pending"}
+                                 {order.paymentStatus || "Pending"}
                               </Badge>
                            </div>
                         </div>
@@ -506,10 +478,10 @@ export default function UserOrderDetail() {
                   </CardHeader>
                   <CardContent className="text-sm space-y-3">
                      {(() => {
-                        let addr: { name: any; address: any; city: any; pincode: any; phone?: any } = { name: order.customer_name, address: order.shipping_address, city: order.shipping_city, pincode: order.shipping_pincode };
+                        let addr: { name: any; address: any; city: any; pincode: any; phone?: any } = { name: order.customerName, address: order.shippingAddress, city: order.shippingCity, pincode: order.shippingPincode };
                         try {
-                           if (order.shipping_address?.startsWith('{')) {
-                              const parsed = JSON.parse(order.shipping_address);
+                           if (order.shippingAddress?.startsWith('{')) {
+                              const parsed = JSON.parse(order.shippingAddress);
                               addr = { ...addr, ...parsed };
                            }
                         } catch (e) { }
@@ -522,7 +494,7 @@ export default function UserOrderDetail() {
                                  <p>{addr.city} - {addr.pincode}</p>
                                  <p>India</p>
                                  <p className="pt-2 flex items-center gap-2 text-foreground">
-                                    Phone: {addr.phone || order.customer_phone}
+                                    Phone: {addr.phone || order.customerPhone}
                                  </p>
                               </div>
                            </>
@@ -556,9 +528,9 @@ export default function UserOrderDetail() {
                   open={isCancellationOpen}
                   onOpenChange={setIsCancellationOpen}
                   onConfirm={handleConfirmCancellation}
-                  orderNumber={order.order_number}
+                  orderNumber={order.orderNumber}
                   orderAmount={total}
-                  isPrepaid={order.payment_status === 'paid'}
+                  isPrepaid={order.paymentStatus === 'paid'}
                />
             )
          }

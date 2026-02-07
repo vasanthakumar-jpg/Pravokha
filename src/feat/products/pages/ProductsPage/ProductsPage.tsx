@@ -5,13 +5,10 @@ import { useProducts } from "@/shared/hook/useProducts";
 import { apiClient } from "@/infra/api/apiClient";
 import { Button } from "@/ui/Button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/Select";
-import { Filter, SlidersHorizontal, IndianRupee } from "lucide-react";
+import { Filter, SlidersHorizontal } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/ui/Sheet";
-import { Label } from "@/ui/Label";
-import { Checkbox } from "@/ui/Checkbox";
-import { Slider } from "@/ui/Slider";
-import { RadioGroup, RadioGroupItem } from "@/ui/RadioGroup"; // Assuming RadioGroup is available, or use Checkbox for single select logic
 import { useGsapAnimations } from "@/shared/hook/useGsapAnimations";
+import { FilterSidebar } from "../../components/FilterSidebar";
 
 export function ProductsPage() {
     const [searchParams, setSearchParams] = useSearchParams();
@@ -20,12 +17,14 @@ export function ProductsPage() {
     const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
     const [selectedSubcategories, setSelectedSubcategories] = useState<string[]>([]);
     const [minDiscount, setMinDiscount] = useState<number>(0); // New Discount State
+    const [minRating, setMinRating] = useState<number>(0); // New Rating State
 
     // Temp states for mobile filter sheet
     const [tempPriceRange, setTempPriceRange] = useState([0, 50000]);
     const [tempCategories, setTempCategories] = useState<string[]>([]);
     const [tempSubcategories, setTempSubcategories] = useState<string[]>([]);
     const [tempMinDiscount, setTempMinDiscount] = useState<number>(0);
+    const [tempMinRating, setTempMinRating] = useState<number>(0);
 
     const [isFilterOpen, setIsFilterOpen] = useState(false);
     const [dbCategories, setDbCategories] = useState<{ id: string; name: string }[]>([]);
@@ -103,46 +102,35 @@ export function ProductsPage() {
         minPrice: priceRange[0],
         maxPrice: priceRange[1],
         minDiscount: minDiscount > 0 ? minDiscount : undefined,
+        minRating: minRating > 0 ? minRating : undefined,
         tag: tagParam || (filterParam === "deals" ? "deals" : undefined),
     });
 
     useGsapAnimations();
 
-    // Variables moved to top to fix ReferenceError
-
-    useEffect(() => {
-        if (categoryParam && categoryParam !== "all") {
-            const lowerParam = categoryParam.toLowerCase();
-            setSelectedCategories([lowerParam]);
-            setTempCategories([lowerParam]);
+    // Unified Toggle Functions
+    const toggleCategory = (categoryId: string, isDesktop: boolean) => {
+        if (isDesktop) {
+            setSelectedCategories(prev =>
+                prev.includes(categoryId) ? prev.filter(c => c !== categoryId) : [...prev, categoryId]
+            );
+        } else {
+            setTempCategories(prev =>
+                prev.includes(categoryId) ? prev.filter(c => c !== categoryId) : [...prev, categoryId]
+            );
         }
-    }, [categoryParam]);
-
-    useEffect(() => {
-        if (subcategoryParam) {
-            const lowerParam = subcategoryParam.toLowerCase();
-            setSelectedSubcategories([lowerParam]);
-            setTempSubcategories([lowerParam]);
-        }
-    }, [subcategoryParam]);
-
-    // Use products directly from hook (server-side filtered)
-    const filteredProducts = products;
-
-    const toggleTempCategory = (categoryId: string) => {
-        setTempCategories((prev) =>
-            prev.includes(categoryId)
-                ? prev.filter((c) => c !== categoryId)
-                : [...prev, categoryId]
-        );
     };
 
-    const toggleTempSubcategory = (subcategoryId: string) => {
-        setTempSubcategories((prev) =>
-            prev.includes(subcategoryId)
-                ? prev.filter((s) => s !== subcategoryId)
-                : [...prev, subcategoryId]
-        );
+    const toggleSubcategory = (subcategoryId: string, isDesktop: boolean) => {
+        if (isDesktop) {
+            setSelectedSubcategories(prev =>
+                prev.includes(subcategoryId) ? prev.filter(s => s !== subcategoryId) : [...prev, subcategoryId]
+            );
+        } else {
+            setTempSubcategories(prev =>
+                prev.includes(subcategoryId) ? prev.filter(s => s !== subcategoryId) : [...prev, subcategoryId]
+            );
+        }
     };
 
     const applyFilters = () => {
@@ -150,6 +138,7 @@ export function ProductsPage() {
         setSelectedSubcategories(tempSubcategories);
         setPriceRange(tempPriceRange);
         setMinDiscount(tempMinDiscount);
+        setMinRating(tempMinRating);
         setIsFilterOpen(false);
     };
 
@@ -162,137 +151,14 @@ export function ProductsPage() {
         setTempPriceRange([0, 50000]);
         setMinDiscount(0);
         setTempMinDiscount(0);
+        setMinRating(0);
+        setTempMinRating(0);
         setSortBy("featured");
+        setSearchParams({}); // Clear URL parameters
     };
 
-    const FilterContent = ({ isDesktop = false }: { isDesktop?: boolean }) => {
-        const currentPriceRange = isDesktop ? priceRange : tempPriceRange;
-        const currentMinDiscount = isDesktop ? minDiscount : tempMinDiscount;
-        const setDiscount = isDesktop ? setMinDiscount : setTempMinDiscount;
-
-        const discountOptions = [10, 20, 30, 40, 50];
-
-        return (
-            <div className="space-y-8">
-                {/* Categories */}
-                <div>
-                    <h3 className="font-bold mb-4 text-sm uppercase tracking-wide text-foreground/80">Categories</h3>
-                    <div className="space-y-3">
-                        {dbCategories.map((category) => {
-                            const isDisabled = false;
-                            return (
-                                <div key={category.id} className="flex items-center space-x-3">
-                                    <Checkbox
-                                        id={`${isDesktop ? 'desktop-' : 'mobile-'}${category.id}`}
-                                        checked={isDesktop ? selectedCategories.includes(category.id) : tempCategories.includes(category.id)}
-                                        onCheckedChange={() => {
-                                            if (isDisabled) return;
-                                            isDesktop ? setSelectedCategories(prev =>
-                                                prev.includes(category.id) ? prev.filter(c => c !== category.id) : [...prev, category.id]
-                                            ) : toggleTempCategory(category.id);
-                                        }}
-                                        disabled={isDisabled}
-                                        className={isDisabled ? "opacity-50" : ""}
-                                    />
-                                    <Label
-                                        htmlFor={`${isDesktop ? 'desktop-' : 'mobile-'}${category.id}`}
-                                        className="text-sm cursor-pointer peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                                    >
-                                        {category.name}
-                                        {isDisabled && <span className="text-xs ml-2 text-muted-foreground">(Coming Soon)</span>}
-                                    </Label>
-                                </div>
-                            );
-                        })}
-                    </div>
-                </div>
-
-                {/* Subcategories */}
-                {dbSubcategories.length > 0 && (
-                    <div>
-                        <h3 className="font-bold mb-4 text-sm uppercase tracking-wide text-foreground/80">Subcategories</h3>
-                        <div className="space-y-3">
-                            {dbSubcategories.map((subcategory) => (
-                                <div key={subcategory.id} className="flex items-center space-x-3">
-                                    <Checkbox
-                                        id={`${isDesktop ? 'desktop-' : 'mobile-'}sub-${subcategory.id}`}
-                                        checked={isDesktop ? selectedSubcategories.includes(subcategory.id) : tempSubcategories.includes(subcategory.id)}
-                                        onCheckedChange={() => {
-                                            isDesktop ? setSelectedSubcategories(prev =>
-                                                prev.includes(subcategory.id) ? prev.filter(s => s !== subcategory.id) : [...prev, subcategory.id]
-                                            ) : toggleTempSubcategory(subcategory.id);
-                                        }}
-                                    />
-                                    <Label
-                                        htmlFor={`${isDesktop ? 'desktop-' : 'mobile-'}sub-${subcategory.id}`}
-                                        className="text-sm cursor-pointer"
-                                    >
-                                        {subcategory.name}
-                                    </Label>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
-
-                {/* Price Range */}
-                <div>
-                    <h3 className="font-bold mb-4 text-sm uppercase tracking-wide text-foreground/80">Price</h3>
-                    <div className="space-y-4">
-                        <div className="flex items-center justify-between text-sm font-semibold mb-2">
-                            <span className="flex items-center"><IndianRupee className="h-3 w-3 mr-0.5" /> {currentPriceRange[0]}</span>
-                            <span className="flex items-center"><IndianRupee className="h-3 w-3 mr-0.5" /> {currentPriceRange[1]}+</span>
-                        </div>
-                        <Slider
-                            min={0}
-                            max={50000}
-                            step={100}
-                            value={currentPriceRange}
-                            onValueChange={isDesktop ? setPriceRange : setTempPriceRange}
-                            className="w-full"
-                        />
-                        <Button
-                            variant="link"
-                            className="p-0 h-auto text-xs text-primary mt-2"
-                            onClick={() => isDesktop ? setPriceRange([0, 50000]) : setTempPriceRange([0, 50000])}
-                        >
-                            Reset price range
-                        </Button>
-                    </div>
-                </div>
-
-                {/* Discount */}
-                <div>
-                    <h3 className="font-bold mb-4 text-sm uppercase tracking-wide text-foreground/80">Discount</h3>
-                    <RadioGroup
-                        value={currentMinDiscount.toString()}
-                        onValueChange={(val) => setDiscount(parseInt(val))}
-                        className="space-y-3"
-                    >
-                        {discountOptions.map((option) => (
-                            <div key={option} className="flex items-center space-x-3">
-                                <RadioGroupItem value={option.toString()} id={`${isDesktop ? 'd-desk-' : 'd-mob-'}${option}`} />
-                                <Label htmlFor={`${isDesktop ? 'd-desk-' : 'd-mob-'}${option}`} className="text-sm cursor-pointer">
-                                    {option}% Off or more
-                                </Label>
-                            </div>
-                        ))}
-                    </RadioGroup>
-                </div>
-
-                {!isDesktop && (
-                    <div className="flex gap-2 pt-4 sticky bottom-0 bg-background pb-4 border-t mt-4">
-                        <Button variant="outline" onClick={clearFilters} className="flex-1">
-                            Clear All
-                        </Button>
-                        <Button onClick={applyFilters} className="flex-1 bg-primary hover:bg-primary-hover">
-                            Apply Filters
-                        </Button>
-                    </div>
-                )}
-            </div>
-        );
-    };
+    // Use products directly from hook (server-side filtered)
+    const filteredProducts = products;
 
     return (
         <div className="min-h-screen flex flex-col">
@@ -419,7 +285,31 @@ export function ProductsPage() {
                                             <SheetTitle className="text-lg font-bold">Filters</SheetTitle>
                                         </SheetHeader>
                                         <div className="mt-6 overflow-y-auto max-h-[calc(85vh-120px)] pb-4">
-                                            <FilterContent isDesktop={false} />
+                                            <FilterSidebar
+                                                isDesktop={false}
+                                                priceRange={tempPriceRange}
+                                                setPriceRange={setTempPriceRange}
+                                                minDiscount={tempMinDiscount}
+                                                setMinDiscount={setTempMinDiscount}
+                                                minRating={tempMinRating}
+                                                setMinRating={setTempMinRating}
+                                                selectedCategories={tempCategories}
+                                                setSelectedCategories={setTempCategories}
+                                                selectedSubcategories={tempSubcategories}
+                                                setSelectedSubcategories={setTempSubcategories}
+                                                dbCategories={dbCategories}
+                                                dbSubcategories={dbSubcategories}
+                                                onApply={applyFilters}
+                                                onClear={() => {
+                                                    setTempCategories([]);
+                                                    setTempSubcategories([]);
+                                                    setTempPriceRange([0, 50000]);
+                                                    setTempMinDiscount(0);
+                                                    setTempMinRating(0);
+                                                }}
+                                                toggleCategory={toggleCategory}
+                                                toggleSubcategory={toggleSubcategory}
+                                            />
                                         </div>
                                     </SheetContent>
                                 </Sheet>
@@ -439,7 +329,24 @@ export function ProductsPage() {
                                             Clear
                                         </Button>
                                     </div>
-                                    <FilterContent isDesktop={true} />
+                                    <FilterSidebar
+                                        isDesktop={true}
+                                        priceRange={priceRange}
+                                        setPriceRange={setPriceRange}
+                                        minDiscount={minDiscount}
+                                        setMinDiscount={setMinDiscount}
+                                        minRating={minRating}
+                                        setMinRating={setMinRating}
+                                        selectedCategories={selectedCategories}
+                                        setSelectedCategories={setSelectedCategories}
+                                        selectedSubcategories={selectedSubcategories}
+                                        setSelectedSubcategories={setSelectedSubcategories}
+                                        dbCategories={dbCategories}
+                                        dbSubcategories={dbSubcategories}
+                                        onClear={clearFilters}
+                                        toggleCategory={toggleCategory}
+                                        toggleSubcategory={toggleSubcategory}
+                                    />
                                 </div>
                             </aside>
 

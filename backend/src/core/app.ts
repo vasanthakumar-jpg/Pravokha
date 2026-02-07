@@ -25,9 +25,14 @@ import analyticsRoutes from '../feat/analytics/route';
 import reportRoutes from '../feat/report/route';
 import comboOfferRoutes from '../feat/combo-offer/route';
 import emailRoutes from '../feat/email/route';
+import returnRoutes from '../feat/return/route';
 import { WebhookController } from '../feat/webhook/controller';
+import { registerMarketplaceListeners } from '../shared/listeners/marketplace.listeners';
 
 const app = express();
+
+// Register Marketplace Event Listeners
+registerMarketplaceListeners();
 
 // Security & Middleware
 app.use(helmet({
@@ -94,6 +99,7 @@ app.use('/api/home', homeRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/email', emailRoutes);
+app.use('/api/returns', returnRoutes);
 app.use('/api/combo-offers', comboOfferRoutes);
 
 // Error Handling

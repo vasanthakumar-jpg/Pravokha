@@ -98,6 +98,26 @@ export class AuthService {
         };
     }
 
+    static async changePassword(userId: string, data: { currentPassword: string, newPassword: string }) {
+        const user = await prisma.user.findUnique({ where: { id: userId } });
+        if (!user || !user.password) {
+            throw { statusCode: 404, message: 'User not found or uses SSO' };
+        }
+
+        const isMatch = await bcrypt.compare(data.currentPassword, user.password);
+        if (!isMatch) {
+            throw { statusCode: 401, message: 'Incorrect current password' };
+        }
+
+        const hashedPassword = await bcrypt.hash(data.newPassword, 10);
+        await prisma.user.update({
+            where: { id: userId },
+            data: { password: hashedPassword }
+        });
+
+        return { success: true };
+    }
+
     private static generateToken(user: Pick<User, 'id' | 'role'>) {
         return jwt.sign({ id: user.id, role: user.role }, config.jwtSecret, { expiresIn: '1d' });
     }

@@ -44,8 +44,6 @@ export interface Product {
   images?: string[];
   tags?: string[];
   sku: string;
-  featured?: boolean;
-  newArrival?: boolean;
   sellerId?: string;
 }
 
@@ -80,8 +78,6 @@ export const products: Product[] = [
     rating: 0,
     reviews: 0,
     sku: "CCT-001",
-    featured: true,
-    newArrival: true,
     variants: [
       {
         id: "1-teal",
@@ -179,7 +175,6 @@ export const products: Product[] = [
     rating: 0,
     reviews: 0,
     sku: "PVT-001",
-    featured: true,
     variants: [
       {
         id: "2-white",
@@ -214,7 +209,6 @@ export const products: Product[] = [
     rating: 4.4,
     reviews: 89,
     sku: "UST-001",
-    newArrival: true,
     variants: [
       {
         id: "3-coral",
@@ -249,7 +243,6 @@ export const products: Product[] = [
     rating: 4.3,
     reviews: 156,
     sku: "ERN-001",
-    featured: true,
     variants: [
       {
         id: "4-black",
@@ -284,7 +277,6 @@ export const products: Product[] = [
     rating: 4.7,
     reviews: 92,
     sku: "GPT-001",
-    newArrival: true,
     variants: [
       {
         id: "5-red",
@@ -380,7 +372,6 @@ export const products: Product[] = [
     rating: 4.6,
     reviews: 110,
     sku: "SFC-001",
-    featured: true,
     variants: [
       {
         id: "8-black",
@@ -449,8 +440,6 @@ export const products: Product[] = [
     rating: 4.8,
     reviews: 143,
     sku: "VWT-001",
-    newArrival: true,
-    featured: true,
     variants: [
       {
         id: "10-red",
@@ -479,7 +468,6 @@ export const products: Product[] = [
     rating: 4.7,
     reviews: 95,
     sku: "ATP-001",
-    featured: true,
     variants: [
       {
         id: "11-black",
@@ -521,7 +509,6 @@ export const products: Product[] = [
     rating: 4.4,
     reviews: 88,
     sku: "CFT-001",
-    newArrival: true,
     variants: [
       {
         id: "12-grey",
@@ -556,7 +543,6 @@ export const products: Product[] = [
     rating: 4.5,
     reviews: 102,
     sku: "JTP-001",
-    featured: true,
     variants: [
       {
         id: "13-black",
@@ -591,8 +577,6 @@ export const products: Product[] = [
     rating: 4.8,
     reviews: 76,
     sku: "PSP-001",
-    newArrival: true,
-    featured: true,
     variants: [
       {
         id: "14-grey",
@@ -701,7 +685,6 @@ export const products: Product[] = [
     rating: 4.7,
     reviews: 94,
     sku: "WFT-001",
-    newArrival: true,
     variants: [
       {
         id: "18-black",
@@ -756,7 +739,6 @@ export const products: Product[] = [
     rating: 4.6,
     reviews: 99,
     sku: "STP-001",
-    featured: true,
     variants: [
       {
         id: "20-black",
@@ -785,7 +767,6 @@ export const products: Product[] = [
     rating: 4.3,
     reviews: 76,
     sku: "SCS-001",
-    newArrival: true,
     variants: [
       {
         id: "21-khaki",
@@ -827,7 +808,6 @@ export const products: Product[] = [
     rating: 4.8,
     reviews: 142,
     sku: "SPS-001",
-    featured: true,
     variants: [
       {
         id: "22-black",
@@ -882,7 +862,6 @@ export const products: Product[] = [
     rating: 4.5,
     reviews: 93,
     sku: "DES-001",
-    newArrival: true,
     variants: [
       {
         id: "24-khaki",
@@ -903,7 +882,6 @@ export const products: Product[] = [
     rating: 4.4,
     reviews: 85,
     sku: "CHS-001",
-    featured: true,
     variants: [
       {
         id: "25-khaki",
@@ -971,7 +949,6 @@ export const products: Product[] = [
     rating: 4.5,
     reviews: 91,
     sku: "BAS-001",
-    newArrival: true,
     variants: [
       {
         id: "28-khaki",
@@ -1020,7 +997,6 @@ export const products: Product[] = [
     rating: 4.7,
     reviews: 98,
     sku: "COS-001",
-    featured: true,
     variants: [
       {
         id: "30-khaki",
@@ -1043,8 +1019,6 @@ export const products: Product[] = [
     rating: 4.5,
     reviews: 124,
     sku: "WCT-001",
-    featured: true,
-    newArrival: true,
     variants: [
       {
         id: "31-white",
@@ -1080,7 +1054,6 @@ export const products: Product[] = [
     rating: 4.6,
     reviews: 98,
     sku: "WVT-001",
-    featured: true,
     variants: [
       {
         id: "34-black",
@@ -1116,7 +1089,6 @@ export const products: Product[] = [
     rating: 4.5,
     reviews: 86,
     sku: "WTP-001",
-    newArrival: true,
     variants: [
       {
         id: "35-black",
@@ -1152,7 +1124,6 @@ export const products: Product[] = [
     rating: 4.7,
     reviews: 102,
     sku: "WJP-001",
-    featured: true,
     variants: [
       {
         id: "36-black",
@@ -1201,7 +1172,6 @@ export const products: Product[] = [
     rating: 4.3,
     reviews: 78,
     sku: "WSUS-001",
-    newArrival: true,
     variants: [
       {
         id: "38-khaki",
@@ -1231,8 +1201,6 @@ export const products: Product[] = [
     rating: 4.6,
     reviews: 138,
     sku: "MPT-001",
-    featured: true,
-    newArrival: true,
     variants: [
       {
         id: "32-black",
@@ -1268,7 +1236,6 @@ export const products: Product[] = [
     rating: 4.5,
     reviews: 112,
     sku: "MPS-001",
-    featured: true,
     variants: [
       {
         id: "39-navy",
@@ -1304,7 +1271,6 @@ export const products: Product[] = [
     rating: 4.7,
     reviews: 126,
     sku: "MTP-001",
-    newArrival: true,
     variants: [
       {
         id: "40-black",
@@ -1340,7 +1306,6 @@ export const products: Product[] = [
     rating: 4.6,
     reviews: 98,
     sku: "MSS-001",
-    featured: true,
     variants: [
       {
         id: "41-black",
@@ -1370,8 +1335,6 @@ export const products: Product[] = [
     rating: 4.7,
     reviews: 156,
     sku: "KCT-001",
-    featured: true,
-    newArrival: true,
     variants: [
       {
         id: "33-multi",
@@ -1407,7 +1370,6 @@ export const products: Product[] = [
     rating: 4.6,
     reviews: 142,
     sku: "KGT-001",
-    featured: true,
     variants: [
       {
         id: "42-red",
@@ -1436,7 +1398,6 @@ export const products: Product[] = [
     rating: 4.5,
     reviews: 118,
     sku: "KTP-001",
-    newArrival: true,
     variants: [
       {
         id: "43-black",
@@ -1472,7 +1433,6 @@ export const products: Product[] = [
     rating: 4.4,
     reviews: 104,
     sku: "KSS-001",
-    featured: true,
     variants: [
       {
         id: "44-khaki",
@@ -1500,7 +1460,6 @@ export const products: Product[] = [
     rating: 4.3,
     reviews: 96,
     sku: "KSUS-001",
-    newArrival: true,
     variants: [
       {
         id: "45-khaki",

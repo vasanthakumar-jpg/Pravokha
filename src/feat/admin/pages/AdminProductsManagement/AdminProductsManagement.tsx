@@ -55,6 +55,7 @@ import {
 import { apiClient } from "@/infra/api/apiClient";
 import { Skeleton } from "@/ui/Skeleton";
 import { toast } from "@/shared/hook/use-toast";
+import { Product } from "@/core/types/product";
 
 import { NoResultsFound } from "@/feat/admin/components/NoResultsFound";
 
@@ -102,7 +103,7 @@ export default function AdminProductsManagement() {
   const { can } = usePermission();
 
 
-  const [products, setProducts] = useState<any[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
@@ -227,8 +228,8 @@ export default function AdminProductsManagement() {
     // Sort
     filtered.sort((a, b) => {
       switch (sortBy) {
-        case "newest": return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-        case "oldest": return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+        case "newest": return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        case "oldest": return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
         case "price-low": return a.price - b.price;
         case "price-high": return b.price - a.price;
         default: return 0;
@@ -245,10 +246,10 @@ export default function AdminProductsManagement() {
       p.sku || "N/A",
       `"${(p.title || "No Title").replace(/"/g, '""')}"`,
       typeof p.category === 'object' ? p.category?.name : (p.category || "Uncategorized"),
-      p.price || 0,
+      p.totalAmount || p.price || 0,
       p.stock || 0,
       p.status,
-      p.created_at ? new Date(p.created_at).toLocaleDateString() : 'N/A'
+      p.createdAt ? new Date(p.createdAt).toLocaleDateString() : 'N/A'
     ]);
 
     const csvContent = "data:text/csv;charset=utf-8,"
@@ -379,7 +380,7 @@ export default function AdminProductsManagement() {
           />
           <StatsCard
             title="Stock depletion"
-            value={products.filter(p => !p.product_variants || p.product_variants.every((v: any) => v.product_sizes?.every((s: any) => s.stock === 0))).length.toString()}
+            value={products.filter(p => !p.variants || p.variants.every((v: ProductVariant) => v.sizes?.every((s: ProductSize) => s.stock === 0))).length.toString()}
             icon={AlertCircle}
             color="bg-rose-500"
             description="Out of stock entries"
@@ -502,8 +503,8 @@ export default function AdminProductsManagement() {
                               <div className="w-12 h-12 rounded-xl bg-muted overflow-hidden border border-border/50 shadow-sm transition-transform group-hover:scale-105">
                                 {product.variants?.[0]?.images?.[0] ? (
                                   <img src={product.variants[0].images[0]} className="w-full h-full object-cover" />
-                                ) : product.product_variants?.[0]?.images?.[0] ? (
-                                  <img src={product.product_variants[0].images[0]} className="w-full h-full object-cover" />
+                                ) : product.variants?.[0]?.images?.[0] ? (
+                                  <img src={product.variants[0].images[0]} className="w-full h-full object-cover" />
                                 ) : (
                                   <Package className="w-full h-full p-3 text-muted-foreground/50" />
                                 )}
@@ -514,9 +515,6 @@ export default function AdminProductsManagement() {
                                 <div className="text-sm font-bold tracking-tight text-foreground/90">{product.title}</div>
                                 <div className="text-[10px] font-mono text-muted-foreground flex items-center gap-1">
                                   SKU: {product.sku}
-                                  {(product.isFeatured || product.featured) && (
-                                    <Badge className="h-3 px-1 text-[8px] bg-amber-500/10 text-amber-600 border-amber-500/20">FEATURED</Badge>
-                                  )}
                                 </div>
                               </div>
                             </TableCell>
@@ -538,8 +536,8 @@ export default function AdminProductsManagement() {
                             <TableCell>
                               <div className="flex flex-col">
                                 <span className="font-bold text-sm text-foreground">₹{product.price.toLocaleString()}</span>
-                                {product.discount_price && (
-                                  <span className="text-[10px] text-muted-foreground line-through decoration-rose-500/50">₹{product.discount_price.toLocaleString()}</span>
+                                {product.discountPrice && (
+                                  <span className="text-[10px] text-muted-foreground line-through decoration-rose-500/50">₹{product.discountPrice.toLocaleString()}</span>
                                 )}
                               </div>
                             </TableCell>
@@ -605,7 +603,7 @@ export default function AdminProductsManagement() {
                       <div className="flex p-4 gap-4">
                         <div className="h-24 w-24 min-w-[6rem] rounded-xl bg-muted overflow-hidden border border-border/50 shadow-inner relative">
                           {(() => {
-                            const image = product.variants?.[0]?.images?.[0] || product.product_variants?.[0]?.images?.[0];
+                            const image = product.variants?.[0]?.images?.[0] || product.variants?.[0]?.images?.[0];
                             return image ? (
                               <img src={image} className="w-full h-full object-cover" loading="lazy" />
                             ) : (
@@ -699,7 +697,7 @@ export default function AdminProductsManagement() {
                   >
                     <div className="aspect-[4/5] bg-muted relative overflow-hidden">
                       {(() => {
-                        const image = product.variants?.[0]?.images?.[0] || product.product_variants?.[0]?.images?.[0];
+                        const image = product.variants?.[0]?.images?.[0] || product.variants?.[0]?.images?.[0];
                         return image ? (
                           <img src={image} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
                         ) : (
@@ -737,7 +735,6 @@ export default function AdminProductsManagement() {
                         >
                           {product.status}
                         </Badge>
-                        {product.isFeatured && <Badge className="text-[8px] bg-amber-500 px-2 rounded-md border-none text-white font-bold">Featured</Badge>}
                         {product.isVerified && <Badge className="text-[8px] bg-primary px-2 rounded-md border-none text-white font-bold flex items-center gap-1"><Shield className="h-2 w-2" /> Verified</Badge>}
                       </div>
                     </div>
@@ -754,10 +751,10 @@ export default function AdminProductsManagement() {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center baseline gap-1.5">
                           <span className="font-bold text-base">₹{product.price.toLocaleString()}</span>
-                          {product.discount_price && <span className="text-[9px] text-muted-foreground line-through opacity-50">₹{product.discount_price}</span>}
+                          {product.discountPrice && <span className="text-[9px] text-muted-foreground line-through opacity-50">₹{product.discountPrice}</span>}
                         </div>
                         <div className="flex items-center gap-2">
-                          {product.total_stock <= 5 ? (
+                          {product.stock <= 5 ? (
                             <Badge variant="outline" className="text-[8px] text-rose-500 border-rose-500/20 bg-rose-500/5 px-1.5 py-0">Low Stock</Badge>
                           ) : (
                             <Badge variant="outline" className="text-[8px] text-emerald-500 border-emerald-500/20 bg-emerald-500/5 px-1.5 py-0">In Stock</Badge>

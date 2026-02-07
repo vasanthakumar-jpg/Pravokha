@@ -6,7 +6,7 @@ import { Loader2, ShieldAlert, Save } from 'lucide-react';
 import { Button } from '@/ui/Button';
 import { Checkbox } from '@/ui/Checkbox';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/ui/Card';
-import { useToast } from '@/ui/use-toast';
+import { useToast } from '@/shared/hook/use-toast';
 import { Separator } from '@/ui/Separator';
 
 interface AdminPermissions {

@@ -36,7 +36,7 @@ export function AuthEnhancedPage() {
     const [searchParams] = useSearchParams();
     const { toast } = useToast();
     const { theme } = useTheme();
-    const { user, googleLogin } = useAuth();
+    const { user, login, register: authRegister, googleLogin } = useAuth();
     const [isLogin, setIsLogin] = useState(true);
     const [loading, setLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
@@ -89,27 +89,16 @@ export function AuthEnhancedPage() {
 
         setLoading(true);
         try {
-            await apiClient.post("/auth/login", {
-                email: formData.email,
-                password: formData.password,
-            });
+            await login(formData.email, formData.password);
 
-            setLoading(false);
-
+            // Success handled by AuthContext and useEffect checkUser
             toast({
                 title: "Welcome back!",
                 description: "You have successfully logged in.",
             });
-
-            // Force refresh auth state if available, or just navigate and let AuthContext catch up
-
-
-            const redirect = searchParams.get("redirect") || "/";
-            navigate(redirect);
-
         } catch (error: any) {
             setLoading(false);
-            const msg = error.response?.data?.message || error.message || "Invalid credentials";
+            const msg = error.message || "Invalid credentials";
             toast({
                 title: "Login Failed",
                 description: msg,

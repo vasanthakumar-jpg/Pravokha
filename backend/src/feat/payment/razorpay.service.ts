@@ -93,6 +93,54 @@ export class RazorpayService {
                 });
             }
 
+            // Fetch orders with customer details for email
+            const orders = await tx.order.findMany({
+                where: { id: { in: orderIds } },
+                include: {
+                    customer: true,
+                    items: {
+                        include: {
+                            product: true
+                        }
+                    }
+                }
+            });
+
+            // Send email notifications asynchronously (don't block transaction)
+            setImmediate(async () => {
+                const { emailService } = await import('../email/service');
+
+                for (const order of orders) {
+                    try {
+                        // Send order confirmation
+                        await emailService.sendOrderConfirmation({
+                            customerEmail: order.customer!.email,
+                            customerName: order.customer!.name || 'Customer',
+                            orderNumber: order.orderNumber,
+                            orderAmount: order.totalAmount,
+                            orderDate: order.createdAt.toLocaleDateString(),
+                            orderItems: order.items.map((item: any) => ({
+                                title: item.product.title,
+                                quantity: item.quantity,
+                                price: item.price
+                            }))
+                        });
+
+                        // Send payment success email
+                        await emailService.sendPaymentSuccess({
+                            customerEmail: order.customer!.email,
+                            customerName: order.customer!.name || 'Customer',
+                            orderNumber: order.orderNumber,
+                            paymentAmount: order.totalAmount,
+                            paymentMethod: 'Razorpay',
+                            paymentDate: new Date().toLocaleDateString()
+                        });
+                    } catch (emailError) {
+                        console.error(`Failed to send email for order ${order.orderNumber}:`, emailError);
+                    }
+                }
+            });
+
             return { success: true };
         });
     }

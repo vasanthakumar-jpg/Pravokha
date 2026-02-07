@@ -93,51 +93,12 @@ export class UserController {
     static updateProfile = asyncHandler(async (req: Request, res: Response) => {
         const user = (req as any).user;
         const userId = user.id;
-        const updates = req.body;
-
-        const safeUpdates: any = {};
-
-        // 1. Explicitly Map and Validate Allowed Fields
-        if (updates.name !== undefined) safeUpdates.name = updates.name;
-        if (updates.full_name !== undefined) safeUpdates.name = updates.full_name;
-
-        if (updates.phoneNumber !== undefined) safeUpdates.phoneNumber = updates.phoneNumber;
-        if (updates.phone !== undefined) safeUpdates.phoneNumber = updates.phone;
-
-        if (updates.bio !== undefined) safeUpdates.bio = updates.bio;
-
-        if (updates.avatarUrl !== undefined) safeUpdates.avatarUrl = updates.avatarUrl;
-        if (updates.avatar_url !== undefined) safeUpdates.avatarUrl = updates.avatar_url;
-
-        // Date Handling with improved validation
-        const rawDob = updates.dateOfBirth || updates.date_of_birth;
-        if (rawDob !== undefined && rawDob !== null && rawDob !== '') {
-            const dob = new Date(rawDob);
-            if (!isNaN(dob.getTime())) {
-                safeUpdates.dateOfBirth = dob;
-            }
-        }
-
-        console.log(`[UserController] Updating profile for ${userId}:`, {
-            rawUpdates: updates,
-            safeUpdates: safeUpdates,
-            updateCount: Object.keys(safeUpdates).length
-        });
-
-        if (Object.keys(safeUpdates).length === 0) {
-            console.error(`[UserController] No valid fields for ${userId}. Received:`, updates);
-            return res.status(400).json({
-                success: false,
-                message: 'No valid update fields provided',
-                received: Object.keys(updates),
-                expected: ['name', 'full_name', 'phone', 'phoneNumber', 'bio', 'avatarUrl', 'avatar_url', 'dateOfBirth', 'date_of_birth']
-            });
-        }
+        const validatedData = req.body;
 
         try {
             const updatedUser = await prisma.user.update({
                 where: { id: userId },
-                data: safeUpdates,
+                data: validatedData,
             });
 
             const { password: _, ...userResponse } = updatedUser;
@@ -148,8 +109,6 @@ export class UserController {
                 success: false,
                 message: 'Failed to update user profile',
                 error: (error as Error).message,
-                code: (error as any).code,
-                debug: { safeUpdates, userId }
             });
         }
     });
@@ -197,38 +156,49 @@ export class UserController {
     static updateVendorSettings = asyncHandler(async (req: Request, res: Response) => {
         const user = (req as any).user;
         const userId = user.id;
-        const updates = req.body;
+        const {
+            storeName,
+            storeDescription,
+            storeLogoUrl,
+            storeBannerUrl,
+            gstNumber,
+            panNumber,
+            bankAccountNumber,
+            bankIfscCode,
+            beneficiaryName,
+            bankName,
+            supportPhone,
+            businessAddress,
+            autoConfirm,
+            vacationMode,
+            returnPolicy,
+            metaTitle,
+            metaDescription,
+            phone // From frontend form for user profile sync
+        } = req.body;
 
         const vendorUpdates: any = {};
-        if (updates.storeName !== undefined) vendorUpdates.storeName = updates.storeName;
-        if (updates.storeDescription !== undefined) vendorUpdates.description = updates.storeDescription;
-        if (updates.storeLogoUrl !== undefined) vendorUpdates.logoUrl = updates.storeLogoUrl;
-        if (updates.storeBannerUrl !== undefined) vendorUpdates.bannerUrl = updates.storeBannerUrl;
-        if (updates.gst !== undefined) vendorUpdates.gstNumber = updates.gst;
-        if (updates.pan !== undefined) vendorUpdates.panNumber = updates.pan;
-        if (updates.bankAccount !== undefined) vendorUpdates.bankAccountNumber = updates.bankAccount;
-        if (updates.ifsc !== undefined) vendorUpdates.bankIfscCode = updates.ifsc;
-        if (updates.beneficiaryName !== undefined) vendorUpdates.beneficiaryName = updates.beneficiaryName;
-        if (updates.phone !== undefined) vendorUpdates.supportPhone = updates.phone;
-
-        // Add missing fields
-        if (updates.address !== undefined) vendorUpdates.businessAddress = updates.address;
-        if (updates.autoConfirm !== undefined) vendorUpdates.autoConfirm = updates.autoConfirm;
-        if (updates.vacationMode !== undefined) vendorUpdates.vacationMode = updates.vacationMode;
-        if (updates.returnPolicy !== undefined) vendorUpdates.returnPolicy = updates.returnPolicy;
-        if (updates.metaTitle !== undefined) vendorUpdates.metaTitle = updates.metaTitle;
-        if (updates.metaDescription !== undefined) vendorUpdates.metaDescription = updates.metaDescription;
-
-        // Handle potential boolean strings from multipart/form-data if applicable
-        if (typeof updates.autoConfirm === 'string') {
-            vendorUpdates.autoConfirm = updates.autoConfirm === 'true';
-        }
-        if (typeof updates.vacationMode === 'string') {
-            vendorUpdates.vacationMode = updates.vacationMode === 'true';
-        }
+        if (storeName !== undefined) vendorUpdates.storeName = storeName;
+        if (storeDescription !== undefined) vendorUpdates.description = storeDescription;
+        if (storeLogoUrl !== undefined) vendorUpdates.logoUrl = storeLogoUrl;
+        if (storeBannerUrl !== undefined) vendorUpdates.bannerUrl = storeBannerUrl;
+        if (gstNumber !== undefined) vendorUpdates.gstNumber = gstNumber;
+        if (panNumber !== undefined) vendorUpdates.panNumber = panNumber;
+        if (bankAccountNumber !== undefined) vendorUpdates.bankAccountNumber = bankAccountNumber;
+        if (bankIfscCode !== undefined) vendorUpdates.bankIfscCode = bankIfscCode;
+        if (beneficiaryName !== undefined) vendorUpdates.beneficiaryName = beneficiaryName;
+        if (bankName !== undefined) vendorUpdates.bankName = bankName;
+        if (supportPhone !== undefined) vendorUpdates.supportPhone = supportPhone;
+        if (businessAddress !== undefined) vendorUpdates.businessAddress = businessAddress;
+        if (autoConfirm !== undefined) vendorUpdates.autoConfirm = autoConfirm;
+        if (vacationMode !== undefined) vendorUpdates.vacationMode = vacationMode;
+        if (returnPolicy !== undefined) vendorUpdates.returnPolicy = returnPolicy;
+        if (metaTitle !== undefined) vendorUpdates.metaTitle = metaTitle;
+        if (metaDescription !== undefined) vendorUpdates.metaDescription = metaDescription;
 
         const userUpdates: any = {};
-        if (updates.phone !== undefined) userUpdates.phoneNumber = updates.phone;
+        if (phone !== undefined) userUpdates.phoneNumber = phone;
+        else if (supportPhone !== undefined) userUpdates.phoneNumber = supportPhone;
 
         try {
             if (vendorUpdates.storeName) {
@@ -286,13 +256,26 @@ export class UserController {
 
     static addAddress = asyncHandler(async (req: Request, res: Response) => {
         const user = (req as any).user;
-        const data = req.body;
+        const { name, phoneNumber, addressLine1, addressLine2, city, state, pincode, type, isDefault } = req.body;
 
         const address = await prisma.$transaction(async (tx) => {
-            if (data.isDefault) {
+            if (isDefault) {
                 await tx.address.updateMany({ where: { userId: user.id }, data: { isDefault: false } });
             }
-            return await tx.address.create({ data: { ...data, userId: user.id } });
+            return await tx.address.create({
+                data: {
+                    name,
+                    phoneNumber,
+                    addressLine1,
+                    addressLine2,
+                    city,
+                    state,
+                    pincode,
+                    type,
+                    isDefault,
+                    userId: user.id
+                }
+            });
         });
         res.status(201).json(address);
     });
@@ -300,13 +283,16 @@ export class UserController {
     static updateAddress = asyncHandler(async (req: Request, res: Response) => {
         const user = (req as any).user;
         const { id } = req.params;
-        const data = req.body;
+        const { name, phoneNumber, addressLine1, addressLine2, city, state, pincode, type, isDefault } = req.body;
 
         const address = await prisma.$transaction(async (tx) => {
-            if (data.isDefault) {
+            if (isDefault) {
                 await tx.address.updateMany({ where: { userId: user.id }, data: { isDefault: false } });
             }
-            return await tx.address.update({ where: { id, userId: user.id }, data });
+            return await tx.address.update({
+                where: { id, userId: user.id },
+                data: { name, phoneNumber, addressLine1, addressLine2, city, state, pincode, type, isDefault }
+            });
         });
         res.json(address);
     });
@@ -392,7 +378,60 @@ export class UserController {
             });
         }
 
-        const user = await prisma.user.update({ where: { id }, data: { role } });
+        // CRITICAL CHECK: Prevent downgrade if user has vendor-specific data
+        const targetUser = await prisma.user.findUnique({
+            where: { id },
+            include: { vendor: true }
+        });
+
+        if (!targetUser) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        // If downgrading from ADMIN/SELLER to CUSTOMER, check for dependencies
+        if ((targetUser.role === Role.ADMIN || targetUser.role === Role.SELLER) && role === Role.CUSTOMER) {
+            // Check if user has a vendor profile
+            if (targetUser.vendor) {
+                const productCount = await prisma.product.count({
+                    where: { vendorId: targetUser.vendor.id }
+                });
+
+                if (productCount > 0) {
+                    return res.status(400).json({
+                        success: false,
+                        message: `Cannot downgrade role: User has ${productCount} active products as a vendor. Please delete vendor data first.`,
+                        constraint: 'VENDOR_DATA_EXISTS',
+                        productCount
+                    });
+                }
+            }
+        }
+
+        // Use transaction to ensure data integrity
+
+        const user = await prisma.$transaction(async (tx) => {
+            const updatedUser = await tx.user.update({ where: { id }, data: { role } });
+
+            // If promoting to SELLER, ensure Vendor profile exists
+            if (role === Role.SELLER) {
+                const existingVendor = await tx.vendor.findUnique({ where: { ownerId: id } });
+                if (!existingVendor) {
+                    const userData = await tx.user.findUnique({ where: { id } });
+                    const storeName = (userData?.name || 'My Store') + ' ' + Math.floor(Math.random() * 1000);
+                    const slug = storeName.toLowerCase().replace(/[^\w ]+/g, '').replace(/ +/g, '-');
+
+                    await tx.vendor.create({
+                        data: {
+                            ownerId: id,
+                            storeName: storeName,
+                            slug: slug,
+                            status: 'PENDING'
+                        }
+                    });
+                }
+            }
+            return updatedUser;
+        });
 
         await AuditService.logAction({
             performedBy: adminUser.id,

@@ -58,8 +58,7 @@ export function HomePage() {
     useGsapAnimations();
     const [categories, setCategories] = useState<Category[]>([]);
     const [loadingCategories, setLoadingCategories] = useState(true);
-    const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
-    const [newArrivals, setNewArrivals] = useState<Product[]>([]);
+    const [products, setProducts] = useState<Product[]>([]);
     const [loadingProducts, setLoadingProducts] = useState(true);
 
     useEffect(() => {
@@ -89,7 +88,7 @@ export function HomePage() {
         try {
             setLoadingProducts(true);
 
-            const response = await apiClient.get('/products', { params: { limit: 100 } });
+            const response = await apiClient.get('/products', { params: { limit: 12, sort: 'newest' } });
 
             if (response.data.success) {
                 const data = response.data.products;
@@ -99,13 +98,11 @@ export function HomePage() {
                     slug: p.slug,
                     description: p.description,
                     price: parseFloat(String(p.price)),
-                    discountPrice: p.discountPrice ? parseFloat(String(p.discountPrice)) : undefined,
+                    compareAtPrice: p.compareAtPrice ? parseFloat(String(p.compareAtPrice)) : undefined,
                     category: p.category?.name || p.category,
                     rating: parseFloat(String(p.rating || 4.5)),
                     reviews: p.reviews || 0,
                     sku: p.sku,
-                    featured: p.isFeatured,
-                    newArrival: p.isNew,
                     variants: (p.variants || []).map((v: any) => ({
                         id: v.id,
                         colorName: v.colorName,
@@ -118,8 +115,7 @@ export function HomePage() {
                     })),
                 }));
 
-                setFeaturedProducts(transformed.filter(p => p.featured).slice(0, 8));
-                setNewArrivals(transformed.filter(p => p.newArrival).slice(0, 8));
+                setProducts(transformed);
             }
         } catch (error) {
             console.error("Error fetching home products:", error);
@@ -180,39 +176,24 @@ export function HomePage() {
                 />
             </section>
 
-            {/* Featured Products */}
+            {/* Explore Our Collection */}
             <section className={`w-full ${layout.sectionSpacing} px-0`}>
                 <div className="text-center mb-8 sm:mb-12 px-4">
-                    <h2 className={`${typography.responsiveH2} mb-3 sm:mb-4`}>Featured Collection</h2>
+                    <h2 className={`${typography.responsiveH2} mb-3 sm:mb-4`}>Explore Our Collection</h2>
                     <p className={`${typography.responsiveBody} text-muted-foreground max-w-2xl mx-auto`}>
-                        Discover our handpicked selection of premium t-shirts, track pants, and shorts
+                        Premium t-shirts, track pants, and shorts designed for comfort and style
                     </p>
                 </div>
                 <div className="px-4 sm:px-6 lg:px-8">
-                    <ProductGrid products={featuredProducts} />
+                    <ProductGrid products={products} />
                 </div>
-                {featuredProducts.length > 8 && (
-                    <div className="flex justify-center mt-8">
-                        <Link to="/products">
-                            <Button size="lg" variant="outline" className="group">
-                                View All Products
-                                <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
-                            </Button>
-                        </Link>
-                    </div>
-                )}
-            </section>
-
-            {/* New Arrivals */}
-            <section className={`w-full ${layout.sectionSpacing} px-0`}>
-                <div className="text-center mb-8 sm:mb-12 px-4">
-                    <h2 className={`${typography.responsiveH2} mb-3 sm:mb-4`}>New Arrivals</h2>
-                    <p className={`${typography.responsiveBody} text-muted-foreground max-w-2xl mx-auto`}>
-                        Check out our latest additions to the collection
-                    </p>
-                </div>
-                <div className="px-4 sm:px-6 lg:px-8">
-                    <ProductGrid products={newArrivals} />
+                <div className="flex justify-center mt-12">
+                    <Link to="/products">
+                        <Button size="lg" className="group px-8 py-6 text-lg rounded-full shadow-lg hover:shadow-xl transition-all">
+                            View All Products
+                            <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
+                        </Button>
+                    </Link>
                 </div>
             </section>
 

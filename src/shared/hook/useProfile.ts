@@ -77,8 +77,9 @@ export function useProfile(userId: string | undefined) {
       // Map frontend updates back to backend expected fields
       const backendUpdates: any = {};
       if (updates.full_name !== undefined) backendUpdates.name = updates.full_name;
-      if (updates.phone !== undefined) backendUpdates.phone = updates.phone;
-      if (updates.address !== undefined) backendUpdates.address = updates.address;
+      if (updates.phone !== undefined) backendUpdates.phone = updates.phone ? updates.phone.replace(/\D/g, '') : null;
+      // Address is NOT supported on User model via simple string update, so we exclude it to prevent validation errors.
+      // if (updates.address !== undefined) backendUpdates.address = updates.address; 
       if (updates.avatar_url !== undefined) backendUpdates.avatarUrl = updates.avatar_url;
       if (updates.bio !== undefined) backendUpdates.bio = updates.bio;
 

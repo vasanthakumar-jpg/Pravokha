@@ -15,6 +15,7 @@ import { RoleBasedRedirect } from "@/shared/ui/RoleBasedRedirect";
 import { AuthLoadingGuard } from "@/shared/ui/AuthLoadingGuard";
 import AdminLayout from "@/layout/AdminLayout";
 import SellerLayout from "@/layout/SellerLayout";
+import AccountLayout from "@/layout/AccountLayout";
 
 // Simple loading component
 const LoadingFallback = () => (
@@ -29,7 +30,6 @@ const Products = lazy(() => import("./feat/products/pages/ProductsPage"));
 const ProductDetail = lazy(() => import("./feat/products/pages/ProductDetailPage"));
 const Checkout = lazy(() => import("./feat/checkout/pages/CheckoutPage"));
 const Auth = lazy(() => import("./feat/auth/pages/AuthEnhancedPage"));
-const AuthUnified = lazy(() => import("./feat/auth/pages/AuthPage"));
 const Support = lazy(() => import("./feat/support/pages/SupportPage"));
 const Contact = lazy(() => import("./feat/support/pages/ContactPage"));
 const FAQ = lazy(() => import("./feat/support/pages/FAQPage"));
@@ -47,11 +47,6 @@ const PolicyPage = lazy(() => import("./feat/info/pages/PolicyPage/PolicyPage"))
 // Payment pages
 const PaymentSuccess = lazy(() => import("./feat/checkout/pages/PaymentSuccessPage"));
 const PaymentFailed = lazy(() => import("./feat/checkout/pages/PaymentFailedPage"));
-
-// Admin pages
-const AdminDashboard = lazy(() => import("./feat/admin/pages/AdminDashboard"));
-const AdminOrders = lazy(() => import("./feat/admin/pages/AdminOrders"));
-const AdminProducts = lazy(() => import("./feat/admin/pages/AdminProducts"));
 
 const EditProduct = lazy(() => import("./feat/admin/pages/EditProduct"));
 const AdminProductsManagement = lazy(() => import("./feat/admin/pages/AdminProductsManagement"));
@@ -104,7 +99,8 @@ const UserAccount = lazy(() => import("./feat/user/pages/UserAccount"));
 const UserDashboard = lazy(() => import("./feat/user/pages/UserDashboard"));
 const UserMessages = lazy(() => import("./feat/user/pages/UserMessages"));
 
-const UserSettings = lazy(() => import("./feat/user/pages/UserSettings"));
+const UserSettings = lazy(() => import("./feat/user/pages/UserSettings/UserSettingsPage"));
+const AddressManagement = lazy(() => import("./feat/user/pages/AddressManagement/AddressManagementPage"));
 const UserOrderDetail = lazy(() => import("./feat/user/pages/UserOrderDetail"));
 const AccessDenied = lazy(() => import("./feat/system/pages/AccessDeniedPage"));
 
@@ -215,7 +211,7 @@ export default function App() {
 
                           <Route path="/auth" element={
                             <Suspense fallback={<LoadingFallback />}>
-                              <AuthUnified />
+                              <Auth />
                             </Suspense>
                           } />
                           <Route path="/auth-enhanced" element={
@@ -243,11 +239,7 @@ export default function App() {
                               <Contact />
                             </Suspense>
                           } />
-                          <Route path="/profile" element={
-                            <Suspense fallback={<LoadingFallback />}>
-                              <Profile />
-                            </Suspense>
-                          } />
+                          <Route path="/profile" element={<Navigate to="/user/account/profile" replace />} />
                           <Route path="/faq" element={<Suspense fallback={<LoadingFallback />}><FAQ /></Suspense>} />
                           <Route path="/size-guide" element={<Suspense fallback={<LoadingFallback />}><SizeGuide /></Suspense>} />
                           <Route path="/shipping-returns" element={<Suspense fallback={<LoadingFallback />}><ShippingReturns /></Suspense>} />
@@ -275,21 +267,9 @@ export default function App() {
                           <Route path="/payments-info" element={<Suspense fallback={<LoadingFallback />}><PolicyPage type="payments" /></Suspense>} />
                           <Route path="/orders" element={<Navigate to="/user/orders" replace />} />
                           <Route path="/orders/:orderId" element={<NavigateToOrderDetail />} />
-                          <Route path="/settings" element={
-                            <Suspense fallback={<LoadingFallback />}>
-                              <UserSettings />
-                            </Suspense>
-                          } />
-                          <Route path="/account" element={
-                            <Suspense fallback={<LoadingFallback />}>
-                              <UserSettings />
-                            </Suspense>
-                          } />
-                          <Route path="/payments" element={
-                            <Suspense fallback={<LoadingFallback />}>
-                              <UserSettings />
-                            </Suspense>
-                          } />
+                          <Route path="/settings" element={<Navigate to="/user/account/settings" replace />} />
+                          <Route path="/account" element={<Navigate to="/user/account" replace />} />
+                          <Route path="/payments" element={<Navigate to="/user/account/settings" replace />} />
 
                           {/* Ticket System Routes */}
                           <Route path="/tickets" element={
@@ -562,11 +542,28 @@ export default function App() {
                                     </Suspense>
                                   } />
                                   <Route path="home" element={<Navigate to="/user" replace />} />
-                                  <Route path="account" element={
-                                    <Suspense fallback={<LoadingFallback />}>
-                                      <UserAccount />
-                                    </Suspense>
-                                  } />
+                                  <Route path="account" element={<AccountLayout />}>
+                                    <Route index element={
+                                      <Suspense fallback={<LoadingFallback />}>
+                                        <UserAccount />
+                                      </Suspense>
+                                    } />
+                                    <Route path="profile" element={
+                                      <Suspense fallback={<LoadingFallback />}>
+                                        <Profile />
+                                      </Suspense>
+                                    } />
+                                    <Route path="addresses" element={
+                                      <Suspense fallback={<LoadingFallback />}>
+                                        <AddressManagement />
+                                      </Suspense>
+                                    } />
+                                    <Route path="settings" element={
+                                      <Suspense fallback={<LoadingFallback />}>
+                                        <UserSettings />
+                                      </Suspense>
+                                    } />
+                                  </Route>
                                   <Route path="messages" element={
                                     <Suspense fallback={<LoadingFallback />}>
                                       <UserMessages />
@@ -582,7 +579,6 @@ export default function App() {
                                       <OrderHistory />
                                     </Suspense>
                                   } />
-                                  {/* Backend generates /user/orders/:orderId for notifications, so we handle it here */}
                                   <Route path="orders/detail/:orderId" element={
                                     <Suspense fallback={<LoadingFallback />}>
                                       <UserOrderDetail />

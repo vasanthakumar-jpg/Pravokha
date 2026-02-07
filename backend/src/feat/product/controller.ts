@@ -73,7 +73,8 @@ export const getProducts = asyncHandler(async (req: Request, res: Response) => {
         scope: scope as string,
         sort: sort as string,
         minPrice: req.query.minPrice ? Number(req.query.minPrice) : undefined,
-        maxPrice: req.query.maxPrice ? Number(req.query.maxPrice) : undefined
+        maxPrice: req.query.maxPrice ? Number(req.query.maxPrice) : undefined,
+        minRating: req.query.minRating ? Number(req.query.minRating) : undefined
     });
     res.status(200).json({ success: true, ...result });
 });

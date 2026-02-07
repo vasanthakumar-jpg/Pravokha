@@ -134,8 +134,6 @@ export function ProductCard({ product }: ProductCardProps) {
     };
 
     const p = product as any;
-    const isFeatured = p.isFeatured || p.featured || p.is_featured;
-    const isNew = p.isNew || p.newArrival || p.is_new;
     const isVerified = p.isVerified || p.is_verified;
 
     return (
@@ -162,16 +160,6 @@ export function ProductCard({ product }: ProductCardProps) {
                     loading="lazy"
                 />
                 <div className={styles.badges}>
-                    {isFeatured && (
-                        <Badge className={styles.badgeFeatured}>
-                            Featured
-                        </Badge>
-                    )}
-                    {isNew && (
-                        <Badge className={styles.badgeNew}>
-                            New
-                        </Badge>
-                    )}
                     {isVerified && (
                         <Badge className={styles.badgeVerified}>
                             <Shield className="h-2 w-2" /> Verified

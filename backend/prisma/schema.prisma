@@ -42,6 +42,7 @@ model User {
   preferences           UserPreference?
   vendor                Vendor?
   wishlist              Wishlist[]
+  returnRequests        ReturnRequest[]        @relation("CustomerReturns")
 
   @@map("users")
 }
@@ -82,6 +83,7 @@ model Vendor {
   orders            Order[]   @relation("VendorOrders")
   payouts           Payout[]  @relation("VendorPayouts")
   products          Product[]
+  stockAlerts       StockAlert[]
   owner             User      @relation(fields: [ownerId], references: [id])
 
   @@map("vendors")
@@ -182,6 +184,11 @@ model Product {
   createdAt             DateTime               @default(now()) @map("created_at")
   updatedAt             DateTime               @updatedAt @map("updated_at")
   deletedAt             DateTime?              @map("deleted_at")
+  hsnCode               String?                @map("hsn_code")
+  gstRate               Float                  @default(18) @map("gst_rate")
+  taxInclusive          Boolean                @default(false) @map("tax_inclusive")
+  lowStockThreshold     Int                    @default(10) @map("low_stock_threshold")
+  lastStockAlert        DateTime?              @map("last_stock_alert")
   orderItems            OrderItem[]
   images                ProductImage[]
   reviews               ProductReview[]
@@ -190,6 +197,7 @@ model Product {
   category              Category               @relation(fields: [categoryId], references: [id])
   vendor                Vendor                 @relation(fields: [vendorId], references: [id])
   wishlist              Wishlist[]
+  stockAlerts           StockAlert[]
 
   @@index([categoryId], map: "products_category_id_fkey")
   @@index([vendorId], map: "products_vendor_id_fkey")
@@ -296,6 +304,8 @@ model Order {
   trackingCarrier      String?              @map("tracking_carrier")
   shippedAt            DateTime?            @map("shipped_at")
   deliveredAt          DateTime?            @map("delivered_at")
+  deliveryOtp          String?              @map("delivery_otp")
+  otpExpiresAt         DateTime?            @map("otp_expires_at")
   notes                String?              @db.LongText
   version              Int                  @default(1)
   createdAt            DateTime             @default(now())
@@ -304,9 +314,17 @@ model Order {
   paymentFailureReason PaymentFailureReason @default(NONE) @map("payment_failure_reason")
   shippingFee          Float                @default(0) @map("shipping_fee")
   taxAmount            Float                @default(0) @map("tax_amount")
+  cgst                 Float                @default(0)
+  sgst                 Float                @default(0)
+  igst                 Float                @default(0)
+  gstAmount            Float                @default(0) @map("gst_amount")
+  buyerGstin           String?              @map("buyer_gstin")
+  paymentIntentId      String?              @map("payment_intent_id")
   items                OrderItem[]
   statusHistory        OrderStatusHistory[]
   paymentTransactions  PaymentTransaction[]
+  returnRequests       ReturnRequest[]
+  shipments            Shipment[]
   customer             User?                @relation("CustomerOrders", fields: [customerId], references: [id])
   vendor               Vendor               @relation("VendorOrders", fields: [vendorId], references: [id])
 
@@ -516,7 +534,9 @@ model ProductReview {
   title     String?
   comment   String?  @db.LongText
   images    String?  @db.LongText
+  metadata  String?  @db.LongText // Stored as JSON for review categories
   status    String   @default("published")
+  isDeleted Boolean  @default(false) @map("is_deleted")
   createdAt DateTime @default(now()) @map("created_at")
   product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -653,4 +673,92 @@ enum PaymentFailureReason {
   FRAUD_SUSPECTED
   INVALID_CARD
   CARD_NOT_SUPPORTED
+}
+
+enum EmailStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+model EmailLog {
+  id           String      @id @default(uuid())
+  recipient    String
+  subject      String
+  template     String
+  status       EmailStatus @default(PENDING)
+  sentAt       DateTime?   @map("sent_at")
+  errorMessage String?     @map("error_message") @db.LongText
+  metadata     String?     @db.LongText
+  createdAt    DateTime    @default(now()) @map("created_at")
+
+  @@map("email_logs")
+}
+
+enum ReturnStatus {
+  REQUESTED
+  APPROVED
+  REJECTED
+  PICKUP_SCHEDULED
+  PICKED_UP
+  REFUNDED
+}
+
+model ReturnRequest {
+  id              String       @id @default(uuid())
+  orderId         String       @map("order_id")
+  customerId      String       @map("customer_id")
+  reason          String       @db.LongText
+  status          ReturnStatus @default(REQUESTED)
+  images          String?      @db.LongText
+  refundAmount    Float        @map("refund_amount")
+  approvedBy      String?      @map("approved_by")
+  approvedAt      DateTime?    @map("approved_at")
+  rejectedReason  String?      @map("rejected_reason") @db.LongText
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+  order           Order        @relation(fields: [orderId], references: [id])
+  customer        User         @relation("CustomerReturns", fields: [customerId], references: [id])
+
+  @@map("return_requests")
+}
+
+enum ShipmentStatus {
+  PENDING
+  PICKUP_SCHEDULED
+  IN_TRANSIT
+  OUT_FOR_DELIVERY
+  DELIVERED
+  RETURNED
+  CANCELLED
+}
+
+model Shipment {
+  id                 String         @id @default(uuid())
+  orderId            String         @map("order_id")
+  shiprocketOrderId  Int?           @map("shiprocket_order_id")
+  awb                String?        // Airway Bill Number
+  courierName        String?        @map("courier_name")
+  trackingUrl        String?        @map("tracking_url")
+  status             ShipmentStatus @default(PENDING)
+  pickupScheduled    DateTime?      @map("pickup_scheduled")
+  createdAt          DateTime       @default(now()) @map("created_at")
+  updatedAt          DateTime       @updatedAt @map("updated_at")
+  order              Order          @relation(fields: [orderId], references: [id])
+
+  @@map("shipments")
+}
+
+model StockAlert {
+  id           String   @id @default(uuid())
+  productId    String   @map("product_id")
+  vendorId     String   @map("vendor_id")
+  currentStock Int      @map("current_stock")
+  threshold    Int
+  notified     Boolean  @default(false)
+  createdAt    DateTime @default(now()) @map("created_at")
+  product      Product  @relation(fields: [productId], references: [id])
+  vendor       Vendor   @relation(fields: [vendorId], references: [id])
+
+  @@map("stock_alerts")
 }

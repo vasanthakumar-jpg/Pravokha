@@ -251,7 +251,7 @@ export default function AdminPayments() {
     const refundedTxns = txns.filter(t => t.payment_status === 'refunded').length;
     const refundRate = txns.length > 0 ? (refundedTxns / txns.length) * 100 : 0;
 
-    setStats(prev => ({ ...prev, totalRevenue, successfulTxns, refundRate }));
+    setStats(prev => ({ ...prev, totalRevenue, successfulTxns, refundRate: isNaN(refundRate) ? 0 : refundRate }));
 
     // Aggregage data for chart (Last 7 days)
     const last7Days = Array.from({ length: 7 }, (_, i) => {
@@ -262,7 +262,7 @@ export default function AdminPayments() {
     const revenueChartData = last7Days.map(dateStr => {
       const dayTotal = txns
         .filter(t => (t.payment_status === 'paid' || t.payment_status === 'completed') && format(new Date(t.created_at), 'MMM dd') === dateStr)
-        .reduce((sum, t) => sum + t.total, 0);
+        .reduce((sum, t) => sum + (Number(t.total) || 0), 0);
       return { name: dateStr, amount: dayTotal };
     });
 
@@ -283,7 +283,7 @@ export default function AdminPayments() {
     const payoutChartData = last7Days.map(dateStr => {
       const dayTotal = requests
         .filter(r => r.status === 'completed' && format(new Date(r.created_at), 'MMM dd') === dateStr)
-        .reduce((sum, r) => sum + r.amount, 0);
+        .reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
       return { name: dateStr, amount: dayTotal };
     });
 
@@ -900,7 +900,7 @@ export default function AdminPayments() {
                     <CardHeader className="p-3 bg-muted/20 border-b border-border/10 pb-2">
                       <div className="flex justify-between items-start">
                         <div className="flex flex-col">
-                          <span className="font-bold text-sm text-primary">{request.profiles?.full_name || 'Marketplace Seller'}</span>
+                          <span className="font-bold text-sm text-primary">{request.seller?.name || 'Marketplace Seller'}</span>
                           <span className="text-[10px] text-muted-foreground">{format(new Date(request.created_at), "MMM d, p")}</span>
                         </div>
                         <div className="flex flex-col items-end gap-1">
@@ -921,8 +921,8 @@ export default function AdminPayments() {
                       <div className="flex justify-between items-center text-xs">
                         <div className="flex flex-col gap-0.5">
                           <span className="text-[10px] text-muted-foreground font-semibold uppercase">Banking Info</span>
-                          <span className="font-mono text-[10px]">{request.seller_secrets?.payout_details?.account_number ? `****${request.seller_secrets.payout_details.account_number.slice(-4)}` : 'UNSET'}</span>
-                          <span className="font-mono text-[10px] text-muted-foreground">IFSC: {request.seller_secrets?.payout_details?.ifsc || 'N/A'}</span>
+                          <span className="font-mono text-[10px]">{request.seller?.bankAccount ? `****${request.seller.bankAccount.slice(-4)}` : 'UNSET'}</span>
+                          <span className="font-mono text-[10px] text-muted-foreground">IFSC: {request.seller?.ifsc || 'N/A'}</span>
                         </div>
 
                         <DropdownMenu>
@@ -995,15 +995,15 @@ export default function AdminPayments() {
                           <TableRow key={request.id}>
                             <TableCell>
                               <div className="flex flex-col">
-                                <span className="font-bold text-sm">{request.profiles?.full_name || 'Marketplace Seller'}</span>
-                                <span className="text-[10px] text-muted-foreground">{request.profiles?.email}</span>
+                                <span className="font-bold text-sm">{request.seller?.name || 'Marketplace Seller'}</span>
+                                <span className="text-[10px] text-muted-foreground">{request.seller?.email}</span>
                               </div>
                             </TableCell>
                             <TableCell className="font-bold text-sm text-emerald-600">₹{request.amount.toLocaleString()}</TableCell>
                             <TableCell>
                               <div className="flex flex-col gap-1">
-                                <Badge variant="outline" className="w-fit text-[9px] font-mono py-0">{request.seller_secrets?.payout_details?.account_number ? `****${request.seller_secrets.payout_details.account_number.slice(-4)}` : 'UNSET'}</Badge>
-                                <span className="text-[10px] font-mono text-muted-foreground">IFSC: {request.seller_secrets?.payout_details?.ifsc || 'N/A'}</span>
+                                <Badge variant="outline" className="w-fit text-[9px] font-mono py-0">{request.seller?.bankAccount ? `****${request.seller.bankAccount.slice(-4)}` : 'UNSET'}</Badge>
+                                <span className="text-[10px] font-mono text-muted-foreground">IFSC: {request.seller?.ifsc || 'N/A'}</span>
                               </div>
                             </TableCell>
                             <TableCell className="text-xs font-medium text-muted-foreground">

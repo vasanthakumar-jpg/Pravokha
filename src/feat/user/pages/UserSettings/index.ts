@@ -1,2 +1,2 @@
-export * from "./UserSettings";
-export { default } from "./UserSettings";
+export * from "./UserSettingsPage";
+export { default } from "./UserSettingsPage";

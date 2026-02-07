@@ -28,10 +28,16 @@ interface Review {
     images?: string[];
     createdAt: string;
     status: string;
+    metadata?: string;
     user?: {
         name: string;
         image?: string;
     }
+}
+
+interface CategoryRating {
+    name: string;
+    rating: number;
 }
 
 export const ProductReviews = ({ productId, reviews, isLoading, onReviewAction }: ProductReviewsProps) => {
@@ -49,11 +55,53 @@ export const ProductReviews = ({ productId, reviews, isLoading, onReviewAction }
         rating?: string;
     }>({});
 
+    // New State for Category Ratings
+    const [categoryRatings, setCategoryRatings] = useState<CategoryRating[]>([]);
+    const [reviewCategories, setReviewCategories] = useState<string[]>([]);
+
+    // Fetch product details to get review categories from tags
+    useEffect(() => {
+        const fetchProductDetails = async () => {
+            try {
+                const response = await apiClient.get(`/products/${productId}`);
+                if (response.data.success) {
+                    const product = response.data.data;
+                    if (product) {
+                        const tags = product.tags || [];
+                        const cats = Array.isArray(tags)
+                            ? tags.filter((t: string) => t.startsWith("review_cat:"))
+                                .map((t: string) => t.replace("review_cat:", ""))
+                            : [];
+
+                        if (cats.length > 0) {
+                            setReviewCategories(cats);
+                            setCategoryRatings(cats.map((c: string) => ({ name: c, rating: 0 })));
+                        } else {
+                            // Default Categories if none specified
+                            const defaults = ["Quality", "Value", "Accuracy"];
+                            setReviewCategories(defaults);
+                            setCategoryRatings(defaults.map(c => ({ name: c, rating: 0 })));
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error("Failed to fetch product for review categories", err);
+            }
+        };
+        fetchProductDetails();
+    }, [productId]);
+
+    const handleCategoryRatingChange = (categoryIndex: number, newRating: number) => {
+        const updated = [...categoryRatings];
+        updated[categoryIndex].rating = newRating;
+        setCategoryRatings(updated);
+    };
+
     const validateForm = () => {
         const errors: typeof validationErrors = {};
 
         if (!rating) {
-            errors.rating = "Please select a rating";
+            errors.rating = "Please select an overall rating";
         }
         if (!title.trim()) {
             errors.title = "Title is required";
@@ -135,12 +183,17 @@ export const ProductReviews = ({ productId, reviews, isLoading, onReviewAction }
                 }
             }
 
+            const metadata = {
+                categoryRatings: categoryRatings.reduce((acc, curr) => ({ ...acc, [curr.name]: curr.rating }), {})
+            };
+
             const reviewData = {
                 productId: productId,
                 rating,
                 title: title.trim(),
                 comment: reviewText.trim(),
                 images: imageUrls,
+                metadata: JSON.stringify(metadata)
             };
 
             if (editingReview) {
@@ -161,6 +214,7 @@ export const ProductReviews = ({ productId, reviews, isLoading, onReviewAction }
             setReviewText("");
             setSelectedImages([]);
             setValidationErrors({});
+            setCategoryRatings(reviewCategories.map(c => ({ name: c, rating: 0 })));
 
             onReviewAction?.();
         } catch (error: any) {
@@ -176,6 +230,22 @@ export const ProductReviews = ({ productId, reviews, isLoading, onReviewAction }
         setRating(review.rating);
         setTitle(review.title);
         setReviewText(review.comment);
+
+        if (review.metadata) {
+            try {
+                const meta = JSON.parse(review.metadata);
+                if (meta.categoryRatings) {
+                    const loadedRatings = Object.entries(meta.categoryRatings).map(([name, rating]) => ({
+                        name,
+                        rating: Number(rating)
+                    }));
+                    setCategoryRatings(loadedRatings);
+                }
+            } catch (e) {
+                console.error("Failed to parse review metadata", e);
+            }
+        }
+
         window.scrollTo({ top: 0, behavior: "smooth" });
     };
 
@@ -206,9 +276,8 @@ export const ProductReviews = ({ productId, reviews, isLoading, onReviewAction }
                         {editingReview ? "Edit Your Review" : "Write a Review"}
                     </h3>
 
-                    {/* Rating */}
                     <div className={styles.ratingContainer}>
-                        <label className={styles.label}>Rating *</label>
+                        <label className={styles.label}>Overall Rating *</label>
                         <InteractiveStarRating
                             rating={rating}
                             onRatingChange={(newRating) => {
@@ -222,7 +291,22 @@ export const ProductReviews = ({ productId, reviews, isLoading, onReviewAction }
                         )}
                     </div>
 
-                    {/* Title */}
+                    {reviewCategories.length > 0 && (
+                        <div className="bg-muted/30 p-4 rounded-lg space-y-3">
+                            <h4 className="text-sm font-semibold text-muted-foreground mb-2">Detailed Ratings</h4>
+                            {categoryRatings.map((cat, index) => (
+                                <div key={index} className="flex items-center justify-between max-w-xs">
+                                    <span className="text-sm">{cat.name}</span>
+                                    <InteractiveStarRating
+                                        rating={cat.rating}
+                                        onRatingChange={(r) => handleCategoryRatingChange(index, r)}
+                                        size="sm"
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
                     <div className={styles.fieldGroup}>
                         <label className={styles.label}>Review Title *</label>
                         <Input
@@ -248,7 +332,6 @@ export const ProductReviews = ({ productId, reviews, isLoading, onReviewAction }
                         )}
                     </div>
 
-                    {/* Review Text */}
                     <div className={styles.fieldGroup}>
                         <label className={styles.label}>Your Review *</label>
                         <div className={styles.textAreaContainer}>
@@ -282,7 +365,6 @@ export const ProductReviews = ({ productId, reviews, isLoading, onReviewAction }
                         </div>
                     </div>
 
-                    {/* Image Upload */}
                     <div className={styles.imageUploadSection}>
                         <label className={styles.label}>
                             Add Photos (Optional - Max 3, JPG/PNG/WebP, 5MB each)
@@ -350,7 +432,6 @@ export const ProductReviews = ({ productId, reviews, isLoading, onReviewAction }
                 </Card>
             )}
 
-            {/* Reviews List */}
             <div className={styles.reviewsListSection}>
                 <h3 className={styles.reviewsTitle}>Customer Reviews</h3>
 
@@ -389,6 +470,29 @@ export const ProductReviews = ({ productId, reviews, isLoading, onReviewAction }
                             <h4 className={styles.reviewTitle}>{review.title}</h4>
                             <p className={styles.reviewComment}>{review.comment}</p>
 
+                            {review.metadata && (
+                                <div className="mt-3 mb-3 grid grid-cols-2 gap-x-4 gap-y-1">
+                                    {(() => {
+                                        try {
+                                            const meta = JSON.parse(review.metadata);
+                                            if (meta.categoryRatings) {
+                                                return Object.entries(meta.categoryRatings).map(([name, rating]) => (
+                                                    <div key={name} className="flex items-center justify-between text-xs">
+                                                        <span className="text-muted-foreground capitalize">{name}</span>
+                                                        <InteractiveStarRating
+                                                            rating={Number(rating)}
+                                                            readOnly
+                                                            size="sm"
+                                                            showQuotes={false}
+                                                        />
+                                                    </div>
+                                                ));
+                                            }
+                                        } catch (e) { return null; }
+                                    })()}
+                                </div>
+                            )}
+
                             {review.images && review.images.length > 0 && (
                                 <div className={styles.reviewImages}>
                                     {review.images.map((imageUrl, index) => (
@@ -416,7 +520,6 @@ export const ProductReviews = ({ productId, reviews, isLoading, onReviewAction }
                 )}
             </div>
 
-            {/* Image Modal */}
             {selectedModalImage && (
                 <div
                     className={styles.modalOverlay}

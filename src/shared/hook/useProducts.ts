@@ -12,6 +12,8 @@ export interface ProductFilters {
   maxPrice?: number;
   tag?: string;
   subcategory?: string;
+  minDiscount?: number;
+  minRating?: number;
 }
 
 export function useProducts(filters: ProductFilters = {}) {
@@ -39,6 +41,7 @@ export function useProducts(filters: ProductFilters = {}) {
       if (filters.minPrice !== undefined) params.minPrice = filters.minPrice;
       if (filters.maxPrice !== undefined) params.maxPrice = filters.maxPrice;
       if (filters.tag) params.tag = filters.tag;
+      if (filters.minRating !== undefined) params.minRating = filters.minRating;
       // Subcategory isn't directly supported by backend yet as a param, logic might need adjustment if backend doesn't support 'subcategory' param.
       // Checking backend controller... it accepts 'category' (slug). 
       // If subcategory is passed, we might need to handle it. 
@@ -68,8 +71,6 @@ export function useProducts(filters: ProductFilters = {}) {
         reviews: parseInt(p.reviews) || 0,
         sku: p.sku,
         sellerId: p.dealerId || p.seller_id,
-        featured: p.isFeatured || p.is_featured || false,
-        newArrival: p.isNew || p.is_new || false,
         variants: (p.variants || []).map((v: any) => ({
           id: v.id,
           colorName: v.colorName || v.color_name || 'Default',

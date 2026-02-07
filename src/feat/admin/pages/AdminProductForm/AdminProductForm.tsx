@@ -73,7 +73,6 @@ interface ProductFormData {
     existingVariantImages: Record<string, string[]>; // Key: ColorOption.id
     imagesToDelete: string[]; // Cleanup queue
 
-    is_featured?: boolean;
     is_verified?: boolean;
 }
 
@@ -99,7 +98,6 @@ const INITIAL_FORM_DATA: ProductFormData = {
     existingVariantImages: {},
     imagesToDelete: [],
 
-    is_featured: false,
     is_verified: false,
 };
 
@@ -262,7 +260,6 @@ export default function AdminProductForm() {
                     discountPrice: (product.compareAtPrice || product.compare_at_price) ? product.price.toString() : (product.discountPrice || product.discount_price || "").toString(),
                     stockQuantity: totalStock.toString(),
                     published: product.published ?? product.is_published ?? (product.status === 'ACTIVE'),
-                    is_featured: product.isFeatured ?? product.is_featured ?? false,
                     is_verified: product.isVerified ?? product.is_verified ?? false,
                     selectedColors: colors,
                     selectedSizes: sizes,
@@ -532,7 +529,6 @@ export default function AdminProductForm() {
                 price: Number(formData.price),
                 discount_price: formData.discountPrice ? Number(formData.discountPrice) : null,
                 published: formData.published,
-                is_featured: formData.is_featured,
                 is_verified: formData.is_verified,
                 seller_id: user?.id,
                 variants: variantsData,

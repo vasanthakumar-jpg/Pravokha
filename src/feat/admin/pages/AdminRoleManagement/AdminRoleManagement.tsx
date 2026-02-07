@@ -47,11 +47,13 @@ export default function AdminRoleManagement() {
     if (!role) return "user";
     const r = role.toLowerCase();
     if (r === 'dealer') return 'seller';
+    if (r === 'customer') return 'user';
     return r;
   };
 
   const mapRoleFrontToBack = (role: string): string => {
-    if (role === 'DEALER' || role === 'seller') return 'DEALER';
+    if (role === 'DEALER' || role === 'seller') return 'SELLER';
+    if (role === 'user') return 'CUSTOMER';
     return role.toUpperCase();
   };
 

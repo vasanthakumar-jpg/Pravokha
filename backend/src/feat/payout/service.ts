@@ -58,12 +58,18 @@ export class PayoutService {
     }
 
     static async getVendorBalance(vendorId: string) {
-        // Find all orders for this vendor that are delivered and paid
+        // Enforce 7-day Cooling Off Period (Perfect 10)
+        const coolingOffDate = new Date();
+        coolingOffDate.setDate(coolingOffDate.getDate() - 7);
+
         const orders = await prisma.order.findMany({
             where: {
                 vendorId,
                 status: OrderStatus.DELIVERED,
-                paymentStatus: PaymentStatus.PAID
+                paymentStatus: PaymentStatus.PAID,
+                deliveredAt: {
+                    lte: coolingOffDate
+                }
             },
             select: {
                 vendorEarnings: true
@@ -105,7 +111,8 @@ export class PayoutService {
             where: {
                 vendorId,
                 status: OrderStatus.DELIVERED,
-                paymentStatus: PaymentStatus.PAID
+                paymentStatus: PaymentStatus.PAID,
+                // We show all delivered orders in transactions, but balance is filtered by cooling off
             },
             orderBy: {
                 createdAt: 'desc'

@@ -19,6 +19,7 @@ import { usePreferences } from "@/shared/hook/usePreferences";
 import { useAuth } from "@/core/context/AuthContext";
 import {
   Form,
+
   FormControl,
   FormDescription,
   FormField,
@@ -26,7 +27,9 @@ import {
   FormLabel,
   FormMessage,
 } from "@/ui/Form";
+import { profileUpdateSchema } from "@/shared/validation/user.schema";
 import { useToast } from "@/shared/hook/use-toast";
+
 import { Separator } from "@/ui/Separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/ui/Avatar";
 import { apiClient } from "@/infra/api/apiClient";
@@ -164,14 +167,24 @@ export default function SellerSettings() {
   // --- HANDLERS ---
 
   const handleProfileSave = async () => {
-    if (!profileName.trim()) {
-      toast({ title: "Name Required", description: "Please enter your full name.", variant: "destructive" });
+    // 1. Validate with Zod
+    const validationResult = profileUpdateSchema.safeParse({
+      name: profileName,
+      phone: profilePhone,
+      bio: profileBio,
+      dateOfBirth: profileDob
+    });
+
+    if (!validationResult.success) {
+      const firstError = validationResult.error.errors[0];
+      toast({
+        title: "Validation Error",
+        description: firstError.message,
+        variant: "destructive"
+      });
       return;
     }
-    if (!/^[0-9]{10}$/.test(profilePhone)) {
-      toast({ title: "Invalid Phone", description: "Mobile number must be exactly 10 digits.", variant: "destructive" });
-      return;
-    }
+
     setUpdatingProfile(true);
     try {
       await updateProfile({
@@ -187,6 +200,7 @@ export default function SellerSettings() {
         className: "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
       });
     } catch (err) {
+
       toast({
         title: "Update Failed",
         description: "Could not update profile details.",

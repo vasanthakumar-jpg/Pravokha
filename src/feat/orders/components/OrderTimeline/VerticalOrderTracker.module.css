@@ -1,0 +1,222 @@
+root {
+    --tracker-primary: #0D5D5D;
+    --tracker-secondary: #E9ECEF;
+    --tracker-text-primary: #1F2937;
+    --tracker-text-muted: #6B7280;
+}
+
+.container {
+    width: 100%;
+    padding: 1.5rem 0;
+}
+
+.timeline {
+    display: flex;
+    flex-direction: column;
+    padding-left: 0.25rem;
+}
+
+.stepWrapper {
+    display: flex;
+    gap: 1.25rem;
+    min-height: 85px;
+}
+
+.indicatorColumn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 48px;
+    flex-shrink: 0;
+}
+
+.iconBox {
+    position: relative;
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+    cursor: pointer;
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.pendingIcon {
+    background-color: white;
+    border: 2px solid #E5E7EB;
+    color: #9CA3AF;
+}
+
+.completedIcon {
+    background-color: #0D5D5D;
+    border: 2px solid #0D5D5D;
+    color: white;
+    box-shadow: 0 4px 12px rgba(13, 93, 93, 0.15);
+}
+
+.activeIcon {
+    background-color: #0D5D5D;
+    border: 2px solid #0D5D5D;
+}
+
+.activeGlow {
+    position: absolute;
+    inset: -6px;
+    border-radius: 50%;
+    background-color: rgba(13, 93, 93, 0.12);
+    z-index: -1;
+    animation: pulseGlow 2s infinite ease-in-out;
+}
+
+@keyframes pulseGlow {
+    0% {
+        transform: scale(1);
+        opacity: 0.6;
+    }
+
+    50% {
+        transform: scale(1.15);
+        opacity: 0.3;
+    }
+
+    100% {
+        transform: scale(1);
+        opacity: 0.6;
+    }
+}
+
+.icon {
+    width: 22px;
+    height: 22px;
+}
+
+.iconWhite {
+    color: white !important;
+}
+
+.iconMuted {
+    color: #9CA3AF !important;
+}
+
+.lineBase {
+    width: 3px;
+    flex-grow: 1;
+    background-color: #F1F3F5;
+    margin: 6px 0;
+    z-index: 1;
+    overflow: hidden;
+    border-radius: 2px;
+}
+
+.lineInner {
+    width: 100%;
+    background-color: #E5E7EB;
+    /* Default inner color */
+}
+
+.completedLine {
+    background-color: #0D5D5D;
+}
+
+.contentColumn {
+    flex: 1;
+    padding-bottom: 2.5rem;
+    padding-top: 0.65rem;
+}
+
+.header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    cursor: pointer;
+    user-select: none;
+}
+
+.label {
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 0.15rem;
+    transition: all 0.3s ease;
+    letter-spacing: -0.01em;
+}
+
+.labelPending {
+    color: #4B5563;
+}
+
+.labelCompleted {
+    color: #111827;
+}
+
+.labelActive {
+    color: #0D5D5D;
+}
+
+.dateText {
+    font-size: 0.85rem;
+    color: #6B7280;
+    font-weight: 500;
+    margin-top: 2px;
+}
+
+.detailsExpansion {
+    overflow: hidden;
+}
+
+.detailsCard {
+    margin-top: 1rem;
+    padding: 1.25rem;
+    background-color: #F8FAFB;
+    border-radius: 14px;
+    border: 1px solid #E9EFF2;
+}
+
+.detailsText {
+    font-size: 0.9rem;
+    color: #4B5563;
+    line-height: 1.6;
+}
+
+.updateMessage {
+    margin-top: 0.65rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #0D5D5D;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+@media (max-width: 640px) {
+    .stepWrapper {
+        gap: 1rem;
+    }
+
+    .iconBox {
+        width: 38px;
+        height: 38px;
+    }
+
+    .icon {
+        width: 18px;
+        height: 18px;
+    }
+
+    .label {
+        font-size: 0.9rem;
+    }
+
+    .contentColumn {
+        padding-bottom: 2rem;
+    }
+
+    .line {
+        width: 2.5px;
+    }
+
+    .indicatorColumn {
+        width: 38px;
+    }
+}

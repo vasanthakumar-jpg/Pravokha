@@ -49,7 +49,8 @@ import { useToast } from "@/shared/hook/use-toast";
 import { apiClient } from "@/infra/api/apiClient";
 import { useAuth } from "@/core/context/AuthContext";
 import { generateInvoicePDF } from "@/shared/util/invoiceGenerator";
-import { cn } from "@/lib/utils";
+import { cn, getMediaUrl } from "@/lib/utils";
+import { VerticalOrderTracker } from "@/feat/orders/components/OrderTimeline/VerticalOrderTracker";
 
 // Safe date formatting helper
 const safeFormatDate = (dateValue: any, formatStr: string, fallback: string = 'N/A'): string => {
@@ -537,6 +538,7 @@ export default function SellerOrderDetail() {
               <div className="divide-y divide-border">
                 {(Array.isArray(order.items) ? order.items : []).map((item: any, i: number) => {
                   const productId = item.productId || item.product_id || item.id;
+                  const rawImageUrl = item.product?.images?.[0]?.url || item.product?.variants?.[0]?.images?.[0] || null;
                   const imageUrl = getMediaUrl(rawImageUrl) || "https://placehold.co/100x120/e2e8f0/64748b?text=No+Image";
 
                   return (
@@ -682,35 +684,19 @@ export default function SellerOrderDetail() {
           <Card className="border shadow-sm bg-card">
             <CardHeader className="bg-muted/40 pb-4">
               <CardTitle className="text-lg flex items-center gap-2 text-foreground">
-                <Clock className="w-5 h-5 text-muted-foreground" /> Order Timeline
+                <Clock className="w-5 h-5 text-muted-foreground" /> Order Tracking
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-6">
-              <div className="relative pl-8 sm:pl-8 border-l-2 border-border space-y-8 ml-2">
-                <AnimatePresence>
-                  {timeline.map((event, i) => (
-                    <motion.div
-                      layout
-                      key={i}
-                      className="relative"
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: i * 0.1, duration: 0.4 }}
-                    >
-                      <div className={cn("absolute -left-[21px] top-1 h-8 w-8 sm:h-10 sm:w-10 rounded-full border-2 sm:border-4 border-background flex items-center justify-center shadow-sm",
-                        event.status === 'Delivered' ? "bg-[#E6F3F2] text-[#0E6C68]" : "bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400"
-                      )}>
-                        <event.icon className="h-4 w-4 sm:h-5 sm:w-5" />
-                      </div>
-                      <div className="pl-6 group">
-                        <h4 className="font-semibold text-sm sm:text-base text-foreground group-hover:text-primary transition-colors">{event.status}</h4>
-                        <p className="text-xs sm:text-sm text-muted-foreground mt-1 leading-relaxed">{event.description}</p>
-                        <p className="text-[10px] sm:text-xs font-bold text-muted-foreground/60 mt-1 uppercase tracking-wider">{safeFormatDate(event.timestamp, 'MMM dd, yyyy • HH:mm')}</p>
-                      </div>
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-              </div>
+              <VerticalOrderTracker
+                status={order.order_status}
+                createdAt={order.created_at}
+                trackingUpdates={orderHistory.map(h => ({
+                  status: (h.status || h.newStatus || h.new_status || '').toLowerCase(),
+                  timestamp: h.createdAt || h.created_at || h.timestamp,
+                  message: h.notes || h.description
+                }))}
+              />
             </CardContent>
           </Card>
 

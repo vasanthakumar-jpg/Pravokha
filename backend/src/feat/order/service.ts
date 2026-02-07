@@ -2,6 +2,7 @@ import { OrderStatus, PaymentStatus, Role } from '@prisma/client';
 import { prisma } from '../../infra/database/client';
 import { ProductService } from '../product/service';
 import { RazorpayService } from '../payment/razorpay.service';
+import { marketplaceEmitter, MARKETPLACE_EVENTS } from '../../shared/util/events';
 
 export class OrderService {
     static async createOrder(data: {
@@ -47,6 +48,15 @@ export class OrderService {
             for (const item of items) {
                 const product = products.find(p => p.id === item.productId);
                 if (!product) throw new Error(`Product ${item.productId} not found`);
+
+                // Security Audit Fix: Validate product status and blocked state
+                if (product.status !== 'PUBLISHED' && product.status !== 'ACTIVE') {
+                    throw new Error(`Product ${product.title} is currently not available for purchase (Status: ${product.status})`);
+                }
+                if (product.isBlocked) {
+                    throw new Error(`Product ${product.title} is currently blocked`);
+                }
+
                 if (product.stock < item.quantity) throw new Error(`Insufficient stock for ${product.title}`);
 
                 sanitizedItemsForDiscount.push({ productId: item.productId, quantity: item.quantity, price: product.price });
@@ -412,6 +422,12 @@ export class OrderService {
 
             if (!currentOrder) throw new Error('Order not found');
 
+            // 1. Idempotency Check
+            if (currentOrder.status === newStatus) {
+                console.log(`[OrderService] Status update is idempotent for order ${id} (${newStatus})`);
+                return currentOrder;
+            }
+
             // Access Control
             if (options.role === Role.SELLER) {
                 const vendor = await tx.vendor.findUnique({ where: { ownerId: options.userId } });
@@ -424,6 +440,16 @@ export class OrderService {
 
             if (options.version !== undefined && currentOrder.version !== options.version) {
                 throw new Error(`Concurrency conflict: Order has been updated (Local: ${options.version}, DB: ${currentOrder.version})`);
+            }
+
+            // 2. Delivery Verification (OTP)
+            if (newStatus === OrderStatus.DELIVERED) {
+                // If it's a real delivery, we check the OTP
+                // (Admins might override this, but let's enforce it for standard flow)
+                const providedOtp = (options as any).otp;
+                if (currentOrder.deliveryOtp && currentOrder.deliveryOtp !== providedOtp) {
+                    throw new Error('Invalid delivery verification code (OTP)');
+                }
             }
 
             const updateData: any = {
@@ -448,6 +474,19 @@ export class OrderService {
                     }
                 },
                 include: { items: true }
+            });
+
+            // 3. Emit Event for side effects (OTP, AWB, Earnings, etc.)
+            marketplaceEmitter.emit(MARKETPLACE_EVENTS.ORDER_STATUS_CHANGED, {
+                orderId: updatedOrder.id,
+                oldStatus: currentOrder.status,
+                newStatus: updatedOrder.status,
+                userId: options.userId,
+                role: options.role,
+                metadata: {
+                    trackingNumber: updatedOrder.trackingNumber,
+                    trackingCarrier: updatedOrder.trackingCarrier
+                }
             });
 
             return updatedOrder;

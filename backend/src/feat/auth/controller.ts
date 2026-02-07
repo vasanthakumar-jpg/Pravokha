@@ -97,3 +97,19 @@ export const passwordReset = asyncHandler(async (req: Request, res: Response) =>
     // Allow simulation even without checking DB if needed, or strictly check
     res.json({ success: true, message: 'Reset instruction sent (Simulation)' });
 });
+export const changePassword = asyncHandler(async (req: Request, res: Response) => {
+    const user = (req as any).user;
+    const result = await AuthService.changePassword(user.id, req.body);
+
+    await AuditService.logAction({
+        performedBy: user.id,
+        performerRole: user.role,
+        performerEmail: user.email,
+        entity: 'User',
+        entityId: user.id,
+        action: AuditAction.UPDATE,
+        reason: `User changed password`
+    });
+
+    res.json(result);
+});

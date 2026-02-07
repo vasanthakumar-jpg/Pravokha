@@ -292,7 +292,17 @@ export const getSiteSettings = asyncHandler(async (req: Request, res: Response) 
 });
 
 export const updateSiteSettings = asyncHandler(async (req: Request, res: Response) => {
-    const { storeName, storeUrl, maintenanceMode, autoConfirmOrders, logoUrl, bannerUrl, taxRate, defaultShippingFee } = req.body;
+    const {
+        storeName,
+        storeUrl,
+        maintenanceMode,
+        autoConfirmOrders,
+        logoUrl,
+        bannerUrl,
+        taxRate,
+        defaultShippingFee,
+        commissionRate
+    } = req.body;
 
     const data: any = {};
     if (storeName !== undefined) data.storeName = storeName;
@@ -303,6 +313,7 @@ export const updateSiteSettings = asyncHandler(async (req: Request, res: Respons
     if (bannerUrl !== undefined) data.bannerUrl = bannerUrl;
     if (taxRate !== undefined) data.taxRate = taxRate;
     if (defaultShippingFee !== undefined) data.defaultShippingFee = defaultShippingFee;
+    if (commissionRate !== undefined) data.commissionRate = commissionRate;
 
     const settings = await prisma.siteSetting.upsert({
         where: { id: 'primary' },
@@ -319,7 +330,7 @@ export const getNotificationSettings = asyncHandler(async (req: Request, res: Re
 });
 
 export const updateNotificationSettings = asyncHandler(async (req: Request, res: Response) => {
-    const newSettings = req.body;
+    const { governanceAlerts, revenueTelemetry, inventoryCriticality } = req.body;
 
     // Merge with existing
     const current = await getOrCreateSettings();
@@ -328,7 +339,12 @@ export const updateNotificationSettings = asyncHandler(async (req: Request, res:
     const updated = await prisma.siteSetting.update({
         where: { id: 'primary' },
         data: {
-            notificationSettings: { ...currentNotifs, ...newSettings }
+            notificationSettings: {
+                ...currentNotifs,
+                governanceAlerts: governanceAlerts ?? currentNotifs.governanceAlerts,
+                revenueTelemetry: revenueTelemetry ?? currentNotifs.revenueTelemetry,
+                inventoryCriticality: inventoryCriticality ?? currentNotifs.inventoryCriticality
+            }
         }
     });
 
@@ -336,7 +352,16 @@ export const updateNotificationSettings = asyncHandler(async (req: Request, res:
 });
 
 export const updateSystemSettings = asyncHandler(async (req: Request, res: Response) => {
-    const newSettings = req.body;
+    const {
+        currency,
+        timezone,
+        analyticsEnabled,
+        aiInsightsEnabled,
+        payoutAutomationEnabled,
+        sessionTrackingEnabled,
+        dataAnonymizationEnabled,
+        publicIndexingEnabled
+    } = req.body;
 
     // Merge with existing
     const current = await getOrCreateSettings();
@@ -345,7 +370,17 @@ export const updateSystemSettings = asyncHandler(async (req: Request, res: Respo
     const updated = await prisma.siteSetting.update({
         where: { id: 'primary' },
         data: {
-            systemSettings: { ...currentSys, ...newSettings }
+            systemSettings: {
+                ...currentSys,
+                currency: currency ?? currentSys.currency,
+                timezone: timezone ?? currentSys.timezone,
+                analyticsEnabled: analyticsEnabled ?? currentSys.analyticsEnabled,
+                aiInsightsEnabled: aiInsightsEnabled ?? currentSys.aiInsightsEnabled,
+                payoutAutomationEnabled: payoutAutomationEnabled ?? currentSys.payoutAutomationEnabled,
+                sessionTrackingEnabled: sessionTrackingEnabled ?? currentSys.sessionTrackingEnabled,
+                dataAnonymizationEnabled: dataAnonymizationEnabled ?? currentSys.dataAnonymizationEnabled,
+                publicIndexingEnabled: publicIndexingEnabled ?? currentSys.publicIndexingEnabled
+            }
         }
     });
 

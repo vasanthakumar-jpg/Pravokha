@@ -43,8 +43,6 @@ export function WishlistPage() {
                     reviews: Math.max(0, parseInt(p.reviews) || 0),
                     sku: p.sku,
                     sellerId: p.seller_id,
-                    featured: p.isFeatured || false,
-                    newArrival: p.isNew || false,
                     variants: (p.variants || []).map((v: any) => ({
                         id: v.id,
                         colorName: v.colorName,

@@ -1,6 +1,6 @@
-import { Request, Response } from 'express';
 import { prisma } from '../../infra/database/client';
 import { asyncHandler } from '../../utils/asyncHandler';
+import { marketplaceEmitter, MARKETPLACE_EVENTS } from '../../shared/util/events';
 
 export class CategoryController {
     // 1. Category Management
@@ -64,6 +64,18 @@ export class CategoryController {
         });
 
         res.status(201).json({ success: true, category });
+
+        // Trigger Audit Log
+        const user = (req as any).user;
+        marketplaceEmitter.emit(MARKETPLACE_EVENTS.ADMIN_ACTION_PERFORMED, {
+            adminId: user?.id,
+            role: user?.role,
+            action: 'CREATE_CATEGORY',
+            entity: 'Category',
+            entityId: category.id,
+            changes: { name: category.name, slug: category.slug },
+            ip: req.ip
+        });
     });
 
     static updateCategory = asyncHandler(async (req: Request, res: Response) => {
@@ -84,6 +96,18 @@ export class CategoryController {
         });
 
         res.json({ success: true, category });
+
+        // Trigger Audit Log
+        const user = (req as any).user;
+        marketplaceEmitter.emit(MARKETPLACE_EVENTS.ADMIN_ACTION_PERFORMED, {
+            adminId: user?.id,
+            role: user?.role,
+            action: 'UPDATE_CATEGORY',
+            entity: 'Category',
+            entityId: category.id,
+            changes: req.body,
+            ip: req.ip
+        });
     });
 
     static deleteCategory = asyncHandler(async (req: Request, res: Response) => {

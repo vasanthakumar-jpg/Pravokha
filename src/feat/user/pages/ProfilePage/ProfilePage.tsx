@@ -16,6 +16,8 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/ui/Collap
 import { useProfile } from "@/shared/hook/useProfile";
 import { useAuth } from "@/core/context/AuthContext";
 import { getMediaUrl } from "@/lib/utils";
+import { profileUpdateSchema } from "@/shared/validation/user.schema";
+import { ZodError } from "zod";
 
 export function ProfilePage() {
     const navigate = useNavigate();
@@ -42,6 +44,7 @@ export function ProfilePage() {
         new: "",
         confirm: "",
     });
+    const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
     useEffect(() => {
         if (user) {
@@ -144,24 +147,35 @@ export function ProfilePage() {
 
     const handleSave = async () => {
         if (!user) return;
+        setFormErrors({});
 
-        // Validation
-        if (!profile.full_name.trim()) {
-            toast({ title: "Validation Error", description: "Full name is required", variant: "destructive" });
-            return;
-        }
-
-        if (profile.phone && (profile.phone.length !== 10 || !/^\d+$/.test(profile.phone))) {
-            toast({ title: "Validation Error", description: "Please enter a valid 10-digit mobile number", variant: "destructive" });
-            return;
+        // Validation using Zod
+        try {
+            profileUpdateSchema.parse({
+                name: profile.full_name,
+                phone: profile.phone,
+                bio: (userProfile as any)?.bio, // Using existing bio if not changed
+                avatarUrl: profile.avatar_url
+            });
+        } catch (error) {
+            if (error instanceof ZodError) {
+                const errors: Record<string, string> = {};
+                error.errors.forEach(err => {
+                    const path = err.path[0] === 'name' ? 'full_name' : err.path[0].toString();
+                    errors[path] = err.message;
+                });
+                setFormErrors(errors);
+                toast({ title: "Validation Error", description: "Please check the form for errors", variant: "destructive" });
+                return;
+            }
         }
 
         setSaving(true);
         try {
             const response = await apiClient.patch("/users/profile", {
                 name: profile.full_name,
-                phone: profile.phone,
-                address: profile.address,
+                phone: profile.phone ? profile.phone.replace(/\D/g, '') : null,
+                // address: profile.address, // Removed: Not supported by backend schema
                 avatarUrl: profile.avatar_url,
             });
 
@@ -332,6 +346,7 @@ export function ProfilePage() {
                                     onChange={(e) => setProfile({ ...profile, full_name: e.target.value })}
                                     placeholder="Enter your full name"
                                 />
+                                {formErrors.full_name && <p className="text-xs text-destructive mt-1">{formErrors.full_name}</p>}
                             </div>
 
                             <div>
@@ -360,6 +375,7 @@ export function ProfilePage() {
                                         maxLength={10}
                                     />
                                 </div>
+                                {formErrors.phone && <p className="text-xs text-destructive mt-1">{formErrors.phone}</p>}
                                 <p className="responsive-small text-muted-foreground mt-1">
                                     Required for order updates via SMS
                                 </p>
@@ -392,183 +408,22 @@ export function ProfilePage() {
                         </div>
                     </Card>
 
-                    <Card className="p-4 sm:p-6">
-                        <div className="flex items-center gap-2 mb-3 sm:mb-4">
-                            <Shield className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-                            <h2 className="responsive-h3">Settings & preferences</h2>
-                        </div>
-                        <Separator className="mb-4" />
-
-                        <div className="space-y-6">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    {theme === "dark" ? (
-                                        <Moon className="h-5 w-5 text-muted-foreground" />
-                                    ) : (
-                                        <Sun className="h-5 w-5 text-muted-foreground" />
-                                    )}
-                                    <div className="flex flex-col">
-                                        <p className="responsive-body font-semibold">Dark mode</p>
-                                        <p className="responsive-small text-muted-foreground mt-0.5">
-                                            {theme === "dark" ? "Dark theme enabled" : "Light theme enabled"}
-                                        </p>
-                                    </div>
-                                </div>
-                                <Switch
-                                    checked={theme === "dark"}
-                                    onCheckedChange={(checked) => setTheme(checked ? "dark" : "light")}
-                                />
+                    <Card className="p-4 sm:p-6 bg-primary/5 border-primary/20">
+                        <div className="flex items-center gap-3">
+                            <Shield className="h-5 w-5 text-primary" />
+                            <div>
+                                <h3 className="font-bold">Account Security</h3>
+                                <p className="text-sm text-muted-foreground">Manage your password and security settings in the Account Settings tab.</p>
                             </div>
-
-                            <Separator />
-
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <Bell className="h-5 w-5 text-muted-foreground" />
-                                    <div className="flex flex-col">
-                                        <p className="responsive-body font-semibold">Order notifications</p>
-                                        <p className="responsive-small text-muted-foreground mt-0.5">
-                                            Get updates about your orders
-                                        </p>
-                                    </div>
-                                </div>
-                                <Switch
-                                    checked={notifications}
-                                    onCheckedChange={setNotifications}
-                                />
-                            </div>
-
-                            <Separator />
-
-                            <Collapsible open={isPasswordSectionOpen} onOpenChange={setIsPasswordSectionOpen}>
-                                <CollapsibleTrigger asChild>
-                                    <Button variant="ghost" className="w-full justify-between p-0 h-auto hover:bg-transparent">
-                                        <div className="flex items-center gap-2 sm:gap-3">
-                                            <Shield className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
-                                            <p className="responsive-body font-semibold">Change password</p>
-                                        </div>
-                                        {isPasswordSectionOpen ? (
-                                            <ChevronUp className="h-4 w-4 text-muted-foreground" />
-                                        ) : (
-                                            <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                                        )}
-                                    </Button>
-                                </CollapsibleTrigger>
-
-                                <CollapsibleContent className="mt-3">
-                                    <div className="space-y-3 bg-muted/30 p-4 rounded-xl">
-                                        <div className="space-y-2">
-                                            <Label htmlFor="new-password" className="responsive-label">New password</Label>
-                                            <div className="relative">
-                                                <Input
-                                                    id="new-password"
-                                                    type={showPassword ? "text" : "password"}
-                                                    value={password.new}
-                                                    onChange={(e) => setPassword({ ...password, new: e.target.value })}
-                                                    placeholder="Min 8 characters"
-                                                    className="responsive-body"
-                                                />
-                                                <Button
-                                                    type="button"
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="absolute right-0 top-0 h-full"
-                                                    onClick={() => setShowPassword(!showPassword)}
-                                                >
-                                                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                                                </Button>
-                                            </div>
-                                        </div>
-
-                                        <div className="space-y-2">
-                                            <Label htmlFor="confirm-password" className="responsive-label">Confirm new password</Label>
-                                            <div className="relative">
-                                                <Input
-                                                    id="confirm-password"
-                                                    type={showConfirmPassword ? "text" : "password"}
-                                                    value={password.confirm}
-                                                    onChange={(e) => setPassword({ ...password, confirm: e.target.value })}
-                                                    placeholder="Confirm new password"
-                                                />
-                                                <Button
-                                                    type="button"
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="absolute right-0 top-0 h-full"
-                                                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                                                >
-                                                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                                                </Button>
-                                            </div>
-                                        </div>
-
-                                        <Button
-                                            className="w-full responsive-button"
-                                            onClick={handlePasswordChange}
-                                            disabled={!password.new || !password.confirm}
-                                        >
-                                            Update password
-                                        </Button>
-                                    </div>
-                                </CollapsibleContent>
-                            </Collapsible>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="ml-auto"
+                                onClick={() => navigate("/user/account/settings")}
+                            >
+                                Manage
+                            </Button>
                         </div>
-                    </Card>
-
-                    <Card className="p-4 sm:p-6">
-                        <div className="flex items-center gap-2 mb-3 sm:mb-4">
-                            <Package className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-                            <h2 className="responsive-h3">Recent orders</h2>
-                        </div>
-                        <Separator className="mb-4" />
-
-                        {recentOrders.length === 0 ? (
-                            <p className="text-muted-foreground text-center py-8">No orders yet</p>
-                        ) : (
-                            <>
-                                <div className="space-y-3">
-                                    {recentOrders.map((order) => (
-                                        <div
-                                            key={order.id}
-                                            className="flex justify-between items-center p-4 border rounded-lg hover:border-primary transition-colors cursor-pointer"
-                                            onClick={() => navigate("/orders")}
-                                        >
-                                            <div>
-                                                <p className="responsive-body font-semibold">Order #{order.order_number}</p>
-                                                <p className="responsive-small text-muted-foreground">
-                                                    {new Date(order.created_at).toLocaleDateString()}
-                                                </p>
-                                            </div>
-                                            <div className="text-right">
-                                                <p className="responsive-body font-bold text-primary">₹{order.total}</p>
-                                                <p className="responsive-small text-muted-foreground capitalize">
-                                                    {order.order_status}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-
-                                <Button
-                                    variant="outline"
-                                    className="w-full mt-4 responsive-button"
-                                    onClick={() => navigate("/order-history")}
-                                >
-                                    View all orders
-                                </Button>
-                            </>
-                        )}
-                    </Card>
-
-                    <Card className="p-6">
-                        <Button
-                            variant="destructive"
-                            className="w-full responsive-button"
-                            onClick={handleLogout}
-                        >
-                            <LogOut className="h-4 w-4 mr-2" />
-                            Logout
-                        </Button>
                     </Card>
                 </div>
             </main>

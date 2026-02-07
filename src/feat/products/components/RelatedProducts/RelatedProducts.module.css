@@ -39,6 +39,8 @@
     scrollbar-width: none;
     -ms-overflow-style: none;
     scroll-snap-type: x mandatory;
+    margin: 0 -0.5rem;
+    padding: 0 0.5rem 1rem 0.5rem;
 }
 
 .scrollContainer::-webkit-scrollbar {
@@ -46,13 +48,28 @@
 }
 
 .productWrapper {
-    flex: none;
-    width: 160px;
+    flex: 0 0 42%;
+    width: 42%;
     scroll-snap-align: start;
+}
+
+@media (min-width: 640px) {
+    .productWrapper {
+        flex: 0 0 31%;
+        width: 31%;
+    }
 }
 
 @media (min-width: 768px) {
     .productWrapper {
-        width: 220px;
+        flex: 0 0 23%;
+        width: 23%;
+    }
+}
+
+@media (min-width: 1024px) {
+    .productWrapper {
+        flex: 0 0 19%;
+        width: 19%;
     }
 }

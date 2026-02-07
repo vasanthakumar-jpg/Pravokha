@@ -72,16 +72,16 @@ export function UserAccountDropdown() {
     // Menu items based on role
     const getUserMenuItems = () => [
         { icon: ShoppingBag, label: "My Orders", path: "/user/orders" },
-        { icon: User, label: "Profile", path: "/user/account" },
-        { icon: MapPin, label: "Addresses", path: "/user/account" },
-        { icon: Heart, label: "Wishlist", path: "/user/account" },
+        { icon: User, label: "Profile", path: "/user/account/profile" },
+        { icon: MapPin, label: "Addresses", path: "/user/account/addresses" },
+        { icon: Heart, label: "Wishlist", path: "/wishlist" },
     ];
 
     const getSellerMenuItems = () => [
         { icon: LayoutDashboard, label: "Seller Dashboard", path: "/seller" },
         { icon: Store, label: "Manage Products", path: "/seller/products" },
         { icon: ShoppingBag, label: "Sales Orders", path: "/seller/orders" },
-        { icon: User, label: "User Profile", path: "/user/account" },
+        { icon: User, label: "Account Overview", path: "/user/account" },
     ];
 
     const getAdminMenuItems = () => [
@@ -89,7 +89,7 @@ export function UserAccountDropdown() {
         { icon: Users, label: "Users List", path: "/admin/users" },
         { icon: Package, label: "All Products", path: "/admin/products" },
         { icon: ShoppingBag, label: "All Orders", path: "/admin/orders" },
-        { icon: User, label: "Account Settings", path: "/user/account" },
+        { icon: User, label: "Account Overview", path: "/user/account" },
     ];
 
     const getMenuItems = () => {

@@ -10,6 +10,7 @@ import { apiClient } from "@/infra/api/apiClient";
 import { toast } from "@/shared/hook/use-toast";
 import { cn } from "@/lib/utils";
 import { z } from "zod";
+import { APP_CONFIG } from "@/core/config/appConfig";
 
 const contactSchema = z.object({
     name: z.string().min(2, "Name is required"),
@@ -138,8 +139,8 @@ export function SupportPage() {
                                     </div>
                                     <div>
                                         <p className="font-medium">Phone Support</p>
-                                        <a href="tel:+917339232817" className="text-muted-foreground hover:text-primary transition-colors">
-                                            +91 73392 32817
+                                        <a href={`tel:${APP_CONFIG.SUPPORT_PHONE}`} className="text-muted-foreground hover:text-primary transition-colors">
+                                            {APP_CONFIG.SUPPORT_PHONE}
                                         </a>
                                     </div>
                                 </div>
@@ -149,8 +150,8 @@ export function SupportPage() {
                                     </div>
                                     <div>
                                         <p className="font-medium">Email Us</p>
-                                        <a href="mailto:support@pravokha.com" className="text-muted-foreground hover:text-primary transition-colors">
-                                            support@pravokha.com
+                                        <a href={`mailto:${APP_CONFIG.SUPPORT_EMAIL}`} className="text-muted-foreground hover:text-primary transition-colors">
+                                            {APP_CONFIG.SUPPORT_EMAIL}
                                         </a>
                                     </div>
                                 </div>
