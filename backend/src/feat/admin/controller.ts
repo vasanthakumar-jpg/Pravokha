@@ -326,7 +326,15 @@ export const updateSiteSettings = asyncHandler(async (req: Request, res: Respons
 
 export const getNotificationSettings = asyncHandler(async (req: Request, res: Response) => {
     const settings = await getOrCreateSettings();
-    res.json({ success: true, settings: settings.notificationSettings || {} });
+    let notificationSettings = {};
+    try {
+        notificationSettings = typeof settings.notificationSettings === 'string'
+            ? JSON.parse(settings.notificationSettings)
+            : settings.notificationSettings || {};
+    } catch (e) {
+        notificationSettings = {};
+    }
+    res.json({ success: true, settings: notificationSettings });
 });
 
 export const updateNotificationSettings = asyncHandler(async (req: Request, res: Response) => {
@@ -334,21 +342,52 @@ export const updateNotificationSettings = asyncHandler(async (req: Request, res:
 
     // Merge with existing
     const current = await getOrCreateSettings();
-    const currentNotifs = (current.notificationSettings as any) || {};
+    let currentNotifs: any = {};
+    try {
+        currentNotifs = typeof current.notificationSettings === 'string'
+            ? JSON.parse(current.notificationSettings)
+            : current.notificationSettings || {};
+    } catch (e) {
+        currentNotifs = {};
+    }
+
+    const newSettings = {
+        ...currentNotifs,
+        governanceAlerts: governanceAlerts ?? currentNotifs.governanceAlerts,
+        revenueTelemetry: revenueTelemetry ?? currentNotifs.revenueTelemetry,
+        inventoryCriticality: inventoryCriticality ?? currentNotifs.inventoryCriticality
+    };
 
     const updated = await prisma.siteSetting.update({
         where: { id: 'primary' },
         data: {
-            notificationSettings: {
-                ...currentNotifs,
-                governanceAlerts: governanceAlerts ?? currentNotifs.governanceAlerts,
-                revenueTelemetry: revenueTelemetry ?? currentNotifs.revenueTelemetry,
-                inventoryCriticality: inventoryCriticality ?? currentNotifs.inventoryCriticality
-            }
+            notificationSettings: JSON.stringify(newSettings)
         }
     });
 
-    res.json({ success: true, settings: updated.notificationSettings });
+    let updatedNotifs = {};
+    try {
+        updatedNotifs = typeof updated.notificationSettings === 'string'
+            ? JSON.parse(updated.notificationSettings)
+            : updated.notificationSettings || {};
+    } catch (e) {
+        updatedNotifs = {};
+    }
+
+    res.json({ success: true, settings: updatedNotifs });
+});
+
+export const getSystemSettings = asyncHandler(async (req: Request, res: Response) => {
+    const settings = await getOrCreateSettings();
+    let systemSettings = {};
+    try {
+        systemSettings = typeof settings.systemSettings === 'string'
+            ? JSON.parse(settings.systemSettings)
+            : settings.systemSettings || {};
+    } catch (e) {
+        systemSettings = {};
+    }
+    res.json({ success: true, settings: systemSettings });
 });
 
 export const updateSystemSettings = asyncHandler(async (req: Request, res: Response) => {
@@ -360,31 +399,51 @@ export const updateSystemSettings = asyncHandler(async (req: Request, res: Respo
         payoutAutomationEnabled,
         sessionTrackingEnabled,
         dataAnonymizationEnabled,
-        publicIndexingEnabled
+        publicIndexingEnabled,
+        googleAnalyticsId
     } = req.body;
 
     // Merge with existing
     const current = await getOrCreateSettings();
-    const currentSys = (current.systemSettings as any) || {};
+    let currentSys: any = {};
+    try {
+        currentSys = typeof current.systemSettings === 'string'
+            ? JSON.parse(current.systemSettings)
+            : current.systemSettings || {};
+    } catch (e) {
+        currentSys = {};
+    }
+
+    const newSettings = {
+        ...currentSys,
+        currency: currency ?? currentSys.currency,
+        timezone: timezone ?? currentSys.timezone,
+        analyticsEnabled: analyticsEnabled ?? currentSys.analyticsEnabled,
+        aiInsightsEnabled: aiInsightsEnabled ?? currentSys.aiInsightsEnabled,
+        payoutAutomationEnabled: payoutAutomationEnabled ?? currentSys.payoutAutomationEnabled,
+        sessionTrackingEnabled: sessionTrackingEnabled ?? currentSys.sessionTrackingEnabled,
+        dataAnonymizationEnabled: dataAnonymizationEnabled ?? currentSys.dataAnonymizationEnabled,
+        publicIndexingEnabled: publicIndexingEnabled ?? currentSys.publicIndexingEnabled,
+        googleAnalyticsId: googleAnalyticsId ?? currentSys.googleAnalyticsId
+    };
 
     const updated = await prisma.siteSetting.update({
         where: { id: 'primary' },
         data: {
-            systemSettings: {
-                ...currentSys,
-                currency: currency ?? currentSys.currency,
-                timezone: timezone ?? currentSys.timezone,
-                analyticsEnabled: analyticsEnabled ?? currentSys.analyticsEnabled,
-                aiInsightsEnabled: aiInsightsEnabled ?? currentSys.aiInsightsEnabled,
-                payoutAutomationEnabled: payoutAutomationEnabled ?? currentSys.payoutAutomationEnabled,
-                sessionTrackingEnabled: sessionTrackingEnabled ?? currentSys.sessionTrackingEnabled,
-                dataAnonymizationEnabled: dataAnonymizationEnabled ?? currentSys.dataAnonymizationEnabled,
-                publicIndexingEnabled: publicIndexingEnabled ?? currentSys.publicIndexingEnabled
-            }
+            systemSettings: JSON.stringify(newSettings)
         }
     });
 
-    res.json({ success: true, settings: updated.systemSettings });
+    let updatedSys = {};
+    try {
+        updatedSys = typeof updated.systemSettings === 'string'
+            ? JSON.parse(updated.systemSettings)
+            : updated.systemSettings || {};
+    } catch (e) {
+        updatedSys = {};
+    }
+
+    res.json({ success: true, settings: updatedSys });
 });
 
 // PRODUCT UPDATE REQUESTS

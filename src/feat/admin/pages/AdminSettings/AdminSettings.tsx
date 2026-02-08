@@ -110,6 +110,7 @@ export default function AdminSettings() {
     currency: "INR",
     timezone: "IST",
     analyticsEnabled: true,
+    googleAnalyticsId: "",
     aiInsightsEnabled: false,
     payoutAutomationEnabled: true,
     sessionTrackingEnabled: true,
@@ -130,6 +131,7 @@ export default function AdminSettings() {
     if (user) {
       fetchProfile();
       fetchSiteSettings();
+      fetchSystemSettings();
       fetchNotificationSettings();
       fetchRoleCounts();
     }
@@ -192,10 +194,22 @@ export default function AdminSettings() {
           logoUrl: settings.logoUrl || "",
           bannerUrl: settings.bannerUrl || ""
         });
+      }
+    } catch (error) {
+      console.error("[AdminSettings] Error fetching site settings:", error);
+    }
+  }, []);
+
+  const fetchSystemSettings = useCallback(async () => {
+    try {
+      const { data } = await apiClient.get('/admin/settings/system');
+      if (data) {
+        const settings = data.settings || data.data || data;
         setSystemData({
           currency: settings.currency || "INR",
           timezone: settings.timezone || "IST",
           analyticsEnabled: settings.analyticsEnabled !== undefined ? settings.analyticsEnabled : true,
+          googleAnalyticsId: settings.googleAnalyticsId || "",
           aiInsightsEnabled: settings.aiInsightsEnabled || false,
           payoutAutomationEnabled: settings.payoutAutomationEnabled !== undefined ? settings.payoutAutomationEnabled : true,
           sessionTrackingEnabled: settings.sessionTrackingEnabled !== undefined ? settings.sessionTrackingEnabled : true,
@@ -204,7 +218,7 @@ export default function AdminSettings() {
         });
       }
     } catch (error) {
-      console.error("[AdminSettings] Error fetching site settings:", error);
+      console.error("[AdminSettings] Error fetching system settings:", error);
     }
   }, []);
 
@@ -239,6 +253,7 @@ export default function AdminSettings() {
     if (user) {
       fetchProfile();
       fetchSiteSettings();
+      fetchSystemSettings();
       fetchRoleCounts();
       fetchNotificationSettings();
     }
@@ -388,6 +403,7 @@ export default function AdminSettings() {
         currency: systemData.currency,
         timezone: systemData.timezone,
         analyticsEnabled: systemData.analyticsEnabled,
+        googleAnalyticsId: systemData.googleAnalyticsId,
         aiInsightsEnabled: systemData.aiInsightsEnabled,
         payoutAutomationEnabled: systemData.payoutAutomationEnabled,
         sessionTrackingEnabled: systemData.sessionTrackingEnabled,
@@ -1310,24 +1326,47 @@ export default function AdminSettings() {
                       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
                         {[
                           { id: "analyticsEnabled", title: "Analytics engine", desc: "High-velocity data processing.", icon: BarChart3, color: "text-blue-500", bg: "bg-blue-500/5", border: "border-blue-500/10" },
-                          { id: "aiInsightsEnabled", title: "AI intelligence", desc: "ML-driven recommendations (BETA).", icon: Zap, color: "text-violet-500", bg: "bg-violet-500/5", border: "border-violet-500/10" },
-                          { id: "payoutAutomationEnabled", title: "Auto-settlement", desc: "Automated seller disbursements.", icon: CreditCard, color: "text-emerald-500", bg: "bg-emerald-500/5", border: "border-emerald-500/10" },
+                          { id: "aiInsightsEnabled", title: "AI intelligence", desc: "Coming soon (BETA).", icon: Zap, color: "text-violet-500/40", bg: "bg-violet-500/5", border: "border-violet-500/10", disabled: true },
+                          { id: "payoutAutomationEnabled", title: "Auto-settlement", desc: "Coming soon.", icon: CreditCard, color: "text-emerald-500/40", bg: "bg-emerald-500/5", border: "border-emerald-500/10", disabled: true },
                         ].map((f, i) => (
-                          <div key={i} className={cn("p-6 rounded-2xl border flex flex-col gap-6 transition-all hover:bg-muted/10", f.bg, f.border)}>
-                            <div className="flex items-center justify-between">
-                              <div className={cn("h-10 w-10 rounded-xl bg-background border border-border/40 flex items-center justify-center", f.color)}>
-                                <f.icon className="h-5 w-5" />
+                          <div key={i} className="space-y-4">
+                            <div className={cn("p-6 rounded-2xl border flex flex-col gap-6 transition-all hover:bg-muted/10", f.bg, f.border)}>
+                              <div className="flex items-center justify-between">
+                                <div className={cn("h-10 w-10 rounded-xl bg-background border border-border/40 flex items-center justify-center", f.color)}>
+                                  <f.icon className="h-5 w-5" />
+                                </div>
+                                <Switch
+                                  checked={Boolean(systemData[f.id as keyof typeof systemData])}
+                                  onCheckedChange={(checked) => setSystemData({ ...systemData, [f.id]: checked })}
+                                  className="scale-90 data-[state=checked]:bg-emerald-500"
+                                  disabled={(f as any).disabled}
+                                />
                               </div>
-                              <Switch
-                                checked={Boolean(systemData[f.id as keyof typeof systemData])}
-                                onCheckedChange={(checked) => setSystemData({ ...systemData, [f.id]: checked })}
-                                className="scale-90 data-[state=checked]:bg-emerald-500"
-                              />
+                              <div className="space-y-0.5">
+                                <h4 className={cn("text-sm font-bold tracking-tight", (f as any).disabled && "opacity-50")}>{f.title}</h4>
+                                <p className="text-[11px] text-muted-foreground font-medium leading-relaxed">{f.desc}</p>
+                              </div>
                             </div>
-                            <div className="space-y-0.5">
-                              <h4 className="text-sm font-bold tracking-tight">{f.title}</h4>
-                              <p className="text-[11px] text-muted-foreground font-medium leading-relaxed">{f.desc}</p>
-                            </div>
+
+                            {/* Show GA ID field ONLY for Analytics Engine */}
+                            {f.id === "analyticsEnabled" && systemData.analyticsEnabled && (
+                              <div className="p-5 rounded-2xl bg-slate-900 text-white shadow-xl animate-in zoom-in-95 duration-300">
+                                <div className="space-y-3">
+                                  <div className="flex items-center gap-2">
+                                    <div className="h-2 w-2 rounded-full bg-blue-400 animate-pulse" />
+                                    <Label className="text-xs font-bold text-blue-200 uppercase tracking-widest">Tracking Integration</Label>
+                                  </div>
+                                  <Label className="text-xs font-medium text-slate-400">Google Analytics Measurement ID</Label>
+                                  <Input
+                                    placeholder="G-XXXXXXXXXX"
+                                    value={systemData.googleAnalyticsId || ''}
+                                    onChange={(e) => setSystemData({ ...systemData, googleAnalyticsId: e.target.value })}
+                                    className="bg-white/5 border-white/10 h-11 rounded-xl font-mono text-sm focus:ring-blue-500/30 text-emerald-400 placeholder:text-white/10 px-4"
+                                  />
+                                  <p className="text-[10px] text-slate-500 font-medium">Paste your G-Tag ID here to activate global telemetry.</p>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>

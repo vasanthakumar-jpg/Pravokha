@@ -13,6 +13,7 @@ import { CartDrawer } from "@/feat/cart/components/CartDrawer";
 import { ProtectedRoute } from "@/shared/ui/ProtectedRoute";
 import { RoleBasedRedirect } from "@/shared/ui/RoleBasedRedirect";
 import { AuthLoadingGuard } from "@/shared/ui/AuthLoadingGuard";
+import { GoogleAnalytics } from "@/shared/components/GoogleAnalytics";
 import AdminLayout from "@/layout/AdminLayout";
 import SellerLayout from "@/layout/SellerLayout";
 import AccountLayout from "@/layout/AccountLayout";
@@ -171,6 +172,7 @@ export default function App() {
             <AdminProvider>
               <CartProvider>
                 <AuthLoadingGuard>
+                  <GoogleAnalytics />
                   <div className="flex flex-col min-h-screen">
                     <ConditionalNavbar />
                     <main className="flex-1">

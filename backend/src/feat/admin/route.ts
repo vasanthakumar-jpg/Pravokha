@@ -14,6 +14,7 @@ import {
     updateSiteSettings,
     getNotificationSettings,
     updateNotificationSettings,
+    getSystemSettings,
     updateSystemSettings,
     getProductUpdateRequests,
     updateProductRequestStatus
@@ -31,6 +32,7 @@ router.get('/settings/site', requirePermission('MANAGE_SETTINGS', 'SYSTEM'), get
 router.put('/settings/site', requirePermission('MANAGE_SETTINGS', 'SYSTEM'), validate({ body: siteSettingsSchema }), updateSiteSettings);
 router.get('/settings/notifications', requirePermission('MANAGE_SETTINGS', 'SYSTEM'), getNotificationSettings);
 router.put('/settings/notifications', requirePermission('MANAGE_SETTINGS', 'SYSTEM'), validate({ body: notificationSettingsSchema }), updateNotificationSettings);
+router.get('/settings/system', requirePermission('MANAGE_SETTINGS', 'SYSTEM'), getSystemSettings);
 router.put('/settings/system', requirePermission('MANAGE_SETTINGS', 'SYSTEM'), validate({ body: systemSettingsSchema }), updateSystemSettings);
 
 

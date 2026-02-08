@@ -6,6 +6,7 @@ import { Role } from '@prisma/client';
 const router = Router();
 
 router.get('/combo-offers', ComboOfferController.listComboOffers);
+router.get('/config', ComboOfferController.getPublicConfig);
 router.post('/combo-offers', authenticate, authorize([Role.SUPER_ADMIN, Role.ADMIN]), ComboOfferController.createComboOffer);
 router.delete('/combo-offers/:id', authenticate, authorize([Role.SUPER_ADMIN, Role.ADMIN]), ComboOfferController.deleteComboOffer);
 

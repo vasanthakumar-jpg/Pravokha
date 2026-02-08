@@ -38,4 +38,23 @@ export class ComboOfferController {
         await prisma.comboOffer.delete({ where: { id } });
         res.json({ success: true, message: 'Combo offer deleted' });
     });
+
+    static getPublicConfig = asyncHandler(async (req: any, res: Response) => {
+        const settings = await prisma.siteSetting.findUnique({ where: { id: 'primary' } });
+        let systemSettings: any = {};
+        try {
+            systemSettings = typeof settings?.systemSettings === 'string'
+                ? JSON.parse(settings.systemSettings)
+                : settings?.systemSettings || {};
+        } catch (e) {
+            systemSettings = {};
+        }
+
+        res.json({
+            success: true,
+            config: {
+                googleAnalyticsId: systemSettings.googleAnalyticsId || null
+            }
+        });
+    });
 }

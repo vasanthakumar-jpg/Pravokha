@@ -93,12 +93,16 @@ export class UserController {
     static updateProfile = asyncHandler(async (req: Request, res: Response) => {
         const user = (req as any).user;
         const userId = user.id;
-        const validatedData = req.body;
+        const { phone, ...otherData } = req.body;
+        const updateData: any = { ...otherData };
+        if (phone !== undefined) {
+            updateData.phoneNumber = phone;
+        }
 
         try {
             const updatedUser = await prisma.user.update({
                 where: { id: userId },
-                data: validatedData,
+                data: updateData,
             });
 
             const { password: _, ...userResponse } = updatedUser;

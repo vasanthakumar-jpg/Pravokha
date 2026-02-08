@@ -4,7 +4,7 @@ export const profileUpdateSchema = z.object({
     name: z.string().min(2, 'Name must be at least 2 characters').optional(),
     phone: z.preprocess((val) => (val === '' ? null : val), z.string().regex(/^\d{10}$/, 'Phone number must be exactly 10 digits').optional().nullable()),
     bio: z.preprocess((val) => (val === '' ? null : val), z.string().max(500, 'Bio must be less than 500 characters').optional().nullable()),
-    avatarUrl: z.preprocess((val) => (val === '' ? null : val), z.string().url('Invalid avatar URL').optional().nullable()),
+    avatarUrl: z.preprocess((val) => (val === '' ? null : val), z.string().optional().nullable()),
     dateOfBirth: z.preprocess((val) => (typeof val === 'string' ? new Date(val) : val), z.date().optional().nullable()),
 });
 

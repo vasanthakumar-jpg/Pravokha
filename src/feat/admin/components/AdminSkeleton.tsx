@@ -225,6 +225,44 @@ export function AdminListSkeleton({ count = 3 }) {
     );
 }
 
+export function ComboOfferSkeleton({ count = 3 }) {
+    return (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
+            {[...Array(count)].map((_, i) => (
+                <Card key={i} className="group flex flex-col overflow-hidden bg-card/60 border-border/50 rounded-xl">
+                    <Skeleton className="h-48 w-full" />
+                    <CardHeader className="p-4 sm:p-5 pb-2">
+                        <div className="space-y-2">
+                            <Skeleton className="h-5 w-3/4 rounded" />
+                            <div className="space-y-1">
+                                <Skeleton className="h-3 w-full rounded opacity-60" />
+                                <Skeleton className="h-3 w-2/3 rounded opacity-40" />
+                            </div>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="p-4 sm:p-5 pt-0 flex flex-col flex-1 gap-4">
+                        <div className="grid grid-cols-2 gap-2 mt-2 bg-muted/20 p-3 rounded-xl border border-border/40">
+                            <div className="space-y-1">
+                                <Skeleton className="h-2 w-12 rounded" />
+                                <Skeleton className="h-4 w-16 rounded" />
+                            </div>
+                            <div className="space-y-1 flex flex-col items-end">
+                                <Skeleton className="h-2 w-8 rounded" />
+                                <Skeleton className="h-4 w-10 rounded" />
+                            </div>
+                        </div>
+                        <div className="flex gap-2 mt-auto pt-2">
+                            <Skeleton className="h-9 flex-1 rounded-lg" />
+                            <Skeleton className="h-9 w-9 rounded-lg" />
+                            <Skeleton className="h-9 w-9 rounded-lg" />
+                        </div>
+                    </CardContent>
+                </Card>
+            ))}
+        </div>
+    );
+}
+
 export function AdminRegistrySkeleton({ columns = 4, rows = 5 }) {
     return (
         <div className="space-y-8">

@@ -15,7 +15,7 @@ import {
   DialogTrigger,
 } from "@/ui/Dialog";
 import { Textarea } from "@/ui/Textarea";
-import { AdminHeaderSkeleton, AdminListSkeleton } from "@/feat/admin/components/AdminSkeleton";
+import { AdminHeaderSkeleton, AdminListSkeleton, ComboOfferSkeleton } from "@/feat/admin/components/AdminSkeleton";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/core/context/AuthContext";
@@ -278,7 +278,7 @@ export default function AdminComboOffers() {
     return (
       <div className="w-full mx-auto py-3 sm:py-6 lg:py-8 px-2 sm:px-4 lg:px-6 xl:px-8 flex flex-col gap-4 sm:gap-6 lg:gap-8 animate-in fade-in duration-500 pb-20">
         <AdminHeaderSkeleton />
-        <AdminListSkeleton count={3} />
+        <ComboOfferSkeleton count={3} />
       </div>
     );
   }
@@ -502,7 +502,7 @@ export default function AdminComboOffers() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
-            <AdminListSkeleton count={3} />
+            <ComboOfferSkeleton count={3} />
           </motion.div>
         ) : (
           <motion.div
