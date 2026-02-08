@@ -23,6 +23,7 @@ interface Subcategory {
     category_id: string;
     status: string;
     display_order: number;
+    commission_rate: number;
     categories?: { name: string };
     category?: { name: string; id: string };
 }
@@ -64,6 +65,7 @@ export default function AdminSubcategories() {
         category_id: "",
         status: "active",
         display_order: 0,
+        commission_rate: 10,
     });
 
     const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
@@ -104,6 +106,7 @@ export default function AdminSubcategories() {
                 ...sub,
                 category_id: sub.parentId || sub.categoryId || sub.category_id || sub.category?.id || sub.parent?.id,
                 display_order: sub.displayOrder ?? sub.display_order ?? 0,
+                commission_rate: sub.commissionRate ?? sub.commission_rate ?? 10,
                 image_url: sub.imageUrl || sub.image_url || null,
                 categories: sub.category || sub.parent // Map for legacy UI support
             }));
@@ -143,10 +146,12 @@ export default function AdminSubcategories() {
 
         try {
             if (editingSubcategory) {
-                await apiClient.patch(`/categories/subcategories/${editingSubcategory.id}`, formData);
+                const payload = { ...formData, commission_rate: Number(formData.commission_rate) };
+                await apiClient.patch(`/categories/subcategories/${editingSubcategory.id}`, payload);
                 toast({ title: "Success", description: "Subcategory updated successfully" });
             } else {
-                await apiClient.post('/categories/subcategories', formData);
+                const payload = { ...formData, commission_rate: Number(formData.commission_rate) };
+                await apiClient.post('/categories/subcategories', payload);
                 toast({ title: "Success", description: "Subcategory created successfully" });
             }
 
@@ -190,6 +195,7 @@ export default function AdminSubcategories() {
             category_id: subcategory.category_id,
             status: subcategory.status,
             display_order: subcategory.display_order,
+            commission_rate: subcategory.commission_rate,
         });
         setDialogOpen(true);
     };
@@ -204,6 +210,7 @@ export default function AdminSubcategories() {
             category_id: "",
             status: "active",
             display_order: 0,
+            commission_rate: 10,
         });
         setErrors({});
         setSlugManuallyEdited(false);
@@ -339,6 +346,19 @@ export default function AdminSubcategories() {
                                         min="0"
                                     />
                                 </div>
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="commission_rate">Commission Rate (%)</Label>
+                                <Input
+                                    id="commission_rate"
+                                    type="number"
+                                    value={formData.commission_rate}
+                                    onChange={(e) => setFormData({ ...formData, commission_rate: parseFloat(e.target.value) })}
+                                    min="0"
+                                    max="100"
+                                    step="0.1"
+                                />
+                                <p className="text-[10px] text-muted-foreground">Percentage of each sale the platform takes. If left empty, parent category rate will be used.</p>
                             </div>
 
                             <div className="flex justify-end gap-2 pt-4">

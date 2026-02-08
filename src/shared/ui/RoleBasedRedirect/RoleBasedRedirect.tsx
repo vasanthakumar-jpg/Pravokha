@@ -40,23 +40,25 @@ export function RoleBasedRedirect() {
             return;
         }
 
-        if (currentPath.startsWith('/admin') && (role === 'SUPER_ADMIN')) {
+        const roleUpper = role.toUpperCase();
+
+        if (currentPath.startsWith('/admin') && (roleUpper === 'SUPER_ADMIN')) {
             return;
         }
 
-        if (currentPath.startsWith('/seller') && (role === 'ADMIN')) {
+        if (currentPath.startsWith('/seller') && (roleUpper === 'ADMIN')) {
             return;
         }
 
         // Logic for redirection from Auth/Home pages based on Role
-        if (currentPath.startsWith('/auth') || (currentPath === '/' && role !== 'CUSTOMER')) {
-            if (role === 'SUPER_ADMIN') {
+        if (currentPath.startsWith('/auth') || (currentPath === '/' && roleUpper !== 'CUSTOMER')) {
+            if (roleUpper === 'SUPER_ADMIN') {
                 navigate('/admin/super-dashboard', { replace: true });
-            } else if (role === 'ADMIN') {
+            } else if (roleUpper === 'ADMIN') {
                 navigate('/admin/staff-dashboard', { replace: true }); // Staff Admin goes to Staff Panel
-            } else if (role === 'SELLER') {
+            } else if (roleUpper === 'SELLER') {
                 navigate('/seller', { replace: true });
-            } else if (role === 'CUSTOMER' && currentPath.startsWith('/auth')) {
+            } else if (roleUpper === 'CUSTOMER' && currentPath.startsWith('/auth')) {
                 navigate('/', { replace: true });
             }
             return;
@@ -64,10 +66,10 @@ export function RoleBasedRedirect() {
 
         // Prevent cross-role access (Basic Guard in Redirector)
         // Note: ProtectedRoute handles the hard blocks, but this helps redirect early
-        if (currentPath.startsWith('/admin') && role !== 'SUPER_ADMIN' && role !== 'ADMIN') {
+        if (currentPath.startsWith('/admin') && roleUpper !== 'SUPER_ADMIN' && roleUpper !== 'ADMIN') {
             navigate('/unauthorized', { replace: true });
         }
-        if (currentPath.startsWith('/seller') && role !== 'SELLER') {
+        if (currentPath.startsWith('/seller') && roleUpper !== 'SELLER') {
             navigate('/unauthorized', { replace: true });
         }
     }, [user, role, loading, isSuspended, navigate, location.pathname]);

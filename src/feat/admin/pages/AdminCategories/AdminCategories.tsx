@@ -27,6 +27,7 @@ interface Category {
   status: string;
   display_order: number;
   image_url?: string;
+  commission_rate: number;
 }
 
 // Sortable Item Component
@@ -180,6 +181,7 @@ export default function AdminCategories() {
     image_url: "",
     status: "active",
     display_order: 0,
+    commission_rate: 10,
   });
 
   // Auto-generate slug from name
@@ -212,7 +214,8 @@ export default function AdminCategories() {
       const data = response.data.categories.map((cat: any) => ({
         ...cat,
         image_url: cat.image, // Fixed: Prisma field is 'image'
-        display_order: cat.displayOrder ? Number(cat.displayOrder) : 0
+        display_order: cat.displayOrder ? Number(cat.displayOrder) : 0,
+        commission_rate: cat.commissionRate ? Number(cat.commissionRate) : 10
       }));
       // Ensure frontend sorting matches display order
       data.sort((a: Category, b: Category) => a.display_order - b.display_order);
@@ -272,6 +275,7 @@ export default function AdminCategories() {
         image: imageUrl, // Match backend 'image'
         status: formData.status,
         displayOrder: formData.display_order, // Match backend 'displayOrder'
+        commissionRate: Number(formData.commission_rate),
         parentId: null
       };
 
@@ -323,6 +327,7 @@ export default function AdminCategories() {
       image_url: category.image_url || "",
       status: (category.status || 'active').toLowerCase(),
       display_order: category.display_order,
+      commission_rate: category.commission_rate,
     });
     setImagePreview(category.image_url || null);
     setImageFile(null);
@@ -338,6 +343,7 @@ export default function AdminCategories() {
       image_url: "",
       status: "active",
       display_order: 0,
+      commission_rate: 10,
     });
     setImagePreview(null);
     setImageFile(null);
@@ -539,6 +545,27 @@ export default function AdminCategories() {
                             onChange={(e) => setFormData({ ...formData, display_order: parseInt(e.target.value) })}
                             className="bg-background"
                             min="0"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="commission_rate" className="text-xs font-medium text-muted-foreground flex items-center gap-2">
+                            Commission Rate (%)
+                            <div className="group relative">
+                              <Info className="h-3 w-3 text-muted-foreground cursor-help" />
+                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-2 bg-popover text-popover-foreground text-[10px] rounded shadow-lg w-40 hidden group-hover:block z-50 border">
+                                Percentage of each sale the platform takes. (e.g., 5 or 15).
+                              </div>
+                            </div>
+                          </Label>
+                          <Input
+                            id="commission_rate"
+                            type="number"
+                            value={formData.commission_rate}
+                            onChange={(e) => setFormData({ ...formData, commission_rate: parseFloat(e.target.value) })}
+                            className="bg-background"
+                            min="0"
+                            max="100"
+                            step="0.1"
                           />
                         </div>
                       </div>

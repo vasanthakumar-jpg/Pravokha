@@ -39,7 +39,8 @@ export class CategoryController {
     });
 
     static createCategory = asyncHandler(async (req: Request, res: Response) => {
-        const { name, slug, description, image, parentId, status, displayOrder } = req.body;
+        const { name, slug, description, image, parentId, status, displayOrder, commissionRate, commission_rate } = req.body;
+        const finalCommissionRate = commissionRate || commission_rate;
 
         if (!name) {
             return res.status(400).json({ success: false, message: 'Category name is required' });
@@ -57,9 +58,10 @@ export class CategoryController {
                 slug: targetSlug,
                 description,
                 image: image || null,
-                parentId: parentId || null,
+                parent: parentId ? { connect: { id: parentId } } : undefined,
                 status: status || 'active',
-                displayOrder: displayOrder ?? 0
+                displayOrder: displayOrder ?? 0,
+                commissionRate: finalCommissionRate ? Number(finalCommissionRate) : 10
             }
         });
 
@@ -80,7 +82,8 @@ export class CategoryController {
 
     static updateCategory = asyncHandler(async (req: Request, res: Response) => {
         const { id } = req.params;
-        const { name, slug, description, image, parentId, status, displayOrder } = req.body;
+        const { name, slug, description, image, parentId, status, displayOrder, commissionRate, commission_rate } = req.body;
+        const finalCommissionRate = commissionRate || commission_rate;
 
         const category = await prisma.category.update({
             where: { id },
@@ -89,9 +92,10 @@ export class CategoryController {
                 slug,
                 description,
                 image,
-                parentId: parentId || null,
+                parent: parentId ? { connect: { id: parentId } } : { disconnect: true },
                 status,
-                displayOrder: displayOrder ?? undefined
+                displayOrder: displayOrder ?? undefined,
+                commissionRate: finalCommissionRate ? Number(finalCommissionRate) : undefined
             }
         });
 
@@ -166,7 +170,7 @@ export class CategoryController {
 
     // 4. Create Subcategory
     static createSubcategory = asyncHandler(async (req: Request, res: Response) => {
-        const { name, slug, description, image_url, category_id, status, display_order } = req.body;
+        const { name, slug, description, image_url, category_id, status, display_order, commission_rate } = req.body;
 
         const subcategory = await prisma.category.create({
             data: {
@@ -174,9 +178,10 @@ export class CategoryController {
                 slug: slug || name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
                 description: description || null,
                 image: image_url || null,
-                parentId: category_id,
+                parent: category_id ? { connect: { id: category_id } } : undefined,
                 status: status || 'active',
-                displayOrder: display_order ?? 0
+                displayOrder: display_order ?? 0,
+                commissionRate: commission_rate ? Number(commission_rate) : 10
             },
             include: {
                 parent: { select: { name: true, slug: true } }
@@ -189,7 +194,7 @@ export class CategoryController {
     // 5. Update Subcategory
     static updateSubcategory = asyncHandler(async (req: Request, res: Response) => {
         const { id } = req.params;
-        const { name, slug, description, image_url, category_id, status, display_order } = req.body;
+        const { name, slug, description, image_url, category_id, status, display_order, commission_rate } = req.body;
 
         const subcategory = await prisma.category.update({
             where: { id },
@@ -198,9 +203,10 @@ export class CategoryController {
                 slug,
                 description: description || null,
                 image: image_url || null,
-                parentId: category_id,
+                parent: category_id ? { connect: { id: category_id } } : { disconnect: true },
                 status,
-                displayOrder: display_order
+                displayOrder: display_order,
+                commissionRate: commission_rate ? Number(commission_rate) : undefined
             },
             include: {
                 parent: { select: { name: true, slug: true } }

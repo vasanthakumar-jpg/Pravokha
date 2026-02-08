@@ -93,6 +93,7 @@ export default function SellerProductForm() {
     const [dbSubcategories, setDbSubcategories] = useState<{ id: string; name: string; slug: string; categoryId: string; parentId?: string }[]>([]);
     const [isLoadingSubcategories, setIsLoadingSubcategories] = useState(false);
     const [subcategoryWarning, setSubcategoryWarning] = useState("");
+    const [marketplaceFee, setMarketplaceFee] = useState(MARKETPLACE_FEE_PERCENTAGE);
 
     // Fetch categories and subcategories hierarchy
     useEffect(() => {
@@ -181,15 +182,25 @@ export default function SellerProductForm() {
                 }
 
                 // Reconstruction of Category/Subcategory hierarchy
-                // If product.category has a parentId, it's a subcategory.
                 const prodCatId = product.categoryId || product.category_id || product.category?.id || "";
                 const prodParentId = product.category?.parentId || product.category?.parent_id || null;
 
                 const selectedCatId = prodParentId ? prodParentId : prodCatId;
                 const selectedSubCatId = prodParentId ? prodCatId : "";
 
-                const basePrice = product.compareAtPrice || product.compare_at_price || product.price;
-                const salePrice = (product.compareAtPrice || product.compare_at_price) ? product.price : null;
+                // Price logic - robust mapping
+                const finalDiscountPrice = product.discountPrice !== undefined ? product.discountPrice : product.discount_price;
+                const finalCompareAtPrice = product.compareAtPrice !== undefined ? product.compareAtPrice : product.compare_at_price;
+
+                // If we have a compareAtPrice, then 'price' is the sale price and compareAtPrice is the base price.
+                // If we don't have compareAtPrice but have discountPrice, then 'price' is base and discountPrice is sale.
+                let basePrice = product.price;
+                let salePrice = finalDiscountPrice || null;
+
+                if (finalCompareAtPrice) {
+                    basePrice = finalCompareAtPrice;
+                    salePrice = product.price;
+                }
 
                 setFormData({
                     title: product.title || "",
@@ -201,7 +212,7 @@ export default function SellerProductForm() {
                     discountPrice: salePrice?.toString() || "",
                     stockQuantity: "0",
                     selectedColors: colors,
-                    selectedSizes: sizes,
+                    selectedSizes: sizes.filter(s => s !== "One Size"), // Remove One Size default
                     sizeStock: sizeStockMap,
                     unavailableVariants: [],
 
@@ -283,6 +294,26 @@ export default function SellerProductForm() {
             setSubcategoryWarning("Please select a subcategory for better product organization.");
         } else {
             setSubcategoryWarning("Note: This category currently has no subcategories.");
+        }
+
+        // Update marketplace fee
+        if (selectedCat && (selectedCat as any).commissionRate !== undefined) {
+            setMarketplaceFee((selectedCat as any).commissionRate / 100);
+        } else {
+            setMarketplaceFee(MARKETPLACE_FEE_PERCENTAGE);
+        }
+    };
+
+    const handleSubcategoryChange = (subCategoryId: string) => {
+        setFormData(prev => ({
+            ...prev,
+            selectedSubcategoryId: subCategoryId
+        }));
+        setSubcategoryWarning("");
+
+        const subCat = dbSubcategories.find(s => s.id === subCategoryId);
+        if (subCat && (subCat as any).commissionRate !== undefined) {
+            setMarketplaceFee((subCat as any).commissionRate / 100);
         }
     };
 
@@ -448,6 +479,15 @@ export default function SellerProductForm() {
 
             if (!formData.description.trim()) newErrors.description = "Product description is required.";
             else if (formData.description.length < 10) newErrors.description = "Description should be at least 10 characters.";
+        }
+
+        if (step === 2) {
+            if (formData.selectedColors.length === 0) {
+                newErrors.colors = "At least one color is required.";
+            }
+            if (formData.selectedSizes.length === 0) {
+                newErrors.sizes = "At least one size is required.";
+            }
         }
 
         // Validate Visuals (Step 3) - REQUIRE images for EACH variant
@@ -792,6 +832,7 @@ export default function SellerProductForm() {
                                         dbCategories={dbCategories}
                                         dbSubcategories={dbSubcategories}
                                         handleCategoryChange={handleCategoryChange}
+                                        handleSubcategoryChange={handleSubcategoryChange}
                                         isLoadingSubcategories={isLoadingSubcategories}
                                         subcategoryWarning={subcategoryWarning}
                                         setSubcategoryWarning={setSubcategoryWarning}
@@ -828,7 +869,7 @@ export default function SellerProductForm() {
                                         onChange={handleChange}
                                         errors={errors}
                                         setErrors={setErrors}
-                                        MARKETPLACE_FEE_PERCENTAGE={MARKETPLACE_FEE_PERCENTAGE}
+                                        MARKETPLACE_FEE_PERCENTAGE={marketplaceFee}
                                     />
                                 )}
 
@@ -996,17 +1037,37 @@ export default function SellerProductForm() {
                                         throw new Error(requestResponse.data.message || 'Failed to submit update request');
                                     }
 
-                                    // 2. Perform safe update for Allowed fields (Price, Stock)
+                                    // 2. Perform safe update for Allowed fields (Price, Stock, Variants)
+                                    // Re-calculate variants for the safe update to prevent data loss
+                                    const colors = formData.selectedColors.length > 0 ? formData.selectedColors : [];
+                                    const safeVariantsData = [];
+
+                                    for (const color of colors) {
+                                        const existingUrls = formData.existingVariantImages[color.id] || [];
+                                        const sizeEntries = formData.selectedSizes
+                                            .filter(size => !formData.unavailableVariants?.includes(getStockKey(color.name, size)))
+                                            .map(size => ({
+                                                size: size,
+                                                stock: formData.sizeStock[getStockKey(color.name, size)] || 0,
+                                            }));
+
+                                        safeVariantsData.push({
+                                            color_name: color.name,
+                                            color_hex: color.hex,
+                                            images: existingUrls, // Safe update only uses existing images unless we re-upload (simpler to just send what we have)
+                                            sizes: sizeEntries
+                                        });
+                                    }
+
                                     const safePayload: any = {
                                         price: Number(formData.price),
                                         discount_price: formData.discountPrice ? Number(formData.discountPrice) : null,
-                                        // is_featured and is_new are managed by system/admins
-                                        // We keep the original restricted values to ensure no bypass
                                         title: originalData.title,
                                         description: originalData.description,
                                         category: originalData.category,
                                         subcategory_id: originalData.subcategory_id,
-                                        slug: originalData.slug
+                                        slug: originalData.slug,
+                                        variants: safeVariantsData
                                     };
 
 

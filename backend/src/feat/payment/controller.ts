@@ -71,7 +71,7 @@ export class PaymentController {
         // Fetch dynamic settings from database
         const settings = await prisma.siteSetting.findUnique({ where: { id: 'primary' } });
         const taxRate = settings?.taxRate || 18;
-        const baseShippingFee = 50;
+        const baseShippingFee = settings?.defaultShippingFee || 50;
 
         let applicableShipping = baseShippingFee;
         if (user?.id) {

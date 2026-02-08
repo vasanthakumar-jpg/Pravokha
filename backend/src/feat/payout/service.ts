@@ -6,11 +6,11 @@ export class PayoutService {
     static async listPayouts(role: Role, userId: string, skip: number = 0, take: number = 10) {
         let where = {};
 
-        if (role === Role.SELLER) {
+        if (role.toUpperCase() === Role.SELLER) {
             const vendor = await prisma.vendor.findUnique({ where: { ownerId: userId } });
             if (!vendor) return [];
             where = { vendorId: vendor.id };
-        } else if (role !== Role.SUPER_ADMIN && role !== Role.ADMIN) {
+        } else if (role.toUpperCase() !== Role.SUPER_ADMIN && role.toUpperCase() !== Role.ADMIN) {
             throw new Error('Unauthorized');
         }
 
@@ -131,7 +131,7 @@ export class PayoutService {
     }
 
     static async updatePayoutStatus(id: string, status: PayoutStatus, rejectionReason: string | null, role: Role) {
-        if (role !== Role.SUPER_ADMIN && role !== Role.ADMIN) {
+        if (role.toUpperCase() !== Role.SUPER_ADMIN && role.toUpperCase() !== Role.ADMIN) {
             throw new Error('Unauthorized');
         }
 
@@ -146,13 +146,13 @@ export class PayoutService {
     }
 
     static async getPayoutStats(role: Role, userId?: string) {
-        if (role === Role.SELLER && userId) {
+        if (role.toUpperCase() === Role.SELLER && userId) {
             const vendor = await prisma.vendor.findUnique({ where: { ownerId: userId } });
             if (!vendor) throw new Error('Vendor not found');
             return await this.getVendorBalance(vendor.id);
         }
 
-        if (role !== Role.SUPER_ADMIN && role !== Role.ADMIN) {
+        if (role.toUpperCase() !== Role.SUPER_ADMIN && role.toUpperCase() !== Role.ADMIN) {
             throw new Error('Unauthorized');
         }
 

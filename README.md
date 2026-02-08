@@ -83,18 +83,20 @@ Pravokha is a **full-stack multi-dealer marketplace** that provides:
 
 ### 📋 Order Management
 - **Multi-vendor Order Splitting**: Single checkout for multiple sellers
+- **Dynamic Fees**: Shipping and tax rates fetched directly from `SiteSetting` model
 - **Order Lifecycle**: Pending → Processing → Packed → Shipped → Delivered
 - **Real-time Tracking**: Order status updates with email notifications
-- **Payment Integration**: Stripe payment processing
+- **Payment Integration**: Razorpay payment processing
 - **Order History**: Complete order records for users and sellers
 - **Fulfillment Dashboard**: Seller interface for order processing
 - **Cancellation & Refunds**: User and admin-initiated cancellations
 
 ### 🏪 Seller/Dealer Portal
 - **Analytics Dashboard**: Sales statistics and revenue tracking
+- **Restricted Field Updates**: Title and Category changes require Admin approval
 - **Inventory Management**: Product listing and stock management
 - **Order Fulfillment**: Process and ship orders
-- **Payout System**: Request earned commission payments
+- **Payout System**: Secure earnings withdrawal with 7-day cooling-off logic
 - **Bulk Upload**: Excel-based product import
 - **Verification Tracking**: Monitor dealer application status
 
@@ -102,11 +104,11 @@ Pravokha is a **full-stack multi-dealer marketplace** that provides:
 - **User Management**: View, edit, suspend/activate users
 - **Dealer Verification**: Approve/reject seller applications
 - **Category Management**: CRUD for categories and subcategories
-- **Product Moderation**: Verify/reject dealer products
-- **Order Oversight**: View and manage all platform orders
+- **Product Moderation**: Verify/reject products and approve update requests
+- **Order Oversight**: `ADMIN` role expanded to manage all marketplace orders
 - **Payout Management**: Approve seller withdrawal requests
 - **Platform Analytics**: Sales, revenue, and user statistics
-- **Audit Logs**: Track all admin actions
+- **Audit Logs**: Centralized `AuditService` tracking all admin telemetry
 - **Support System**: Manage customer support tickets
 - **Combo Offers**: Create promotional product bundles
 
@@ -616,34 +618,37 @@ model OrderItem {
 ```
 
 ### Complete Model List (30+)
-1. User
-2. Address
-3. Category
-4. Subcategory
-5. Product
-6. ProductVariant
-7. ProductSize
-8. Order
-9. OrderItem
-10. OrderStatusHistory
-11. PaymentMethod
-12. Payout
-13. Wishlist
-14. ProductReview
-15. Notification
-16. SupportTicket
-17. TicketMessage
-18. SupportConversation
-19. SupportMessage
-20. UserPreference
-21. AuditLog
-22. Newsletter
-23. ProductUpdateRequest
-24. ComboOffer
-25. AdminNotificationSetting
-26. Cart (if needed)
-27. CartItem (if needed)
-28. ... and more
+1. User (Customers, Sellers, Admins)
+2. Vendor (Store profile & bank details)
+3. Category (Hierarchical with commission rates)
+4. Product (Variants, SKUs, Verification status)
+5. ProductVariant (Color-based groupings)
+6. ProductSize (Stock tracking per size)
+7. ProductUpdateRequest (Admin approval queue)
+8. Order (Multi-vendor support)
+9. OrderItem (Individual seller attribution)
+10. OrderStatusHistory (Timeline tracking)
+11. PaymentTransaction (Razorpay reconciliation)
+12. Payout (Earnings withdrawal logic)
+13. AuditLog (System-wide telemetry)
+14. SupportTicket & Message (CRM system)
+15. SiteSetting (Dynamic fees & platform constants)
+16. ComboOffer (Marketing bundles)
+17. ... and more
+
+---
+
+## 🛡️ Security & Hardening
+
+Pravokha implements several production-ready security patterns:
+
+- **IDOR Protection**: `requireOwnership` middleware and service-level checks in `SupportController` ensure non-admin users cannot access each other's data or tickets.
+- **Role Normalization**: Case-insensitive role validation (e.g., `role.toUpperCase()`) implemented across frontend (`App.tsx`, `AdminLayout.tsx`) and backend to prevent logic bypasses and GLITCHES.
+- **Zero-Trust Support**: Support conversations and tickets are strictly isolated using reinforced ownership logic.
+- **Administrative Oversight**: Granular permissions allow `ADMIN` to manage platform inventory while reserving system configuration for `SUPER_ADMIN`.
+- **Transaction Safety**: All order and payment operations use Prisma transactions to ensure data integrity.
+- **Audit Telemetry**: Sensitive actions (payout approvals, role changes, user suspensions) are captured in `AuditLog`.
+- **Dynamic Config**: Platform-wide fees (shipping ₹99, tax 18%) are pulled from `SiteSetting` with robust fallbacks.
 
 ---
 
@@ -1229,6 +1234,6 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 
 **Built with ❤️ by the Pravokha Team**
 
-**Last Updated**: February 2, 2026  
-**Version**: 1.0.0  
-**Status**: 🟢 Production Ready
+**Last Updated**: February 8, 2026  
+**Version**: 1.0.0-GOLD  
+**Status**: 🟢 Production Ready (Audited & Hardened)

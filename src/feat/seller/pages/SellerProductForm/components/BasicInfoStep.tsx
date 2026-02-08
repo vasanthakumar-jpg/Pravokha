@@ -5,7 +5,7 @@ import { Label } from "@/ui/Label";
 import { Textarea } from "@/ui/Textarea";
 import { Button } from "@/ui/Button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/Select";
-import { Plus, Shield, Tag } from "lucide-react";
+import { Plus, Shield, Tag, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ProductFormData } from "./types";
 
@@ -18,6 +18,7 @@ interface BasicInfoStepProps {
     dbCategories: { id: string; name: string; slug: string }[];
     dbSubcategories: { id: string; name: string; slug: string; categoryId: string }[];
     handleCategoryChange: (categoryId: string) => void;
+    handleSubcategoryChange: (subCategoryId: string) => void;
     isLoadingSubcategories: boolean;
     subcategoryWarning: string;
     setSubcategoryWarning: (warning: string) => void;
@@ -35,6 +36,7 @@ export const BasicInfoStep: React.FC<BasicInfoStepProps> = ({
     dbCategories,
     dbSubcategories,
     handleCategoryChange,
+    handleSubcategoryChange,
     isLoadingSubcategories,
     subcategoryWarning,
     setSubcategoryWarning,
@@ -139,11 +141,7 @@ export const BasicInfoStep: React.FC<BasicInfoStepProps> = ({
                     </Label>
                     <Select
                         value={formData.selectedSubcategoryId}
-                        onValueChange={(v) => {
-                            setFormData(prev => ({ ...prev, selectedSubcategoryId: v }));
-                            setSubcategoryWarning("");
-                            if (errors.subcategory) setErrors(prev => ({ ...prev, subcategory: "" }));
-                        }}
+                        onValueChange={handleSubcategoryChange}
                         disabled={isLoadingSubcategories || !formData.selectedCategoryId}
                     >
                         <SelectTrigger className={cn(

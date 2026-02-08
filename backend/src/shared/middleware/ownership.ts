@@ -39,8 +39,8 @@ export const requireOwnership = (options: OwnershipCheckOptions) => {
                 });
             }
 
-            // SUPER_ADMIN bypasses all ownership checks
-            if (req.user.role === Role.SUPER_ADMIN) {
+            // SUPER_ADMIN and ADMIN bypasses all ownership checks
+            if (req.user.role === Role.SUPER_ADMIN || req.user.role === Role.ADMIN) {
                 return next();
             }
 
@@ -150,8 +150,8 @@ export const requireSellerOrderAccess = async (req: Request, res: Response, next
             return res.status(401).json({ success: false, message: 'Authentication required' });
         }
 
-        // SUPER_ADMIN can access all orders
-        if (req.user.role === Role.SUPER_ADMIN) {
+        // SUPER_ADMIN and ADMIN can access all orders
+        if (req.user.role === Role.SUPER_ADMIN || req.user.role === Role.ADMIN) {
             return next();
         }
 
@@ -213,8 +213,8 @@ export const requireOrderOwnership = async (req: Request, res: Response, next: N
             return res.status(401).json({ success: false, message: 'Authentication required' });
         }
 
-        // SUPER_ADMIN bypasses all ownership checks
-        if (req.user.role === Role.SUPER_ADMIN) {
+        // SUPER_ADMIN and ADMIN bypass all ownership checks
+        if (req.user.role === Role.SUPER_ADMIN || req.user.role === Role.ADMIN) {
             return next();
         }
 

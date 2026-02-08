@@ -271,3 +271,19 @@ export const checkSku = asyncHandler(async (req: Request, res: Response) => {
     const available = await ProductService.checkSkuAvailable(sku, excludeId);
     res.status(200).json({ success: true, available });
 });
+
+export const createProductUpdateRequest = asyncHandler(async (req: Request, res: Response) => {
+    const { product_id, seller_id, requested_changes, status, reason } = req.body;
+
+    const result = await prisma.productUpdateRequest.create({
+        data: {
+            productId: product_id,
+            sellerId: seller_id,
+            requestedChanges: typeof requested_changes === 'string' ? requested_changes : JSON.stringify(requested_changes),
+            status: status || 'pending',
+            reason: reason || (requested_changes && requested_changes.reason) || null
+        }
+    });
+
+    res.status(201).json({ success: true, data: result });
+});

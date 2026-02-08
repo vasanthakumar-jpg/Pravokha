@@ -193,7 +193,7 @@ export default function AdminLayout() {
         <CommandList>
           <CommandEmpty>No results found.</CommandEmpty>
           {navSections.map((section) => {
-            const visibleLinks = section.links.filter(link => !link.allowedRoles || (role && link.allowedRoles.includes(role)));
+            const visibleLinks = section.links.filter(link => !link.allowedRoles || (role && link.allowedRoles.includes(role.toUpperCase())));
             if (visibleLinks.length === 0) return null;
 
             return (
@@ -254,7 +254,7 @@ export default function AdminLayout() {
                   </div>
                   <ScrollArea className="h-[calc(100vh-80px)] px-4 py-6">
                     {navSections.map((section) => {
-                      const visibleLinks = section.links.filter(link => !link.allowedRoles || (role && link.allowedRoles.includes(role)));
+                      const visibleLinks = section.links.filter(link => !link.allowedRoles || (role && link.allowedRoles.includes(role.toUpperCase())));
                       if (visibleLinks.length === 0) return null;
 
                       return (
@@ -381,7 +381,7 @@ export default function AdminLayout() {
           <ScrollArea className="flex-1">
             <div className="space-y-6 py-8 px-4">
               {navSections.map((section) => {
-                const visibleLinks = section.links.filter(link => !link.allowedRoles || (role && link.allowedRoles.includes(role)));
+                const visibleLinks = section.links.filter(link => !link.allowedRoles || (role && link.allowedRoles.includes(role.toUpperCase())));
                 if (visibleLinks.length === 0) return null;
 
                 return (

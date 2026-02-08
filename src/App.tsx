@@ -146,7 +146,7 @@ const ConditionalFooter = () => {
 const NavigateToOrderDetail = () => {
   const { orderId } = useParams();
   const { role } = useAuth();
-  const isAdmin = role === 'ADMIN' || role === 'SUPER_ADMIN';
+  const isAdmin = role?.toUpperCase() === 'ADMIN' || role?.toUpperCase() === 'SUPER_ADMIN';
 
   const targetPath = isAdmin
     ? `/admin/orders/${orderId}`
@@ -158,8 +158,9 @@ const NavigateToOrderDetail = () => {
 // Internal Router to dispatch Admin to correct Dashboard
 const AdminDashboardRouter = () => {
   const { role } = useAuth();
-  if (role === 'SUPER_ADMIN') return <Navigate to="/admin/super-dashboard" replace />;
-  if (role === 'ADMIN') return <Navigate to="/admin/staff-dashboard" replace />;
+  const roleUpper = role?.toUpperCase();
+  if (roleUpper === 'SUPER_ADMIN') return <Navigate to="/admin/super-dashboard" replace />;
+  if (roleUpper === 'ADMIN') return <Navigate to="/admin/staff-dashboard" replace />;
   return <Navigate to="/unauthorized" replace />;
 };
 

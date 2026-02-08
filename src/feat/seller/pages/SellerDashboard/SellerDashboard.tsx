@@ -45,7 +45,7 @@ export default function SellerDashboard() {
 
   // Authorization Guard - Updated for Vendor Architecture
   useEffect(() => {
-    if (!authLoading && role !== 'SELLER') {
+    if (!authLoading && role?.toUpperCase() !== 'SELLER') {
       console.warn("[SellerDashboard] Unauthorized role access attempt:", role);
       navigate("/auth");
     }

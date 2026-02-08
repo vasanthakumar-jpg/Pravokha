@@ -1,4 +1,7 @@
-import { createProduct, getProducts, getProductById, updateProduct, deleteProduct, checkSku } from './controller';
+import {
+    getProducts, getProductById, createProduct, updateProduct, deleteProduct, checkSku,
+    verifyProduct, featureProduct, createProductUpdateRequest
+} from './controller';
 import { authenticate, authorize, optionalAuthenticate, checkAccountStatus } from '../../shared/middleware/auth';
 import { requireProductOwnership } from '../../shared/middleware/ownership';
 import { validate } from '../../shared/middleware/validation';
@@ -16,6 +19,7 @@ router.get('/:id', optionalAuthenticate, getProductById);
 router.use(authenticate);
 
 router.post('/check-sku', checkAccountStatus, checkSku);
+router.post('/requests', authorize([Role.ADMIN, Role.SUPER_ADMIN, Role.SELLER]), checkAccountStatus, createProductUpdateRequest);
 router.post('/', authorize([Role.ADMIN, Role.SUPER_ADMIN, Role.SELLER]), checkAccountStatus, validate({ body: createProductSchema }), createProduct);
 router.put('/:id', authorize([Role.ADMIN, Role.SUPER_ADMIN, Role.SELLER]), checkAccountStatus, requireProductOwnership, validate({ body: updateProductSchema }), updateProduct);
 router.patch('/:id', authorize([Role.ADMIN, Role.SUPER_ADMIN, Role.SELLER]), checkAccountStatus, requireProductOwnership, validate({ body: updateProductSchema }), updateProduct);

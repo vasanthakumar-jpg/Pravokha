@@ -41,8 +41,10 @@ export class ProductService {
         const finalBasePrice = Number(data.price);
 
         if (!isNaN(finalBasePrice)) {
-            mappedData.price = finalDiscountPrice ? Number(finalDiscountPrice) : finalBasePrice;
-            mappedData.compareAtPrice = finalDiscountPrice ? finalBasePrice : (data.compareAtPrice !== undefined ? Number(data.compareAtPrice) : null);
+            // Price is always the final selling price
+            mappedData.price = (finalDiscountPrice !== null && finalDiscountPrice !== undefined) ? Number(finalDiscountPrice) : finalBasePrice;
+            // compareAtPrice stores the original price if discounted, otherwise it's null
+            mappedData.compareAtPrice = (finalDiscountPrice !== null && finalDiscountPrice !== undefined) ? finalBasePrice : null;
         }
 
         // Handle Status and Toggles

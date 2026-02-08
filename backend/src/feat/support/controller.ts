@@ -67,8 +67,8 @@ export class SupportController {
             where: { id },
             include: { user: { select: { name: true, email: true } } }
         });
-        if (!ticket || (ticket.userId !== user.id && user.role === Role.CUSTOMER)) {
-            return res.status(404).json({ success: false, message: 'Ticket not found' });
+        if (!ticket || (ticket.userId !== user.id && user.role !== Role.ADMIN && user.role !== Role.SUPER_ADMIN)) {
+            return res.status(404).json({ success: false, message: 'Ticket not found or access denied' });
         }
         res.json({ success: true, ticket });
     });
@@ -127,8 +127,8 @@ export class SupportController {
         const { id } = req.params;
         const user = (req as any).user;
         const ticket = await prisma.supportTicket.findUnique({ where: { id } });
-        if (!ticket || (ticket.userId !== user.id && user.role === Role.CUSTOMER)) {
-            return res.status(404).json({ success: false, message: 'Ticket not found' });
+        if (!ticket || (ticket.userId !== user.id && user.role !== Role.ADMIN && user.role !== Role.SUPER_ADMIN)) {
+            return res.status(404).json({ success: false, message: 'Ticket not found or access denied' });
         }
         const messages = await prisma.ticketMessage.findMany({
             where: { ticketId: id, ...(user.role === Role.CUSTOMER ? { isInternal: false } : {}) },
@@ -143,8 +143,8 @@ export class SupportController {
         const user = (req as any).user;
         const { message, isInternal } = req.body;
         const ticket = await prisma.supportTicket.findUnique({ where: { id } });
-        if (!ticket || (ticket.userId !== user.id && user.role === Role.CUSTOMER)) {
-            return res.status(404).json({ success: false, message: 'Ticket not found' });
+        if (!ticket || (ticket.userId !== user.id && user.role !== Role.ADMIN && user.role !== Role.SUPER_ADMIN)) {
+            return res.status(404).json({ success: false, message: 'Ticket not found or access denied' });
         }
         const newMessage = await prisma.ticketMessage.create({
             data: {
@@ -198,8 +198,8 @@ export class SupportController {
         const { id } = req.params;
         const user = (req as any).user;
         const conversation = await prisma.supportConversation.findUnique({ where: { id } });
-        if (!conversation || (conversation.userId !== user.id && user.role === Role.CUSTOMER)) {
-            return res.status(404).json({ success: false, message: 'Conversation not found' });
+        if (!conversation || (conversation.userId !== user.id && user.role !== Role.ADMIN && user.role !== Role.SUPER_ADMIN)) {
+            return res.status(404).json({ success: false, message: 'Conversation not found or access denied' });
         }
         const messages = await prisma.supportMessage.findMany({
             where: { conversationId: id },
@@ -213,8 +213,8 @@ export class SupportController {
         const user = (req as any).user;
         const { message } = req.body;
         const conversation = await prisma.supportConversation.findUnique({ where: { id } });
-        if (!conversation || (conversation.userId !== user.id && user.role === Role.CUSTOMER)) {
-            return res.status(404).json({ success: false, message: 'Conversation not found' });
+        if (!conversation || (conversation.userId !== user.id && user.role !== Role.ADMIN && user.role !== Role.SUPER_ADMIN)) {
+            return res.status(404).json({ success: false, message: 'Conversation not found or access denied' });
         }
         const newMessage = await prisma.supportMessage.create({
             data: { conversationId: id, userId: user.id, message, isAdmin: user.role !== Role.CUSTOMER }

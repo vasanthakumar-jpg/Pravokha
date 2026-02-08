@@ -38,7 +38,7 @@ export class OrderService {
             const productIds = items.map((i) => i.productId);
             const products = await tx.product.findMany({
                 where: { id: { in: productIds } },
-                include: { vendor: true }
+                include: { vendor: true, category: true }
             });
 
             // 1. Group items by Vendor and validate stock
@@ -91,11 +91,34 @@ export class OrderService {
                 const settings = await tx.siteSetting.findUnique({ where: { id: 'primary' } });
                 const taxRate = settings?.taxRate || 18;
 
-                const vendorSubtotal = group.reduce((sum: number, i: any) => sum + (i.product.price * i.item.quantity), 0);
+                // Calculate subtotal and weighted commission
+                let vendorSubtotal = 0;
+                let totalPlatformFee = 0;
+
+                for (const g of group) {
+                    const itemPrice = g.product.price;
+                    const itemQty = g.item.quantity;
+                    const itemSubtotal = itemPrice * itemQty;
+                    vendorSubtotal += itemSubtotal;
+
+                    // Commission Priority: Product -> Category -> Vendor -> Site Setting -> Default 10
+                    const itemCommissionRate = g.product.commissionRate ??
+                        g.product.category?.commissionRate ??
+                        g.product.vendor?.commissionRate ??
+                        settings?.commissionRate ?? 10;
+
+                    totalPlatformFee += (itemSubtotal * itemCommissionRate) / 100;
+                }
 
                 // Subtract discount from the first order it can cover
                 const orderDiscount = Math.min(vendorSubtotal, remainingDiscount);
                 remainingDiscount -= orderDiscount;
+
+                // Adjust platform fee if discount is applied (proportional reduction)
+                if (vendorSubtotal > 0 && orderDiscount > 0) {
+                    const discountRatio = (vendorSubtotal - orderDiscount) / vendorSubtotal;
+                    totalPlatformFee *= discountRatio;
+                }
 
                 const adjustedSubtotal = vendorSubtotal - orderDiscount;
 
@@ -116,9 +139,11 @@ export class OrderService {
                 const vendorTax = Math.round((adjustedSubtotal + applicableShipping) * (taxRate / 100));
                 const vendorTotal = adjustedSubtotal + vendorTax + applicableShipping;
 
-                const vendor = group[0].product.vendor;
-                const commissionRate = vendor?.commissionRate || settings?.commissionRate || 10;
-                const platformFee = (vendorTotal * commissionRate) / 100;
+                // If platform fee should also apply to shipping/tax (depends on policy)
+                // In many marketplaces, commission is only on product price.
+                // We will keep it on product price (totalPlatformFee calculated above).
+
+                const platformFee = Math.round(totalPlatformFee * 100) / 100;
                 const vendorEarnings = vendorTotal - platformFee;
 
                 const order = await tx.order.create({

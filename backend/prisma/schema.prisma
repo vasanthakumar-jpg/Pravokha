@@ -148,6 +148,7 @@ model Category {
   description   String?    @db.LongText
   status        String     @default("active")
   displayOrder  Int        @default(0) @map("display_order")
+  commissionRate Float     @default(10) @map("commission_rate")
   createdAt     DateTime   @default(now()) @map("created_at")
   updatedAt     DateTime   @updatedAt @map("updated_at")
   parent        Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
