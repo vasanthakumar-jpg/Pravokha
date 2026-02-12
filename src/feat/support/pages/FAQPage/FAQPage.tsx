@@ -52,7 +52,7 @@ export function FAQPage() {
         {
             question: "Do you offer bulk order discounts?",
             answer:
-                "Yes! We offer special pricing for bulk orders of 50+ items. Please contact our sales team at vasanthakumar141099@gmail.com or call 7339232817 for more information.",
+                "Yes! We offer special pricing for bulk orders of 50+ items. All bulk orders must be processed directly through our Administration. Please contact our admin team at admin@pravokha.com or call 7339232817 for custom quotes.",
         },
         {
             question: "How can I contact customer support?",

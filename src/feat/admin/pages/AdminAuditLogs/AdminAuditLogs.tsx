@@ -89,12 +89,25 @@ function MetadataRenderer({ data }: { data: any }) {
     }
 
     return (
-        <div className="p-4 rounded-2xl bg-muted/30 border border-border/40 font-mono text-xs">
-            <pre className="whitespace-pre-wrap break-all">
-                {typeof parsedData === 'object'
-                    ? JSON.stringify(parsedData, null, 2)
-                    : parsedData}
-            </pre>
+        <div className="p-4 rounded-2xl bg-muted/30 border border-border/40 text-xs">
+            {typeof parsedData === 'object' && parsedData !== null ? (
+                <div className="space-y-2">
+                    {Object.entries(parsedData).map(([key, value]) => (
+                        <div key={key} className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-4">
+                            <span className="font-semibold text-muted-foreground min-w-[100px] shrink-0 capitalize">
+                                {key.replace(/([A-Z])/g, ' $1').trim()}:
+                            </span>
+                            <span className="font-mono text-foreground break-all">
+                                {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                            </span>
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                <pre className="whitespace-pre-wrap break-all font-mono">
+                    {String(parsedData)}
+                </pre>
+            )}
         </div>
     );
 }

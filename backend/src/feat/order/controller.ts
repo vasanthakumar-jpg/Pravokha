@@ -3,6 +3,7 @@ import { OrderService } from './service';
 import { createOrderSchema } from './schema';
 import { Role } from '@prisma/client';
 import { prisma } from '../../infra/database/client';
+import { ShippingService } from '../../services/ShippingService';
 
 export class OrderController {
     static async createOrder(req: Request, res: Response, next: NextFunction) {
@@ -159,6 +160,24 @@ export class OrderController {
                 return res.status(400).json({ success: false, message: error.message });
             }
             next(error);
+        }
+    }
+
+    static async calculateShipping(req: Request, res: Response, next: NextFunction) {
+        try {
+            const { items, pincode, isCod, isExpress } = req.body;
+            if (!items || !pincode) {
+                return res.status(400).json({ success: false, message: 'Items and pincode are required' });
+            }
+
+            const result = await ShippingService.calculateShipping(items, pincode, isCod, isExpress);
+
+            res.status(200).json({
+                success: true,
+                data: result
+            });
+        } catch (error: any) {
+            res.status(400).json({ success: false, message: error.message });
         }
     }
 

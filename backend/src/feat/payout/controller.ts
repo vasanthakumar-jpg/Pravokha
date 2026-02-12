@@ -1,5 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { PayoutService } from './service';
+import { prisma } from '../../infra/database/client';
+
 
 export class PayoutController {
     static async listPayouts(req: Request, res: Response, next: NextFunction) {
@@ -26,7 +28,11 @@ export class PayoutController {
         try {
             const user = (req as any).user;
             const { amount } = req.body;
-            const payout = await PayoutService.createPayoutRequest(user.id, amount);
+
+            const vendor = await prisma.vendor.findUnique({ where: { ownerId: user.id } });
+            if (!vendor) return res.status(404).json({ success: false, message: 'Vendor record not found' });
+
+            const payout = await PayoutService.createPayoutRequest(vendor.id, amount);
 
             res.status(201).json({
                 success: true,
@@ -41,7 +47,11 @@ export class PayoutController {
     static async getTransactions(req: Request, res: Response, next: NextFunction) {
         try {
             const user = (req as any).user;
-            const transactions = await PayoutService.getTransactions(user.id);
+
+            const vendor = await prisma.vendor.findUnique({ where: { ownerId: user.id } });
+            if (!vendor) return res.status(404).json({ success: false, message: 'Vendor record not found' });
+
+            const transactions = await PayoutService.getTransactions(vendor.id);
 
             res.status(200).json({
                 success: true,

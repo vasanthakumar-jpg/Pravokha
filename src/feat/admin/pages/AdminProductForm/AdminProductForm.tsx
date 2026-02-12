@@ -18,7 +18,8 @@ import {
     ArrowLeft, Upload, X, Plus, Save, Loader2, Package,
     Eye, Layout, Layers, Image as ImageIcon, Briefcase, Info, TrendingUp, Trash2,
     Shield,
-    XCircle
+    XCircle,
+    Copy
 } from "lucide-react";
 import { SIZES, COLORS } from "@/data/products";
 import { MARKETPLACE_FEE_PERCENTAGE, MAX_DISCOUNT_PERCENTAGE } from "@/lib/constants";
@@ -200,10 +201,12 @@ export default function AdminProductForm() {
                 };
 
                 if (variants.length > 0) {
-                    variants.forEach((v: any) => {
+                    console.log('[AdminProductForm] Processing variants:', variants.length);
+                    variants.forEach((v: any, vIdx: number) => {
+                        console.log(`[AdminProductForm] Variant ${vIdx}:`, v);
                         // Stable ID logic - prefer existing database IDs
                         let colorId = v.id;
-                        const colorName = v.colorName || v.color_name;
+                        const colorName = v.colorName || v.color_name || "Standard";
                         const colorHex = v.colorHex || v.color_hex;
 
                         const variantImages = parseImages(v.images);
@@ -225,19 +228,23 @@ export default function AdminProductForm() {
                         }
 
                         const sizesData = v.sizes || v.product_sizes || [];
+                        console.log(`[AdminProductForm] Variant ${vIdx} sizesData:`, sizesData);
+
                         if (sizesData.length > 0) {
                             sizesData.forEach((s: any) => {
-                                const sizeValue = s.size;
-                                // Filter out "One Size" as requested
-                                if (sizeValue !== "One Size") {
-                                    if (!sizes.includes(sizeValue)) sizes.push(sizeValue);
-                                    const sizeKey = getStockKey(colorName, sizeValue);
-                                    sizeStockMap[sizeKey] = (sizeStockMap[sizeKey] || 0) + s.stock;
-                                    totalStock += s.stock;
-                                }
+                                const sizeValue = (s.size || "").toUpperCase();
+                                // Filter out "One Size" as requested and ensure valid value
+                                if (sizeValue && !sizes.includes(sizeValue)) sizes.push(sizeValue);
+
+                                const sizeKey = getStockKey(colorName, sizeValue);
+                                sizeStockMap[sizeKey] = (sizeStockMap[sizeKey] || 0) + s.stock;
+                                totalStock += s.stock;
                             });
                         }
                     });
+                    console.log('[AdminProductForm] Final parsed sizes:', sizes);
+                } else {
+                    console.warn('[AdminProductForm] No variants found in product data');
                 }
 
                 // Reconstruction of Category/Subcategory hierarchy
@@ -451,14 +458,14 @@ export default function AdminProductForm() {
         formData.selectedColors.forEach(color => {
             const existing = formData.existingVariantImages[color.id] || [];
             const newImgs = formData.variantImages[color.id] || [];
-            if (existing.length + newImgs.length === 0) {
+            if (existing.length + newImgs.length < 4) {
                 missingImages = true;
             }
         });
 
         if (missingImages) {
-            newErrors.images = "Each color variant must have at least one image.";
-            toast({ title: "Missing Images", description: "Each color variant must have at least one image.", variant: "destructive" });
+            newErrors.images = "Each color variant must have at least 4 images.";
+            toast({ title: "Incomplete Gallery", description: "Each color variant must have at least 4 images to ensure quality standards.", variant: "destructive" });
         }
 
         if (Object.keys(newErrors).length > 0) {
@@ -479,6 +486,9 @@ export default function AdminProductForm() {
             // 1. Prepare Variants Data
             const colors = formData.selectedColors.length > 0 ? formData.selectedColors : [];
             const variantsData = [];
+
+            console.log('[handleSave] Selected Colors:', colors);
+            console.log('[handleSave] Selected Sizes:', formData.selectedSizes);
 
             for (const color of colors) {
                 // Upload New Images for this Color
@@ -504,12 +514,18 @@ export default function AdminProductForm() {
                 const existingUrls = formData.existingVariantImages[color.id] || [];
                 const finalImages = [...existingUrls, ...uploadedUrls];
 
+                // Debug Key Generation
+                const debugKey = getStockKey(color.name, formData.selectedSizes[0] || "");
+                console.log(`[handleSave] Processing color ${color.name}. Sample Key: ${debugKey}`);
+
                 const sizeEntries = formData.selectedSizes
                     .filter(size => !formData.unavailableVariants?.includes(getStockKey(color.name, size)))
                     .map(size => ({
                         size: size,
                         stock: formData.sizeStock[getStockKey(color.name, size)] || 0
                     }));
+
+                console.log(`[handleSave] Size Entries for ${color.name}:`, sizeEntries);
 
                 variantsData.push({
                     color_name: color.name,
@@ -596,6 +612,21 @@ export default function AdminProductForm() {
                     </div>
 
                     <div className="flex items-center gap-2 w-full sm:w-auto">
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                if (id) {
+                                    navigator.clipboard.writeText(id);
+                                    toast({ title: "Copied!", description: "Product UUID copied to clipboard." });
+                                }
+                            }}
+                            className="rounded-xl h-10 sm:h-11 w-10 sm:w-auto px-0 sm:px-4 border-dashed border-border/60 hover:bg-primary/5 hover:border-primary/30 transition-all font-bold text-xs"
+                            title="Copy Product ID"
+                        >
+                            <span className="sr-only sm:not-sr-only sm:mr-2">ID</span>
+                            <Copy className="h-4 w-4" />
+                        </Button>
+
                         <AlertDialog>
                             <AlertDialogTrigger asChild>
                                 <Button variant="outline" className="rounded-xl h-10 sm:h-11 flex-1 sm:flex-none border-border/60 hover:bg-rose-500/10 hover:text-rose-500 hover:border-rose-500/30 transition-all font-bold text-xs uppercase tracking-tight">
@@ -890,13 +921,68 @@ export default function AdminProductForm() {
 
                                             {/* Size Architecture */}
                                             <div className="space-y-4">
-                                                <Label className={cn("text-sm font-bold tracking-wider text-muted-foreground", errors.sizes && "text-rose-500")}>Size architecture</Label>
+                                                <div className="flex items-center justify-between">
+                                                    <Label className={cn("text-sm font-bold tracking-wider text-muted-foreground", errors.sizes && "text-rose-500")}>Size architecture</Label>
+                                                    <div className="flex items-center gap-2">
+                                                        <Input
+                                                            id="custom-size-input"
+                                                            placeholder="Add size (e.g. 40, 42, 6Y)"
+                                                            className="h-8 text-xs w-32 sm:w-40"
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === 'Enter') {
+                                                                    e.preventDefault();
+                                                                    const input = e.currentTarget as HTMLInputElement;
+                                                                    const rawVal = input.value.trim();
+
+                                                                    if (rawVal) {
+                                                                        // 1. Case-insensitive matching with standard SIZES
+                                                                        const standardMatch = SIZES.find(s => s.toLowerCase() === rawVal.toLowerCase());
+                                                                        const val = standardMatch || rawVal.toUpperCase();
+
+                                                                        // 2. Add only if not already present
+                                                                        if (!formData.selectedSizes.includes(val)) {
+                                                                            toggleSelection(formData.selectedSizes, val, 'selectedSizes');
+                                                                        } else {
+                                                                            toast({ title: "Size already added", description: `${val} is already in your selection.` });
+                                                                        }
+                                                                        input.value = '';
+                                                                    }
+                                                                }
+                                                            }}
+                                                        />
+                                                        <Button
+                                                            type="button"
+                                                            size="sm"
+                                                            variant="secondary"
+                                                            className="h-8 px-3 text-xs font-bold"
+                                                            onClick={() => {
+                                                                const input = document.getElementById('custom-size-input') as HTMLInputElement;
+                                                                const rawVal = input.value.trim();
+
+                                                                if (rawVal) {
+                                                                    const standardMatch = SIZES.find(s => s.toLowerCase() === rawVal.toLowerCase());
+                                                                    const val = standardMatch || rawVal.toUpperCase();
+
+                                                                    if (!formData.selectedSizes.includes(val)) {
+                                                                        toggleSelection(formData.selectedSizes, val, 'selectedSizes');
+                                                                    } else {
+                                                                        toast({ title: "Size already added", description: `${val} is already in your selection.` });
+                                                                    }
+                                                                    input.value = '';
+                                                                }
+                                                            }}
+                                                        >
+                                                            <Plus className="h-3 w-3 mr-1" /> Add
+                                                        </Button>
+                                                    </div>
+                                                </div>
                                                 {errors.sizes && <p className="text-[10px] font-bold text-rose-500 -mt-2 animate-in fade-in slide-in-from-top-1">{errors.sizes}</p>}
                                                 <div className="flex flex-wrap gap-3">
                                                     {/* Render Standard Sizes */}
                                                     {SIZES.map(size => (
                                                         <button
                                                             key={size}
+                                                            type="button"
                                                             onClick={() => {
                                                                 toggleSelection(formData.selectedSizes, size, 'selectedSizes');
                                                                 if (errors.sizes) setErrors(prev => ({ ...prev, sizes: "" }));
@@ -913,19 +999,23 @@ export default function AdminProductForm() {
                                                         </button>
                                                     ))}
 
-                                                    {/* Render Non-Standard Sizes (e.g., 'One Size' from DB) so they can be removed */}
+                                                    {/* Render Custom/Selected Sizes Not in Standard List */}
                                                     {formData.selectedSizes
                                                         .filter(s => !SIZES.includes(s))
                                                         .map(size => (
                                                             <button
                                                                 key={size}
+                                                                type="button"
                                                                 onClick={() => toggleSelection(formData.selectedSizes, size, 'selectedSizes')}
                                                                 className={cn(
-                                                                    "min-w-[48px] px-3 h-12 rounded-xl border flex items-center justify-center font-black transition-all shadow-sm",
+                                                                    "min-w-[48px] px-3 h-12 rounded-xl border flex items-center justify-center font-black transition-all shadow-sm relative group",
                                                                     "bg-primary text-primary-foreground border-primary scale-105 shadow-primary/20 ring-4 ring-primary/10"
                                                                 )}
                                                             >
                                                                 {size}
+                                                                <div className="absolute -top-1 -right-1 bg-destructive text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                    <X className="h-2 w-2" />
+                                                                </div>
                                                             </button>
                                                         ))
                                                     }
@@ -949,7 +1039,7 @@ export default function AdminProductForm() {
                                                             <div key={color.id} className="p-5 rounded-3xl border border-border/50 bg-muted/10 space-y-4">
                                                                 <div className="flex items-center gap-3">
                                                                     <div className="w-5 h-5 rounded-full border shadow-sm ring-4 ring-background" style={{ backgroundColor: color.hex }} />
-                                                                    <span className="font-black text-sm tracking-tight text-foreground/80">{color.name.toUpperCase()}</span>
+                                                                    <span className="font-black text-sm tracking-tight text-foreground/80">{(color.name || '').toUpperCase()}</span>
                                                                 </div>
                                                                 <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
                                                                     {formData.selectedSizes.map(size => {
@@ -1042,8 +1132,15 @@ export default function AdminProductForm() {
                                                             <div key={color.id} className="space-y-4">
                                                                 <div className="flex items-center gap-3 pb-2 border-b border-border/30">
                                                                     <div className="w-4 h-4 rounded-full border shadow-sm" style={{ backgroundColor: color.hex }} />
-                                                                    <h4 className="font-bold text-sm tracking-tight">{color.name}</h4>
-                                                                    {!hasImages && <Badge variant="destructive" className="text-[9px] h-4">Required</Badge>}
+                                                                    <div className="flex flex-col">
+                                                                        <h4 className="font-bold text-sm tracking-tight">{color.name}</h4>
+                                                                        <span className={cn("text-[10px] font-medium", (existing.length + previews.length) >= 4 ? "text-emerald-600" : "text-rose-500")}>
+                                                                            {(existing.length + previews.length) >= 4
+                                                                                ? `${existing.length + previews.length} images (Ready)`
+                                                                                : `${existing.length + previews.length}/4 images required`
+                                                                            }
+                                                                        </span>
+                                                                    </div>
                                                                 </div>
 
                                                                 <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-3">
@@ -1086,7 +1183,8 @@ export default function AdminProductForm() {
                                                         );
                                                     })}
                                                 </div>
-                                            )}
+                                            )
+                                            }
 
                                             <div className="mt-8 p-4 rounded-2xl bg-muted/30 border border-dashed border-border/50 flex items-center gap-3 text-xs text-muted-foreground italic">
                                                 <Info className="h-4 w-4 text-primary shrink-0" />

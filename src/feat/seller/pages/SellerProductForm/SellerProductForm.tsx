@@ -501,15 +501,15 @@ export default function SellerProductForm() {
                 formData.selectedColors.forEach(color => {
                     const existing = formData.existingVariantImages[color.id] || [];
                     const newImgs = formData.variantImages[color.id] || [];
-                    if (existing.length + newImgs.length === 0) {
+                    if (existing.length + newImgs.length < 4) {
                         missingImages = true;
                     }
                 });
 
                 if (missingImages) {
                     toast({
-                        title: "Missing Images",
-                        description: "Every color variant must have at least one image.",
+                        title: "Incomplete Gallery",
+                        description: "Every color variant must have at least 4 images.",
                         variant: "destructive"
                     });
                     isValid = false;

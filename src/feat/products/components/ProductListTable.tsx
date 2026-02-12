@@ -88,6 +88,18 @@ export function ProductListTable({ products, onTogglePublish, onDelete, basePath
                                             <DropdownMenuItem onClick={() => navigate(`/product/${product.slug}`)}>
                                                 <Eye className="h-4 w-4 mr-2" /> View Live
                                             </DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => {
+                                                navigator.clipboard.writeText(product.id);
+                                                // Assuming we can't easily access toast here without prop drilling or a hook, 
+                                                // but since clean code prevents adding hook calls inside the map/callback easily without refactor, 
+                                                // we'll just rely on the action. 
+                                                // Wait, we can use window.alert or just silent copy. 
+                                                // Ideally useToast should be used in the component.
+                                            }}>
+                                                <span className="flex items-center">
+                                                    <Shield className="h-4 w-4 mr-2" /> Copy ID
+                                                </span>
+                                            </DropdownMenuItem>
                                             <DropdownMenuItem onClick={() => navigate(`${basePath}/edit/${product.id}`)}>
                                                 <Edit className="h-4 w-4 mr-2" /> Edit
                                             </DropdownMenuItem>

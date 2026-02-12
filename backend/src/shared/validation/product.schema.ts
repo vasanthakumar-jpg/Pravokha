@@ -17,7 +17,9 @@ export const createProductSchema = z.object({
     is_featured: z.boolean().optional(),
     is_verified: z.boolean().optional(),
     seller_id: z.string().optional(),
-    variants: z.array(z.any()).optional(), // Will be handled in service
+    variants: z.array(z.object({
+        images: z.array(z.string()).min(4, "Each variant must have at least 4 images.")
+    })).optional(), // Will be handled in service
     adminEditReason: z.string().optional(),
 });
 

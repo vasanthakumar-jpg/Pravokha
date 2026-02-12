@@ -52,13 +52,54 @@ export function CheckoutPage() {
 
     const [isProcessing, setIsProcessing] = useState(false);
     const [processingStep, setProcessingStep] = useState<'contacting' | 'verifying' | 'confirming' | 'success'>('contacting');
-    const [settings, setSettings] = useState({ taxRate: 18, shippingFee: 50 });
+    const [settings, setSettings] = useState({ taxRate: 18, shippingFee: 0, freeShippingThreshold: 1999 });
     const [orderCount, setOrderCount] = useState(0);
+
+    // Advanced Shipping State
+    const [calculatingShipping, setCalculatingShipping] = useState(false);
+    const [shippingError, setShippingError] = useState<string | null>(null);
+    const [shippingBreakdown, setShippingBreakdown] = useState<any[]>([]);
+    const [calculatedShippingFee, setCalculatedShippingFee] = useState(0);
 
     useEffect(() => {
         fetchSettings();
         fetchOrderCount();
     }, []);
+
+    // Debounce shipping calculation on pincode/payment change
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (formData.pincode.match(/^[1-9]\d{5}$/)) {
+                calculateShipping();
+            }
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [formData.pincode, paymentMethod]);
+
+    const calculateShipping = async () => {
+        setCalculatingShipping(true);
+        setShippingError(null);
+        try {
+            const response = await apiClient.post('/orders/calculate-shipping', {
+                items: items.map(i => ({ productId: i.productId, quantity: i.quantity, sellerId: i.sellerId })),
+                pincode: formData.pincode,
+                isCod: paymentMethod === 'cod',
+                isExpress: false
+            });
+
+            if (response.data.success) {
+                setShippingBreakdown(response.data.data.breakdown);
+                setCalculatedShippingFee(response.data.data.totalShippingFee);
+            }
+        } catch (error: any) {
+            console.error("Shipping calculation failed:", error);
+            setShippingError(error.response?.data?.message || "Shipping not available for this pincode.");
+            setCalculatedShippingFee(0);
+            setShippingBreakdown([]);
+        } finally {
+            setCalculatingShipping(false);
+        }
+    };
 
 
     const fetchOrderCount = async () => {
@@ -78,7 +119,8 @@ export function CheckoutPage() {
             if (response.data.success) {
                 setSettings({
                     taxRate: response.data.settings.taxRate,
-                    shippingFee: response.data.settings.shippingFee
+                    shippingFee: response.data.settings.shippingFee,
+                    freeShippingThreshold: response.data.settings.freeShippingThreshold || 1999
                 });
             }
         } catch (error) {
@@ -108,11 +150,12 @@ export function CheckoutPage() {
     const hasComboOffer = comboSavings > 0;
     const actualSubtotal = cartTotal;
 
-    // LOYALTY REWARD: Free shipping for customers with 3 or more orders
-    const isEligibleForFreeShipping = user && orderCount >= 3;
-    const shipping = isEligibleForFreeShipping ? 0 : settings.shippingFee;
-    const tax = Math.round((actualSubtotal + shipping) * (settings.taxRate / 100));
-    const total = actualSubtotal + shipping + tax;
+    // Enterprise Shipping Logic: Threshold & Dynamic Fee
+    const isBelowThreshold = actualSubtotal < settings.freeShippingThreshold;
+    const shippingPrice = isBelowThreshold ? calculatedShippingFee : 0;
+
+    const tax = Math.round((actualSubtotal + shippingPrice) * (settings.taxRate / 100));
+    const total = actualSubtotal + shippingPrice + tax;
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -453,10 +496,47 @@ export function CheckoutPage() {
                                     <span>Subtotal</span>
                                     <span>₹{actualSubtotal}</span>
                                 </div>
-                                <div className="flex justify-between text-sm">
-                                    <span>Shipping</span>
-                                    <span>₹{shipping}</span>
-                                </div>
+
+                                {calculatingShipping ? (
+                                    <div className="flex justify-between text-xs text-muted-foreground animate-pulse">
+                                        <span>Calculating Shipping...</span>
+                                        <span>--</span>
+                                    </div>
+                                ) : shippingError ? (
+                                    <div className="p-2 bg-red-50 border border-red-100 rounded text-[10px] text-red-600 font-medium">
+                                        ⚠️ {shippingError}
+                                    </div>
+                                ) : (
+                                    <>
+                                        <div className="flex justify-between text-sm">
+                                            <span>Shipping {shippingPrice === 0 && actualSubtotal > 0 ? "(Free)" : ""}</span>
+                                            <span className={shippingPrice === 0 && actualSubtotal > 0 ? "text-green-600 font-bold" : ""}>
+                                                {shippingPrice === 0 && actualSubtotal > 0 ? "FREE" : `₹${shippingPrice}`}
+                                            </span>
+                                        </div>
+                                        {shippingBreakdown.length > 0 && shippingPrice > 0 && (
+                                            <div className="ml-2 pl-2 border-l-2 border-primary/20 space-y-1">
+                                                {shippingBreakdown.map((b, idx) => (
+                                                    <div key={idx} className="flex justify-between text-[10px] text-muted-foreground">
+                                                        <span>{b.vendorName} ({b.zone})</span>
+                                                        <span>₹{b.total}</span>
+                                                    </div>
+                                                ))}
+                                                {shippingBreakdown.some(b => b.remoteSurcharge > 0) && (
+                                                    <p className="text-[9px] text-orange-600 font-medium">
+                                                        * Includes remote area surcharge
+                                                    </p>
+                                                )}
+                                                {paymentMethod === 'cod' && shippingBreakdown.some(b => b.codFee > 0) && (
+                                                    <p className="text-[9px] text-blue-600 font-medium">
+                                                        * Includes COD handling fee
+                                                    </p>
+                                                )}
+                                            </div>
+                                        )}
+                                    </>
+                                )}
+
                                 {hasComboOffer && (
                                     <div className="flex justify-between text-sm text-accent font-semibold">
                                         <span>🎉 Combo Offer Savings</span>
@@ -467,11 +547,13 @@ export function CheckoutPage() {
                                     <span>Tax ({settings.taxRate}%)</span>
                                     <span>₹{tax}</span>
                                 </div>
-                                {isEligibleForFreeShipping && (
+
+                                {shippingPrice === 0 && actualSubtotal >= settings.freeShippingThreshold && (
                                     <p className="text-[10px] text-green-600 font-bold text-center">
-                                        🎉 Loyalty Reward: Free shipping for our valued customers!
+                                        🚀 You've unlocked FREE Shipping on this order!
                                     </p>
                                 )}
+
                                 <Separator />
                                 <div className="flex justify-between font-bold text-lg">
                                     <span>Total</span>
@@ -519,13 +601,15 @@ export function CheckoutPage() {
                             <Button
                                 className="w-full bg-primary hover:bg-primary-hover text-lg h-12"
                                 onClick={handleSubmit}
-                                disabled={items.some(item => user && item.sellerId === user.id) || loading || isSuspended}
+                                disabled={items.some(item => user && item.sellerId === user.id) || loading || isSuspended || !!shippingError || calculatingShipping}
                             >
                                 {isSuspended
                                     ? "Account Restricted"
-                                    : items.some(item => user && item.sellerId === user.id)
-                                        ? "Remove Own Items to Proceed"
-                                        : "Proceed to Payment"}
+                                    : shippingError
+                                        ? "Invalid Shipping Destination"
+                                        : items.some(item => user && item.sellerId === user.id)
+                                            ? "Remove Own Items to Proceed"
+                                            : "Proceed to Payment"}
                             </Button>
 
                             <p className="text-xs text-muted-foreground text-center">

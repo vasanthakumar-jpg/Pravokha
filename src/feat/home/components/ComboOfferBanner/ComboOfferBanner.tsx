@@ -12,9 +12,10 @@ export function ComboOfferBanner() {
                     <h2 className={styles.title}>
                         Combo Offer! 🎉
                     </h2>
-                    <p className={styles.subtitle}>
-                        Buy Any 3 Items Just ₹949
-                    </p>
+                    <div className={styles.subtitle}>
+                        Buy Any 3 Items Just
+                        <span className={styles.priceHighlight}>₹949</span>
+                    </div>
                     <p className={styles.description}>
                         Mix and match T-shirts, Track Pants, and Shorts
                     </p>
@@ -39,10 +40,10 @@ export function ComboOfferBanner() {
                             Shop Shorts
                         </Button>
                     </Link>
-                    <Link to="/contact">
+                    <Link to="/contact?subject=Bulk Order Inquiry">
                         <Button size="lg" variant="outline" className="gap-2">
                             <Mail className="h-5 w-5" />
-                            Bulk Orders
+                            Admin Bulk Orders
                         </Button>
                     </Link>
                 </div>

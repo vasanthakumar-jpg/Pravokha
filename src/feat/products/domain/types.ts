@@ -5,7 +5,7 @@ export interface ProductDomain {
     description: string;
     price: number;
     stock_quantity?: number;
-    category: string;
+    category: string | { name: string; slug: string; id?: string };
     colors?: any[];
     sizes?: string[];
     published: boolean;

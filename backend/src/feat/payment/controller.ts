@@ -4,6 +4,7 @@ import { asyncHandler } from '../../utils/asyncHandler';
 import { Role, PaymentStatus, OrderStatus, TransactionStatus } from '@prisma/client';
 import { RazorpayService } from './razorpay.service';
 import { verifyRazorpaySignature } from '../../infra/payment/razorpay';
+import { ShippingService } from '../../services/ShippingService';
 
 export class PaymentController {
     static listPaymentMethods = asyncHandler(async (req: Request, res: Response) => {
@@ -71,17 +72,29 @@ export class PaymentController {
         // Fetch dynamic settings from database
         const settings = await prisma.siteSetting.findUnique({ where: { id: 'primary' } });
         const taxRate = settings?.taxRate || 18;
-        const baseShippingFee = settings?.defaultShippingFee || 50;
 
-        let applicableShipping = baseShippingFee;
-        if (user?.id) {
-            const orderCount = await prisma.order.count({
-                where: { customerId: user.id }
-            });
-            if (orderCount >= 3) {
-                applicableShipping = 0;
-            }
+        const { pincode } = shippingAddress;
+        if (!pincode) {
+            return res.status(400).json({ success: false, message: 'Shipping pincode is required' });
         }
+
+        // 1. Calculate Shipping Fee upfront (multi-vendor aware)
+        const shippingResult = await ShippingService.calculateShipping(
+            items.map((i: any) => ({
+                productId: i.productId,
+                quantity: i.quantity,
+                sellerId: i.sellerId
+            })),
+            pincode,
+            false, // Online payment intent
+            false
+        );
+
+        const baseShippingFee = (settings as any)?.freeShippingThreshold && items.reduce((s: number, i: any) => s + (i.price * i.quantity), 0) >= (settings as any).freeShippingThreshold
+            ? 0
+            : shippingResult.totalShippingFee;
+
+        const applicableShipping = baseShippingFee;
 
         const result = await prisma.$transaction(async (tx) => {
             let totalAmount = 0;
@@ -128,7 +141,6 @@ export class PaymentController {
             const grandTotal = subtotalAfterCombos + applicableShipping + taxAmount;
 
             const orders = [];
-            const vendorCount = Object.keys(vendorGroupedItems).length;
             let remainingShipping = applicableShipping;
 
             for (const [vendorId, vendorItems] of Object.entries(vendorGroupedItems)) {
@@ -156,17 +168,21 @@ export class PaymentController {
                         totalAmount: vendorTotal,
                         platformFee,
                         vendorEarnings,
-                        shippingFee: orderShipping,
-                        taxAmount: vendorTax,
                         status: OrderStatus.PENDING,
                         paymentStatus: PaymentStatus.UNPAID,
-                        paymentMethod: 'online', // Generic naming
+                        paymentMethod: 'online',
                         customerName: shippingAddress.name,
                         customerEmail: shippingAddress.email,
                         customerPhone: shippingAddress.phone,
                         shippingAddress: JSON.stringify(shippingAddress),
+                        // Snap shipping details to the order
+                        shippingFee: orderShipping,
+                        taxAmount: vendorTax,
+                        chargeableWeight: shippingResult.breakdown.find(b => b.vendorId === vendorId)?.chargeableWeight || 0.5,
+                        appliedZone: shippingResult.breakdown.find(b => b.vendorId === vendorId)?.zone || 'Default',
+                        shippingBreakdownJson: JSON.stringify(shippingResult.breakdown.find(b => b.vendorId === vendorId)),
                         items: { create: vendorItems }
-                    }
+                    } as any
                 });
                 orders.push(order);
             }
@@ -211,11 +227,9 @@ export class PaymentController {
             return res.status(400).json({ success: false, message: 'Missing payment details' });
         }
 
-        // 1. Verify Signature
         const isValid = verifyRazorpaySignature(razorpayOrderId, razorpayPaymentId, razorpaySignature);
 
         if (!isValid) {
-            // Log fraud attempt
             await prisma.paymentTransaction.update({
                 where: { razorpayOrderId: razorpayOrderId },
                 data: {
@@ -226,7 +240,6 @@ export class PaymentController {
             return res.status(400).json({ success: false, message: 'Invalid payment signature' });
         }
 
-        // 2. Process Success
         const result = await RazorpayService.handlePaymentSuccess(
             orderId,
             razorpayOrderId,
@@ -250,8 +263,6 @@ export class PaymentController {
         if (!order) {
             return res.status(404).json({ success: false, message: 'Order not found' });
         }
-
-        // Refund logic for new gateway will go here
 
         const isPartial = amount && amount < order.totalAmount;
         const updatedOrder = await prisma.order.update({
@@ -298,6 +309,7 @@ export class PaymentController {
             settings: {
                 taxRate: settings?.taxRate || 18,
                 shippingFee: settings?.defaultShippingFee || 99,
+                freeShippingThreshold: (settings as any)?.freeShippingThreshold || 1999,
                 storeName: settings?.storeName || 'Pravokha'
             }
         });

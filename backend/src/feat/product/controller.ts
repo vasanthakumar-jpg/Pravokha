@@ -273,15 +273,19 @@ export const checkSku = asyncHandler(async (req: Request, res: Response) => {
 });
 
 export const createProductUpdateRequest = asyncHandler(async (req: Request, res: Response) => {
-    const { product_id, seller_id, requested_changes, status, reason } = req.body;
+    const user = (req as any).user;
+    const { product_id, requested_changes, status, reason } = req.body;
+
+    const vendor = await prisma.vendor.findUnique({ where: { ownerId: user.id } });
+    if (!vendor) return res.status(404).json({ success: false, message: 'Vendor record not found' });
 
     const result = await prisma.productUpdateRequest.create({
         data: {
             productId: product_id,
-            sellerId: seller_id,
-            requestedChanges: typeof requested_changes === 'string' ? requested_changes : JSON.stringify(requested_changes),
+            sellerId: vendor.id,
+            requestedChanges: requested_changes || {},
             status: status || 'pending',
-            reason: reason || (requested_changes && requested_changes.reason) || null
+            adminNotes: reason || (requested_changes && (requested_changes as any).reason) || null
         }
     });
 

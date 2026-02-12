@@ -42,8 +42,8 @@ export const vendorSettingsSchema = z.object({
     vacationMode: z.boolean().optional(),
     autoConfirm: z.boolean().optional(),
     returnPolicy: z.preprocess((val) => (val === '' ? null : val), z.string().optional().nullable()),
-    logoUrl: z.preprocess((val) => (val === '' ? null : val), z.string().optional().nullable()),
-    bannerUrl: z.preprocess((val) => (val === '' ? null : val), z.string().optional().nullable()),
+    storeLogoUrl: z.preprocess((val) => (val === '' ? null : val), z.string().optional().nullable()),
+    storeBannerUrl: z.preprocess((val) => (val === '' ? null : val), z.string().optional().nullable()),
     metaTitle: z.string().max(60, 'Meta title too long').optional().nullable(),
     metaDescription: z.string().max(160, 'Meta description too long').optional().nullable(),
 });

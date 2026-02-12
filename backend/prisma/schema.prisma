@@ -74,6 +74,11 @@ model Vendor {
   reviewCount       Int       @default(0) @map("review_count")
   totalSales        Float     @default(0) @map("total_sales")
   totalOrders       Int       @default(0) @map("total_orders")
+  verifiedAt           DateTime? @map("verified_at")
+  pickupPincode        String?   @map("pickup_pincode")
+  warehouseCity        String?   @map("warehouse_city")
+  warehouseState       String?   @map("warehouse_state")
+  customShippingEnabled Boolean   @default(false) @map("custom_shipping_enabled")
   approvedAt        DateTime? @map("approved_at")
   createdAt         DateTime  @default(now()) @map("created_at")
   updatedAt         DateTime  @updatedAt @map("updated_at")
@@ -190,6 +195,10 @@ model Product {
   taxInclusive          Boolean                @default(false) @map("tax_inclusive")
   lowStockThreshold     Int                    @default(10) @map("low_stock_threshold")
   lastStockAlert        DateTime?              @map("last_stock_alert")
+  weight                Float                  @default(0.5)
+  length                Float                  @default(20)
+  width                 Float                  @default(15)
+  height                Float                  @default(5)
   orderItems            OrderItem[]
   images                ProductImage[]
   reviews               ProductReview[]
@@ -321,6 +330,15 @@ model Order {
   gstAmount            Float                @default(0) @map("gst_amount")
   buyerGstin           String?              @map("buyer_gstin")
   paymentIntentId      String?              @map("payment_intent_id")
+  chargeableWeight     Float?               @map("chargeable_weight")
+  appliedZone          String?              @map("applied_zone")
+  slabCount            Int?                 @map("slab_count")
+  codFee               Float?               @map("cod_fee")
+  remoteSurcharge      Float?               @map("remote_surcharge")
+  shippingBreakdownJson String?             @db.LongText @map("shipping_breakdown_json")
+  platformShippingRevenue Float?            @map("platform_shipping_revenue")
+  estimatedCourierCost   Float?             @map("estimated_courier_cost")
+  shippingRateVersion    String?            @map("shipping_rate_version")
   items                OrderItem[]
   statusHistory        OrderStatusHistory[]
   paymentTransactions  PaymentTransaction[]
@@ -586,6 +604,7 @@ model SiteSetting {
   systemSettings       String?  @map("system_settings") @db.LongText
   defaultShippingFee   Float    @default(99) @map("shipping_fee")
   taxRate              Float    @default(18) @map("tax_rate")
+  freeShippingThreshold Float   @default(1999) @map("free_shipping_threshold")
 
   @@map("site_settings")
 }
@@ -642,6 +661,7 @@ enum OrderStatus {
   PROCESSING
   PACKED
   SHIPPED
+  OUT_FOR_DELIVERY
   DELIVERED
   CANCELLED
   REFUNDED
@@ -763,3 +783,41 @@ model StockAlert {
 
   @@map("stock_alerts")
 }
+
+model ShippingZone {
+  id                   String   @id @default(uuid())
+  zoneName             String   @map("zone_name")
+  baseSlabPrice        Float    @map("base_slab_price")
+  additionalSlabPrice  Float    @map("additional_slab_price")
+  codFee               Float    @default(50) @map("cod_fee")
+  remoteSurcharge      Float    @default(100) @map("remote_surcharge")
+  expressMultiplier    Float    @default(1.5) @map("express_multiplier")
+  minDays              Int      @default(3) @map("min_days")
+  maxDays              Int      @default(7) @map("max_days")
+  rateVersion          String   @default("v1") @map("rate_version")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  @@map("shipping_zones")
+}
+
+model PincodeZoneMapping {
+  pincode   String  @id
+  zoneId    String  @map("zone_id")
+  isRemote  Boolean @default(false) @map("is_remote")
+
+  @@map("pincode_zone_mappings")
+}
+
+model ShippingAuditLog {
+  id               String   @id @default(uuid())
+  timestamp        DateTime @default(now())
+  cartId           String?  @map("cart_id")
+  calculatedWeight Float    @map("calculated_weight")
+  appliedZone      String   @map("applied_zone")
+  finalAmount      Float    @map("final_amount")
+  metadata         String?  @db.LongText
+
+  @@map("shipping_audit_logs")
+}
+

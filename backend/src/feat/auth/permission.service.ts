@@ -25,7 +25,10 @@ export class PermissionService {
             const isPlatformAction = [
                 'MANAGE_USER', 'VIEW_USERS', 'VERIFY_VENDOR', 'CHANGE_ROLE',
                 'MANAGE_CATEGORY', 'VIEW_ANALYTICS', 'MANAGE_SETTINGS',
-                'VIEW_AUDIT_LOGS', 'MANAGE_PRODUCTS', 'APPROVE_PRODUCT'
+                'VIEW_AUDIT_LOGS', 'MANAGE_PRODUCTS', 'APPROVE_PRODUCT',
+                'MANAGE_SETTINGS_SYSTEM', 'MANAGE_PRODUCTS_MARKETPLACE',
+                'APPROVE_PRODUCT_MARKETPLACE', 'VIEW_AUDIT_LOGS_SYSTEM',
+                'MANAGE_ADMINS_SYSTEM'
             ].includes(action);
 
             if (isPlatformAction) {
@@ -70,6 +73,7 @@ export class PermissionService {
                 return permissions.canApproveProducts;
             case 'EDIT_PRODUCT':
             case 'UPDATE_PRODUCT':
+            case 'MANAGE_PRODUCTS':
             case 'MANAGE_PRODUCTS_MARKETPLACE':
                 return permissions.canEditAnyProduct;
             case 'DELETE_PRODUCT':
@@ -110,6 +114,7 @@ export class PermissionService {
             case 'MANAGE_ADMINS_SYSTEM':
                 return permissions.canManageAdmins;
             case 'CHANGE_SETTINGS':
+            case 'MANAGE_SETTINGS':
             case 'MANAGE_SETTINGS_SYSTEM':
                 return permissions.canChangeSettings;
             case 'VIEW_ANALYTICS':

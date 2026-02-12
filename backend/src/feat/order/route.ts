@@ -16,6 +16,9 @@ router.get('/', OrderController.listOrders);
 // Create order
 router.post('/', OrderController.createOrder);
 
+// Calculate shipping (Public or logged in, but here it's after authenticate)
+router.post('/calculate-shipping', OrderController.calculateShipping);
+
 // Get order stats
 router.get('/stats', OrderController.getStats);
 

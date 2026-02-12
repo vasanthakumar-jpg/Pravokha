@@ -43,9 +43,9 @@ const staticSlides: Slide[] = [
     {
         image: hero1,
         title: "Bulk Orders Available",
-        description: "Special pricing for bulk purchases. Contact us for wholesale rates.",
-        cta: "Contact for Bulk Orders",
-        link: "/contact",
+        description: "Special pricing for bulk purchases. Contact our Admin Team for wholesale rates and custom quotes.",
+        cta: "Contact Admin for Bulk Orders",
+        link: "/contact?subject=Bulk Order Inquiry",
     },
 ];
 

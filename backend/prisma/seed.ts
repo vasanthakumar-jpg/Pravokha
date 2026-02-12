@@ -193,77 +193,69 @@ async function main() {
     }
     console.log('✅ Categories created');
 
-    // 6. Create PRODUCTS
-    console.log('🌱 Seeding Products...');
-    // Fetch all vendors to assign products round-robin
-    const allVendors = await prisma.vendor.findMany();
+    console.log('✅ Products created');
 
-    if (allVendors.length === 0) {
-        console.log("No vendors found, skipping products.");
-    } else {
-        const productTitles = [
-            'Premium Wireless Headphones',
-            'Minimalist Cotton T-Shirt',
-            'Smart Fitness Tracker',
-            'Organic Coffee Beans',
-            'Leather Messenger Bag',
-            'Gaming Mouse',
-            'Yoga Mat',
-            'Stainless Steel Water Bottle',
-            'Bluetooth Speaker',
-            'Running Shoes'
-        ];
+    // 7. Create SHIPPING ZONES
+    console.log('🌱 Seeding Shipping Zones...');
+    const zones = [
+        { name: 'Zone A - Metros', base: 60, additional: 40, cod: 50, remote: 100, minDays: 2, maxDays: 4 },
+        { name: 'Zone B - Regional', base: 80, additional: 60, cod: 70, remote: 150, minDays: 4, maxDays: 7 },
+        { name: 'Zone C - National', base: 120, additional: 100, cod: 100, remote: 200, minDays: 6, maxDays: 10 }
+    ];
 
-        for (let i = 0; i < productTitles.length; i++) {
-            const vendor = allVendors[i % allVendors.length];
-            const category = categories[i % categories.length];
-            const slug = productTitles[i].toLowerCase().replace(/ /g, '-');
+    const createdZones: any[] = [];
+    for (const z of zones) {
+        const zone = await (prisma as any).shippingZone.create({
+            data: {
+                zoneName: z.name,
+                baseSlabPrice: z.base,
+                additionalSlabPrice: z.additional,
+                codFee: z.cod,
+                remoteSurcharge: z.remote,
+                minDays: z.minDays,
+                maxDays: z.maxDays
+            }
+        });
+        createdZones.push(zone);
+    }
+    console.log('✅ Shipping Zones created');
 
-            await prisma.product.upsert({
-                where: { slug },
-                update: {
-                    vendorId: vendor.id, // Ensure vendor ownership might change in seed re-run
-                    status: 'ACTIVE'
-                },
-                create: {
-                    title: productTitles[i],
-                    slug,
-                    description: `High-quality ${productTitles[i]} for our premium customers.`,
-                    price: 999 + i * 500,
-                    stock: 50,
-                    categoryId: category.id,
-                    vendorId: vendor.id,
-                    status: 'ACTIVE',
-                    images: {
-                        create: [
-                            { url: 'https://picsum.photos/seed/' + slug + '/800/600', order: 0 }
-                        ]
-                    },
-                    variants: {
-                        create: [
-                            {
-                                name: 'Standard Variant',
-                                colorName: 'Standard',
-                                colorHex: '#000000',
-                                images: JSON.stringify(['https://picsum.photos/seed/' + slug + '/800/600']),
-                                stock: 50,
-                                sizes: {
-                                    create: [
-                                        { size: 'One Size', stock: 50 }
-                                    ]
-                                }
-                            }
-                        ]
-                    },
-                    isVerified: true,
-                    isFeatured: i === 0
-                }
-            });
-        }
-        console.log('✅ Products created');
+    // 8. Create PINCODE MAPPINGS
+    console.log('🌱 Seeding Pincode Mappings...');
+    const localPincodes = ['400001', '400002', '400003']; // Mumbai (Metro)
+    const regionalPincodes = ['411001', '411002']; // Pune (Regional)
+
+    for (const p of localPincodes) {
+        await (prisma as any).pincodeZoneMapping.create({
+            data: { pincode: p, zoneId: createdZones[0].id, isRemote: false }
+        });
     }
 
-    console.log('✨ Seeding Completed Successfully');
+    for (const p of regionalPincodes) {
+        await (prisma as any).pincodeZoneMapping.create({
+            data: { pincode: p, zoneId: createdZones[1].id, isRemote: false }
+        });
+    }
+    console.log('✅ Pincode Mappings created');
+
+    // 9. Update SITE SETTINGS
+    console.log('🌱 Seeding Site Settings...');
+    await prisma.siteSetting.upsert({
+        where: { id: 'primary' },
+        update: {
+            defaultShippingFee: 99,
+            freeShippingThreshold: 1999
+        } as any,
+        create: {
+            id: 'primary',
+            storeName: 'Pravokha',
+            defaultShippingFee: 99,
+            freeShippingThreshold: 1999
+        } as any
+    });
+    console.log('✅ Site Settings updated');
+
+    console.log('Advanced Shipping Seeding completed');
 }
 
 main()

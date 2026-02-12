@@ -9,7 +9,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/ui/Tabs";
 import { Label } from "@/ui/Label";
 import { toast } from "@/shared/hook/use-toast";
 import { ImageViewer } from "@/feat/products/components/ImageViewer";
-import { ImageViewer } from "@/feat/products/components/ImageViewer";
 // Removed direct imports for lazy loading
 import { ComboOfferWidget } from "@/feat/products/components/ComboOfferWidget";
 import { useGsapAnimations } from "@/shared/hook/useGsapAnimations";
@@ -202,8 +201,8 @@ export function ProductDetailPage() {
                 setLoading(true);
 
                 // Check Cache first
-                const cacheKey = `related_${slug}`;
-                const cached = relatedProductsCache.get(cacheKey);
+                const productCacheKey = `related_${slug}`;
+                const cached = relatedProductsCache.get(productCacheKey);
                 if (cached && (Date.now() - cached.timestamp < CACHE_TTL)) {
                     console.log(`[Performance] Serving related products for ${slug} from cache`);
                     // We still need the main product, but we can skip the related ones if we had them cached
@@ -265,8 +264,8 @@ export function ProductDetailPage() {
                 }
 
                 // Check Cache for related products
-                const cacheKey = `related_${productData.id}`;
-                const cachedData = relatedProductsCache.get(cacheKey);
+                const relatedCacheKey = `related_${productData.id}`;
+                const cachedData = relatedProductsCache.get(relatedCacheKey);
 
                 let relatedResponse: any;
                 let sellerResponse: any;
@@ -308,7 +307,7 @@ export function ProductDetailPage() {
                     setRelatedProducts(transformedRelated);
 
                     // Update Cache
-                    relatedProductsCache.set(cacheKey, {
+                    relatedProductsCache.set(relatedCacheKey, {
                         related: transformedRelated,
                         seller: finalSeller,
                         timestamp: Date.now()
@@ -771,16 +770,20 @@ export function ProductDetailPage() {
                                 Bulk Order Pricing
                             </h4>
                             <p className="text-sm text-muted-foreground mb-3">
-                                Special discounts available for bulk orders! Perfect for teams, events, or businesses.
+                                Special discounts available for bulk orders! Perfect for teams, events, or businesses. Bulk orders must be requested directly through the Administration.
                             </p>
                             <ul className="text-sm space-y-1">
                                 <li>• 50-99 pieces: 10% discount</li>
                                 <li>• 100-199 pieces: 15% discount</li>
                                 <li>• 200+ pieces: 20% discount</li>
                             </ul>
-                            <p className="text-sm text-muted-foreground mt-3">
-                                Contact us at bulk@pravokha.com for custom orders and quotes.
-                            </p>
+                            <div className="mt-4">
+                                <Link to="/contact?subject=Bulk Order Inquiry">
+                                    <Button size="sm" variant="default" className="w-full sm:w-auto">
+                                        Contact Admin for Bulk Orders
+                                    </Button>
+                                </Link>
+                            </div>
                         </div>
                     </TabsContent>
 
@@ -838,6 +841,8 @@ export function ProductDetailPage() {
 
             <ImageViewer
                 images={selectedVariant.images}
+                currentIndex={mainImage}
+                open={imageViewerOpen}
                 onClose={() => setImageViewerOpen(false)}
             />
         </div>

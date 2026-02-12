@@ -3,6 +3,7 @@ import { prisma } from '../../infra/database/client';
 import { ProductService } from '../product/service';
 import { RazorpayService } from '../payment/razorpay.service';
 import { marketplaceEmitter, MARKETPLACE_EVENTS } from '../../shared/util/events';
+import { ShippingService } from '../../services/ShippingService';
 
 export class OrderService {
     static async createOrder(data: {
@@ -122,19 +123,29 @@ export class OrderService {
 
                 const adjustedSubtotal = vendorSubtotal - orderDiscount;
 
-                // Calculate shipping eligibility
-                const baseShippingFee = settings?.defaultShippingFee || 99;
-                let applicableShipping = 0;
-                if (counter === 1) { // Only add shipping to the first vendor order if applicable
-                    if (!userId) {
-                        applicableShipping = baseShippingFee;
-                    } else {
-                        const orderCount = await tx.order.count({ where: { customerId: userId } });
-                        if (orderCount < 3) {
-                            applicableShipping = baseShippingFee;
-                        }
-                    }
-                }
+                // 4. ENTERPRISE SHIPPING CALCULATION
+                // We calculate shipping for THIS vendor's items in the multi-vendor split
+                const shippingResult = await ShippingService.calculateShipping(
+                    group.map(g => ({
+                        productId: g.product.id,
+                        quantity: g.item.quantity,
+                        sellerId: vId
+                    })),
+                    data.shippingPincode,
+                    data.paymentMethod === 'COD',
+                    false, // Standard by default, can be extended to support express toggle from FE
+                    tx
+                );
+
+                const baseShippingFee = (settings as any)?.freeShippingThreshold && adjustedSubtotal >= (settings as any).freeShippingThreshold
+                    ? 0
+                    : shippingResult.totalShippingFee;
+
+                const applicableShipping = baseShippingFee;
+
+                // Collect platform margin if any (future use)
+                const platformShippingRevenue = 0;
+                const estimatedCourierCost = applicableShipping * 0.8; // Simulation
 
                 const vendorTax = Math.round((adjustedSubtotal + applicableShipping) * (taxRate / 100));
                 const vendorTotal = adjustedSubtotal + vendorTax + applicableShipping;
@@ -164,6 +175,16 @@ export class OrderService {
                         customerPhone: data.customerPhone,
                         shippingAddress: JSON.stringify(shippingAddressJson),
                         paymentIntentId: data.paymentIntentId,
+                        // Enterprise logistics fields
+                        chargeableWeight: shippingResult.breakdown[0].chargeableWeight,
+                        appliedZone: shippingResult.breakdown[0].zone,
+                        slabCount: Math.ceil(shippingResult.breakdown[0].chargeableWeight / 0.5),
+                        codFee: shippingResult.breakdown[0].codFee,
+                        remoteSurcharge: shippingResult.breakdown[0].remoteSurcharge,
+                        shippingBreakdownJson: JSON.stringify(shippingResult.breakdown[0]),
+                        platformShippingRevenue,
+                        estimatedCourierCost,
+                        shippingRateVersion: 'v1',
                         items: {
                             create: group.map(g => ({
                                 productId: g.product.id,
@@ -181,7 +202,7 @@ export class OrderService {
                                 notes: 'Order created'
                             }
                         }
-                    },
+                    } as any,
                     include: { items: true }
                 });
 
@@ -200,8 +221,12 @@ export class OrderService {
             // 5. Notifications
             const { NotificationService } = await import('../notification/service');
             for (const order of createdOrders) {
+                // Find matching product to get vendor details (ownerId)
+                const productWithVendor = products.find(p => p.vendorId === order.vendorId);
+                const targetUserId = productWithVendor?.vendor?.ownerId || order.vendorId;
+
                 await NotificationService.createNotification({
-                    userId: order.vendorId,
+                    userId: targetUserId,
                     title: 'New Order Received',
                     message: `You have a new order ${order.orderNumber}. Total: ₹${order.totalAmount}`,
                     type: 'order',

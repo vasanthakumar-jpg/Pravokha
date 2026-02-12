@@ -12,8 +12,9 @@ export const updateAdminPermissions = asyncHandler(async (req: Request, res: Res
     const { adminId } = req.params;
     const permissions = req.body;
 
+    const adminUser = (req as any).user;
     // Only SUPER_ADMIN can do this
-    if (req.user!.role !== Role.SUPER_ADMIN) {
+    if (adminUser.role !== Role.SUPER_ADMIN) {
         res.status(403).json({ message: 'Only Super Admin can manage permissions' });
         return;
     }
@@ -28,9 +29,9 @@ export const updateAdminPermissions = asyncHandler(async (req: Request, res: Res
     });
 
     await AuditService.logAction({
-        performedBy: req.user!.id,
+        performedBy: adminUser.id,
         performerRole: Role.SUPER_ADMIN,
-        performerEmail: req.user!.email!,
+        performerEmail: adminUser.email!,
         action: AuditAction.UPDATE,
         entity: 'AdminPermission',
         entityId: updated.id,
@@ -45,8 +46,9 @@ export const updateAdminPermissions = asyncHandler(async (req: Request, res: Res
 export const getAdminPermissions = asyncHandler(async (req: Request, res: Response) => {
     const { adminId } = req.params;
 
+    const adminUser = (req as any).user;
     // Allow if SUPER_ADMIN or self
-    if (req.user!.role !== Role.SUPER_ADMIN && req.user!.id !== adminId) {
+    if (adminUser.role !== Role.SUPER_ADMIN && adminUser.id !== adminId) {
         res.status(403).json({ message: 'Permission denied' });
         return;
     }
@@ -73,11 +75,12 @@ export const suspendUser = asyncHandler(async (req: Request, res: Response) => {
         ? new Date(Date.now() + duration * 24 * 60 * 60 * 1000)
         : null;
 
+    const adminUser = (req as any).user;
     const user = await prisma.user.update({
         where: { id: userId },
         data: {
             status: 'suspended',
-            suspendedBy: req.user!.id,
+            suspendedBy: adminUser.id,
             suspendedAt: new Date(),
             suspensionReason: reason,
             suspensionExpiresAt: expiresAt
@@ -85,9 +88,9 @@ export const suspendUser = asyncHandler(async (req: Request, res: Response) => {
     });
 
     await AuditService.logAction({
-        performedBy: req.user!.id,
-        performerRole: req.user!.role as Role,
-        performerEmail: req.user!.email!,
+        performedBy: adminUser.id,
+        performerRole: adminUser.role as Role,
+        performerEmail: adminUser.email!,
         action: AuditAction.SUSPEND,
         entity: 'User',
         entityId: userId,
@@ -103,6 +106,7 @@ export const suspendUser = asyncHandler(async (req: Request, res: Response) => {
 export const activateUser = asyncHandler(async (req: Request, res: Response) => {
     const { userId } = req.params;
 
+    const adminUser = (req as any).user;
     const user = await prisma.user.update({
         where: { id: userId },
         data: {
@@ -115,9 +119,9 @@ export const activateUser = asyncHandler(async (req: Request, res: Response) => 
     });
 
     await AuditService.logAction({
-        performedBy: req.user!.id,
-        performerRole: req.user!.role as Role,
-        performerEmail: req.user!.email!,
+        performedBy: adminUser.id,
+        performerRole: adminUser.role as Role,
+        performerEmail: adminUser.email!,
         action: AuditAction.UNSUSPEND,
         entity: 'User',
         entityId: userId,
@@ -152,7 +156,7 @@ export const getAuditLogs = asyncHandler(async (req: Request, res: Response) => 
             orderBy: { createdAt: 'desc' },
             take: Number(limit),
             skip,
-            include: { user: { select: { name: true, email: true, role: true } } }
+            include: { user: { select: { name: true, email: true, role: true, avatarUrl: true } } }
         }),
         prisma.auditLog.count({ where })
     ]);
@@ -321,6 +325,19 @@ export const updateSiteSettings = asyncHandler(async (req: Request, res: Respons
         create: { id: 'primary', ...data }
     });
 
+    const adminUser = (req as any).user;
+    await AuditService.logAction({
+        performedBy: adminUser.id,
+        performerRole: adminUser.role as Role,
+        performerEmail: adminUser.email!,
+        action: AuditAction.UPDATE,
+        entity: 'SiteSetting',
+        entityId: 'primary',
+        changes: data,
+        reason: 'Updated global site settings',
+        ipAddress: req.ip
+    });
+
     res.json({ success: true, settings });
 });
 
@@ -434,6 +451,19 @@ export const updateSystemSettings = asyncHandler(async (req: Request, res: Respo
         }
     });
 
+    const adminUser = (req as any).user;
+    await AuditService.logAction({
+        performedBy: adminUser.id,
+        performerRole: adminUser.role as Role,
+        performerEmail: adminUser.email!,
+        action: AuditAction.UPDATE,
+        entity: 'SiteSetting',
+        entityId: 'primary',
+        changes: newSettings,
+        reason: 'Updated global system settings',
+        ipAddress: req.ip
+    });
+
     let updatedSys = {};
     try {
         updatedSys = typeof updated.systemSettings === 'string'
@@ -515,10 +545,20 @@ export const updateProductRequestStatus = asyncHandler(async (req: Request, res:
 
         // If approved, apply changes to product
         if (status === 'approved') {
-            const changes = request.requestedChanges as any;
+            const rawChanges = request.requestedChanges;
+            let changes: any = rawChanges;
 
-            // Remove 'reason' if it exists in changes (frontend sends it)
-            const { reason, ...productUpdates } = changes;
+            // Defensive: Handle case where it might be stored as a string or object
+            if (typeof rawChanges === 'string') {
+                try {
+                    changes = JSON.parse(rawChanges);
+                } catch (e) {
+                    changes = {};
+                }
+            }
+
+            const productUpdates = { ...changes };
+            delete productUpdates.reason; // Remove 'reason' if it exists in changes (frontend sends it)
 
             await tx.product.update({
                 where: { id: request.productId },
@@ -526,10 +566,11 @@ export const updateProductRequestStatus = asyncHandler(async (req: Request, res:
             });
 
             // Log audit
+            const adminUser = (req as any).user;
             await AuditService.logAction({
-                performedBy: req.user!.id,
-                performerRole: req.user!.role as Role,
-                performerEmail: req.user!.email!,
+                performedBy: adminUser.id,
+                performerRole: adminUser.role as Role,
+                performerEmail: adminUser.email!,
                 action: AuditAction.UPDATE,
                 entity: 'Product',
                 entityId: request.productId,

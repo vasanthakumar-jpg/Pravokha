@@ -27,7 +27,6 @@ import { ProductGridDisplay } from "@/feat/products/components/ProductGridDispla
 import { ProductViewMode } from "@/feat/products/domain/types";
 
 // Seller specific items
-import { BulkUploadModal } from "@/feat/seller/components/BulkUploadModal";
 import { useProfile } from "@/shared/hook/useProfile";
 
 export default function SellerProducts() {
@@ -58,12 +57,10 @@ export default function SellerProducts() {
   // UI state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState<string | null>(null);
-  const [bulkUploadOpen, setBulkUploadOpen] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
 
   useEffect(() => {
     if (searchParams.get("bulk") === "true") {
-      setBulkUploadOpen(true);
       // Clean up the URL
       const newParams = new URLSearchParams(searchParams);
       newParams.delete("bulk");
@@ -209,9 +206,6 @@ export default function SellerProducts() {
             <Button variant="outline" size="sm" onClick={exportToCSV} className="flex-none h-10 rounded-xl gap-2 font-bold text-xs px-3 sm:px-4">
               <Download className="h-4 w-4" /> Export
             </Button>
-            <Button variant="outline" size="sm" onClick={() => setBulkUploadOpen(true)} className="flex-none h-10 rounded-xl gap-2 font-bold text-xs px-3 sm:px-4">
-              <Upload className="h-4 w-4" /> Bulk
-            </Button>
             <Button
               type="button"
               onClick={() => navigate("/seller/products/add")}
@@ -282,13 +276,6 @@ export default function SellerProducts() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      <BulkUploadModal
-        isOpen={bulkUploadOpen}
-        onClose={() => setBulkUploadOpen(false)}
-        onSuccess={refresh}
-        userId={user?.id || ''}
-      />
     </div>
   );
 }

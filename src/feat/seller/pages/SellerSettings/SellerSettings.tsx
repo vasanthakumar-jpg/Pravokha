@@ -40,7 +40,7 @@ import { cn, getMediaUrl } from "@/lib/utils";
 const formSchema = z.object({
   storeName: z.string().min(3, "Store name must be at least 3 characters").max(50),
   storeDescription: z.string().max(300, "Description is too long"),
-  email: z.string().email("Invalid email address"),
+  email: z.string().email("Invalid email address").optional().or(z.literal("")),
   phone: z.string().regex(/^[0-9]{10}$/, "Mobile number must be exactly 10 digits"),
   address: z.string().min(5, "Address must be at least 5 characters").or(z.literal("")),
 
@@ -573,7 +573,7 @@ export default function SellerSettings() {
                             <FormItem className="space-y-3">
                               <FormLabel className="text-base font-semibold">Business Email</FormLabel>
                               <FormControl>
-                                <Input {...field} disabled className="bg-muted text-muted-foreground h-11" />
+                                <Input placeholder="support@yourstore.com" {...field} className="h-11" />
                               </FormControl>
                               <FormDescription className="text-xs">Linked to your login account.</FormDescription>
                             </FormItem>

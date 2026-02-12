@@ -1,4 +1,5 @@
 import { useAuth, UserRole } from "@/core/context/AuthContext";
+import { useCallback } from "react";
 
 export type PermissionAction =
     | 'APPROVE_PRODUCT'
@@ -23,7 +24,7 @@ export type PermissionAction =
 export const usePermission = () => {
     const { user, role } = useAuth();
 
-    const can = (action: PermissionAction): boolean => {
+    const can = useCallback((action: PermissionAction): boolean => {
         if (!user || !role) return false;
 
         // 1. SUPER_ADMIN has all permissions
@@ -58,7 +59,7 @@ export const usePermission = () => {
         }
 
         return false;
-    };
+    }, [user, role]);
 
     return { can };
 };

@@ -40,6 +40,12 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
 
 export const getMe = asyncHandler(async (req: any, res: Response) => {
     // req.user is set by authenticate middleware
+    const { prisma } = require('../../infra/database/client');
+    const vendor = await prisma.vendor.findUnique({
+        where: { ownerId: req.user.id },
+        select: { id: true, storeName: true, slug: true, status: true }
+    });
+
     res.status(200).json({
         success: true,
         user: {
@@ -53,7 +59,8 @@ export const getMe = asyncHandler(async (req: any, res: Response) => {
             verificationComments: req.user.verificationComments,
             phone: req.user.phone,
             bio: req.user.bio,
-            dateOfBirth: req.user.dateOfBirth
+            dateOfBirth: req.user.dateOfBirth,
+            vendor: vendor
         }
     });
 });

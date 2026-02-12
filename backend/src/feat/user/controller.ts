@@ -150,8 +150,10 @@ export class UserController {
                 returnPolicy: vendor.returnPolicy || "",
                 metaTitle: (vendor as any).metaTitle || "",
                 metaDescription: (vendor as any).metaDescription || "",
-                email: userData.email,
-                phone: userData.phoneNumber || vendor.supportPhone,
+                email: vendor.supportEmail || userData.email,
+                supportEmail: vendor.supportEmail || "",
+                supportPhone: vendor.supportPhone || "",
+                phone: userData.phoneNumber || vendor.supportPhone || "",
                 address: vendor.businessAddress || ""
             }
         });
@@ -165,34 +167,37 @@ export class UserController {
             storeDescription,
             storeLogoUrl,
             storeBannerUrl,
+            supportEmail,
+            supportPhone,
             gstNumber,
             panNumber,
             bankAccountNumber,
             bankIfscCode,
             beneficiaryName,
             bankName,
-            supportPhone,
             businessAddress,
             autoConfirm,
             vacationMode,
             returnPolicy,
             metaTitle,
             metaDescription,
-            phone // From frontend form for user profile sync
+            phone // From frontend for profile phone
         } = req.body;
-
         const vendorUpdates: any = {};
+        const userUpdates: any = {};
+
         if (storeName !== undefined) vendorUpdates.storeName = storeName;
         if (storeDescription !== undefined) vendorUpdates.description = storeDescription;
         if (storeLogoUrl !== undefined) vendorUpdates.logoUrl = storeLogoUrl;
         if (storeBannerUrl !== undefined) vendorUpdates.bannerUrl = storeBannerUrl;
+        if (supportEmail !== undefined) vendorUpdates.supportEmail = supportEmail;
+        if (supportPhone !== undefined) vendorUpdates.supportPhone = supportPhone;
         if (gstNumber !== undefined) vendorUpdates.gstNumber = gstNumber;
         if (panNumber !== undefined) vendorUpdates.panNumber = panNumber;
         if (bankAccountNumber !== undefined) vendorUpdates.bankAccountNumber = bankAccountNumber;
         if (bankIfscCode !== undefined) vendorUpdates.bankIfscCode = bankIfscCode;
         if (beneficiaryName !== undefined) vendorUpdates.beneficiaryName = beneficiaryName;
         if (bankName !== undefined) vendorUpdates.bankName = bankName;
-        if (supportPhone !== undefined) vendorUpdates.supportPhone = supportPhone;
         if (businessAddress !== undefined) vendorUpdates.businessAddress = businessAddress;
         if (autoConfirm !== undefined) vendorUpdates.autoConfirm = autoConfirm;
         if (vacationMode !== undefined) vendorUpdates.vacationMode = vacationMode;
@@ -200,9 +205,11 @@ export class UserController {
         if (metaTitle !== undefined) vendorUpdates.metaTitle = metaTitle;
         if (metaDescription !== undefined) vendorUpdates.metaDescription = metaDescription;
 
-        const userUpdates: any = {};
-        if (phone !== undefined) userUpdates.phoneNumber = phone;
-        else if (supportPhone !== undefined) userUpdates.phoneNumber = supportPhone;
+        if (phone !== undefined && phone !== "") {
+            userUpdates.phoneNumber = phone;
+        } else if (supportPhone !== undefined && supportPhone !== "") {
+            userUpdates.phoneNumber = supportPhone;
+        }
 
         try {
             if (vendorUpdates.storeName) {
@@ -237,7 +244,13 @@ export class UserController {
             console.log('[updateVendorSettings] Update/Upsert successful');
             res.json({ success: true, settings: result });
         } catch (error: any) {
-            console.error('[updateVendorSettings] Error:', error);
+            console.error('[updateVendorSettings] Fatal Error:', {
+                userId,
+                message: error.message,
+                code: error.code,
+                meta: error.meta,
+                stack: error.stack
+            });
             res.status(500).json({
                 success: false,
                 message: 'Failed to update store settings.',

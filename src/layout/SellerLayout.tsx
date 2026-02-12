@@ -66,7 +66,6 @@ const navSections: NavSection[] = [
             { title: "Dashboard", href: "/seller", icon: <LayoutDashboard className="h-4 w-4" /> },
             { title: "Products", href: "/seller/products", icon: <ShoppingBag className="h-4 w-4" /> },
             { title: "Orders", href: "/seller/orders", icon: <Package className="h-4 w-4" /> },
-            { title: "Bulk Upload", href: "/seller/products?bulk=true", icon: <Plus className="h-4 w-4" /> },
             { title: "Payments", href: "/seller/payouts", icon: <DollarSign className="h-4 w-4" /> },
             { title: "Analytics", href: "/seller/analytics", icon: <TrendingUp className="h-4 w-4" /> },
             { title: "Settings", href: "/seller/settings", icon: <SettingsIcon className="h-4 w-4" /> },

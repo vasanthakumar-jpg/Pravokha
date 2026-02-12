@@ -21,9 +21,9 @@ export const addressSchema = z.object({
 });
 
 export const userPreferenceSchema = z.object({
-    emailNotifications: z.boolean(),
-    orderUpdates: z.boolean(),
-    marketingEmails: z.boolean(),
+    emailNotifications: z.boolean().optional(),
+    orderUpdates: z.boolean().optional(),
+    marketingEmails: z.boolean().optional(),
 });
 
 export const changePasswordSchema = z.object({

@@ -60,8 +60,11 @@ export const VisualsStep: React.FC<VisualsStepProps> = ({
                                                 {color.name}
                                                 {id && !isAdmin && <Badge variant="secondary" className="ml-2 text-[8px] bg-amber-50 text-amber-700 border-amber-200 uppercase tracking-tighter transition-colors hover:bg-amber-100 hover:text-amber-800">Admin Managed</Badge>}
                                             </h4>
-                                            <p className="text-[10px] text-muted-foreground">
-                                                {hasImages ? `${existing.length + previews.length} images` : "No images yet"}
+                                            <p className={cn("text-[10px] font-medium", (existing.length + previews.length) >= 4 ? "text-emerald-600" : "text-rose-500")}>
+                                                {(existing.length + previews.length) >= 4
+                                                    ? `${existing.length + previews.length} images (Ready)`
+                                                    : `${existing.length + previews.length}/4 images required`
+                                                }
                                             </p>
                                         </div>
                                     </div>
