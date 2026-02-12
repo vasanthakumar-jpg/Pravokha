@@ -79,25 +79,43 @@ export class ProductService {
 
         // Handle Variants if present
         if (data.variants && Array.isArray(data.variants)) {
+            console.log('[ProductService.mapProductData] Received variants:', data.variants.length);
+            console.log('[ProductService.mapProductData] First variant structure:', JSON.stringify(data.variants[0], null, 2));
+
+            // INTEGRITY CHECK: Ensure at least one variant has sizes (Amazon/Shopify pattern)
+            const hasSizes = data.variants.some((v: any) => v.sizes && Array.isArray(v.sizes) && v.sizes.length > 0);
+
+            if (!hasSizes) {
+                console.error('[ProductService] ❌ CRITICAL DATA INTEGRITY ERROR: No sizes found in any variant!');
+                console.error('[ProductService] Variants payload received:', JSON.stringify(data.variants, null, 2));
+                throw new Error('Product must have at least one size option across all variants. Check that frontend is sending sizes array correctly.');
+            }
+
             let totalStock = 0;
             mappedData.variants = {
-                create: data.variants.map((v: any) => ({
-                    name: v.color_name || v.colorName || "Standard",
-                    colorName: v.color_name || v.colorName,
-                    colorHex: v.color_hex || v.colorHex,
-                    images: Array.isArray(v.images) ? JSON.stringify(v.images) : (v.images || "[]"),
-                    sizes: {
-                        create: (v.sizes || []).map((s: any) => {
-                            totalStock += (s.stock || 0);
-                            return {
-                                size: s.size,
-                                stock: s.stock || 0
-                            };
-                        })
-                    }
-                }))
+                create: data.variants.map((v: any, vIdx: number) => {
+                    const sizeCount = (v.sizes || []).length;
+                    console.log(`[ProductService.mapProductData] Variant ${vIdx} (${v.color_name || v.colorName || "Standard"}): ${sizeCount} sizes`);
+
+                    return {
+                        name: v.color_name || v.colorName || "Standard",
+                        colorName: v.color_name || v.colorName,
+                        colorHex: v.color_hex || v.colorHex,
+                        images: Array.isArray(v.images) ? JSON.stringify(v.images) : (v.images || "[]"),
+                        sizes: {
+                            create: (v.sizes || []).map((s: any) => {
+                                totalStock += (s.stock || 0);
+                                return {
+                                    size: s.size,
+                                    stock: s.stock || 0
+                                };
+                            })
+                        }
+                    };
+                })
             };
             mappedData.stock = totalStock;
+            console.log('[ProductService.mapProductData] Total stock calculated:', totalStock);
         } else if (data.stock !== undefined) {
             mappedData.stock = Number(data.stock);
         }

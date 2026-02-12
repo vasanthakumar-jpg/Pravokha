@@ -553,6 +553,12 @@ export default function AdminProductForm() {
                     : undefined
             };
 
+            // CRITICAL DEBUG: Log the complete payload being sent
+            console.log('[handleSave] Complete Product Payload:', JSON.stringify(productPayload, null, 2));
+            console.log('[handleSave] Variants count:', productPayload.variants.length);
+            console.log('[handleSave] Total sizes across all variants:',
+                productPayload.variants.reduce((total, v) => total + (v.sizes?.length || 0), 0));
+
             if (id) {
                 await apiClient.put(`/products/${id}`, productPayload);
             } else {
