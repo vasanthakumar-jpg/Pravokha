@@ -6,7 +6,7 @@ import { config } from '../../core/config/env';
  * Supports: Order confirmations, Refunds, Password reset, Admin actions
  */
 export class EmailService {
-    private static transporter = nodemailer.createTransporter({
+    private static transporter = nodemailer.createTransport({
         host: config.email.host,
         port: config.email.port,
         secure: config.email.port === 465, // true for 465, false for other ports

@@ -5,6 +5,7 @@ import { asyncHandler } from '../../utils/asyncHandler';
 import { AuditService } from '../../shared/service/audit.service';
 import { Role } from '@prisma/client';
 import { prisma } from '../../infra/database/client';
+import { PermissionService } from '../auth/permission.service';
 
 const ADMIN_ONLY_FIELDS = [
     'isVerified',

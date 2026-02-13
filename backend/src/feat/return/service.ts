@@ -178,6 +178,8 @@ export class ReturnService {
             prisma.order.update({
                 where: { id: returnRequest.orderId },
                 data: {
+                    status: 'REFUNDED',
+                    paymentStatus: 'REFUNDED',
                     refundedAmount: returnRequest.refundAmount,
                     refundedAt: new Date(),
                     refundReason: returnRequest.reason
@@ -185,30 +187,28 @@ export class ReturnService {
             })
         ]);
 
+        // Audit Log
+        const { AuditService } = await import('../../shared/service/audit.service');
+        await AuditService.logAction({
+            performedBy: 'SYSTEM/ADMIN', // Usually called by an admin
+            performerRole: 'ADMIN',
+            action: 'RETURN_REFUND_PROCESSED',
+            entity: 'ReturnRequest',
+            entityId: returnId,
+            reason: `Successfully processed Razorpay refund for Order ${returnRequest.order.orderNumber}`,
+            changes: { amount: returnRequest.refundAmount }
+        });
+
         // Send refund confirmation email
         const { EmailService } = await import('../../shared/service/email.service');
         await EmailService.sendRefundConfirmation(
-            returnRequest.order.customer.email,
-            returnRequest.orderId,
+            (returnRequest.order.customer?.email || returnRequest.order.customerEmail) as string,
+            returnRequest.order.orderNumber,
             returnRequest.refundAmount,
-            returnRequest.order.customer.name
+            (returnRequest.order.customer?.name || returnRequest.order.customerName) as string
         );
 
-        // Send refund confirmation email
-        if (returnRequest.order.customer) {
-            await emailService.sendEmail({
-                to: returnRequest.order.customer.email,
-                subject: 'Refund Processed',
-                template: 'refundProcessed',
-                variables: {
-                    customerName: returnRequest.order.customer.name || 'Customer',
-                    orderNumber: returnRequest.order.orderNumber,
-                    refundAmount: returnRequest.refundAmount
-                }
-            });
-        }
-
-        return returnRequest;
+        return { success: true, message: 'Refund processed successfully' };
     }
 
     /**

@@ -71,6 +71,15 @@ const authLimiter = rateLimit({
     legacyHeaders: false,
 });
 
+// Rate Limiting - High Security (Password Resets, Sensitive Auth)
+const securityLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    limit: 3, // Only 3 attempts per 15 minutes
+    message: 'Too many security-sensitive requests. Please try again after 15 minutes.',
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
 const paymentLimiter = rateLimit({
     windowMs: 60 * 60 * 1000, // 1 hour
     limit: 50, // 50 attempts per hour for payments
@@ -102,6 +111,8 @@ app.get('/', (req, res) => {
 // Apply auth rate limiter to authentication endpoints
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
+app.use('/api/auth/password-reset', securityLimiter);
+app.use('/api/auth/reset-password', securityLimiter);
 
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);

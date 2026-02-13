@@ -141,19 +141,25 @@ export class AuthService {
             }
         });
 
+        // Audit Log
+        const { AuditService } = await import('../../shared/service/audit.service');
+        await AuditService.logAction({
+            performedBy: user.id,
+            performerRole: user.role,
+            performerEmail: user.email,
+            action: 'PWD_RESET_REQUESTED',
+            entity: 'User',
+            entityId: user.id,
+            reason: 'User requested a password reset link'
+        });
+
         // Send Email
         const { EmailService } = await import('../../shared/service/email.service');
-        const resetLink = `${config.frontendUrl}/reset-password?token=${token}`;
-
-        await EmailService.sendEmail({
-            to: email,
-            subject: 'Password Reset Request',
-            template: 'passwordReset', // Ensure this template exists
-            variables: {
-                name: user.name,
-                resetLink
-            }
-        }).catch(e => console.error('[AuthService] Reset email failed:', e));
+        await EmailService.sendPasswordResetEmail(
+            email,
+            token,
+            user.name || 'User'
+        ).catch(e => console.error('[AuthService] Reset email failed:', e));
 
         return { success: true, message: 'Password reset link sent to your email.' };
     }
@@ -178,6 +184,18 @@ export class AuthService {
                 resetToken: null,
                 resetTokenExpires: null
             }
+        });
+
+        // Audit Log
+        const { AuditService } = await import('../../shared/service/audit.service');
+        await AuditService.logAction({
+            performedBy: user.id,
+            performerRole: user.role,
+            performerEmail: user.email,
+            action: 'PWD_RESET_SUCCESS',
+            entity: 'User',
+            entityId: user.id,
+            reason: 'User successfully reset their password via token'
         });
 
         return { success: true, message: 'Password updated successfully' };

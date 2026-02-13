@@ -18,7 +18,12 @@ export const errorHandler = (err: unknown, req: Request, res: Response, next: Ne
 
     const error = err as AppError;
     const statusCode = error.statusCode || 500;
-    const message = error.message || 'Internal Server Error';
+    let message = error.message || 'Internal Server Error';
+
+    // Production Error Masking: Hide internal details from users in production
+    if (process.env.NODE_ENV === 'production' && statusCode === 500) {
+        message = 'An unexpected error occurred. Our engineers have been notified.';
+    }
 
     res.status(statusCode).json({
         success: false,

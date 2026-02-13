@@ -1,3 +1,4 @@
+import { Request, Response } from 'express';
 import { prisma } from '../../infra/database/client';
 import { asyncHandler } from '../../utils/asyncHandler';
 import { marketplaceEmitter, MARKETPLACE_EVENTS } from '../../shared/util/events';

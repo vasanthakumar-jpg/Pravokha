@@ -34,6 +34,7 @@ export const config = {
     jwtSecret: env.JWT_SECRET,
     nodeEnv: env.NODE_ENV,
     frontendUrl: env.FRONTEND_URL,
+    backendUrl: `http://localhost:${env.PORT}`, // Base URL for uploads
     email: {
         host: env.EMAIL_HOST,
         port: env.EMAIL_PORT,
