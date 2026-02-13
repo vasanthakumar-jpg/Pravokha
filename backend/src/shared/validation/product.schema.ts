@@ -18,8 +18,17 @@ export const createProductSchema = z.object({
     is_verified: z.boolean().optional(),
     seller_id: z.string().optional(),
     variants: z.array(z.object({
-        images: z.array(z.string()).min(4, "Each variant must have at least 4 images.")
-    })).optional(), // Will be handled in service
+        color_name: z.string().optional().nullable(),
+        colorName: z.string().optional().nullable(),
+        color_hex: z.string().optional().nullable(),
+        colorHex: z.string().optional().nullable(),
+        images: z.array(z.string()).min(4, "Each variant must have at least 4 images."),
+        sizes: z.array(z.object({
+            size: z.string(),
+            stock: z.number().int().nonnegative()
+        })).min(1, "Each variant must have at least one size.")
+    })).optional(),
+
     adminEditReason: z.string().optional(),
 });
 

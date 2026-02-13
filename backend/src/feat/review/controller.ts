@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { prisma } from '../../infra/database/client';
 import { asyncHandler } from '../../utils/asyncHandler';
 import { Role } from '@prisma/client';
+import { isSuperAdmin } from '../../shared/utils/role.utils';
 
 export class ReviewController {
     static listProductReviews = asyncHandler(async (req: Request, res: Response) => {
@@ -138,21 +139,21 @@ export class ReviewController {
     static deleteReview = asyncHandler(async (req: Request, res: Response) => {
         const user = (req as any).user;
         const { id } = req.params;
-        const isSuperAdmin = user.role === Role.SUPER_ADMIN;
+        const isSuper = isSuperAdmin(user.role);
 
-        if (isSuperAdmin) {
+        if (isSuper) {
             await prisma.productReview.update({
                 where: { id },
                 data: { isDeleted: true }
             });
+            return res.json({ success: true, message: 'Review soft deleted' });
         } else {
             await prisma.productReview.update({
                 where: { id, userId: user.id },
                 data: { isDeleted: true }
             });
+            return res.json({ success: true, message: 'Review deleted (soft delete)' });
         }
-
-        res.json({ success: true, message: 'Review deleted (soft delete)' });
     });
 
     static listAllReviews = asyncHandler(async (req: Request, res: Response) => {

@@ -152,13 +152,18 @@ export default function SellerOrders() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50/50 animate-pulse">
-        <header className="bg-white border-b h-20 flex items-center">
-          <div className="container max-w-7xl mx-auto px-4 sm:px-8 flex items-center gap-4">
-            <div className="h-8 w-48 bg-muted rounded-xl" />
+      <div className="min-h-screen bg-gray-50/50 animate-pulse flex flex-col items-center">
+        {/* Header Skeleton Part - Center Content */}
+        <header className="bg-white border-b sticky top-0 z-10 w-full flex justify-center">
+          <div className="w-full max-w-7xl py-4 px-4 sm:px-6 lg:px-8">
+            <div className="flex h-10 items-center">
+              <div className="h-8 w-48 bg-muted rounded-xl" />
+            </div>
           </div>
         </header>
-        <main className="container max-w-7xl mx-auto py-8 px-4 sm:px-8 space-y-8">
+
+        {/* Content Skeleton Part - Center Content */}
+        <main className="w-full max-w-7xl py-8 px-4 sm:px-6 lg:px-8 space-y-8 flex-1">
           <div className="flex flex-col sm:flex-row gap-4 mb-4">
             <div className="h-11 flex-1 bg-muted/60 rounded-xl" />
             <div className="h-11 w-full sm:w-48 bg-muted/60 rounded-xl" />
@@ -182,22 +187,31 @@ export default function SellerOrders() {
           </div>
 
           {/* Desktop Table Skeleton */}
-          <div className="hidden sm:block rounded-[24px] border border-border/40 overflow-hidden bg-white/50 backdrop-blur-sm">
-            <div className="h-14 bg-muted/20 border-b border-border/40" />
-            <div className="space-y-0">
-              {[1, 2, 3, 4, 5, 6].map(i => (
-                <div key={i} className="flex gap-6 items-center p-6 border-b border-border/20 last:border-0 h-20">
-                  <div className="space-y-2 flex-1">
-                    <div className="h-4 w-24 bg-muted/40 rounded" />
-                    <div className="h-3 w-16 bg-muted/20 rounded" />
-                  </div>
-                  <div className="h-4 w-24 bg-muted/40 rounded" />
-                  <div className="h-4 w-20 bg-muted/40 rounded" />
-                  <div className="h-7 w-24 bg-muted/40 rounded-full" />
-                  <div className="h-7 w-16 bg-muted/40 rounded-full" />
-                  <div className="h-8 w-20 bg-muted/40 rounded-lg ml-auto" />
-                </div>
-              ))}
+          <div className="hidden sm:block rounded-[24px] border border-border/40 overflow-hidden bg-white/50 backdrop-blur-sm shadow-sm w-full">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-muted/30 border-b border-border/40">
+                    {[1, 2, 3, 4, 5, 6].map(i => (
+                      <th key={i} className="px-6 py-4">
+                        <div className="h-4 w-20 bg-muted/40 rounded" />
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/40">
+                  {[1, 2, 3, 4, 5].map(i => (
+                    <tr key={i} className="h-20">
+                      <td className="px-6 py-4"><div className="h-4 w-32 bg-muted/30 rounded" /></td>
+                      <td className="px-6 py-4"><div className="h-4 w-24 bg-muted/20 rounded" /></td>
+                      <td className="px-6 py-4"><div className="h-4 w-16 bg-muted/30 rounded" /></td>
+                      <td className="px-6 py-4"><div className="h-6 w-24 bg-muted/20 rounded-full" /></td>
+                      <td className="px-6 py-4"><div className="h-6 w-20 bg-muted/20 rounded-full" /></td>
+                      <td className="px-6 py-4 text-right"><div className="h-8 w-20 bg-muted/30 rounded-lg ml-auto" /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         </main>

@@ -1,5 +1,6 @@
 import { AuditService } from '../../shared/service/audit.service';
 import { Role, PrismaClient } from '@prisma/client';
+import { isRole, isSuperAdmin, isAdmin, normalizeRole } from '../../shared/utils/role.utils';
 
 const prisma = new PrismaClient();
 
@@ -15,12 +16,14 @@ export class PermissionService {
         resourceOwnerId?: string
     ): Promise<boolean> {
         // 1. SUPER_ADMIN has unrestricted access
-        if (userRole === Role.SUPER_ADMIN) {
+        // SECURITY FIX: Use case-insensitive comparison
+        if (isSuperAdmin(userRole)) {
             return true;
         }
 
         // 2. ADMIN (Platform Staff/Support) relies on specific permissions
-        if (userRole === Role.ADMIN) {
+        // SECURITY FIX: Use case-insensitive comparison
+        if (isRole(userRole, Role.ADMIN)) {
             // Check if they are checking for platform-level admin permissions
             const isPlatformAction = [
                 'MANAGE_USER', 'VIEW_USERS', 'VERIFY_VENDOR', 'CHANGE_ROLE',
@@ -40,12 +43,14 @@ export class PermissionService {
         }
 
         // 3. SELLER (Marketplace Vendor) relies on shop ownership
-        if (userRole === Role.SELLER) {
+        // SECURITY FIX: Use case-insensitive comparison
+        if (isRole(userRole, Role.SELLER)) {
             return this.checkVendorPermission(action, resource, userId, resourceOwnerId);
         }
 
         // 4. CUSTOMER has limited access
-        if (userRole === Role.CUSTOMER) {
+        // SECURITY FIX: Use case-insensitive comparison
+        if (isRole(userRole, Role.CUSTOMER)) {
             return this.checkCustomerPermission(action, resource, userId, resourceOwnerId);
         }
 

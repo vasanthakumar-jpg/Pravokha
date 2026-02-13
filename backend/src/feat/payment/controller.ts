@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { prisma } from '../../infra/database/client';
 import { asyncHandler } from '../../utils/asyncHandler';
+import { isCustomer } from '../../shared/utils/role.utils';
 import { Role, PaymentStatus, OrderStatus, TransactionStatus } from '@prisma/client';
 import { RazorpayService } from './razorpay.service';
 import { verifyRazorpaySignature } from '../../infra/payment/razorpay';
@@ -287,7 +288,7 @@ export class PaymentController {
             include: { items: { include: { product: true } } }
         });
 
-        if (!order || (order.customerId !== user.id && user.role === Role.CUSTOMER)) {
+        if (!order || (order.customerId !== user.id && isCustomer(user.role))) {
             return res.status(404).json({ success: false, message: 'Order not found' });
         }
 

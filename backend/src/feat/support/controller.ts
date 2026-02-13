@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { prisma } from '../../infra/database/client';
 import { asyncHandler } from '../../utils/asyncHandler';
 import { Role } from '@prisma/client';
+import { isCustomer } from '../../shared/utils/role.utils';
 
 export class SupportController {
     static createTicket = asyncHandler(async (req: Request, res: Response) => {
@@ -75,7 +76,7 @@ export class SupportController {
 
     static listAllTickets = asyncHandler(async (req: Request, res: Response) => {
         const user = (req as any).user;
-        if (user.role === Role.CUSTOMER) return res.status(403).json({ success: false, message: 'Unauthorized' });
+        if (isCustomer(user.role)) return res.status(403).json({ success: false, message: 'Unauthorized' });
 
         const { isSuspendedSeller, page = '1', limit = '10', search, status, priority } = req.query;
         const pageNum = parseInt(page as string) || 1;
@@ -116,7 +117,7 @@ export class SupportController {
 
     static updateStatus = asyncHandler(async (req: Request, res: Response) => {
         const user = (req as any).user;
-        if (user.role === Role.CUSTOMER) return res.status(403).json({ success: false, message: 'Unauthorized' });
+        if (isCustomer(user.role)) return res.status(403).json({ success: false, message: 'Unauthorized' });
         const { id } = req.params;
         const { status } = req.body;
         const ticket = await prisma.supportTicket.update({ where: { id }, data: { status } });
@@ -131,7 +132,7 @@ export class SupportController {
             return res.status(404).json({ success: false, message: 'Ticket not found or access denied' });
         }
         const messages = await prisma.ticketMessage.findMany({
-            where: { ticketId: id, ...(user.role === Role.CUSTOMER ? { isInternal: false } : {}) },
+            where: { ticketId: id, ...(isCustomer(user.role) ? { isInternal: false } : {}) },
             include: { sender: { select: { name: true, avatarUrl: true } } },
             orderBy: { createdAt: 'asc' }
         });
@@ -168,7 +169,7 @@ export class SupportController {
     // Chat Conversation Methods
     static listConversations = asyncHandler(async (req: Request, res: Response) => {
         const user = (req as any).user;
-        if (user.role === Role.CUSTOMER) return res.status(403).json({ success: false, message: 'Unauthorized' });
+        if (isCustomer(user.role)) return res.status(403).json({ success: false, message: 'Unauthorized' });
         const conversations = await prisma.supportConversation.findMany({
             include: { user: { select: { name: true, email: true } } },
             orderBy: { lastMessageAt: 'desc' }
@@ -225,7 +226,7 @@ export class SupportController {
 
     static updateConversationStatus = asyncHandler(async (req: Request, res: Response) => {
         const user = (req as any).user;
-        if (user.role === Role.CUSTOMER) return res.status(403).json({ success: false, message: 'Unauthorized' });
+        if (isCustomer(user.role)) return res.status(403).json({ success: false, message: 'Unauthorized' });
         const { id } = req.params;
         const { status } = req.body;
         const conversation = await prisma.supportConversation.update({ where: { id }, data: { status } });

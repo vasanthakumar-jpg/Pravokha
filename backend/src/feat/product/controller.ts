@@ -282,8 +282,8 @@ export const createProductUpdateRequest = asyncHandler(async (req: Request, res:
     const result = await prisma.productUpdateRequest.create({
         data: {
             productId: product_id,
-            sellerId: vendor.id,
-            requestedChanges: requested_changes || {},
+            sellerId: user.id,
+            requestedChanges: JSON.stringify(requested_changes || {}),
             status: status || 'pending',
             adminNotes: reason || (requested_changes && (requested_changes as any).reason) || null
         }

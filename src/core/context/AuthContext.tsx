@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect, ReactNode, useMemo, use
 import { useNavigate } from "react-router-dom";
 import { apiClient } from "@/infra/api/apiClient";
 
-export type UserRole = "SUPER_ADMIN" | "ADMIN" | "SELLER" | "CUSTOMER" | "super_admin" | "admin" | "seller" | "customer" | null;
+export type UserRole = "SUPER_ADMIN" | "ADMIN" | "SELLER" | "CUSTOMER" | null;
 
 // CRITICAL: This interface must match what AuthContext provides
 // Backend sends camelCase, AuthContext maps to snake_case
@@ -136,8 +136,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const userData = response.data.user;
       const mappedUser = mapUserData(userData);
 
+      // SECURITY FIX: Normalize role to uppercase for consistency
+      const normalizedRole = (userData.role?.toUpperCase() || null) as UserRole;
+
+      console.log('[AuthContext] Role normalized on init:', {
+        original: userData.role,
+        normalized: normalizedRole
+      });
+
       setUser(mappedUser);
-      setRole(userData.role);
+      setRole(normalizedRole);
       setAuthError(null);
     } catch (error: any) {
       console.error('[AuthContext] Auth initialization failed:', error);

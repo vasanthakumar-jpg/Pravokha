@@ -1,5 +1,6 @@
 import { prisma } from '../../infra/database/client';
 import { Product, Role } from '@prisma/client';
+import { isSuperAdmin, isAdmin, isRole } from '../../shared/utils/role.utils';
 
 export class ProductService {
     public static transformProduct(product: any) {
@@ -87,8 +88,12 @@ export class ProductService {
 
             if (!hasSizes) {
                 console.error('[ProductService] ❌ CRITICAL DATA INTEGRITY ERROR: No sizes found in any variant!');
-                console.error('[ProductService] Variants payload received:', JSON.stringify(data.variants, null, 2));
-                throw new Error('Product must have at least one size option across all variants. Check that frontend is sending sizes array correctly.');
+                console.error('[ProductService] Full Payload Variants:', JSON.stringify(data.variants, null, 2));
+                // Inspect first variant keys
+                if (data.variants && data.variants[0]) {
+                    console.error('[ProductService] First variant keys:', Object.keys(data.variants[0]));
+                }
+                throw new Error(`Product must have at least one size option. Received ${data.variants.length} variants. First variant keys: ${data.variants[0] ? Object.keys(data.variants[0]).join(',') : 'none'}`);
             }
 
             let totalStock = 0;
@@ -98,20 +103,21 @@ export class ProductService {
                     console.log(`[ProductService.mapProductData] Variant ${vIdx} (${v.color_name || v.colorName || "Standard"}): ${sizeCount} sizes`);
 
                     return {
-                        name: v.color_name || v.colorName || "Standard",
-                        colorName: v.color_name || v.colorName,
+                        name: (v.color_name || v.colorName || "Standard").trim().toUpperCase(),
+                        colorName: (v.color_name || v.colorName || "Standard").trim().toUpperCase(),
                         colorHex: v.color_hex || v.colorHex,
                         images: Array.isArray(v.images) ? JSON.stringify(v.images) : (v.images || "[]"),
                         sizes: {
-                            create: (v.sizes || []).map((s: any) => {
+                            create: (v.sizes || v.product_sizes || []).map((s: any) => {
                                 totalStock += (s.stock || 0);
                                 return {
-                                    size: s.size,
-                                    stock: s.stock || 0
+                                    size: (s.size || '').trim().toUpperCase(),
+                                    stock: Number(s.stock) || 0
                                 };
                             })
                         }
                     };
+
                 })
             };
             mappedData.stock = totalStock;
@@ -133,7 +139,7 @@ export class ProductService {
 
         // Auto-create vendor profile for Super Admin if missing
         const user = await prisma.user.findUnique({ where: { id: userId } });
-        if (!vendor && user?.role === Role.SUPER_ADMIN) {
+        if (!vendor && user && isSuperAdmin(user.role)) {
             vendor = await prisma.vendor.create({
                 data: {
                     ownerId: userId,
@@ -150,7 +156,7 @@ export class ProductService {
         const vendorId = vendor.id;
 
         // Security: Ensure vendor is active to publish
-        const isPlatformAdmin = user?.role === Role.SUPER_ADMIN || user?.role === Role.ADMIN;
+        const isPlatformAdmin = isSuperAdmin(user?.role) || isAdmin(user?.role);
 
         if (mappedData.status === 'ACTIVE' && vendor.status !== 'ACTIVE' && !isPlatformAdmin) {
             // Auto-convert to DRAFT for unverified sellers so they can still create products
@@ -337,9 +343,9 @@ export class ProductService {
 
         if (!user) {
             where.status = 'ACTIVE';
-        } else if (user.role === Role.SUPER_ADMIN || user.role === Role.ADMIN) {
+        } else if (isSuperAdmin(user.role) || isAdmin(user.role)) {
             // No extra filters for platform admins
-        } else if (user.role === Role.SELLER) {
+        } else if (isRole(user.role, Role.SELLER)) {
             const vendor = await prisma.vendor.findUnique({ where: { ownerId: user.id } });
             if (vendor && (filters.vendorId === vendor.id || filters.scope === 'vendor')) {
                 if (filters.scope === 'vendor') where.vendorId = vendor.id;
@@ -429,7 +435,7 @@ export class ProductService {
             throw { statusCode: 404, message: 'Product not found' };
         }
 
-        if (user && (user.role === Role.SUPER_ADMIN || user.role === Role.ADMIN)) {
+        if (isSuperAdmin(user?.role) || isAdmin(user?.role)) {
             console.log('[ProductService] Returning product to admin/super_admin');
             return this.transformProduct(product);
         }
@@ -460,7 +466,7 @@ export class ProductService {
             throw { statusCode: 404, message: 'Product not found' };
         }
 
-        const isPlatformAdmin = user.role === Role.SUPER_ADMIN || user.role === Role.ADMIN;
+        const isPlatformAdmin = isSuperAdmin(user.role) || isAdmin(user.role);
         const vendor = await prisma.vendor.findUnique({ where: { ownerId: user.id } });
 
         if (!isPlatformAdmin && (!vendor || product.vendorId !== vendor.id)) {
@@ -479,16 +485,21 @@ export class ProductService {
             mappedData.status = 'DRAFT';
         }
 
+        const realProductId = product.id; // Resolve UUID from the found product
+
         return await prisma.$transaction(async (tx) => {
             if (mappedData.variants) {
+                // 1. Delete ALL existing variants and sizes first
+                // ProductSize record will be deleted via CASCADE constraint
                 await tx.productVariant.deleteMany({
-                    where: { productId: id }
+                    where: { productId: realProductId }
                 });
             }
 
             const updatedProduct = await tx.product.update({
-                where: { id },
+                where: { id: realProductId },
                 data: mappedData,
+
                 include: {
                     variants: {
                         include: {
@@ -512,7 +523,7 @@ export class ProductService {
             throw { statusCode: 404, message: 'Product not found' };
         }
 
-        const isPlatformAdmin = user.role === Role.SUPER_ADMIN || user.role === Role.ADMIN;
+        const isPlatformAdmin = isSuperAdmin(user.role) || isAdmin(user.role);
         const vendor = await prisma.vendor.findUnique({ where: { ownerId: user.id } });
 
         if (!isPlatformAdmin && (!vendor || product.vendorId !== vendor.id)) {

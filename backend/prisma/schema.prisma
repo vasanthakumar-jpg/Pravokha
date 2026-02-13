@@ -7,6 +7,15 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// RBAC: User Role Enumeration
+// Defines the 4 core roles in the marketplace platform
+enum Role {
+  SUPER_ADMIN  // Platform owner (full access)
+  ADMIN        // Platform staff (permission-based access)
+  SELLER       // Marketplace vendor (owns products/store)
+  CUSTOMER     // End user (buyer)
+}
+
 model User {
   id                    String                 @id @default(uuid())
   email                 String                 @unique

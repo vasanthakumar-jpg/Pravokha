@@ -1,16 +1,17 @@
 import { PayoutStatus, Role, OrderStatus, PaymentStatus } from '@prisma/client';
 import { prisma } from '../../infra/database/client';
+import { isRole, isSuperAdmin, isAdmin, isSeller } from '../../shared/utils/role.utils';
 import MarketplaceConfig from '../../shared/config/marketplace';
 
 export class PayoutService {
     static async listPayouts(role: Role, userId: string, skip: number = 0, take: number = 10) {
-        let where = {};
+        let where: any = {};
 
-        if (role.toUpperCase() === Role.SELLER) {
+        if (isSeller(role)) {
             const vendor = await prisma.vendor.findUnique({ where: { ownerId: userId } });
-            if (!vendor) return [];
-            where = { vendorId: vendor.id };
-        } else if (role.toUpperCase() !== Role.SUPER_ADMIN && role.toUpperCase() !== Role.ADMIN) {
+            if (!vendor) throw { statusCode: 404, message: 'Vendor not found' };
+            where.vendorId = vendor.id;
+        } else if (!isSuperAdmin(role) && !isAdmin(role)) {
             throw new Error('Unauthorized');
         }
 
@@ -131,7 +132,7 @@ export class PayoutService {
     }
 
     static async updatePayoutStatus(id: string, status: PayoutStatus, rejectionReason: string | null, role: Role) {
-        if (role.toUpperCase() !== Role.SUPER_ADMIN && role.toUpperCase() !== Role.ADMIN) {
+        if (!isSuperAdmin(role) && !isAdmin(role)) {
             throw new Error('Unauthorized');
         }
 
@@ -146,13 +147,13 @@ export class PayoutService {
     }
 
     static async getPayoutStats(role: Role, userId?: string) {
-        if (role.toUpperCase() === Role.SELLER && userId) {
+        if (isSeller(role) && userId) {
             const vendor = await prisma.vendor.findUnique({ where: { ownerId: userId } });
             if (!vendor) throw new Error('Vendor not found');
             return await this.getVendorBalance(vendor.id);
         }
 
-        if (role.toUpperCase() !== Role.SUPER_ADMIN && role.toUpperCase() !== Role.ADMIN) {
+        if (!isSuperAdmin(role) && !isAdmin(role)) {
             throw new Error('Unauthorized');
         }
 

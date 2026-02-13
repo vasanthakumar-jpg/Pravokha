@@ -2,6 +2,7 @@ import { NextFunction, Request, Response } from 'express';
 import { OrderService } from './service';
 import { createOrderSchema } from './schema';
 import { Role } from '@prisma/client';
+import { isSeller } from '../../shared/utils/role.utils';
 import { prisma } from '../../infra/database/client';
 import { ShippingService } from '../../services/ShippingService';
 
@@ -67,7 +68,7 @@ export class OrderController {
             const page = skip ? (Math.floor(parseInt(skip as string) / limit) + 1) : (parseInt(req.query.page as string) || 1);
 
             let vendorId: string | undefined;
-            if (user.role === Role.SELLER) {
+            if (isSeller(user.role)) {
                 const vendor = await prisma.vendor.findUnique({ where: { ownerId: user.id } });
                 vendorId = vendor?.id;
             }

@@ -102,7 +102,9 @@ const INITIAL_FORM_DATA: ProductFormData = {
     is_verified: false,
 };
 
-const getStockKey = (color: string, size: string) => `${color}-${size}`;
+const getStockKey = (color: string, size: string) =>
+    `${(color || '').trim().toUpperCase()}-${(size || '').trim().toUpperCase()}`;
+
 
 export default function AdminProductForm() {
     const navigate = useNavigate();
@@ -232,15 +234,19 @@ export default function AdminProductForm() {
 
                         if (sizesData.length > 0) {
                             sizesData.forEach((s: any) => {
-                                const sizeValue = (s.size || "").toUpperCase();
+                                const sizeValue = (s.size || "").trim().toUpperCase();
                                 // Filter out "One Size" as requested and ensure valid value
                                 if (sizeValue && !sizes.includes(sizeValue)) sizes.push(sizeValue);
 
                                 const sizeKey = getStockKey(colorName, sizeValue);
-                                sizeStockMap[sizeKey] = (sizeStockMap[sizeKey] || 0) + s.stock;
-                                totalStock += s.stock;
+                                // Ensure s.stock is a number
+                                const stockVal = Number(s.stock) || 0;
+                                sizeStockMap[sizeKey] = (sizeStockMap[sizeKey] || 0) + stockVal;
+                                totalStock += stockVal;
                             });
                         }
+
+
                     });
                     console.log('[AdminProductForm] Final parsed sizes:', sizes);
                 } else {
@@ -519,21 +525,31 @@ export default function AdminProductForm() {
                 console.log(`[handleSave] Processing color ${color.name}. Sample Key: ${debugKey}`);
 
                 const sizeEntries = formData.selectedSizes
-                    .filter(size => !formData.unavailableVariants?.includes(getStockKey(color.name, size)))
-                    .map(size => ({
-                        size: size,
-                        stock: formData.sizeStock[getStockKey(color.name, size)] || 0
-                    }));
+                    .filter(size => {
+                        const key = getStockKey(color.name, size);
+                        const isUnavailable = formData.unavailableVariants?.includes(key);
+                        return !isUnavailable;
+                    })
+                    .map(size => {
+                        const key = getStockKey(color.name, size);
+                        return {
+                            size: size.toUpperCase().trim(),
+                            stock: formData.sizeStock[key] || 0
+                        };
+                    });
 
-                console.log(`[handleSave] Size Entries for ${color.name}:`, sizeEntries);
 
-                variantsData.push({
+                const variantObject = {
                     color_name: color.name,
                     color_hex: color.hex,
                     images: finalImages,
-                    sizes: sizeEntries
-                });
+                    sizes: sizeEntries && sizeEntries.length > 0 ? sizeEntries : []
+                };
+
+                console.log(`[handleSave] Variant ${color.name} Object:`, variantObject);
+                variantsData.push(variantObject);
             }
+
 
             const productPayload = {
                 title: formData.title,
@@ -548,22 +564,26 @@ export default function AdminProductForm() {
                 is_verified: formData.is_verified,
                 seller_id: user?.id,
                 variants: variantsData,
-                adminEditReason: (isAdmin || isSuperAdmin || user?.role?.toUpperCase() === 'SUPER_ADMIN' || user?.role?.toUpperCase() === 'ADMIN')
+                adminEditReason: (isAdmin || isSuperAdmin)
                     ? "Admin Update via Dashboard"
                     : undefined
             };
 
             // CRITICAL DEBUG: Log the complete payload being sent
-            console.log('[handleSave] Complete Product Payload:', JSON.stringify(productPayload, null, 2));
+            console.log('[handleSave] FINAL PRODUCT PAYLOAD:', JSON.stringify(productPayload, null, 2));
             console.log('[handleSave] Variants count:', productPayload.variants.length);
             console.log('[handleSave] Total sizes across all variants:',
                 productPayload.variants.reduce((total, v) => total + (v.sizes?.length || 0), 0));
 
+
             if (id) {
+                console.log('[handleSave] Calling PUT with payload:', JSON.stringify(productPayload));
                 await apiClient.put(`/products/${id}`, productPayload);
             } else {
+                console.log('[handleSave] Calling POST with payload:', JSON.stringify(productPayload));
                 await apiClient.post('/products', productPayload);
             }
+
 
             toast({ title: "Success", description: "Product saved successfully." });
             navigate("/admin/products/manage");
@@ -967,7 +987,8 @@ export default function AdminProductForm() {
 
                                                                 if (rawVal) {
                                                                     const standardMatch = SIZES.find(s => s.toLowerCase() === rawVal.toLowerCase());
-                                                                    const val = standardMatch || rawVal.toUpperCase();
+                                                                    const val = (standardMatch || rawVal).trim().toUpperCase();
+
 
                                                                     if (!formData.selectedSizes.includes(val)) {
                                                                         toggleSelection(formData.selectedSizes, val, 'selectedSizes');
