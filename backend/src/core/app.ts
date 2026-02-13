@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import path from 'path';
 import rateLimit from 'express-rate-limit';
+import { config } from './config/env';
 import { errorHandler } from '../shared/middleware/error';
 import authRoutes from '../feat/auth/route';
 import productRoutes from '../feat/product/route';
@@ -38,7 +39,16 @@ registerMarketplaceListeners();
 app.use(helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
-app.use(cors());
+
+// PRODUCTION-READY CORS Configuration
+app.use(cors({
+    origin: config.frontendUrl,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    exposedHeaders: ['Content-Range', 'X-Content-Range']
+}));
+
 app.use(morgan('dev'));
 app.use('/uploads', express.static(path.join(__dirname, '../../../uploads'), {
     setHeaders: (res) => {
@@ -46,10 +56,19 @@ app.use('/uploads', express.static(path.join(__dirname, '../../../uploads'), {
     }
 }));
 
-// Rate Limiting
+// Rate Limiting - General
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
     limit: 5000,
+});
+
+// Rate Limiting - Authentication (Prevent Brute Force)
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    limit: 5, // Only 5 login/register attempts per 15 minutes
+    message: 'Too many authentication attempts. Please try again after 15 minutes.',
+    standardHeaders: true,
+    legacyHeaders: false,
 });
 
 const paymentLimiter = rateLimit({
@@ -79,6 +98,10 @@ app.post('/api/orders', checkoutLimiter);
 app.get('/', (req, res) => {
     res.send('Pravokha Backend is running securely.');
 });
+
+// Apply auth rate limiter to authentication endpoints
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/register', authLimiter);
 
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);

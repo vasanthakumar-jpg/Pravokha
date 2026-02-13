@@ -48,14 +48,23 @@ export class PayoutService {
             throw new Error(`Minimum payout request is ₹${MarketplaceConfig.payout.minAmount}`);
         }
 
-        // 2. Create payout record
-        return await prisma.payout.create({
-            data: {
-                vendorId: vendorId,
-                amount,
-                status: PayoutStatus.PENDING
+        // 2. Use transaction to prevent race conditions
+        return await prisma.$transaction(async (tx) => {
+            // Re-calculate balance inside transaction for absolute safety
+            const balanceInfo = await this.getVendorBalance(vendorId);
+
+            if (amount > balanceInfo.pendingBalance) {
+                throw new Error(`Insufficient balance. Available: ₹${balanceInfo.pendingBalance}`);
             }
-        });
+
+            return await tx.payout.create({
+                data: {
+                    vendorId: vendorId,
+                    amount,
+                    status: PayoutStatus.PENDING
+                }
+            });
+        }, { isolationLevel: 'Serializable' });
     }
 
     static async getVendorBalance(vendorId: string) {

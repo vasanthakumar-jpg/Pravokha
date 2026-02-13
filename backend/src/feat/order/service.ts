@@ -60,6 +60,52 @@ export class OrderService {
 
                 if (product.stock < item.quantity) throw new Error(`Insufficient stock for ${product.title}`);
 
+                // --- VARIANT STOCK MANAGEMENT ---
+                if (item.variantId || item.color) {
+                    // 1. Find or Validate Variant
+                    const variant = await tx.productVariant.findFirst({
+                        where: item.variantId ? { id: item.variantId } : { productId: item.productId, colorName: item.color }
+                    });
+
+                    if (variant) {
+                        if (variant.stock < item.quantity) {
+                            throw new Error(`Insufficient stock for variant ${variant.colorName || variant.name} of ${product.title}`);
+                        }
+
+                        // Atomic variant stock decrement with safety check
+                        try {
+                            await tx.productVariant.update({
+                                where: { id: variant.id, stock: { gte: item.quantity } },
+                                data: { stock: { decrement: item.quantity } }
+                            });
+                        } catch (e) {
+                            throw new Error(`Concurrency mismatch: Insufficient stock for variant of ${product.title}`);
+                        }
+
+                        // 2. Handle Size Stock if applicable
+                        if (item.size) {
+                            const sizeStock = await tx.productSize.findFirst({
+                                where: { variantId: variant.id, size: item.size }
+                            });
+
+                            if (sizeStock) {
+                                if (sizeStock.stock < item.quantity) {
+                                    throw new Error(`Insufficient stock for size ${item.size} of ${product.title}`);
+                                }
+
+                                try {
+                                    await tx.productSize.update({
+                                        where: { id: sizeStock.id, stock: { gte: item.quantity } },
+                                        data: { stock: { decrement: item.quantity } }
+                                    });
+                                } catch (e) {
+                                    throw new Error(`Concurrency mismatch: Insufficient stock for size ${item.size} of ${product.title}`);
+                                }
+                            }
+                        }
+                    }
+                }
+
                 sanitizedItemsForDiscount.push({ productId: item.productId, quantity: item.quantity, price: product.price });
 
                 const vId = product.vendorId;
@@ -68,11 +114,15 @@ export class OrderService {
                 if (!vendorGroups.has(vId)) vendorGroups.set(vId, []);
                 vendorGroups.get(vId)!.push({ item, product });
 
-                // Atomic stock decrement
-                await tx.product.update({
-                    where: { id: item.productId },
-                    data: { stock: { decrement: item.quantity } },
-                });
+                // Atomic global stock decrement with safety check
+                try {
+                    await tx.product.update({
+                        where: { id: item.productId, stock: { gte: item.quantity } },
+                        data: { stock: { decrement: item.quantity } },
+                    });
+                } catch (e) {
+                    throw new Error(`Concurrency mismatch: Insufficient global stock for ${product.title}`);
+                }
             }
 
             // 2. Calculate Combo Discounts
@@ -231,7 +281,7 @@ export class OrderService {
                     message: `You have a new order ${order.orderNumber}. Total: ₹${order.totalAmount}`,
                     type: 'order',
                     link: `/seller/orders/${order.id}`,
-                }).catch(e => console.error("Notification failed:", e));
+                }, tx).catch(e => console.error("Notification failed:", e));
             }
 
             return { orders: createdOrders, clientSecret, grandTotal };
@@ -438,7 +488,20 @@ export class OrderService {
                 });
             }
 
-            // Refund logic for new gateway will go here
+            // Refund logic for new gateway
+            if (order.paymentStatus === PaymentStatus.PAID && order.paymentIntentId) {
+                try {
+                    await RazorpayService.initiateRefund(
+                        order.paymentIntentId,
+                        order.totalAmount,
+                        `Order ${order.orderNumber} cancelled by ${role}`
+                    );
+                } catch (refundError) {
+                    console.error(`[OrderService] Automatic refund failed for order ${order.id}:`, refundError);
+                    // We might not want to block cancellation if refund fails (admin can retry manually)
+                    // but for strictness, let's at least log it well.
+                }
+            }
 
             return await tx.order.update({
                 where: { id },
@@ -660,7 +723,16 @@ export class OrderService {
                 throw new Error(`Refund amount exceeds remaining balance. Max: ₹${remainingToRefund}`);
             }
 
-            // Gateway-specific refund will be handled here
+            // 3. Gateway-specific refund
+            if (order.paymentIntentId) {
+                await RazorpayService.initiateRefund(
+                    order.paymentIntentId,
+                    refundAmount,
+                    data.reason || 'Admin/Vendor processed refund'
+                );
+            } else if (order.paymentMethod !== 'COD') {
+                console.warn(`[OrderService] No paymentIntentId found for non-COD order ${order.id}. Real refund skipped.`);
+            }
 
             // 4. Update Database
             const isFullRefund = Math.abs(refundAmount - remainingToRefund) < 0.01;

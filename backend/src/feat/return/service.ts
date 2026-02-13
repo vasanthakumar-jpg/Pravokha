@@ -1,5 +1,6 @@
 import { PrismaClient, ReturnStatus } from '@prisma/client';
 import { emailService } from '../email/service';
+import { RazorpayService } from '../payment/razorpay.service';
 
 const prisma = new PrismaClient();
 
@@ -156,12 +157,17 @@ export class ReturnService {
             throw new Error('Payment transaction not found');
         }
 
-        // TODO: Integrate with Razorpay Refund API
-        // const razorpay = getRazorpayInstance();
-        // const refund = await razorpay.payments.refund(transaction.razorpayPaymentId, {
-        //     amount: returnRequest.refundAmount * 100,
-        //     speed: 'normal'
-        // });
+        // Create real refund via Razorpay
+        try {
+            await RazorpayService.initiateRefund(
+                transaction.razorpayPaymentId,
+                returnRequest.refundAmount,
+                `Refund for Returned Items (Order: ${returnRequest.order.orderNumber})`
+            );
+        } catch (error: any) {
+            console.error('[ReturnService] Razorpay Refund Failed:', error.message);
+            throw new Error(`Financial refund failed: ${error.message}`);
+        }
 
         // Update return status and order
         await prisma.$transaction([
@@ -178,6 +184,15 @@ export class ReturnService {
                 }
             })
         ]);
+
+        // Send refund confirmation email
+        const { EmailService } = await import('../../shared/service/email.service');
+        await EmailService.sendRefundConfirmation(
+            returnRequest.order.customer.email,
+            returnRequest.orderId,
+            returnRequest.refundAmount,
+            returnRequest.order.customer.name
+        );
 
         // Send refund confirmation email
         if (returnRequest.order.customer) {

@@ -101,7 +101,7 @@ export default function AdminPermissionsPage() {
         if (!adminId) return;
         try {
             setSaving(true);
-            await apiClient.post(`/admin/permissions/${adminId}`, permissions);
+            await apiClient.put(`/admin/permissions/${adminId}`, permissions);
             toast({ title: "Permissions Updated", description: `Permissions for ${adminName} have been saved.` });
         } catch (error) {
             console.error("Failed to save permissions:", error);

@@ -111,6 +111,7 @@ const navSections: NavSection[] = [
       { title: "Payments", href: "/admin/payments", icon: <CreditCard className="h-4 w-4" />, allowedRoles: ['SUPER_ADMIN'] }, // Private Financials
       { title: "Tickets", href: "/admin/tickets", icon: <Shield className="h-4 w-4" /> },
       { title: "Users", href: "/admin/users", icon: <UserCog className="h-4 w-4" /> }, // User Management (General)
+      { title: "Staff Permissions", href: "/admin/staff", icon: <Shield className="h-4 w-4" />, allowedRoles: ['SUPER_ADMIN'] }, // Fine-grained permissions
       { title: "Admins & Roles", href: "/admin/roles", icon: <UserCog className="h-4 w-4" />, allowedRoles: ['SUPER_ADMIN'] }, // Critical Action
       { title: "Audit Logs", href: "/admin/audit-logs", icon: <Shield className="h-4 w-4" />, allowedRoles: ['SUPER_ADMIN'] },
       { title: "Suspended Tickets", href: "/admin/tickets/suspended", icon: <ShieldAlert className="h-4 w-4" /> },

@@ -4,6 +4,7 @@ import { asyncHandler } from '../../utils/asyncHandler';
 import { isCustomer } from '../../shared/utils/role.utils';
 import { Role, PaymentStatus, OrderStatus, TransactionStatus } from '@prisma/client';
 import { RazorpayService } from './razorpay.service';
+import { OrderService } from '../order/service';
 import { verifyRazorpaySignature } from '../../infra/payment/razorpay';
 import { ShippingService } from '../../services/ShippingService';
 
@@ -97,128 +98,55 @@ export class PaymentController {
 
         const applicableShipping = baseShippingFee;
 
-        const result = await prisma.$transaction(async (tx) => {
-            let totalAmount = 0;
-            const vendorGroupedItems: Record<string, any[]> = {};
+        const { orders, grandTotal } = await OrderService.createOrder({
+            userId: user?.id,
+            customerName: shippingAddress.name,
+            customerEmail: shippingAddress.email,
+            customerPhone: shippingAddress.phone,
+            shippingAddress: shippingAddress.address,
+            shippingCity: shippingAddress.city,
+            shippingPincode: shippingAddress.pincode,
+            items: items.map((i: any) => ({
+                productId: i.productId,
+                quantity: i.quantity,
+                variantId: i.variantId,
+                color: i.color,
+                size: i.size
+            })),
+            paymentMethod: 'online',
+            paymentStatus: PaymentStatus.UNPAID,
+            status: OrderStatus.PENDING
+        });
 
-            for (const item of items) {
-                const product = await tx.product.findUnique({
-                    where: { id: item.productId },
-                    include: { vendor: true }
-                });
+        const razorpayOrder = await RazorpayService.createRazorpayOrder(orders[0].id, grandTotal);
 
-                if (!product || !product.vendorId) {
-                    throw new Error(`Product ${item.productId} not found or vendor missing`);
+        // Link other orders in metadata for reconciliation
+        if (orders.length > 1) {
+            await prisma.paymentTransaction.update({
+                where: { razorpayOrderId: razorpayOrder.id },
+                data: {
+                    metadata: JSON.stringify({
+                        otherOrderIds: orders.slice(1).map((o: any) => o.id),
+                        itemsCount: items.length
+                    })
                 }
+            });
+        }
 
-                if (product.stock < item.quantity) {
-                    throw new Error(`Insufficient stock for ${product.title}`);
-                }
-
-                const itemPrice = product.price;
-                const subtotal = itemPrice * item.quantity;
-                totalAmount += subtotal;
-
-                if (!vendorGroupedItems[product.vendorId]) {
-                    vendorGroupedItems[product.vendorId] = [];
-                }
-
-                vendorGroupedItems[product.vendorId].push({
-                    productId: product.id,
-                    priceAtPurchase: itemPrice,
-                    quantity: item.quantity,
-                    subtotal,
-                    variantId: item.variantId,
-                    color: item.color,
-                    size: item.size
-                });
-            }
-
-            const { ComboOfferService } = require('../combo-offer/service');
-            const { totalDiscount, appliedOffers } = await ComboOfferService.calculateComboDiscount(items);
-
-            const subtotalAfterCombos = totalAmount - totalDiscount;
-            const taxAmount = Math.round((subtotalAfterCombos + applicableShipping) * (taxRate / 100));
-            const grandTotal = subtotalAfterCombos + applicableShipping + taxAmount;
-
-            const orders = [];
-            let remainingShipping = applicableShipping;
-
-            for (const [vendorId, vendorItems] of Object.entries(vendorGroupedItems)) {
-                const vendorSubtotal = vendorItems.reduce((sum, i) => sum + i.subtotal, 0);
-                const vendorTax = Math.round(vendorSubtotal * (taxRate / 100));
-
-                const orderShipping = remainingShipping;
-                remainingShipping = 0;
-
-                const vendorTotal = vendorSubtotal + vendorTax + orderShipping;
-                const vendor = await tx.vendor.findUnique({ where: { id: vendorId } });
-
-                if (!vendor) {
-                    throw new Error(`Vendor not found for product (Vendor ID: ${vendorId})`);
-                }
-
-                const platformFee = vendorTotal * ((vendor?.commissionRate || settings?.commissionRate || 10) / 100);
-                const vendorEarnings = vendorTotal - platformFee;
-
-                const order = await tx.order.create({
-                    data: {
-                        orderNumber: `ORD-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`,
-                        customerId: user?.id || 'GUEST',
-                        vendorId,
-                        totalAmount: vendorTotal,
-                        platformFee,
-                        vendorEarnings,
-                        status: OrderStatus.PENDING,
-                        paymentStatus: PaymentStatus.UNPAID,
-                        paymentMethod: 'online',
-                        customerName: shippingAddress.name,
-                        customerEmail: shippingAddress.email,
-                        customerPhone: shippingAddress.phone,
-                        shippingAddress: JSON.stringify(shippingAddress),
-                        // Snap shipping details to the order
-                        shippingFee: orderShipping,
-                        taxAmount: vendorTax,
-                        chargeableWeight: shippingResult.breakdown.find(b => b.vendorId === vendorId)?.chargeableWeight || 0.5,
-                        appliedZone: shippingResult.breakdown.find(b => b.vendorId === vendorId)?.zone || 'Default',
-                        shippingBreakdownJson: JSON.stringify(shippingResult.breakdown.find(b => b.vendorId === vendorId)),
-                        items: { create: vendorItems }
-                    } as any
-                });
-                orders.push(order);
-            }
-
-            const razorpayOrder = await RazorpayService.createRazorpayOrder(orders[0].id, grandTotal);
-
-            // Link other orders in metadata for reconciliation
-            if (orders.length > 1) {
-                await tx.paymentTransaction.update({
-                    where: { razorpayOrderId: razorpayOrder.id },
-                    data: {
-                        metadata: JSON.stringify({
-                            otherOrderIds: orders.slice(1).map(o => o.id),
-                            itemsCount: items.length
-                        })
-                    }
-                });
-            }
-
-            return {
+        res.json({
+            success: true,
+            data: {
                 razorpayOrderId: razorpayOrder.id,
                 amount: razorpayOrder.amount,
                 currency: razorpayOrder.currency,
                 orderId: orders[0]?.id,
                 orderNumber: orders[0]?.orderNumber,
-                orders: orders.map(o => ({ id: o.id, orderNumber: o.orderNumber })),
+                orders: orders.map((o: any) => ({ id: o.id, orderNumber: o.orderNumber })),
                 totalAmount: grandTotal,
-                discount: totalDiscount,
-                appliedOffers,
                 shipping: applicableShipping,
-                tax: taxAmount
-            };
+                tax: grandTotal * (taxRate / (100 + taxRate))
+            }
         });
-
-        res.json({ success: true, data: result });
     });
 
     static verifyPayment = asyncHandler(async (req: Request, res: Response) => {

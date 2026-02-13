@@ -6,52 +6,83 @@ import { PermissionService } from '../auth/permission.service';
 
 const prisma = new PrismaClient();
 
-// PERMISSION MANAGEMENT
+// ADMIN PERMISSION MANAGEMENT
 
+/**
+ * Get list of all admin users with their permissions (SUPER_ADMIN only)
+ */
+export const listAdmins = asyncHandler(async (req: Request, res: Response) => {
+    const admins = await prisma.user.findMany({
+        where: {
+            role: { in: [Role.ADMIN, Role.SUPER_ADMIN] }
+        },
+        select: {
+            id: true,
+            email: true,
+            name: true,
+            role: true,
+            status: true,
+            createdAt: true,
+            adminPermission: true
+        },
+        orderBy: { createdAt: 'desc' }
+    });
+
+    res.json({ success: true, data: admins });
+});
+
+/**
+ * Update admin user permissions (SUPER_ADMIN only)
+ */
 export const updateAdminPermissions = asyncHandler(async (req: Request, res: Response) => {
     const { adminId } = req.params;
     const permissions = req.body;
 
-    const adminUser = (req as any).user;
-    // Only SUPER_ADMIN can do this
-    if (adminUser.role !== Role.SUPER_ADMIN) {
-        res.status(403).json({ message: 'Only Super Admin can manage permissions' });
+    // Verify target user is an admin
+    const targetUser = await prisma.user.findUnique({
+        where: { id: adminId },
+        select: { role: true }
+    });
+
+    if (!targetUser || (targetUser.role !== Role.ADMIN && targetUser.role !== Role.SUPER_ADMIN)) {
+        res.status(400).json({ message: 'User is not an admin' });
         return;
     }
 
-    const updated = await prisma.adminPermission.upsert({
+    // SUPER_ADMIN permissions cannot be modified
+    if (targetUser.role === Role.SUPER_ADMIN) {
+        res.status(400).json({ message: 'Cannot modify SUPER_ADMIN permissions' });
+        return;
+    }
+
+    // Update or create admin permissions
+    const updatedPermissions = await prisma.adminPermission.upsert({
         where: { adminId },
-        update: permissions,
         create: {
             adminId,
             ...permissions
-        }
+        },
+        update: permissions
     });
 
+    // Audit log the permission change
+    const performerUser = (req as any).user;
     await AuditService.logAction({
-        performedBy: adminUser.id,
-        performerRole: Role.SUPER_ADMIN,
-        performerEmail: adminUser.email!,
-        action: AuditAction.UPDATE,
+        performedBy: performerUser.id,
+        performerRole: performerUser.role,
+        performerEmail: performerUser.email,
+        action: 'UPDATE_ADMIN_PERMISSIONS',
         entity: 'AdminPermission',
-        entityId: updated.id,
-        changes: permissions,
+        entityId: adminId,
         reason: `Updated permissions for admin ${adminId}`,
         ipAddress: req.ip
     });
 
-    res.json({ success: true, data: updated });
+    res.json({ success: true, data: updatedPermissions });
 });
 
 export const getAdminPermissions = asyncHandler(async (req: Request, res: Response) => {
     const { adminId } = req.params;
-
-    const adminUser = (req as any).user;
-    // Allow if SUPER_ADMIN or self
-    if (adminUser.role !== Role.SUPER_ADMIN && adminUser.id !== adminId) {
-        res.status(403).json({ message: 'Permission denied' });
-        return;
-    }
 
     const permissions = await prisma.adminPermission.findUnique({
         where: { adminId }
@@ -98,7 +129,14 @@ export const suspendUser = asyncHandler(async (req: Request, res: Response) => {
         ipAddress: req.ip
     });
 
-    // TODO: Send Email
+    // Send notification email to suspended user
+    const { EmailService } = await import('../../shared/service/email.service');
+    await EmailService.sendAdminActionNotification(
+        user.email,
+        'Account Suspended',
+        `Your account has been suspended. Reason: ${reason}. Please contact support for assistance.`,
+        adminUser.name || adminUser.email
+    );
 
     res.json({ success: true, message: 'User suspended', data: user });
 });

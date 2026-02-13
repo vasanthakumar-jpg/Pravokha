@@ -6,6 +6,7 @@ import { siteSettingsSchema, notificationSettingsSchema, systemSettingsSchema } 
 import {
     updateAdminPermissions,
     getAdminPermissions,
+    listAdmins,
     suspendUser,
     activateUser,
     getAuditLogs,
@@ -41,12 +42,13 @@ router.get('/product-updates', requirePermission('MANAGE_PRODUCTS', 'MARKETPLACE
 router.patch('/product-updates/:id', requirePermission('MANAGE_PRODUCTS', 'MARKETPLACE'), updateProductRequestStatus);
 
 // Permission Management (Restricted to SUPER_ADMIN internally, but guarded by middleware for logging/RBAC)
-router.post('/permissions/:adminId', requirePermission('MANAGE_ADMINS', 'SYSTEM'), updateAdminPermissions);
+router.get('/admins', requirePermission('MANAGE_ADMINS', 'SYSTEM'), listAdmins);
+router.put('/permissions/:adminId', requirePermission('MANAGE_ADMINS', 'SYSTEM'), updateAdminPermissions);
 router.get('/permissions/:adminId', requirePermission('MANAGE_ADMINS', 'SYSTEM'), getAdminPermissions);
 
 // User Management
 router.post('/users/:userId/suspend', requirePermission('SUSPEND_USER', 'USER'), suspendUser);
-router.post('/users/:userId/activate', requirePermission('ACTIVATE_USER', 'USER'), activateUser);
+router.post('/users/:userId/activate', requirePermission('ACTIVATE_USER_USER', 'USER'), activateUser);
 
 // Audit Logs
 router.get('/audit-logs', requirePermission('VIEW_AUDIT_LOGS', 'SYSTEM'), getAuditLogs);

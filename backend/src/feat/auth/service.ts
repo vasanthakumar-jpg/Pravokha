@@ -118,6 +118,71 @@ export class AuthService {
         return { success: true };
     }
 
+    static async generateResetToken(email: string) {
+        const user = await prisma.user.findUnique({ where: { email } });
+        if (!user) {
+            // Security Best Practice: Don't reveal if user exists
+            return { success: true, message: 'If an account exists, a reset link will be sent.' };
+        }
+
+        if (!user.password && user.googleId) {
+            return { success: false, message: 'This account uses Google Social Login. Please login via Google.' };
+        }
+
+        const crypto = await import('crypto');
+        const token = crypto.randomBytes(32).toString('hex');
+        const expires = new Date(Date.now() + 3600000); // 1 hour
+
+        await prisma.user.update({
+            where: { id: user.id },
+            data: {
+                resetToken: token,
+                resetTokenExpires: expires
+            }
+        });
+
+        // Send Email
+        const { EmailService } = await import('../../shared/service/email.service');
+        const resetLink = `${config.frontendUrl}/reset-password?token=${token}`;
+
+        await EmailService.sendEmail({
+            to: email,
+            subject: 'Password Reset Request',
+            template: 'passwordReset', // Ensure this template exists
+            variables: {
+                name: user.name,
+                resetLink
+            }
+        }).catch(e => console.error('[AuthService] Reset email failed:', e));
+
+        return { success: true, message: 'Password reset link sent to your email.' };
+    }
+
+    static async resetPassword(data: { token: string, newPassword: string }) {
+        const user = await prisma.user.findFirst({
+            where: {
+                resetToken: data.token,
+                resetTokenExpires: { gte: new Date() }
+            }
+        });
+
+        if (!user) {
+            throw { statusCode: 400, message: 'Invalid or expired reset token' };
+        }
+
+        const hashedPassword = await bcrypt.hash(data.newPassword, 10);
+        await prisma.user.update({
+            where: { id: user.id },
+            data: {
+                password: hashedPassword,
+                resetToken: null,
+                resetTokenExpires: null
+            }
+        });
+
+        return { success: true, message: 'Password updated successfully' };
+    }
+
     private static generateToken(user: Pick<User, 'id' | 'role'>) {
         return jwt.sign({ id: user.id, role: user.role }, config.jwtSecret, { expiresIn: '1d' });
     }

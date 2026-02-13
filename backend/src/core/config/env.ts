@@ -8,6 +8,7 @@ const envSchema = z.object({
     JWT_SECRET: z.string().min(32, 'JWT_SECRET should be a secure 32+ character string for production'),
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
     DATABASE_URL: z.string().url('DATABASE_URL must be a valid connection string'),
+    FRONTEND_URL: z.string().url('FRONTEND_URL must be a valid URL').default('http://localhost:5173'),
     EMAIL_HOST: z.string(),
     EMAIL_PORT: z.string().transform(Number),
     EMAIL_USER: z.string().email(),
@@ -32,6 +33,7 @@ export const config = {
     port: env.PORT,
     jwtSecret: env.JWT_SECRET,
     nodeEnv: env.NODE_ENV,
+    frontendUrl: env.FRONTEND_URL,
     email: {
         host: env.EMAIL_HOST,
         port: env.EMAIL_PORT,

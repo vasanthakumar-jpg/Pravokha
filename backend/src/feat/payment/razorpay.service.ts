@@ -164,24 +164,31 @@ export class RazorpayService {
      */
     static async initiateRefund(paymentId: string, amount?: number, notes?: string) {
         try {
-            const refund = await razorpayInstance.payments.refund(paymentId, {
-                amount: amount ? Math.round(amount * 100) : undefined,
-                notes: { reason: notes || 'Customer request' }
-            });
+            // Razorpay expects amount in paise (integers)
+            const refundOptions: any = {
+                notes: { reason: notes || 'Admin initiated refund' }
+            };
 
-            // Update transaction to reflect refund in progress
-            await prisma.paymentTransaction.update({
+            if (amount) {
+                refundOptions.amount = Math.round(amount * 100);
+            }
+
+            const refund = await razorpayInstance.payments.refund(paymentId, refundOptions);
+
+            // Update transaction to reflect refund in progress or success
+            await prisma.paymentTransaction.updateMany({
                 where: { razorpayPaymentId: paymentId },
                 data: {
                     refundId: refund.id,
-                    refundStatus: 'PROCESSING',
+                    refundStatus: 'PROCESSED',
+                    refundAmount: amount || undefined
                 }
             });
 
             return refund;
-        } catch (error) {
-            console.error('[RazorpayService] Refund failed:', error);
-            throw error;
+        } catch (error: any) {
+            console.error('[RazorpayService] Refund failed:', error.message);
+            throw new Error(`Razorpay refund failed: ${error.message || 'Unknown error'}`);
         }
     }
 }

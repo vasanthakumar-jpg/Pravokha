@@ -75,7 +75,8 @@ const AdminSettings = lazy(() => import("./feat/admin/pages/AdminSettings"));
 const AdminMessages = lazy(() => import("./feat/admin/pages/AdminMessages"));
 const AdminReviews = lazy(() => import("./feat/admin/pages/AdminReviews"));
 const AdminRoleManagement = lazy(() => import("./feat/admin/pages/AdminRoleManagement"));
-const AdminPermissions = lazy(() => import("./feat/admin/pages/AdminPermissionsPage")); // Add this
+const AdminPermissions = lazy(() => import("./feat/admin/pages/AdminPermissionsPage"));
+const AdminStaffList = lazy(() => import("./feat/admin/pages/AdminStaffList"));
 // const AdminAuditLogs = lazy(() => import("./feat/admin/pages/AdminAuditLogs"));
 
 // Unified Orders Page (for both Admin and Seller)
@@ -430,6 +431,13 @@ export default function App() {
                               <Suspense fallback={<LoadingFallback />}>
                                 <AdminPermissions />
                               </Suspense>
+                            } />
+                            <Route path="staff" element={
+                              <ProtectedRoute allowedRoles={["SUPER_ADMIN"]}>
+                                <Suspense fallback={<LoadingFallback />}>
+                                  <AdminStaffList />
+                                </Suspense>
+                              </ProtectedRoute>
                             } />
                             <Route path="categories" element={
                               <Suspense fallback={<LoadingFallback />}>

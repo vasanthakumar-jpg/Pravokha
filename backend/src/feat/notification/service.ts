@@ -9,9 +9,10 @@ export class NotificationService {
         type: 'order' | 'info' | 'alert' | 'message' | 'order_cancelled';
         link?: string;
         metadata?: any;
-    }) {
+    }, tx?: any) {
+        const client = tx || prisma;
         // Check User Preferences
-        const prefs = await prisma.userPreference.findUnique({
+        const prefs = await client.userPreference.findUnique({
             where: { userId: data.userId }
         });
 
@@ -26,7 +27,7 @@ export class NotificationService {
             }
         }
 
-        return await prisma.notification.create({
+        return await client.notification.create({
             data: {
                 userId: data.userId,
                 title: data.title,

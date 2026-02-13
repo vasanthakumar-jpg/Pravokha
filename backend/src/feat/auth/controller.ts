@@ -95,14 +95,21 @@ export const googleLogin = asyncHandler(async (req: Request, res: Response) => {
 });
 
 export const passwordReset = asyncHandler(async (req: Request, res: Response) => {
-    // In a real app, send email with reset token
-    // For now, verify email exists and return success
     const { email } = req.body;
-    // const user = await prisma.user.findUnique({ where: { email } });
-    // if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+    if (!email) {
+        return res.status(400).json({ success: false, message: 'Email is required' });
+    }
+    const result = await AuthService.generateResetToken(email);
+    res.json(result);
+});
 
-    // Allow simulation even without checking DB if needed, or strictly check
-    res.json({ success: true, message: 'Reset instruction sent (Simulation)' });
+export const confirmReset = asyncHandler(async (req: Request, res: Response) => {
+    const { token, newPassword } = req.body;
+    if (!token || !newPassword) {
+        return res.status(400).json({ success: false, message: 'Token and new password are required' });
+    }
+    const result = await AuthService.resetPassword({ token, newPassword });
+    res.json(result);
 });
 export const changePassword = asyncHandler(async (req: Request, res: Response) => {
     const user = (req as any).user;

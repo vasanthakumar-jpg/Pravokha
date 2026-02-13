@@ -99,6 +99,10 @@ export default function SuperAdminDashboard() {
                                 <span className="flex items-center gap-2"><AlertCircle className="w-4 h-4 text-red-500" /> Escalated Tickets</span>
                                 <Badge variant="destructive">{stats.openTickets}</Badge>
                             </Button>
+                            <Button variant="outline" className="w-full justify-between h-auto py-3" onClick={() => navigate('/admin/staff')}>
+                                <span className="flex items-center gap-2"><ShieldAlert className="w-4 h-4 text-primary" /> Manage Staff clearance</span>
+                                <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                            </Button>
                         </CardContent>
                     </Card>
                 </motion.div>
