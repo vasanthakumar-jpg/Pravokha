@@ -657,13 +657,6 @@ enum TransactionStatus {
   REFUNDED
 }
 
-enum Role {
-  SUPER_ADMIN
-  ADMIN
-  SELLER
-  CUSTOMER
-}
-
 enum OrderStatus {
   PENDING
   CONFIRMED

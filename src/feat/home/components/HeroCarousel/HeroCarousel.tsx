@@ -24,21 +24,21 @@ const staticSlides: Slide[] = [
         title: "Premium Quality Tees",
         description: "Discover comfort & style in every thread",
         cta: "Shop T-Shirts",
-        link: "/products?category=t-shirts",
+        link: "/products?search=T-Shirt", // Optimized for Smarter Search
     },
     {
         image: hero2,
         title: "Athletic Track Pants",
         description: "Performance meets fashion",
         cta: "Shop Track Pants",
-        link: "/products?category=track-pants",
+        link: "/products?search=Track+Pants", // Optimized for Smarter Search
     },
     {
         image: hero3,
         title: "Summer Collection",
         description: "Fresh styles for the season",
         cta: "Shop Shorts",
-        link: "/products?category=shorts",
+        link: "/products?search=Shorts", // Optimized for Smarter Search
     },
     {
         image: hero1,
@@ -63,15 +63,34 @@ export function HeroCarousel() {
             const response = await apiClient.get("/home/combo-offers", { params: { activeOnly: "true" } });
 
             if (response.data.success && response.data.offers) {
-                const comboSlides: Slide[] = response.data.offers.map((offer: any) => ({
-                    id: offer.id,
-                    image: offer.imageUrl || hero1,
-                    title: offer.title,
-                    description: offer.description || `Get this bundle for just ₹${offer.comboPrice}`,
-                    cta: "Shop Bundle",
-                    link: `/products?search=${offer.title}`,
-                    isCombo: true,
-                }));
+                const comboSlides: Slide[] = response.data.offers.map((offer: any) => {
+                    let productIdsStr = "";
+                    if (offer.productIds) {
+                        try {
+                            const parsedIds = typeof offer.productIds === 'string'
+                                ? JSON.parse(offer.productIds)
+                                : offer.productIds;
+
+                            if (Array.isArray(parsedIds) && parsedIds.length > 0) {
+                                productIdsStr = parsedIds.join(",");
+                            }
+                        } catch (e) {
+                            console.error("Error parsing productIds for combo link:", e);
+                        }
+                    }
+
+                    return {
+                        id: offer.id,
+                        image: offer.imageUrl || hero1,
+                        title: offer.title,
+                        description: offer.description || `Get this bundle for just ₹${offer.comboPrice}`,
+                        cta: "Shop Bundle",
+                        link: productIdsStr
+                            ? `/products?ids=${productIdsStr}`
+                            : `/products?search=${encodeURIComponent(offer.title)}`,
+                        isCombo: true,
+                    };
+                });
 
                 setSlides([...comboSlides, ...staticSlides]);
             }

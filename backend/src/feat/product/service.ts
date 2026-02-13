@@ -1,6 +1,7 @@
 import { prisma } from '../../infra/database/client';
 import { Product, Role } from '@prisma/client';
 import { isSuperAdmin, isAdmin, isRole } from '../../shared/utils/role.utils';
+import { PermissionService } from '../auth/permission.service';
 
 export class ProductService {
     public static transformProduct(product: any) {
@@ -182,7 +183,7 @@ export class ProductService {
         return this.transformProduct(newProduct);
     }
 
-    static async getProducts(user?: { id: string; role: Role }, filters: { search?: string; category?: string; subcategory?: string; page?: number | string; limit?: number | string; vendorId?: string; tag?: string; scope?: string; sort?: string; minPrice?: number; maxPrice?: number; minDiscount?: number; minRating?: number } = {}) {
+    static async getProducts(user?: { id: string; role: Role }, filters: { search?: string; category?: string; subcategory?: string; ids?: string; page?: number | string; limit?: number | string; vendorId?: string; tag?: string; scope?: string; sort?: string; minPrice?: number; maxPrice?: number; minDiscount?: number; minRating?: number } = {}) {
         const pageNum = typeof filters.page === 'string' ? parseInt(filters.page) : (Number(filters.page) || 1);
         const limitNum = typeof filters.limit === 'string' ? parseInt(filters.limit) : (Number(filters.limit) || 10);
         const skip = (pageNum - 1) * limitNum;
@@ -191,9 +192,7 @@ export class ProductService {
 
         if (filters.search) {
             const rawKeywords = filters.search.trim().split(/\s+/).filter(word => word.length > 0);
-
             const stopWords = ['for', 'the', 'and', 'with', 'from', 'best', 'buy', 'this', 'that', 'super', 'very'];
-
             const keywords = rawKeywords
                 .filter(word => word.length > 1 && !stopWords.includes(word.toLowerCase()))
                 .map(word => {
@@ -217,29 +216,88 @@ export class ProductService {
                     return [...new Set(variations)];
                 });
 
-            if (keywords.length > 0) {
-                // PASS 1: Try strict AND (All keywords must be represented)
-                where.AND = keywords.map(variations => ({
-                    OR: variations.flatMap(v => [
-                        { title: { contains: v } },
-                        { tags: { contains: v } },
-                        { description: { contains: v } }
-                    ])
-                }));
+            // SMARTER PROMOTION SEARCH: Check for Combo Offer Titles
+            const comboMatches = await prisma.comboOffer.findMany({
+                where: {
+                    active: true,
+                    OR: [
+                        { title: { contains: filters.search } },
+                        { description: { contains: filters.search } }
+                    ]
+                },
+                select: { productIds: true }
+            });
+
+            const comboProductIdsSet = new Set<string>();
+            comboMatches.forEach(combo => {
+                if (combo.productIds) {
+                    try {
+                        const ids = typeof combo.productIds === 'string' ? JSON.parse(combo.productIds) : combo.productIds;
+                        if (Array.isArray(ids)) ids.forEach(id => comboProductIdsSet.add(id));
+                        else if (typeof ids === 'string' && ids.length > 0) comboProductIdsSet.add(ids);
+                    } catch (e) {
+                        console.error('[ProductService] Error parsing combo productIds:', e);
+                    }
+                }
+            });
+
+            if (keywords.length > 0 || comboProductIdsSet.size > 0) {
+                // PASS 1: Try strict AND (All keywords must be represented) OR explicit Promotion IDs
+                const searchQuery: any = {};
+
+                if (keywords.length > 0) {
+                    searchQuery.AND = keywords.map(variations => ({
+                        OR: variations.flatMap(v => [
+                            { title: { contains: v } },
+                            { tags: { contains: v } },
+                            { description: { contains: v } }
+                        ])
+                    }));
+                }
+
+                if (comboProductIdsSet.size > 0) {
+                    const promotionIds = Array.from(comboProductIdsSet);
+                    // If we have promo IDs, we allow EITHER keyword matches OR these specific IDs
+                    where.OR = [
+                        ...(searchQuery.AND ? [searchQuery] : []),
+                        { id: { in: promotionIds } },
+                        { slug: { in: promotionIds } }
+                    ];
+                } else {
+                    where.AND = searchQuery.AND;
+                }
 
                 // Check if Pass 1 yields results
                 const count = await prisma.product.count({ where });
 
-                if (count === 0) {
+                if (count === 0 && keywords.length > 0) {
                     // PASS 2: Fallback to OR (Any significant keyword matches)
                     // This handles cases like "tshirt perfect fit" where "perfect" isn't in DB
                     delete where.AND;
-                    where.OR = keywords.flatMap(variations => variations.flatMap(v => [
+                    const orConditions: any[] = keywords.flatMap(variations => variations.flatMap(v => [
                         { title: { contains: v } },
                         { tags: { contains: v } },
                         { description: { contains: v } }
                     ]));
+
+                    if (comboProductIdsSet.size > 0) {
+                        where.OR = [
+                            ...orConditions,
+                            { id: { in: Array.from(comboProductIdsSet) } },
+                            { slug: { in: Array.from(comboProductIdsSet) } }
+                        ];
+                    } else {
+                        where.OR = orConditions;
+                    }
                 }
+            }
+        }
+
+        // Specific IDs filter (useful for banners linking to specific subsets)
+        if (filters.ids) {
+            const idList = filters.ids.split(',').map(id => id.trim()).filter(id => id.length > 0);
+            if (idList.length > 0) {
+                where.id = { in: idList };
             }
         }
 
@@ -523,10 +581,19 @@ export class ProductService {
             throw { statusCode: 404, message: 'Product not found' };
         }
 
-        const isPlatformAdmin = isSuperAdmin(user.role) || isAdmin(user.role);
-        const vendor = await prisma.vendor.findUnique({ where: { ownerId: user.id } });
+        // Check permission using PermissionService
+        const canDelete = await PermissionService.canPerform(
+            user.id,
+            user.role,
+            'DELETE_PRODUCT',
+            'PRODUCT',
+            product.vendorId
+        );
 
-        if (!isPlatformAdmin && (!vendor || product.vendorId !== vendor.id)) {
+        const vendor = await prisma.vendor.findUnique({ where: { ownerId: user.id } });
+        const isOwner = vendor?.id === product.vendorId;
+
+        if (!canDelete && !isOwner) {
             throw {
                 statusCode: 403,
                 message: 'Forbidden: You can only delete your own products'

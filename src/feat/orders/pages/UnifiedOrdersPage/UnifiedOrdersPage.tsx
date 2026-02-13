@@ -410,8 +410,9 @@ export default function UnifiedOrdersPage() {
 
     if (loading) {
         return (
-            <div className="w-full max-w-7xl py-8 px-4 sm:px-6 lg:px-8 space-y-8 animate-pulse">
+            <div className="container py-8 flex flex-col gap-8 animate-pulse">
                 {/* Header Skeleton */}
+
                 <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
                     <div className="space-y-2">
                         <div className="h-10 w-64 bg-muted rounded-xl" />
@@ -495,8 +496,9 @@ export default function UnifiedOrdersPage() {
     }
 
     return (
-        <div className="w-full mx-auto py-6 lg:py-8 px-4 sm:px-6 lg:px-8 flex flex-col gap-3 sm:gap-6 lg:gap-8">
+        <div className="container py-8 flex flex-col gap-3 sm:gap-6 lg:gap-8">
             <div className="flex flex-col gap-2 sm:gap-4">
+
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full sm:w-auto">
                         <Button

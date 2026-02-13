@@ -104,6 +104,10 @@ export class PermissionService {
                 return permissions.canViewAllOrders;
             case 'CANCEL_ORDER':
                 return permissions.canCancelAnyOrder;
+            case 'UPDATE_STATUS': // For Order status updates
+                return permissions.canViewAllOrders; // Admins who can view orders can update them
+            case 'DELETE_ORDER':
+                return false; // Reserved for SUPER_ADMIN only (handled in canPerform)
             case 'ISSUE_REFUND':
                 return permissions.canIssueRefunds;
             case 'APPROVE_PAYOUT':

@@ -152,93 +152,84 @@ export default function SellerOrders() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50/50 animate-pulse flex flex-col items-center">
-        {/* Header Skeleton Part - Center Content */}
-        <header className="bg-white border-b sticky top-0 z-10 w-full flex justify-center">
-          <div className="w-full max-w-7xl py-4 px-4 sm:px-6 lg:px-8">
-            <div className="flex h-10 items-center">
-              <div className="h-8 w-48 bg-muted rounded-xl" />
-            </div>
-          </div>
-        </header>
+      <div className="container py-8 flex flex-col gap-8 animate-pulse">
+        {/* Title Block Skeleton */}
+        <div className="space-y-4">
+          <div className="h-10 w-48 bg-muted rounded-xl" />
+          <div className="h-4 w-72 bg-muted/60 rounded-lg" />
+        </div>
 
-        {/* Content Skeleton Part - Center Content */}
-        <main className="w-full max-w-7xl py-8 px-4 sm:px-6 lg:px-8 space-y-8 flex-1">
-          <div className="flex flex-col sm:flex-row gap-4 mb-4">
-            <div className="h-11 flex-1 bg-muted/60 rounded-xl" />
-            <div className="h-11 w-full sm:w-48 bg-muted/60 rounded-xl" />
-          </div>
+        {/* Search & Filter Skeleton */}
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="h-11 flex-1 bg-muted/30 rounded-xl" />
+          <div className="h-11 w-full sm:w-[180px] bg-muted/30 rounded-xl" />
+        </div>
 
-          {/* Mobile Card Skeleton */}
-          <div className="grid grid-cols-1 gap-4 sm:hidden">
-            {[1, 2, 3, 4].map(i => (
-              <div key={i} className="h-48 bg-muted/20 border border-border/40 rounded-[24px] p-5 space-y-4">
-                <div className="flex justify-between">
-                  <div className="h-6 w-32 bg-muted/40 rounded-lg" />
-                  <div className="h-6 w-16 bg-muted/40 rounded-full" />
-                </div>
-                <div className="h-20 bg-muted/30 rounded-xl border border-dashed" />
-                <div className="flex justify-between">
-                  <div className="h-8 w-20 bg-muted/40 rounded-lg" />
-                  <div className="h-8 w-20 bg-muted/40 rounded-lg" />
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Desktop Table Skeleton */}
-          <div className="hidden sm:block rounded-[24px] border border-border/40 overflow-hidden bg-white/50 backdrop-blur-sm shadow-sm w-full">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-muted/30 border-b border-border/40">
-                    {[1, 2, 3, 4, 5, 6].map(i => (
-                      <th key={i} className="px-6 py-4">
-                        <div className="h-4 w-20 bg-muted/40 rounded" />
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border/40">
-                  {[1, 2, 3, 4, 5].map(i => (
-                    <tr key={i} className="h-20">
-                      <td className="px-6 py-4"><div className="h-4 w-32 bg-muted/30 rounded" /></td>
-                      <td className="px-6 py-4"><div className="h-4 w-24 bg-muted/20 rounded" /></td>
-                      <td className="px-6 py-4"><div className="h-4 w-16 bg-muted/30 rounded" /></td>
-                      <td className="px-6 py-4"><div className="h-6 w-24 bg-muted/20 rounded-full" /></td>
-                      <td className="px-6 py-4"><div className="h-6 w-20 bg-muted/20 rounded-full" /></td>
-                      <td className="px-6 py-4 text-right"><div className="h-8 w-20 bg-muted/30 rounded-lg ml-auto" /></td>
-                    </tr>
+        {/* Desktop Table Skeleton */}
+        <div className="hidden sm:block rounded-[24px] border border-border/40 overflow-hidden bg-white/50 backdrop-blur-sm shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-muted/30 border-b border-border/40">
+                  {[1, 2, 3, 4, 5, 6].map(i => (
+                    <th key={i} className="px-6 py-4">
+                      <div className="h-4 w-20 bg-muted/40 rounded" />
+                    </th>
                   ))}
-                </tbody>
-              </table>
-            </div>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/40">
+                {[1, 2, 3, 4, 5].map(i => (
+                  <tr key={i} className="h-20">
+                    <td className="px-6 py-4"><div className="h-4 w-32 bg-muted/30 rounded" /></td>
+                    <td className="px-6 py-4"><div className="h-4 w-24 bg-muted/20 rounded" /></td>
+                    <td className="px-6 py-4"><div className="h-4 w-16 bg-muted/30 rounded" /></td>
+                    <td className="px-6 py-4"><div className="h-6 w-24 bg-muted/20 rounded-full" /></td>
+                    <td className="px-6 py-4"><div className="h-6 w-20 bg-muted/20 rounded-full" /></td>
+                    <td className="px-6 py-4 text-right"><div className="h-8 w-20 bg-muted/30 rounded-lg ml-auto" /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        </main>
+        </div>
+
+        {/* Mobile View Skeleton */}
+        <div className="grid grid-cols-1 gap-4 sm:hidden">
+          {[1, 2, 3, 4].map(i => (
+            <div key={i} className="h-48 bg-muted/20 border border-border/40 rounded-[24px] p-5 space-y-4">
+              <div className="flex justify-between">
+                <div className="h-6 w-32 bg-muted/40 rounded-lg" />
+                <div className="h-6 w-16 bg-muted/40 rounded-full" />
+              </div>
+              <div className="h-20 bg-muted/30 rounded-xl border border-dashed flex items-center justify-center">
+                <div className="h-8 w-8 bg-muted/40 animate-pulse rounded-full" />
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50/50">
-      <header className="bg-white border-b sticky top-0 z-10">
-        <div className="container max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" onClick={() => navigate("/seller")} className="-ml-2">
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">Orders</h1>
-                <p className="text-sm text-muted-foreground">Manage your product orders</p>
-              </div>
-            </div>
+    <div className="container py-8 space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+      {/* Title Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" onClick={() => navigate("/seller")} className="-ml-2">
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">Orders</h1>
+            <p className="text-sm text-muted-foreground">Manage your product orders</p>
           </div>
         </div>
-      </header>
+      </div>
 
-      <main className="container max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+      <div className="space-y-8">
         {/* Filters */}
+
         <div className="flex flex-col sm:flex-row gap-4 mb-8">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -434,7 +425,7 @@ export default function SellerOrders() {
             )}
           </div>
         )}
-      </main>
+      </div>
     </div>
   );
 }

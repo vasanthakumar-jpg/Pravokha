@@ -61,11 +61,12 @@ export const createProduct = asyncHandler(async (req: Request, res: Response) =>
 
 export const getProducts = asyncHandler(async (req: Request, res: Response) => {
     const user = (req as any).user;
-    const { search, category, page, limit, vendorId, tag, scope, sort } = req.query;
+    const { search, category, page, limit, vendorId, tag, scope, sort, ids } = req.query;
     // Super Admins can see all, Vendors might have restrictions handled in service
     const result = await ProductService.getProducts(user!, {
         search: search as string,
         category: category as string,
+        ids: ids as string,
         page: page ? parseInt(page as string) : undefined,
         limit: limit ? parseInt(limit as string) : undefined,
         vendorId: vendorId as string,
@@ -101,21 +102,28 @@ export const updateProduct = asyncHandler(async (req: Request, res: Response) =>
     // Map vendorId from existing product (it's in the vendor relation)
     const productVendorId = (existingProduct as any).vendorId;
 
-    // Check if user is a vendor and owns this product (Check for ALL roles, not just Role.ADMIN)
+    // Check if user is a vendor and owns this product
     const vendor = await prisma.vendor.findUnique({ where: { ownerId: userId } });
     const isOwner = vendor?.id === productVendorId;
 
-    const isSuperAdmin = userRole === Role.SUPER_ADMIN;
-    const isAdmin = userRole === Role.ADMIN;
+    // 2. Permission Check - Use PermissionService for granular RBAC
+    const canEditAnyProduct = await PermissionService.canPerform(
+        userId,
+        userRole,
+        'EDIT_PRODUCT',
+        'PRODUCT',
+        productVendorId
+    );
 
-    // 2. Permission Check
-    if (!isOwner && !isSuperAdmin && !isAdmin) {
+    if (!isOwner && !canEditAnyProduct) {
         res.status(403).json({ message: 'You do not have permission to edit this product' });
         return;
     }
 
+    const isSuperAdmin = userRole === Role.SUPER_ADMIN;
+
     // 3. Field-Level Protection
-    if (!isSuperAdmin && !isAdmin) {
+    if (!canEditAnyProduct) {
         // Vendor trying to edit admin fields - STRIP THEM instead of 403
         for (const field of ADMIN_ONLY_FIELDS) {
             if (req.body[field] !== undefined) {
@@ -190,9 +198,16 @@ export const verifyProduct = asyncHandler(async (req: Request, res: Response) =>
     const user = (req as any).user;
     const { approved, notes } = req.body;
 
-    // Direct role check
-    if (user.role !== Role.SUPER_ADMIN) {
-        res.status(403).json({ message: 'Permission denied' });
+    // Use PermissionService for granular RBAC
+    const canApprove = await PermissionService.canPerform(
+        user.id,
+        user.role as Role,
+        'APPROVE_PRODUCT',
+        'PRODUCT'
+    );
+
+    if (!canApprove) {
+        res.status(403).json({ message: 'Permission denied: You do not have permission to approve products' });
         return;
     }
 

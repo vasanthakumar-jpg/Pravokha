@@ -130,8 +130,9 @@ export default function SellerProducts() {
 
   if (loading) {
     return (
-      <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8 space-y-8 animate-pulse">
+      <div className="container py-8 flex flex-col gap-8 animate-pulse">
         {/* Header Skeleton */}
+
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
           <div className="flex items-center gap-4 w-full lg:w-auto">
             <div className="h-9 w-20 bg-muted rounded-xl" />
@@ -185,8 +186,9 @@ export default function SellerProducts() {
   const totalRevenue = products.reduce((sum, p) => sum + p.price, 0);
 
   return (
-    <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8 flex flex-col gap-8 pb-10">
+    <div className="container py-8 flex flex-col gap-8 pb-10">
       <div className="flex flex-col gap-6">
+
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
           <div className="flex items-center gap-4 w-full lg:w-auto">
             <Button

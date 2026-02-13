@@ -14,6 +14,7 @@ export interface ProductFilters {
   subcategory?: string;
   minDiscount?: number;
   minRating?: number;
+  ids?: string;
 }
 
 export function useProducts(filters: ProductFilters = {}) {
@@ -42,6 +43,7 @@ export function useProducts(filters: ProductFilters = {}) {
       if (filters.maxPrice !== undefined) params.maxPrice = filters.maxPrice;
       if (filters.tag) params.tag = filters.tag;
       if (filters.minRating !== undefined) params.minRating = filters.minRating;
+      if (filters.ids) params.ids = filters.ids;
       // Subcategory isn't directly supported by backend yet as a param, logic might need adjustment if backend doesn't support 'subcategory' param.
       // Checking backend controller... it accepts 'category' (slug). 
       // If subcategory is passed, we might need to handle it. 

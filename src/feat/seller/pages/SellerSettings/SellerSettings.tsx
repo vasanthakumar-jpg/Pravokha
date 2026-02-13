@@ -308,8 +308,9 @@ export default function SellerSettings() {
 
   if (loading) {
     return (
-      <div className="w-full mx-auto py-4 sm:py-6 lg:py-8 px-2 sm:px-4 lg:px-6 xl:px-8 max-w-7xl animate-pulse space-y-8">
+      <div className="container py-8 animate-pulse space-y-8">
         {/* Header Skeleton */}
+
         <div className="mb-4 sm:mb-8 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 bg-card p-4 sm:p-7 rounded-2xl border border-border/60 shadow-sm">
           <div className="space-y-3 w-full lg:w-auto">
             <div className="h-9 w-48 bg-muted rounded-xl" />
@@ -379,8 +380,9 @@ export default function SellerSettings() {
   ];
 
   return (
-    <div className="w-full mx-auto py-4 sm:py-6 lg:py-8 px-2 sm:px-4 lg:px-6 xl:px-8 animate-in fade-in duration-500 overflow-x-hidden">
+    <div className="container py-8 animate-in fade-in duration-500 overflow-x-hidden">
       {/* Header */}
+
       <div className="mb-4 sm:mb-8 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 sm:gap-6 bg-card p-4 sm:p-7 rounded-2xl border border-border/60 shadow-sm transition-all animate-in slide-in-from-top duration-500">
         <div className="space-y-1 w-full lg:w-auto">
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Store settings</h1>

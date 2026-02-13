@@ -484,8 +484,20 @@ export class OrderService {
                 if (!vendor || currentOrder.vendorId !== vendor.id) {
                     throw new Error('Forbidden: You can only update orders for your own vendor');
                 }
-            } else if (options.role !== Role.SUPER_ADMIN && options.role !== Role.ADMIN) {
-                throw new Error('Unauthorized');
+            } else {
+                // For ADMIN/SUPER_ADMIN, check specific permission
+                const { PermissionService: PermService } = await import('../auth/permission.service');
+                const canManageOrders = await PermService.canPerform(
+                    options.userId,
+                    options.role as Role,
+                    'UPDATE_STATUS',
+                    'ORDER',
+                    currentOrder.vendorId
+                );
+
+                if (!canManageOrders) {
+                    throw new Error('Unauthorized: Missing permission to manage orders');
+                }
             }
 
             if (options.version !== undefined && currentOrder.version !== options.version) {
@@ -581,7 +593,14 @@ export class OrderService {
     }
 
     static async deleteOrder(id: string, role: Role) {
-        if (role !== Role.SUPER_ADMIN) throw new Error('Unauthorized');
+        // Use PermissionService for granular RBAC
+        const { PermissionService: PermService } = await import('../auth/permission.service');
+        const canDelete = role === Role.SUPER_ADMIN; // For now, keep SUPER_ADMIN only for deletion
+
+        if (!canDelete) {
+            throw new Error('Unauthorized: Only Super Admin can delete orders');
+        }
+
         return await prisma.order.update({
             where: { id },
             data: { deletedAt: new Date() }
@@ -608,14 +627,25 @@ export class OrderService {
             });
             if (!order) throw new Error('Order not found');
 
-            // 1. Authorization
-            const isSuperAdmin = role === Role.SUPER_ADMIN;
+            // 1. Authorization - Use PermissionService for granular RBAC
+            const { PermissionService: PermService } = await import('../auth/permission.service');
+            const canRefund = await PermService.canPerform(
+                userId,
+                role as Role,
+                'ISSUE_REFUND',
+                'ORDER',
+                order.vendorId
+            );
+
             let isVendor = false;
             if (role === Role.SELLER) {
                 const vendor = await tx.vendor.findUnique({ where: { ownerId: userId } });
                 isVendor = vendor?.id === order.vendorId;
             }
-            if (!isSuperAdmin && !isVendor) throw new Error('Unauthorized to issue refunds');
+
+            if (!canRefund && !isVendor) {
+                throw new Error('Unauthorized: You do not have permission to issue refunds');
+            }
 
             // 2. Validation
             if (order.paymentStatus !== PaymentStatus.PAID && order.paymentStatus !== PaymentStatus.PARTIALLY_REFUNDED) {

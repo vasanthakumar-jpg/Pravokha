@@ -71,8 +71,16 @@ export class UserController {
             return res.status(404).json({ success: false, message: 'User not found' });
         }
 
-        // SECURITY: If not Super Admin and not Owner, strip PII
-        if (requester.role !== Role.SUPER_ADMIN && requester.id !== user.id) {
+        // SECURITY: Check if user has permission to view full profile
+        const canViewFullProfile = await PermissionService.canPerform(
+            requester.id,
+            requester.role,
+            'VIEW_USERS',
+            'USER'
+        );
+
+        if (!canViewFullProfile && requester.id !== user.id) {
+            // User without permission viewing another user - strip PII
             return res.json({
                 success: true,
                 user: {

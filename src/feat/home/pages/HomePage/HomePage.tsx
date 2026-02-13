@@ -130,32 +130,105 @@ export function HomePage() {
 
     if (loadingCategories || loadingProducts) {
         return (
-            <div className="min-h-screen flex flex-col pt-20">
-                {/* Hero Skeleton */}
-                <div className="w-full h-[300px] sm:h-[450px] bg-muted animate-pulse mb-8" />
+            <div className="min-h-screen flex flex-col bg-background">
+                {/* 1. Header Navigation Skeleton (Shadow simulation for visual anchor) */}
+                <div className="w-full h-16 sm:h-20 border-b border-border/40 flex items-center justify-between px-4 sm:px-6 lg:px-8 bg-background/95 backdrop-blur-sm sticky top-0 z-50">
+                    <div className="flex items-center gap-4 sm:gap-8">
+                        {/* Logo Placeholder */}
+                        <div className="h-6 w-24 sm:h-8 sm:w-32 bg-muted/20 rounded-lg animate-pulse" />
 
-                {/* Categories Skeleton */}
-                <div className="px-4 sm:px-6 lg:px-8 mb-12">
-                    <div className="h-8 w-48 bg-muted rounded mx-auto mb-8 animate-pulse" />
-                    <div className="flex gap-4 overflow-hidden">
-                        {[1, 2, 3, 4, 5, 6].map(i => (
-                            <div key={i} className="w-40 h-40 rounded-full bg-muted flex-shrink-0 animate-pulse" />
+                        {/* Nav Links Placeholder (Desktop) */}
+                        <div className="hidden lg:flex items-center gap-6">
+                            {[1, 2, 3, 4].map(i => (
+                                <div key={i} className="h-3 w-12 bg-muted/10 rounded animate-pulse" />
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Action Icons Placeholder */}
+                    <div className="flex items-center gap-3 sm:gap-4">
+                        {[1, 2, 3].map(i => (
+                            <div key={i} className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-muted/10 animate-pulse" />
                         ))}
                     </div>
                 </div>
 
-                {/* Products Skeleton */}
-                <div className="px-4 sm:px-6 lg:px-8">
-                    <div className="h-8 w-64 bg-muted rounded mx-auto mb-12 animate-pulse" />
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                {/* 2. Hero Banner Skeleton - Precise Height Matching */}
+                <div className="w-full h-[400px] sm:h-[500px] lg:h-[600px] bg-muted/10 relative animate-pulse mb-8 overflow-hidden">
+                    <div className="absolute inset-x-0 bottom-8 flex justify-center gap-2">
+                        {[1, 2, 3, 4, 5].map(i => (
+                            <div key={i} className="h-1 w-3 sm:h-1.5 sm:w-6 rounded-full bg-white/10" />
+                        ))}
+                    </div>
+                    {/* Dark gradient overlay simulation */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-transparent to-transparent" />
+                </div>
+
+                {/* 3. "Shop by Category" Section Skeleton - Aspect Ratio Mirrored */}
+                <section className={`w-full ${layout.sectionSpacing} mb-12`}>
+                    <div className="px-4 sm:px-6 lg:px-8 space-y-8">
+                        <div className="space-y-3 text-center">
+                            <div className="h-8 w-48 sm:h-10 sm:w-64 bg-muted/40 rounded-xl mx-auto animate-pulse" />
+                            <div className="h-4 w-5/6 sm:w-1/2 bg-muted/20 rounded-lg mx-auto animate-pulse max-w-2xl" />
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 max-w-7xl mx-auto">
+                            {[1, 2, 3].map(i => (
+                                <div key={i} className="space-y-4">
+                                    <div className="aspect-[3/4] rounded-2xl bg-muted/10 animate-pulse relative overflow-hidden group">
+                                        <div className="absolute inset-x-6 bottom-8 space-y-3">
+                                            <div className="h-7 w-3/4 bg-white/10 rounded-lg" />
+                                            <div className="h-4 w-1/2 bg-white/5 rounded-md" />
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </section>
+
+                {/* 4. "Explore Our Collection" Product Grid Skeleton */}
+                <section className={`w-full ${layout.sectionSpacing} px-4 sm:px-6 lg:px-8 mb-20`}>
+                    <div className="space-y-4 text-center mb-12">
+                        <div className="h-8 w-56 sm:h-10 sm:w-72 bg-muted/40 rounded-xl mx-auto animate-pulse" />
+                        <div className="h-4 w-2/3 sm:w-1/3 bg-muted/20 rounded-lg mx-auto animate-pulse max-w-xl" />
+                    </div>
+
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-8 max-w-7xl mx-auto">
                         {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
-                            <div key={i} className="aspect-[3/4] rounded-xl bg-muted animate-pulse" />
+                            <div key={i} className="flex flex-col gap-4 border border-border/20 rounded-2xl p-2 sm:p-3 h-full">
+                                {/* Image Placeholder */}
+                                <div className="aspect-square rounded-xl bg-muted/20 animate-pulse" />
+
+                                {/* Content Placeholder */}
+                                <div className="space-y-3 px-1 pb-2 flex-1 flex flex-col">
+                                    <div className="space-y-2">
+                                        <div className="h-3 sm:h-4 w-full bg-muted/30 rounded animate-pulse" />
+                                        <div className="h-3 w-2/3 bg-muted/10 rounded animate-pulse" />
+                                    </div>
+
+                                    <div className="flex items-center gap-1 mt-2">
+                                        {[1, 2, 3, 4, 5].map(s => (
+                                            <div key={s} className="h-2 w-2 sm:h-2.5 sm:w-2.5 rounded-full bg-muted/10" />
+                                        ))}
+                                    </div>
+
+                                    <div className="mt-auto flex justify-between items-end pt-4">
+                                        <div className="space-y-1.5">
+                                            <div className="h-5 w-16 sm:w-24 bg-muted/30 rounded animate-pulse" />
+                                            <div className="h-3 w-10 sm:w-12 bg-muted/10 rounded animate-pulse" />
+                                        </div>
+                                        <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-muted/20 animate-pulse" />
+                                    </div>
+                                </div>
+                            </div>
                         ))}
                     </div>
-                </div>
+                </section>
             </div>
         );
     }
+
 
     return (
         <div className="min-h-screen flex flex-col">
