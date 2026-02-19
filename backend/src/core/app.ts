@@ -41,13 +41,24 @@ app.use(helmet({
 }));
 
 // PRODUCTION-READY CORS Configuration
-app.use(cors({
-    origin: config.frontendUrl,
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    exposedHeaders: ['Content-Range', 'X-Content-Range']
-}));
+// In development/test allow any origin to simplify local frontend integration
+if (config.nodeEnv === 'production') {
+    app.use(cors({
+        origin: config.frontendUrl,
+        credentials: true,
+        methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+        allowedHeaders: ['Content-Type', 'Authorization'],
+        exposedHeaders: ['Content-Range', 'X-Content-Range']
+    }));
+} else {
+    app.use(cors({
+        origin: true,
+        credentials: true,
+        methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+        allowedHeaders: ['Content-Type', 'Authorization'],
+        exposedHeaders: ['Content-Range', 'X-Content-Range']
+    }));
+}
 
 app.use(morgan('dev'));
 app.use('/uploads', express.static(path.join(__dirname, '../../../uploads'), {
@@ -108,11 +119,13 @@ app.get('/', (req, res) => {
     res.send('Pravokha Backend is running securely.');
 });
 
-// Apply auth rate limiter to authentication endpoints
-app.use('/api/auth/login', authLimiter);
-app.use('/api/auth/register', authLimiter);
-app.use('/api/auth/password-reset', securityLimiter);
-app.use('/api/auth/reset-password', securityLimiter);
+// Apply auth rate limiter to authentication endpoints (skip in tests)
+if (config.nodeEnv !== 'test') {
+    app.use('/api/auth/login', authLimiter);
+    app.use('/api/auth/register', authLimiter);
+    app.use('/api/auth/password-reset', securityLimiter);
+    app.use('/api/auth/reset-password', securityLimiter);
+}
 
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
