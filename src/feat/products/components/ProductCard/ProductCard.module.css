@@ -259,6 +259,28 @@
     padding: 0;
 }
 
+.actionGroup {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+}
+
+.shareButton {
+    height: 1.75rem;
+    width: 1.75rem;
+    border-radius: 9999px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(var(--background-rgb), 0.85);
+}
+
+.shareButton svg {
+    height: 0.875rem;
+    width: 0.875rem;
+}
+
 .cartButton svg {
     height: 0.875rem;
     width: 0.875rem;

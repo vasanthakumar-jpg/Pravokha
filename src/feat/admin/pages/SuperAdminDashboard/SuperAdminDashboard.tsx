@@ -12,6 +12,7 @@ import {
     Clock,
     ArrowUpRight,
     AlertCircle,
+    ShieldAlert,
     Activity,
     DollarSign,
     TrendingUp,

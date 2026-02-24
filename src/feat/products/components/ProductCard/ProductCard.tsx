@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Star, ShoppingCart, Shield, Eye } from "lucide-react";
+import { Star, ShoppingCart, Shield, Eye, Share2 } from "lucide-react";
 import { TbHeartPlus } from "react-icons/tb";
 import { CardContent } from "@/ui/Card";
 import { Badge } from "@/ui/Badge";
@@ -46,6 +46,47 @@ export function ProductCard({ product }: ProductCardProps) {
         } catch (error) {
             // User not logged in or error occurred
             setIsInWishlist(false);
+        }
+    };
+
+    const handleShareClick = async (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const productPath = product.slug ? `/product/${product.slug}` : `/product/${product.id}`;
+        const url = `${window.location.origin}${productPath}`;
+
+        const shareData = {
+            title: product.title,
+            text: product.description || product.title,
+            url,
+        };
+
+        try {
+            if ((navigator as any).share) {
+                await (navigator as any).share(shareData);
+                toast({ title: "Shared", description: "Product shared successfully." });
+                return;
+            }
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                await navigator.clipboard.writeText(url);
+                toast({ title: "Link copied", description: "Product link copied to clipboard." });
+                return;
+            }
+
+            // Last-resort fallback for older browsers
+            const textarea = document.createElement('textarea');
+            textarea.value = url;
+            textarea.style.position = 'fixed';
+            textarea.style.left = '-9999px';
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            toast({ title: "Link copied", description: "Product link copied to clipboard." });
+        } catch (error: any) {
+            toast({ title: "Could not share", description: error?.message || "Please try copying the link manually.", variant: "destructive" });
         }
     };
 
@@ -264,14 +305,25 @@ export function ProductCard({ product }: ProductCardProps) {
                         })()}
                     </div>
 
-                    <Button
-                        size="icon"
-                        className={styles.cartButton}
-                        onClick={handleQuickAdd}
-                        disabled={!product.variants || product.variants.length === 0 || product.variants.every(v => !v.sizes || v.sizes.every(s => s.stock === 0))}
-                    >
-                        <ShoppingCart className="h-4 w-4 sm:h-5 sm:w-5" />
-                    </Button>
+                    <div className={styles.actionGroup}>
+                        <Button
+                            size="icon"
+                            className={styles.shareButton}
+                            onClick={handleShareClick}
+                            aria-label="Share product"
+                        >
+                            <Share2 className="h-4 w-4 sm:h-5 sm:w-5" />
+                        </Button>
+
+                        <Button
+                            size="icon"
+                            className={styles.cartButton}
+                            onClick={handleQuickAdd}
+                            disabled={!product.variants || product.variants.length === 0 || product.variants.every(v => !v.sizes || v.sizes.every(s => s.stock === 0))}
+                        >
+                            <ShoppingCart className="h-4 w-4 sm:h-5 sm:w-5" />
+                        </Button>
+                    </div>
                 </div>
             </CardContent>
         </div>

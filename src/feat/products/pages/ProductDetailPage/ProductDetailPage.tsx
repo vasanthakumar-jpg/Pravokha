@@ -282,13 +282,13 @@ export function ProductDetailPage() {
                 }
 
                 let finalSeller: Product[] = [];
-                if (sellerResponse.data.success) {
+                if (sellerResponse?.data?.success) {
                     const sellerData = (sellerResponse.data.products || []).filter((p: any) => p.id !== productData.id);
                     finalSeller = mapToProducts(sellerData);
                 }
                 setSellerProducts(finalSeller);
 
-                if (relatedResponse.data.success) {
+                if (relatedResponse?.data?.success) {
                     const sellerIds = new Set(finalSeller.map(p => p.id));
                     const rawRelated = relatedResponse.data.products || [];
 
@@ -315,9 +315,23 @@ export function ProductDetailPage() {
                 }
             } catch (err: any) {
                 console.error("Error fetching product:", err);
+
+                const status = err?.response?.status;
+                if (status === 404) {
+                    toast({ title: "Product not found", description: "The product does not exist.", variant: "destructive" });
+                    navigate('/products', { replace: true });
+                    return;
+                }
+
+                if (status === 403) {
+                    toast({ title: "Access denied", description: "You are not allowed to view this product.", variant: "destructive" });
+                    navigate('/products', { replace: true });
+                    return;
+                }
+
                 toast({
                     title: "Error",
-                    description: "Failed to load product",
+                    description: err?.message || "Failed to load product",
                     variant: "destructive",
                 });
             } finally {
