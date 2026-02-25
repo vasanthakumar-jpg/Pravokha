@@ -1,9 +1,9 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = import.meta.env.VITE_API_URL || "";
 
-if (!API_URL) {
-    console.warn('VITE_API_URL is not defined. API requests may fail.');
+if (!import.meta.env.VITE_API_URL) {
+    console.warn('VITE_API_URL is not defined. Falling back to relative URLs. If your backend is running on a different origin, set VITE_API_URL to the backend URL (e.g. http://localhost:3000)');
 }
 
 export const apiClient = axios.create({
