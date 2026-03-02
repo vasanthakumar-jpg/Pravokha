@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Low Stock Alert</title>
+    <style>
+        body { margin: 0; padding: 0; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+        table { border-collapse: collapse; mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+        img { border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; }
+        body, table, td, p, a { font-family: Arial, Helvetica, sans-serif; }
+        .email-container { max-width: 600px; margin: 0 auto; }
+        .header { background-color: #EF4444; color: #ffffff; padding: 30px 20px; text-align: center; }
+        .header h1 { margin: 0; font-size: 28px; font-weight: bold; }
+        .content { background-color: #f9fafb; padding: 30px 20px; }
+        .alert { background-color: #FEE2E2; padding: 20px; margin: 20px 0; border-radius: 8px; border-left: 4px solid #EF4444; }
+        .alert h2 { margin: 0 0 10px 0; font-size: 20px; color: #991B1B; }
+        .alert p { margin: 5px 0; color: #7F1D1D; font-size: 16px; }
+        .button { display: inline-block; padding: 14px 28px; background-color: #EF4444; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; }
+        .button:hover { background-color: #DC2626; }
+        .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 14px; }
+        
+        @media only screen and (max-width: 480px) {
+            .email-container { width: 100% !important; }
+            .content { padding: 20px 15px !important; }
+            .alert { padding: 15px !important; }
+            .header h1 { font-size: 24px !important; }
+            .button { padding: 12px 24px !important; font-size: 14px !important; }
+            .alert h2 { font-size: 18px !important; }
+            .alert p { font-size: 14px !important; }
+        }
+    </style>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f3f4f6;">
+    <table role="presentation" style="width: 100%;">
+        <tr>
+            <td style="padding: 20px 0;">
+                <table role="presentation" class="email-container" style="width: 100%; max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+                    
+                    <tr>
+                        <td class="header">
+                            <h1>⚠️ Low Stock Alert</h1>
+                        </td>
+                    </tr>
+                    
+                    <tr>
+                        <td class="content">
+                            <p style="font-size: 16px; color: #111827; margin: 0 0 20px 0;">Hello <strong>{{sellerName}}</strong>,</p>
+                            
+                            <div class="alert">
+                                <h2>{{productTitle}}</h2>
+                                <p><strong>Current Stock:</strong> {{currentStock}} units</p>
+                                <p><strong>Threshold:</strong> {{threshold}} units</p>
+                            </div>
+                            
+                            <p style="font-size: 16px; color: #374151; margin: 20px 0;">Your product is running low on stock. Please restock to avoid losing sales!</p>
+                            
+                            <table role="presentation" style="width: 100%; margin: 20px 0;">
+                                <tr>
+                                    <td style="text-align: center;">
+                                        <a href="{{productUrl}}" class="button">Update Inventory</a>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    
+                    <tr>
+                        <td class="footer">
+                            <p style="margin: 10px 0; font-weight: bold; color: #111827;">Pravokha</p>
+                            <p>© 2026 Pravokha. All rights reserved.</p>
+                        </td>
+                    </tr>
+                    
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

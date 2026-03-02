@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Payment Successful</title>
+    <style>
+        body { margin: 0; padding: 0; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+        table { border-collapse: collapse; mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+        img { border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; }
+        body, table, td, p, a { font-family: Arial, Helvetica, sans-serif; }
+        .email-container { max-width: 600px; margin: 0 auto; }
+        .header { background-color: #10B981; color: #ffffff; padding: 30px 20px; text-align: center; }
+        .header h1 { margin: 0; font-size: 28px; font-weight: bold; }
+        .content { background-color: #f9fafb; padding: 30px 20px; }
+        .card { background-color: #ffffff; padding: 20px; margin: 20px 0; border-radius: 8px; border: 1px solid #e5e7eb; }
+        .checkmark { font-size: 64px; text-align: center; margin: 20px 0; color: #10B981; }
+        .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 14px; }
+        
+        @media only screen and (max-width: 480px) {
+            .email-container { width: 100% !important; }
+            .content { padding: 20px 15px !important; }
+            .card { padding: 15px !important; }
+            .header h1 { font-size: 24px !important; }
+            .checkmark { font-size: 48px !important; }
+        }
+    </style>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f3f4f6;">
+    <table role="presentation" style="width: 100%; border: 0;" cellspacing="0" cellpadding="0">
+        <tr>
+            <td style="padding: 20px 0;">
+                <table role="presentation" class="email-container" style="width: 100%; max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+                    
+                    <tr>
+                        <td class="header">
+                            <h1>Payment Successful!</h1>
+                        </td>
+                    </tr>
+                    
+                    <tr>
+                        <td class="content">
+                            <div class="checkmark">✓</div>
+                            <p style="font-size: 16px; color: #111827; margin: 0 0 15px 0;">Hello <strong>{{customerName}}</strong>,</p>
+                            <p style="font-size: 16px; color: #374151; margin: 0 0 20px 0;">Your payment has been successfully processed.</p>
+                            
+                            <div class="card">
+                                <h2 style="margin: 0 0 15px 0; font-size: 20px; color: #111827;">Payment Details</h2>
+                                <p style="margin: 8px 0; color: #374151;"><strong>Order Number:</strong> {{orderNumber}}</p>
+                                <p style="margin: 8px 0; color: #374151; font-size: 24px; font-weight: bold; color: #10B981;"><strong>Amount Paid:</strong> ₹{{paymentAmount}}</p>
+                                <p style="margin: 8px 0; color: #374151;"><strong>Payment Method:</strong> {{paymentMethod}}</p>
+                                <p style="margin: 8px 0; color: #374151;"><strong>Payment Date:</strong> {{paymentDate}}</p>
+                            </div>
+                            
+                            <p style="font-size: 16px; color: #374151; margin: 20px 0;">Your order is now being processed and will be shipped soon.</p>
+                        </td>
+                    </tr>
+                    
+                    <tr>
+                        <td class="footer">
+                            <p style="margin: 10px 0; font-weight: bold; color: #111827;">Pravokha</p>
+                            <p>© 2026 Pravokha. All rights reserved.</p>
+                        </td>
+                    </tr>
+                    
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

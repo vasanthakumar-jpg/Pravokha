@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Order Confirmation</title>
+    <style>
+        /* Reset styles for email clients */
+        body { margin: 0; padding: 0; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+        table { border-collapse: collapse; mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+        img { border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; -ms-interpolation-mode: bicubic; }
+        
+        /* Base styles */
+        body, table, td, p, a, li { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; font-family: Arial, Helvetica, sans-serif; }
+        
+        /* Container */
+        .email-container { max-width: 600px; margin: 0 auto; }
+        
+        /* Header */
+        .header { background-color: #4F46E5; color: #ffffff; padding: 30px 20px; text-align: center; }
+        .header h1 { margin: 0; font-size: 28px; font-weight: bold; }
+        
+        /* Content */
+        .content { background-color: #f9fafb; padding: 30px 20px; }
+        .card { background-color: #ffffff; padding: 20px; margin: 20px 0; border-radius: 8px; border: 1px solid #e5e7eb; }
+        
+        /* Order items */
+        .item { padding: 15px 0; border-bottom: 1px solid #e5e7eb; }
+        .item:last-child { border-bottom: none; }
+        .item-name { font-weight: bold; font-size: 16px; color: #111827; margin-bottom: 5px; }
+        .item-details { font-size: 14px; color: #6b7280; }
+        
+        /* Total */
+        .total { font-weight: bold; font-size: 24px; text-align: right; color: #111827; margin-top: 20px; padding-top: 15px; border-top: 2px solid #4F46E5; }
+        
+        /* Button */
+        .button { display: inline-block; padding: 14px 28px; background-color: #4F46E5; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; margin: 15px 0; }
+        .button:hover { background-color: #4338CA; }
+        
+        /* Footer */
+        .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 14px; }
+        .footer p { margin: 5px 0; }
+        
+        /* Mobile responsive */
+        @media only screen and (max-width: 480px) {
+            .email-container { width: 100% !important; }
+            .content { padding: 20px 15px !important; }
+            .card { padding: 15px !important; }
+            .header h1 { font-size: 24px !important; }
+            .total { font-size: 20px !important; }
+            .button { padding: 12px 24px !important; font-size: 14px !important; }
+            td { font-size: 14px !important; }
+        }
+    </style>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f3f4f6;">
+    <table role="presentation" style="width: 100%; border: 0;" cellspacing="0" cellpadding="0">
+        <tr>
+            <td style="padding: 20px 0;">
+                <table role="presentation" class="email-container" style="width: 100%; max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+                    
+                    <!-- Header -->
+                    <tr>
+                        <td class="header">
+                            <h1>Order Confirmed! 🎉</h1>
+                        </td>
+                    </tr>
+                    
+                    <!-- Content -->
+                    <tr>
+                        <td class="content">
+                            <p style="font-size: 16px; color: #111827; margin: 0 0 20px 0;">Hello <strong>{{customerName}}</strong>,</p>
+                            <p style="font-size: 16px; color: #374151; margin: 0 0 20px 0;">Thank you for your order! We're excited to get it to you.</p>
+                            
+                            <!-- Order Details Card -->
+                            <div class="card">
+                                <h2 style="margin: 0 0 15px 0; font-size: 20px; color: #111827;">Order Details</h2>
+                                <p style="margin: 5px 0; color: #374151;"><strong>Order Number:</strong> {{orderNumber}}</p>
+                                <p style="margin: 5px 0; color: #374151;"><strong>Order Date:</strong> {{orderDate}}</p>
+                                
+                                <h3 style="margin: 20px 0 10px 0; font-size: 18px; color: #111827;">Items</h3>
+                                <div>
+                                    <!-- Loop items - Replace {{#orderItems}} with your template engine -->
+                                    <div class="item">
+                                        <div class="item-name">Product Name</div>
+                                        <div class="item-details">Quantity: 1 × ₹999</div>
+                                    </div>
+                                    <!-- End loop -->
+                                </div>
+                                
+                                <div class="total">Total: ₹{{orderAmount}}</div>
+                            </div>
+                            
+                            <p style="font-size: 16px; color: #374151; margin: 20px 0;">We'll send you a shipping confirmation email as soon as your order ships.</p>
+                            
+                            <!-- CTA Button -->
+                            <table role="presentation" style="width: 100%; border: 0;" cellspacing="0" cellpadding="0">
+                                <tr>
+                                    <td style="text-align: center;">
+                                        <a href="http://localhost:5173/user/orders" class="button">View Order Status</a>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    
+                    <!-- Footer -->
+                    <tr>
+                        <td class="footer">
+                            <p style="margin: 10px 0; font-weight: bold; color: #111827;">Pravokha</p>
+                            <p>© 2026 Pravokha. All rights reserved.</p>
+                            <p>If you have any questions, please contact us at <a href="mailto:support@pravokha.com" style="color: #4F46E5;">support@pravokha.com</a></p>
+                        </td>
+                    </tr>
+                    
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
