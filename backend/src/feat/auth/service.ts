@@ -5,7 +5,7 @@ import { config } from '../../core/config/env';
 import { User } from '@prisma/client';
 
 export class AuthService {
-    static async register(data: Omit<User, 'id' | 'createdAt' | 'updatedAt'>) {
+    static async register(data: Omit<User, 'id' | 'createdAt' | 'updatedAt'> & { phoneNumber?: string }) {
         const existingUser = await prisma.user.findUnique({ where: { email: data.email } });
         if (existingUser) {
             throw { statusCode: 400, message: 'Email already exists' };
@@ -16,11 +16,17 @@ export class AuthService {
             hashedPassword = await bcrypt.hash(data.password as string, 10);
         }
 
+        const createData: any = {
+            ...data,
+            password: hashedPassword,
+        };
+        // make sure prisma property matches
+        if (data.phoneNumber) {
+            createData.phoneNumber = data.phoneNumber;
+        }
+
         const user = await prisma.user.create({
-            data: {
-                ...data,
-                password: hashedPassword,
-            },
+            data: createData,
         });
 
         const token = this.generateToken(user as any);
@@ -30,19 +36,23 @@ export class AuthService {
     static async login(data: Pick<User, 'email' | 'password'>) {
         const user = await prisma.user.findUnique({ where: { email: data.email } });
         if (!user) {
+            console.warn('[AuthService.login] user not found for email', data.email);
             throw { statusCode: 401, message: 'Invalid credentials' };
         }
 
         if (!user.password) {
+            console.warn('[AuthService.login] attempt to login to SSO account', data.email);
             throw { statusCode: 401, message: 'This account uses SSO. Please login with Google.' };
         }
 
         if (!data.password) {
+            console.warn('[AuthService.login] missing password in login request for', data.email);
             throw { statusCode: 400, message: 'Password is required' };
         }
 
         const isMatch = await bcrypt.compare(data.password as string, user.password as string);
         if (!isMatch) {
+            console.warn('[AuthService.login] password mismatch for', data.email);
             throw { statusCode: 401, message: 'Invalid credentials' };
         }
 

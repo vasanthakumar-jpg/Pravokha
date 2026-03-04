@@ -165,6 +165,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string) => {
+    // reset any previous global auth error before attempting
+    setAuthError(null);
     try {
       setLoading(true);
       const response = await apiClient.post('/auth/login', { email, password });
@@ -176,10 +178,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       setUser(mapUserData(user));
       setRole(user.role);
+      // clear any previous global errors
       setAuthError(null);
     } catch (error: any) {
       const message = error.response?.data?.message || "Login failed";
-      setAuthError(message);
+      // Only treat it as a global auth error if the request never reached the server
+      if (!error.response) {
+        setAuthError(message);
+      }
       throw new Error(message);
     } finally {
       setLoading(false);
@@ -187,6 +193,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const googleLogin = async (idToken: string) => {
+    setAuthError(null);
     try {
       setLoading(true);
       const response = await apiClient.post('/auth/google-login', { idToken });
@@ -201,7 +208,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setAuthError(null);
     } catch (error: any) {
       const message = error.response?.data?.message || "Google login failed";
-      setAuthError(message);
+      if (!error.response) {
+        setAuthError(message);
+      }
       throw new Error(message);
     } finally {
       setLoading(false);
@@ -209,6 +218,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const register = async (data: any) => {
+    setAuthError(null);
     try {
       setLoading(true);
       const response = await apiClient.post('/auth/register', data);
@@ -223,7 +233,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setAuthError(null);
     } catch (error: any) {
       const message = error.response?.data?.message || "Registration failed";
-      setAuthError(message);
+      if (!error.response) {
+        setAuthError(message);
+      }
       throw new Error(message);
     } finally {
       setLoading(false);

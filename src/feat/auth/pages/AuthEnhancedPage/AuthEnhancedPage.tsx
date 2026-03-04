@@ -133,11 +133,12 @@ export function AuthEnhancedPage() {
 
         setLoading(true);
         try {
-            await apiClient.post("/auth/register", {
+            // use context helper which already handles token/storage
+            await authRegister({
                 email: formData.email,
                 password: formData.password,
-                fullName: formData.name,
-                phone: formData.mobile,
+                name: formData.name,
+                phoneNumber: formData.mobile // backend now accepts this field
             });
 
             setLoading(false);

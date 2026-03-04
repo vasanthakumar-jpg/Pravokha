@@ -5,6 +5,9 @@ export const registerSchema = z.object({
     email: z.string().email('Invalid email format'),
     password: z.string().min(8, 'Password must be at least 8 characters'),
     name: z.string().min(2, 'Name must be at least 2 characters'),
+    phoneNumber: z.string()
+        .regex(/^[6-9]\d{9}$/, 'Phone number must be a valid 10-digit Indian number')
+        .optional(),
     role: z.enum(['ADMIN', 'SELLER', 'CUSTOMER']).optional(),
 });
 
